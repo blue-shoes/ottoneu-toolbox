@@ -1,11 +1,12 @@
 import pandas as pd
 def createLeagueAvgPos(dataset, y1, y2, y3):
     avg_dict = pd.DataFrame()
-    y1_pa = dataset.loc[2, "PA"]
-    y2_pa = dataset.loc[1, "PA"]
-    y3_pa = dataset.loc[0, "PA"]
 
-    print(f"PAs - {y1_pa}, {y2_pa}, {y3_pa}")
+    for (cat_name, cat_data)  in dataset.iteritems():
+        y1_stat = cat_data[2]
+        y2_stat = cat_data[1]
+        y3_stat = cat_data[0]
+        print(f"{cat_name}s - {y1_stat}, {y2_stat}, {y3_stat}")
 
     #avg_dict["H"] = (dataset[y1, "H"] / * 5 + dataset[y2, "H"] * 4
 
