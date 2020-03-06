@@ -44,7 +44,9 @@ def getDataset(driver, page, element_id, filepath):
     #Need to add the [1:] annotation to get rid of leading / character in path
     download_path = download_path[1:]
     shutil.move(download_path, filepath)
-    return pd.read_csv(filepath)
+    dataframe = pd.read_csv(filepath)
+    dataframe.set_index("playerid")
+    return dataframe
 
 def every_downloads_chrome(driver):
     if not driver.current_url.startswith("chrome://downloads"):
