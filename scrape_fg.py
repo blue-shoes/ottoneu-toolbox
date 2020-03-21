@@ -43,8 +43,6 @@ def getDataset(driver, page, element_id, filepath):
     csvJs.click()
     url = every_downloads_chrome(driver)
     download_path = unquote(urlparse(url[0]).path)
-    #Need to add the [1:] annotation to get rid of leading / character in path
-    download_path = download_path[1:]
     shutil.move(download_path, filepath)
     dataframe = pd.read_csv(filepath)
     dataframe.set_index("playerid")
@@ -54,9 +52,10 @@ def every_downloads_chrome(driver):
     if not driver.current_url.startswith("chrome://downloads"):
         driver.get("chrome://downloads/")
     return driver.execute_script("""
-        var items = downloads.Manager.get().items_;
-        if (items.every(e => e.state === "COMPLETE"))
-            return items.map(e => e.fileUrl || e.file_url);
+        return document.querySelector('downloads-manager')
+        .shadowRoot.querySelector('#downloadsList')
+        .items.filter(e => e.state === 'COMPLETE')
+        .map(e => e.filePath || e.file_path || e.fileUrl || e.file_url);
         """)
 
 def setup_fg_login(driver):
