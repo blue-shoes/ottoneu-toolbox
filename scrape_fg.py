@@ -33,6 +33,8 @@ def getProjectionDataset(driver, page, csv_name):
     if path.exists(filepath):
         return pd.read_csv(filepath)
     else:
+        if driver.current_url == 'data:,':
+            setup_fg_login(driver)
         return getDataset(driver, page, 'ProjectionBoard1_cmdCSV', filepath)
 
 def getDataset(driver, page, element_id, filepath):
