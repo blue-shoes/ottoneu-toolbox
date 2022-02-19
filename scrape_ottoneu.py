@@ -3,7 +3,7 @@ import pandas as pd
 import requests
 from pandas import DataFrame
 
-def getPlayerPositionsDf():
+def getPlayerPositionsDfSoup():
     avg_values_url = 'https://ottoneu.fangraphs.com/averageValues'
     response = requests.get(avg_values_url)
     avg_val_soup = Soup(response.text, 'html.parser')
@@ -27,10 +27,8 @@ def parse_row(row):
     return parsed_row
 
 def parse_header(row):
-    #th_vals = row.find_all('th')
-    #print(th_vals[0])
     return [str(x.string) for x in row.find_all('th')]
 
 
-df = getPlayerPositionsDf()
+df = getPlayerPositionsDfSoup()
 print(df.head())
