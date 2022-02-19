@@ -40,6 +40,7 @@ def getProjectionDataset(driver, page, csv_name, force_download=False, player=Tr
         if player:
             dataframe.set_index("playerid", inplace=True)
             dataframe.index = dataframe.index.astype(str, copy = False)
+        dataframe = dataframe.loc[:, ~dataframe.columns.str.startswith('-1')]
         return dataframe
     else:
         if driver.current_url == 'data:,':
@@ -57,6 +58,7 @@ def getDataset(driver, page, element_id, filepath, player=True):
     if(player):
         dataframe.set_index("playerid", inplace=True)
         dataframe.index = dataframe.index.astype(str, copy = False)
+    dataframe = dataframe.loc[:, ~dataframe.columns.str.startswith('-1')]
     return dataframe
 
 def every_downloads_chrome(driver):
