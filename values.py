@@ -3,6 +3,8 @@ import scrape_fg as scrape
 import os
 from os import path
 
+from scrape_ottoneu import Scrape_Ottoneu
+
 def convertToDcPlayingTime(proj, dc_proj, position):
     static_columns = ['playerid', 'Name', 'Team','-1','AVG','OBP','SLG','OPS','wOBA','wRC+','ADP','WHIP','K/9','BB/9','ERA','FIP']
     dc_columns = ['G','PA','GS','IP']
@@ -70,6 +72,14 @@ if dc_pt:
     pos_proj.to_csv(filepath)
     filepath = os.path.join(subdirpath, f"{proj_set}_dc_conv_pitch.csv")
     pitch_proj.to_csv(filepath)
+
+try:
+    otto_scraper = Scrape_Ottoneu()
+    positions = otto_scraper.get_player_position_ds(force)
+    filepath = os.path.join(subdirpath, f"positions.csv")
+    positions.to_csv(filepath)
+finally:
+    otto_scraper.close()
 
 
 
