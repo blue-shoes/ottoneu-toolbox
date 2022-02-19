@@ -44,20 +44,20 @@ else:
     force = (input("Force update (y/n): ")) == 'y'
 
 try:
-    driver = scrape.setupDriver()
-    pos_proj = scrape.getProjectionDataset(driver, f"https://www.fangraphs.com/projections.aspx?pos=all&stats=bat&type={proj_set}&team=0&lg=all&players=0", f'{proj_set}_pos.csv', force)
-    pitch_proj = scrape.getProjectionDataset(driver, f"https://www.fangraphs.com/projections.aspx?pos=all&stats=pit&type={proj_set}&team=0&lg=all&players=0", f'{proj_set}_pitch.csv', force)
+    fg_scraper = scrape.Scrape_Fg()
+    pos_proj = fg_scraper.getProjectionDataset(f"https://www.fangraphs.com/projections.aspx?pos=all&stats=bat&type={proj_set}&team=0&lg=all&players=0", f'{proj_set}_pos.csv', force)
+    pitch_proj = fg_scraper.getProjectionDataset(f"https://www.fangraphs.com/projections.aspx?pos=all&stats=pit&type={proj_set}&team=0&lg=all&players=0", f'{proj_set}_pitch.csv', force)
 
     if dc_pt:
         if ros:
             dc_set = 'rfangraphsdc'
         else:
             dc_set = 'fangraphsdc'
-        dc_pos_proj = scrape.getProjectionDataset(driver, f"https://www.fangraphs.com/projections.aspx?pos=all&stats=bat&type={dc_set}&team=0&lg=all&players=0", f'{dc_set}_pos.csv', force)
-        dc_pitch_proj = scrape.getProjectionDataset(driver, f"https://www.fangraphs.com/projections.aspx?pos=all&stats=pit&type={dc_set}&team=0&lg=all&players=0", f'{dc_set}_pitch.csv', force)
+        dc_pos_proj = fg_scraper.getProjectionDataset(f"https://www.fangraphs.com/projections.aspx?pos=all&stats=bat&type={dc_set}&team=0&lg=all&players=0", f'{dc_set}_pos.csv', force)
+        dc_pitch_proj = fg_scraper.getProjectionDataset(f"https://www.fangraphs.com/projections.aspx?pos=all&stats=pit&type={dc_set}&team=0&lg=all&players=0", f'{dc_set}_pitch.csv', force)
 
 finally:
-    driver.close()
+    fg_scraper.close()
 
 dirname = os.path.dirname(__file__)
 subdirpath = os.path.join(dirname, 'projection')
@@ -70,5 +70,6 @@ if dc_pt:
     pos_proj.to_csv(filepath)
     filepath = os.path.join(subdirpath, f"{proj_set}_dc_conv_pitch.csv")
     pitch_proj.to_csv(filepath)
+
 
 
