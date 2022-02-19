@@ -5,6 +5,14 @@ from os import path
 
 from scrape_ottoneu import Scrape_Ottoneu
 
+def set_positions(df, positions):
+    df = df.merge(positions[['Position(s)', 'OttoneuID']], how='left', left_index=True, right_index=True)
+    df['OttoneuID'] = df['OttoneuID'].fillna(-1) 
+    df['OttoneuID'] = df['OttoneuID'].astype(int)
+    df['Position(s)'] = df['Position(s)'].fillna('Util')
+    df['Team'] = df['Team'].fillna('---')
+    return df
+
 def convertToDcPlayingTime(proj, dc_proj, position):
     static_columns = ['playerid', 'Name', 'Team','-1','AVG','OBP','SLG','OPS','wOBA','wRC+','ADP','WHIP','K/9','BB/9','ERA','FIP']
     dc_columns = ['G','PA','GS','IP']
@@ -45,6 +53,8 @@ if ros:
 else:
     force = (input("Force update (y/n): ")) == 'y'
 
+print_intermediate = (input("Print intermediate datasets (y/n): ")) == 'y'
+
 try:
     fg_scraper = scrape.Scrape_Fg()
     pos_proj = fg_scraper.getProjectionDataset(f"https://www.fangraphs.com/projections.aspx?pos=all&stats=bat&type={proj_set}&team=0&lg=all&players=0", f'{proj_set}_pos.csv', force)
@@ -62,24 +72,28 @@ finally:
     fg_scraper.close()
 
 dirname = os.path.dirname(__file__)
-subdirpath = os.path.join(dirname, 'projection')
+subdirpath = os.path.join(dirname, 'intermediate')
 
 if dc_pt:
     pos_proj = convertToDcPlayingTime(pos_proj, dc_pos_proj, True)
     pitch_proj = convertToDcPlayingTime(pitch_proj, dc_pitch_proj, False)
 
-    filepath = os.path.join(subdirpath, f"{proj_set}_dc_conv_pos.csv")
-    pos_proj.to_csv(filepath)
-    filepath = os.path.join(subdirpath, f"{proj_set}_dc_conv_pitch.csv")
-    pitch_proj.to_csv(filepath)
+    if print_intermediate:
+        filepath = os.path.join(subdirpath, f"{proj_set}_dc_conv_pos.csv")
+        pos_proj.to_csv(filepath)
+        filepath = os.path.join(subdirpath, f"{proj_set}_dc_conv_pitch.csv")
+        pitch_proj.to_csv(filepath)
 
 try:
     otto_scraper = Scrape_Ottoneu()
     positions = otto_scraper.get_player_position_ds(force)
-    filepath = os.path.join(subdirpath, f"positions.csv")
-    positions.to_csv(filepath)
 finally:
     otto_scraper.close()
 
+pos_proj = set_positions(pos_proj, positions)
+pitch_proj = set_positions(pitch_proj, positions)
+
+print(pos_proj.head())
+print(pitch_proj.head())
 
 

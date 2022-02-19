@@ -41,13 +41,16 @@ class Scrape_Ottoneu(Scrape_Base):
         subdirpath = os.path.join(dirname, subdir)
         filepath = os.path.join(subdirpath, "ottoneu_positions.csv")
         if path.exists(filepath) and not force_download:
-            dataframe = pd.read_csv(filepath)
+            df = pd.read_csv(filepath)
         else:
             if self.driver == None:
                 self.setupDriver()
-            dataframe = self.getDatasetAtAddress('https://ottoneu.fangraphs.com/averageValues?export=csv', filepath)
-        dataframe.loc[dataframe['FG MajorLeagueID'].isnull(), 'FG MajorLeagueID'] = dataframe['FG MinorLeagueID']
-        dataframe.rename(columns={'FG MajorLeagueID':'playerid'}, inplace=True)
-        dataframe.set_index("playerid", inplace=True)
-        dataframe.index = dataframe.index.astype(str, copy = False)
-        return dataframe    
+            df = self.getDatasetAtAddress('https://ottoneu.fangraphs.com/averageValues?export=csv', filepath)
+        print(df.head())
+        df['playerid'] = df['FG MinorLeagueID']
+        df['FG MajorLeagueID'] = df['FG MajorLeagueID'].fillna(-1)
+        df['FG MajorLeagueID'] = df['FG MajorLeagueID'].astype(int)
+        df.loc[df['FG MajorLeagueID'] != -1, 'playerid'] = df['FG MajorLeagueID']
+        df.set_index("playerid", inplace=True)
+        df.index = df.index.astype(str, copy = False)
+        return df    

@@ -21,7 +21,7 @@ class Scrape_Fg(scrape_base.Scrape_Base):
                 self.setupDriver()
                 self.setup_fg_login()
             dataframe = self.getDataset(page, 'LeaderBoard1_cmdCSV', filepath, player)
-        if(player):
+        if player:
             dataframe.set_index("playerid", inplace=True)
             dataframe.index = dataframe.index.astype(str, copy = False)
         return dataframe
@@ -41,7 +41,7 @@ class Scrape_Fg(scrape_base.Scrape_Base):
                 self.setupDriver()
                 self.setup_fg_login()
             dataframe = self.getDataset(page, 'ProjectionBoard1_cmdCSV', filepath)
-        if(player):
+        if player:
             dataframe.set_index("playerid", inplace=True)
             dataframe.index = dataframe.index.astype(str, copy = False)
         return dataframe
