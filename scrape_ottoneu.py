@@ -46,7 +46,6 @@ class Scrape_Ottoneu(Scrape_Base):
             if self.driver == None:
                 self.setupDriver()
             df = self.getDatasetAtAddress('https://ottoneu.fangraphs.com/averageValues?export=csv', filepath)
-        print(df.head())
         df['playerid'] = df['FG MinorLeagueID']
         df['FG MajorLeagueID'] = df['FG MajorLeagueID'].fillna(-1)
         df['FG MajorLeagueID'] = df['FG MajorLeagueID'].astype(int)

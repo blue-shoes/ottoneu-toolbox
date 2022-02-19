@@ -36,6 +36,32 @@ def convertToDcPlayingTime(proj, dc_proj, position):
             proj[column] = dc_proj[column]
     return proj
 
+def calc_bat_points(row):
+    return -1.0*row['AB'] + 5.6*row['H'] + 2.9*row['2B'] + 5.7*row['3B'] + 9.4*row['HR']+3.0*row['BB']+3.0*row['HBP']+1.9*row['SB']-2.8*row['CS']
+
+def calc_ppg(row):
+    if row['G'] == 0:
+        return 0
+    return row['Points'] / row['G']
+
+def calc_pppa(row):
+    if row['PA'] == 0:
+        return 0
+    return row['Points'] / row['PA']
+
+def calc_pitch_points(row):
+    #This HBP approximation is from a linear regression is did when I first did values
+    try:
+        hbp = row['HBP']
+    except KeyError:
+        #Ask forgiveness, not permission
+        hbp = 0.0951*row['BB']+0.4181
+    return 7.4*row['IP']+2.0*row['SO']-2.6*row['H']-3.0*row['BB']-3.0*hbp-12.3*row['HR']+5.0*row['SV']+4.0*row['HLD']
+
+def calc_ppi(row):
+    if row['IP'] == 0:
+        return 0
+    return row['Points'] / row['IP']
 
 proj_set = input("Pick projection system (steamer, zips, fangraphsdc, atc, thebat, thebatx: ")
 ros = input("RoS? (y/n): ") == 'y'
@@ -91,9 +117,14 @@ finally:
     otto_scraper.close()
 
 pos_proj = set_positions(pos_proj, positions)
-pitch_proj = set_positions(pitch_proj, positions)
+pos_proj['Points'] = pos_proj.apply(calc_bat_points, axis=1)
+pos_proj['P/G'] = pos_proj.apply(calc_ppg, axis=1)
+pos_proj['P/PA'] = pos_proj.apply(calc_pppa, axis=1)
 
-print(pos_proj.head())
-print(pitch_proj.head())
+pitch_proj = set_positions(pitch_proj, positions)
+pitch_proj['Points'] = pitch_proj.apply(calc_pitch_points, axis=1)
+pitch_proj['P/IP'] = pitch_proj.apply(calc_ppi, axis=1)
+
+
 
 
