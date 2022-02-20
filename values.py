@@ -462,7 +462,7 @@ dol_per_par = dollars / total_par
 print(f'Dollar/PAR = {dol_per_par}')
 
 rosterable_pos['Value'] = rosterable_pos['Max PAR'].apply(lambda x: "${:.1f}".format(x*dol_per_par + 1.0))
-rosterable_pitch['Value'] = rosterable_pos['Max PAR'].apply(lambda x: "${:.1f}".format(x*dol_per_par + 1.0))
+rosterable_pitch['Value'] = rosterable_pitch['PAR'].apply(lambda x: "${:.1f}".format(x*dol_per_par + 1.0))
 
 if print_intermediate:
     filepath = os.path.join(subdirpath, f"pos_rosterable.csv")
