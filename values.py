@@ -17,6 +17,7 @@ target_innings = 1500.0*12.0
 #replacement_positions = {"C":24,"1B":40,"2B":38,"3B":40,"SS":42,"OF":95,"Util":200,"SP":85,"RP":70}
 #These are essentially minimums for the positions. I would really not expect to go below these. C and Util are unaffected by the algorithm
 replacement_positions = {"C":24,"1B":12,"2B":18,"3B":12,"SS":18,"OF":60,"Util":200,"SP":60,"RP":60}
+replacement_levels = {}
 
 def set_positions(df, positions):
     df = df.merge(positions[['Position(s)', 'OttoneuID']], how='left', left_index=True, right_index=True)
@@ -107,54 +108,52 @@ def calc_ppi_no_svh(row):
     return row['No SVH Points'] / row['IP']
 
 def get_pitcher_par(df, rp_cap=999):
-    #Initial list of replacement levels
-    rep_levels = {}
     num_arms = 0
     total_ip = 0
+    get_pitcher_par_calc(df)
     while num_arms != target_pitch or (abs(total_ip-target_innings) > 100 and replacement_positions['RP'] != rp_cap):
-        #Can't do our rep_level adjustment if we haven't initialized replacement levels
-        if len(rep_levels) != 0:
-            #Going to do optional capping of relievers. It can get a bit out of control otherwise
-            if num_arms < target_pitch and replacement_positions['RP'] == rp_cap:
+        #Going to do optional capping of relievers. It can get a bit out of control otherwise
+        if num_arms < target_pitch and replacement_positions['RP'] == rp_cap:
+            replacement_positions['SP'] = replacement_positions['SP'] + 1
+        elif num_arms == target_pitch:
+            #We have the right number of arms, but not in the inning threshold
+            if total_ip < target_innings:
+                #Too many relievers
                 replacement_positions['SP'] = replacement_positions['SP'] + 1
-            elif num_arms == target_pitch:
-                #We have the right number of arms, but not in the inning threshold
-                if total_ip < target_innings:
-                    #Too many relievers
-                    replacement_positions['SP'] = replacement_positions['SP'] + 1
-                    replacement_positions['RP'] = replacement_positions['RP'] - 1
-                else:
-                    #Too many starters
-                    replacement_positions['SP'] = replacement_positions['SP'] - 1
-                    replacement_positions['RP'] = replacement_positions['RP'] + 1
-            elif num_arms < target_pitch:
-                if target_pitch-num_arms == 1 and target_innings - total_ip > 200:
-                    #Add starter, a reliever isn't going to get it done, so don't bother
-                    #I got caught in a loop without this
-                    replacement_positions['SP'] = replacement_positions['SP'] + 1
-                #Not enough pitchers. Preferentially add highest replacement level
-                elif rep_levels['SP'] > rep_levels['RP']:
-                    #Probably not, but just in case
-                    replacement_positions['SP'] = replacement_positions['SP'] + 1
-                else:
-                    replacement_positions['RP'] = replacement_positions['RP'] + 1
+                replacement_positions['RP'] = replacement_positions['RP'] - 1
             else:
-                if target_pitch-num_arms == -1 and target_innings - total_ip > 50:
-                   #Remove a reliever. We're already short on innings, so removing a starter isn't going to get it done, so don't bother
-                   #I got caught in a loop without this
-                   replacement_positions['RP'] = replacement_positions['RP'] - 1
-                #Too many pitchers. Preferentially remove lowest replacement level
-                elif rep_levels['SP'] < rep_levels['RP']:
-                    replacement_positions['SP'] = replacement_positions['SP'] - 1
-                else:
-                    #Probably not, but just in case
-                    replacement_positions['RP'] = replacement_positions['RP'] - 1
-        get_pitcher_par_calc(df, rep_levels)
+                #Too many starters
+                replacement_positions['SP'] = replacement_positions['SP'] - 1
+                replacement_positions['RP'] = replacement_positions['RP'] + 1
+        elif num_arms < target_pitch:
+            if target_pitch-num_arms == 1 and target_innings - total_ip > 200:
+                #Add starter, a reliever isn't going to get it done, so don't bother
+                #I got caught in a loop without this
+                replacement_positions['SP'] = replacement_positions['SP'] + 1
+            #Not enough pitchers. Preferentially add highest replacement level
+            elif replacement_levels['SP'] > replacement_levels['RP']:
+                #Probably not, but just in case
+                replacement_positions['SP'] = replacement_positions['SP'] + 1
+            else:
+                replacement_positions['RP'] = replacement_positions['RP'] + 1
+        else:
+            if target_pitch-num_arms == -1 and target_innings - total_ip > 50:
+                #Remove a reliever. We're already short on innings, so removing a starter isn't going to get it done, so don't bother
+                #I got caught in a loop without this
+                replacement_positions['RP'] = replacement_positions['RP'] - 1
+            #Too many pitchers. Preferentially remove lowest replacement level
+            elif replacement_levels['SP'] < replacement_levels['RP']:
+                replacement_positions['SP'] = replacement_positions['SP'] - 1
+            else:
+                #Probably not, but just in case
+                replacement_positions['RP'] = replacement_positions['RP'] - 1
+        get_pitcher_par_calc(df)
         #FOM is how many arms with a non-negative PAR...
         rosterable = df.loc[df['PAR'] >= 0]
         num_arms = len(rosterable)
         #...and how many total innings are pitched
         total_ip = usable_innings(rosterable)
+        #print(f"sp {replacement_positions['SP']}, rp {replacement_positions['RP']}, total {num_arms}, ip {total_ip}")
 
 def usable_innings(rosterable):
     #Once you get past 5 RP per team, there are diminishing returns on how many relief innings are actually usable
@@ -189,11 +188,11 @@ def usable_innings(rosterable):
 
     return sp_ip + rp_ip
 
-def get_pitcher_par_calc(df, rep_levels):
+def get_pitcher_par_calc(df):
     sp_rep_level = get_pitcher_rep_level(df, 'SP')
-    rep_levels['SP'] = sp_rep_level
+    replacement_levels['SP'] = sp_rep_level
     rp_rep_level = get_pitcher_rep_level(df, 'RP')
-    rep_levels['RP'] = rp_rep_level
+    replacement_levels['RP'] = rp_rep_level
     df["PAR"] = df.apply(calc_pitch_par, args=(sp_rep_level, rp_rep_level), axis=1)
 
 def calc_pitch_par(row, sp_rep_level, rp_rep_level):
@@ -217,27 +216,25 @@ def get_pitcher_rep_level(df, pos):
     return pos_df.iloc[replacement_positions[pos]][sort_col]
 
 def get_position_par(df, sort_col):
-    #Initial list of replacement levels
-    rep_levels = {}
     num_bats = 0
     while num_bats != target_bat:
         #Can't do our rep_level adjustment if we haven't initialized replacement levels
-        if len(rep_levels) != 0:
+        if len(replacement_levels) != 0:
             if num_bats > target_bat:
                 #Too many players, find the current minimum replacement level and bump that replacement_position down by 1
                 min_rep_lvl = 999.9
-                for pos, rep_lvl in rep_levels.items():
+                for pos, rep_lvl in replacement_levels.items():
                     if pos == 'Util' or pos == 'C': continue
                     if rep_lvl < min_rep_lvl:
                         min_rep_lvl = rep_lvl
                         min_pos = pos
                 replacement_positions[min_pos] = replacement_positions[min_pos]-1
                 #Recalcluate PAR for the position given the new replacement level
-                get_position_par_calc(df, min_pos, sort_col, rep_levels)
+                get_position_par_calc(df, min_pos, sort_col)
             else:
                 #Too few players, find the current maximum replacement level and bump that replacement_position up by 1
                 max_rep_lvl = 0.0
-                for pos, rep_lvl in rep_levels.items():
+                for pos, rep_lvl in replacement_levels.items():
                     if pos == 'Util' or pos == 'C': continue
                     if rep_lvl > max_rep_lvl:
                         #These two conditionals are arbitrarily determined by me at the time, but they seem to do a good job reigning in 1B and OF
@@ -248,21 +245,19 @@ def get_position_par(df, sort_col):
                         max_pos = pos
                 replacement_positions[max_pos] = replacement_positions[max_pos] + 1
                 #Recalcluate PAR for the position given the new replacement level
-                get_position_par_calc(df, max_pos, sort_col, rep_levels)
+                get_position_par_calc(df, max_pos, sort_col)
         else: 
             #Initial calculation of replacement levels and PAR
             for pos in bat_pos:
-                get_position_par_calc(df, pos, sort_col, rep_levels)
+                get_position_par_calc(df, pos, sort_col)
         #Set maximum PAR value for each player to determine how many are rosterable
         df['Max PAR'] = df.apply(calc_max_par, axis=1)
         #FOM is how many bats with a non-negative max PAR
         num_bats = len(df.loc[df['Max PAR'] >= 0])
-    print(f"new replacment level numbers are: {replacement_positions}")
-    print(f"new replacement levels are: {rep_levels}")
 
-def get_position_par_calc(df, pos, sort_col, rep_levels):
+def get_position_par_calc(df, pos, sort_col):
     rep_level = get_position_rep_level(df, pos, sort_col)
-    rep_levels[pos] = rep_level
+    replacement_levels[pos] = rep_level
     col = pos + "_PAR"
     df[col] = df.apply(calc_bat_par, args=(rep_level, sort_col, pos), axis=1)
 
@@ -423,6 +418,8 @@ try:
 finally:
     otto_scraper.close()
 
+print('Calculating batters')
+
 #Set position data from Ottoneu and add calculated columns
 pos_proj = set_positions(pos_proj, positions)
 pos_proj['Points'] = pos_proj.apply(calc_bat_points, axis=1)
@@ -433,12 +430,9 @@ pos_proj['P/PA'] = pos_proj.apply(calc_pppa, axis=1)
 pos_150pa = pos_proj.loc[pos_proj['PA'] >= 150]
 
 #TODO: Reimplement when we're ready
-#get_position_par(pos_150pa, "P/G")
+get_position_par(pos_150pa, "P/G")
 
-if print_intermediate:
-    filepath = os.path.join(subdirpath, f"pos_par_calc.csv")
-    pos_150pa.to_csv(filepath, encoding='utf-8-sig')
-
+print('Calculating pitchers')
 pitch_proj = set_positions(pitch_proj, positions)
 pitch_proj['Points'] = pitch_proj.apply(calc_pitch_points, axis=1)
 pitch_proj['No SVH Points'] = pitch_proj.apply(calc_pitch_points_no_svh, axis=1)
@@ -452,12 +446,27 @@ real_pitchers = pitch_proj.loc[pitch_proj.apply(not_a_belly_itcher_filter, axis=
 
 get_pitcher_par(real_pitchers, 84)
 
+print(f"Rreplacment level numbers are: {replacement_positions}")
+print(f"Replacement levels are: {replacement_levels}")
+
+rosterable_pos = pos_150pa.loc[pos_150pa['Max PAR'] >= 0]
+rosterable_pitch = real_pitchers.loc[real_pitchers['PAR'] >= 0]
+
+total_par = rosterable_pos['Max PAR'].sum() + rosterable_pitch['PAR'].sum()
+total_players = len(rosterable_pos) + len(rosterable_pitch)
+
+dollars = 400*12
+dollars -= 48 #estimate $4 for prospects per team
+dollars -= total_players #remove a dollar per player at or above replacement
+dol_per_par = dollars / total_par
+print(f'Dollar/PAR = {dol_per_par}')
+
+rosterable_pos['Value'] = rosterable_pos['Max PAR'].apply(lambda x: "${:.1f}".format(x*dol_per_par + 1.0))
+rosterable_pitch['Value'] = rosterable_pos['Max PAR'].apply(lambda x: "${:.1f}".format(x*dol_per_par + 1.0))
+
 if print_intermediate:
-    filepath = os.path.join(subdirpath, f"pitch_par_calc.csv")
-    real_pitchers.to_csv(filepath, encoding='utf-8-sig')
-
-#rosterable_pos = pos_150pa.loc[pos_150pa['Max PAR'] >= 0]
-#rosterable_pitch = real_pitchers.loc[real_pitchers['PAR'] >= 0]
-
-#total_par = rosterable_pos[]
+    filepath = os.path.join(subdirpath, f"pos_rosterable.csv")
+    rosterable_pos.to_csv(filepath, encoding='utf-8-sig')
+    filepath = os.path.join(subdirpath, f"pitch_rosterable.csv")
+    rosterable_pitch.to_csv(filepath, encoding='utf-8-sig')
 
