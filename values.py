@@ -16,7 +16,7 @@ target_pitch = 178
 target_innings = 1500.0*12.0
 #replacement_positions = {"C":24,"1B":40,"2B":38,"3B":40,"SS":42,"OF":95,"Util":200,"SP":85,"RP":70}
 #These are essentially minimums for the positions. I would really not expect to go below these. C and Util are unaffected by the algorithm
-replacement_positions = {"C":24,"1B":12,"2B":18,"3B":12,"SS":18,"OF":60,"Util":200,"SP":132,"RP":84}
+replacement_positions = {"C":24,"1B":12,"2B":18,"3B":12,"SS":18,"OF":60,"Util":200,"SP":60,"RP":60}
 
 def set_positions(df, positions):
     df = df.merge(positions[['Position(s)', 'OttoneuID']], how='left', left_index=True, right_index=True)
@@ -70,13 +70,17 @@ def calc_pppa(row):
         return 0
     return row['Points'] / row['PA']
 
-def calc_pitch_points(row):
+def pitch_points_engine(row, save, hold):
     #This HBP approximation is from a linear regression is did when I first did values
     try:
         hbp = row['HBP']
     except KeyError:
         #Ask forgiveness, not permission
         hbp = 0.0951*row['BB']+0.4181
+    #Otto pitching points (FGP) from https://ottoneu.fangraphs.com/support
+    return 7.4*row['IP']+2.0*row['SO']-2.6*row['H']-3.0*row['BB']-3.0*hbp-12.3*row['HR']+5.0*save+4.0*hold
+
+def calc_pitch_points(row):
     try:
         save = row['SV']
     except KeyError:
@@ -87,13 +91,130 @@ def calc_pitch_points(row):
     except KeyError:
         #TODO: fill-in hold calc
         hold = 0
-    #Otto pitching points (FGP) from https://ottoneu.fangraphs.com/support
-    return 7.4*row['IP']+2.0*row['SO']-2.6*row['H']-3.0*row['BB']-3.0*hbp-12.3*row['HR']+5.0*save+4.0*hold
+    return pitch_points_engine(row, save, hold)
+
+def calc_pitch_points_no_svh(row):
+    return pitch_points_engine(row, 0, 0)
 
 def calc_ppi(row):
     if row['IP'] == 0:
         return 0
     return row['Points'] / row['IP']
+
+def calc_ppi_no_svh(row):
+    if row['IP'] == 0:
+        return 0
+    return row['No SVH Points'] / row['IP']
+
+def get_pitcher_par(df, rp_cap=999):
+    #Initial list of replacement levels
+    rep_levels = {}
+    num_arms = 0
+    total_ip = 0
+    while num_arms != target_pitch or (abs(total_ip-target_innings) > 100 and replacement_positions['RP'] != rp_cap):
+        #Can't do our rep_level adjustment if we haven't initialized replacement levels
+        if len(rep_levels) != 0:
+            #Going to do optional capping of relievers. It can get a bit out of control otherwise
+            if num_arms < target_pitch and replacement_positions['RP'] == rp_cap:
+                replacement_positions['SP'] = replacement_positions['SP'] + 1
+            elif num_arms == target_pitch:
+                #We have the right number of arms, but not in the inning threshold
+                if total_ip < target_innings:
+                    #Too many relievers
+                    replacement_positions['SP'] = replacement_positions['SP'] + 1
+                    replacement_positions['RP'] = replacement_positions['RP'] - 1
+                else:
+                    #Too many starters
+                    replacement_positions['SP'] = replacement_positions['SP'] - 1
+                    replacement_positions['RP'] = replacement_positions['RP'] + 1
+            elif num_arms < target_pitch:
+                if target_pitch-num_arms == 1 and target_innings - total_ip > 200:
+                    #Add starter, a reliever isn't going to get it done, so don't bother
+                    #I got caught in a loop without this
+                    replacement_positions['SP'] = replacement_positions['SP'] + 1
+                #Not enough pitchers. Preferentially add highest replacement level
+                elif rep_levels['SP'] > rep_levels['RP']:
+                    #Probably not, but just in case
+                    replacement_positions['SP'] = replacement_positions['SP'] + 1
+                else:
+                    replacement_positions['RP'] = replacement_positions['RP'] + 1
+            else:
+                if target_pitch-num_arms == -1 and target_innings - total_ip > 50:
+                   #Remove a reliever. We're already short on innings, so removing a starter isn't going to get it done, so don't bother
+                   #I got caught in a loop without this
+                   replacement_positions['RP'] = replacement_positions['RP'] - 1
+                #Too many pitchers. Preferentially remove lowest replacement level
+                elif rep_levels['SP'] < rep_levels['RP']:
+                    replacement_positions['SP'] = replacement_positions['SP'] - 1
+                else:
+                    #Probably not, but just in case
+                    replacement_positions['RP'] = replacement_positions['RP'] - 1
+        get_pitcher_par_calc(df, rep_levels)
+        #FOM is how many arms with a non-negative PAR...
+        rosterable = df.loc[df['PAR'] >= 0]
+        num_arms = len(rosterable)
+        #...and how many total innings are pitched
+        total_ip = usable_innings(rosterable)
+
+def usable_innings(rosterable):
+    #Once you get past 5 RP per team, there are diminishing returns on how many relief innings are actually usable
+    df = rosterable.sort_values("P/IP RP", ascending=False)
+    start = 0
+    end = 60
+    rp_ip = 0
+    multiplier = 1.0
+    while end < replacement_positions['RP']:
+        rp_ip += df.iloc[start:end]['IP RP'].sum()*multiplier
+        start = end
+        end += 12
+        multiplier -= 0.3
+        if multiplier < 0:
+            multiplier = 0
+    rp_ip += df.iloc[start:replacement_positions['RP']]['IP RP'].sum()*multiplier
+
+    #We're assuming you use all innings for your top 6 pitchers, 85% of next one, 70% of the next, etc
+    df = rosterable.sort_values("P/IP SP", ascending=False)
+    sp_ip = 0
+    start = 0
+    end = 72
+    multiplier = 1.0
+    while end < replacement_positions['SP']:
+        sp_ip += df.iloc[start:end]['IP SP'].sum()*multiplier
+        start = end
+        end += 12
+        multiplier -= 0.05
+        if multiplier < 0:
+            multiplier = 0
+    sp_ip += df.iloc[start:replacement_positions['SP']]['IP SP'].sum()*multiplier
+
+    return sp_ip + rp_ip
+
+def get_pitcher_par_calc(df, rep_levels):
+    sp_rep_level = get_pitcher_rep_level(df, 'SP')
+    rep_levels['SP'] = sp_rep_level
+    rp_rep_level = get_pitcher_rep_level(df, 'RP')
+    rep_levels['RP'] = rp_rep_level
+    df["PAR"] = df.apply(calc_pitch_par, args=(sp_rep_level, rp_rep_level), axis=1)
+
+def calc_pitch_par(row, sp_rep_level, rp_rep_level):
+    if row['G'] == 0:
+        return -1
+    par = 0
+    if row['IP SP'] > 0:
+        sp_rate = row['P/IP SP'] - sp_rep_level
+        par += sp_rate*row['IP SP']
+    if row['IP RP'] > 0:
+        rp_rate = row['P/IP RP'] - rp_rep_level
+        par += rp_rate*row['IP RP']
+    return par
+
+def get_pitcher_rep_level(df, pos):
+    #Filter DataFrame to just the position of interest
+    pos_df = df.loc[df[f'IP {pos}'] > 0]
+    sort_col = f"P/IP {pos}"
+    pos_df = pos_df.sort_values(sort_col, ascending=False)
+    #Get the nth value (here the # of players rostered at the position) from the sorted data
+    return pos_df.iloc[replacement_positions[pos]][sort_col]
 
 def get_position_par(df, sort_col):
     #Initial list of replacement levels
@@ -172,13 +293,6 @@ def get_position_rep_level(df, pos, sort_col):
     #Get the nth value (here the # of players rostered at the position) from the sorted data
     return pos_df.iloc[replacement_positions[pos]][sort_col]
 
-
-def get_pitcher_rep_level(df, pos):
-    #TODO: This probably needs to be redone to handle hybrid pitchers
-    pos_df = df.loc[df['Position(s)'].str.contains(pos)]
-    pos_df = pos_df.sort_values("P/IP", ascending=False)
-    return pos_df.iloc[replacement_positions[pos]]['P/IP']
-
 def not_a_belly_itcher_filter(row):
     #Filter pitchers from the data set who don't reach requisite innings. These thresholds are arbitrary.
     if row['Position(s)'] == 'SP':
@@ -189,6 +303,66 @@ def not_a_belly_itcher_filter(row):
     #Got to here, this is a SP/RP with > 0 G. Ration their innings threshold based on their projected GS/G ratio
     start_ratio = row['GS'] / row['G']
     return row['IP'] > 40.0*start_ratio + 30.0
+
+def rp_ip_func(row):
+    #Avoid divide by zero error
+    if row['G'] == 0: return 0
+    #Only relief appearances
+    if row['GS'] == 0: return row['IP']
+    #Only starting appearances
+    if row['GS'] == row['G']: return 0
+    #Based on second-order poly regression performed for all pitcher seasons from 2019-2021 with GS > 0 and GRP > 0
+    #Regression has dep variable of GRP/G (or (G-GS)/G) and IV IPRP/IP. R^2=0.9481. Possible issues with regression: overweighting
+    #of pitchers with GRP/G ratios very close to 0 (starters with few RP appearances) or 1 (relievers with few SP appearances)
+    gr_per_g = (row['G'] - row['GS']) / row['G']
+    return row['IP'] * (0.7851*gr_per_g**2 + 0.1937*gr_per_g + 0.0328)
+
+def sp_ip_func(row):
+    return row['IP'] - row['IP RP']
+
+def sp_fip_calc(row):
+    if row['IP RP'] == 0: return row['FIP']
+    if row['IP SP'] == 0: return 0
+    #Weighted results from 2019-2021 dataset shows an approxiately 0.6 FIP improvement from SP to RP
+    return (row['IP']*row['FIP'] + 0.6*row['IP RP']) / row['IP']
+
+def rp_fip_calc(row):
+    if row['IP RP'] == 0: return 0
+    if row['IP SP'] == 0: return row['FIP']
+    return row['FIP SP'] -0.6
+
+def sp_pip_calc(row):
+    if row['IP SP'] == 0: return 0
+    #Regression of no SVH P/IP from FIP gives linear coefficient of -1.3274
+    fip_diff = row['FIP SP'] - row['FIP']
+    return row['No SVH P/IP'] -1.3274*fip_diff
+
+def rp_pip_calc(row):
+    if row['IP RP'] == 0: return 0
+    if row['IP SP'] == 0: return row['P/IP']
+    try:
+        save = row['SV']
+    except KeyError:
+        #TODO: fill-in save calc
+        save = 0
+    try:
+        hold = row['HLD']
+    except KeyError:
+        #TODO: fill-in hold calc
+        hold = 0
+    fip_diff = row['FIP RP'] - row['FIP']
+    no_svh_pip = row['No SVH P/IP'] - 1.3274*fip_diff 
+    return (no_svh_pip * row['IP RP'] + 5.0*save + 4.0*hold)/row['IP RP'] 
+
+def estimate_role_splits(df):
+    df['IP RP'] = df.apply(rp_ip_func, axis=1)
+    df['IP SP'] = df.apply(sp_ip_func, axis=1)
+    
+    df['FIP SP'] = df.apply(sp_fip_calc, axis=1)
+    df['FIP RP'] = df.apply(rp_fip_calc, axis=1)
+
+    df['P/IP SP'] = df.apply(sp_pip_calc, axis=1)
+    df['P/IP RP'] = df.apply(rp_pip_calc, axis=1)
 
 #--------------------------------------------------------------------------------
 #Begin main program
@@ -255,21 +429,35 @@ pos_proj['Points'] = pos_proj.apply(calc_bat_points, axis=1)
 pos_proj['P/G'] = pos_proj.apply(calc_ppg, axis=1)
 pos_proj['P/PA'] = pos_proj.apply(calc_pppa, axis=1)
 
-pitch_proj = set_positions(pitch_proj, positions)
-pitch_proj['Points'] = pitch_proj.apply(calc_pitch_points, axis=1)
-pitch_proj['P/IP'] = pitch_proj.apply(calc_ppi, axis=1)
-
 #Filter to players projected to a baseline amount of playing time
 pos_150pa = pos_proj.loc[pos_proj['PA'] >= 150]
 
 #TODO: Reimplement when we're ready
-get_position_par(pos_150pa, "P/G")
+#get_position_par(pos_150pa, "P/G")
 
 if print_intermediate:
     filepath = os.path.join(subdirpath, f"pos_par_calc.csv")
     pos_150pa.to_csv(filepath, encoding='utf-8-sig')
 
+pitch_proj = set_positions(pitch_proj, positions)
+pitch_proj['Points'] = pitch_proj.apply(calc_pitch_points, axis=1)
+pitch_proj['No SVH Points'] = pitch_proj.apply(calc_pitch_points_no_svh, axis=1)
+pitch_proj['P/IP'] = pitch_proj.apply(calc_ppi, axis=1)
+pitch_proj['No SVH P/IP'] = pitch_proj.apply(calc_ppi_no_svh, axis=1)
+
+estimate_role_splits(pitch_proj)
+
 #Filter to pitchers projected to a baseline amount of playing time
 real_pitchers = pitch_proj.loc[pitch_proj.apply(not_a_belly_itcher_filter, axis=1)]
-print(f'pitchers.len = {len(pitch_proj)}; real_pitchers.len = {len(real_pitchers)}')
+
+get_pitcher_par(real_pitchers, 84)
+
+if print_intermediate:
+    filepath = os.path.join(subdirpath, f"pitch_par_calc.csv")
+    real_pitchers.to_csv(filepath, encoding='utf-8-sig')
+
+#rosterable_pos = pos_150pa.loc[pos_150pa['Max PAR'] >= 0]
+#rosterable_pitch = real_pitchers.loc[real_pitchers['PAR'] >= 0]
+
+#total_par = rosterable_pos[]
 
