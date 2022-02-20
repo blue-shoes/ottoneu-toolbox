@@ -12,7 +12,7 @@ pd.options.mode.chained_assignment = None # from https://stackoverflow.com/a/206
 bat_pos = ['C','1B','2B','3B','SS','OF','Util']
 pitch_pos = ['SP','RP']
 target_bat = 244
-target_pitch = 178
+target_pitch = 196
 target_innings = 1500.0*12.0
 #replacement_positions = {"C":24,"1B":40,"2B":38,"3B":40,"SS":42,"OF":95,"Util":200,"SP":85,"RP":70}
 #These are essentially minimums for the positions. I would really not expect to go below these. C and Util are unaffected by the algorithm
