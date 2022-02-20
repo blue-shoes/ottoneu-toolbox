@@ -234,7 +234,7 @@ dirname = os.path.dirname(__file__)
 subdirpath = os.path.join(dirname, 'projection')
 filepath = os.path.join(subdirpath, f"Marcels_Pos_{proj_year}.csv")
 
-position_player_marcels.to_csv(filepath)
+position_player_marcels.to_csv(filepath, encoding='utf-8-sig')
 
 pitch_avg_dict = createLeagueAvgPitch(pitch_league_dataset)
 
