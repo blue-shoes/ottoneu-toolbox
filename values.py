@@ -10,7 +10,10 @@ pd.options.mode.chained_assignment = None # from https://stackoverflow.com/a/206
 
 bat_pos = ['C','1B','2B','3B','SS','OF','Util']
 pitch_pos = ['SP','RP']
-replacement_positions = {"C":24,"1B":40,"2B":38,"3B":40,"SS":42,"OF":95,"Util":150,"SP":85,"RP":70}
+target_bat = 244
+target_pitch = 178
+#replacement_positions = {"C":24,"1B":40,"2B":38,"3B":40,"SS":42,"OF":95,"Util":200,"SP":85,"RP":70}
+replacement_positions = {"C":24,"1B":1,"2B":1,"3B":1,"SS":1,"OF":1,"Util":200,"SP":85,"RP":70}
 
 def set_positions(df, positions):
     df = df.merge(positions[['Position(s)', 'OttoneuID']], how='left', left_index=True, right_index=True)
@@ -63,7 +66,17 @@ def calc_pitch_points(row):
     except KeyError:
         #Ask forgiveness, not permission
         hbp = 0.0951*row['BB']+0.4181
-    return 7.4*row['IP']+2.0*row['SO']-2.6*row['H']-3.0*row['BB']-3.0*hbp-12.3*row['HR']+5.0*row['SV']+4.0*row['HLD']
+    try:
+        save = row['SV']
+    except KeyError:
+        #TODO: fill-in save calc
+        save = 0
+    try:
+        hold = row['HLD']
+    except KeyError:
+        #TODO: fill-in hold calc
+        hold = 0
+    return 7.4*row['IP']+2.0*row['SO']-2.6*row['H']-3.0*row['BB']-3.0*hbp-12.3*row['HR']+5.0*save+4.0*hold
 
 def calc_ppi(row):
     if row['IP'] == 0:
@@ -71,12 +84,45 @@ def calc_ppi(row):
     return row['Points'] / row['IP']
 
 def get_position_par(df, sort_col):
-    for pos in bat_pos:
-        rep_level = get_position_rep_level(df, pos, sort_col)
-        col = pos + "_PAR"
-        df[col] = df.apply(calc_bat_par, args=(rep_level, sort_col, pos), axis=1)
-    
-    df['Max PAR'] = df.apply(calc_max_par, axis=1)
+
+    rep_levels = {}
+    num_bats = 0
+    while num_bats != target_bat:
+        if len(rep_levels) != 0:
+            if num_bats > target_bat:
+                min_rep_lvl = 999.9
+                for pos, rep_lvl in rep_levels.items():
+                    if pos == 'Util' or pos == 'C': continue
+                    if rep_lvl < min_rep_lvl:
+                        min_rep_lvl = rep_lvl
+                        min_pos = pos
+                replacement_positions[min_pos] = replacement_positions[min_pos]-1
+                get_position_par_calc(df, min_pos, sort_col, rep_levels)
+            else:
+                max_rep_lvl = 0.0
+                for pos, rep_lvl in rep_levels.items():
+                    if pos == 'Util' or pos == 'C': continue
+                    if rep_lvl > max_rep_lvl:
+                        if pos == '1B' and replacement_positions['1B'] > 1.5*replacement_positions['SS']: continue
+                        if pos == 'OF' and replacement_positions['OF'] > 3*replacement_positions['SS']: continue
+                        max_rep_lvl = rep_lvl
+                        max_pos = pos
+                replacement_positions[max_pos] = replacement_positions[max_pos] + 1
+                get_position_par_calc(df, max_pos, sort_col, rep_levels)
+        else: 
+            for pos in bat_pos:
+                get_position_par_calc(df, pos, sort_col, rep_levels)
+        
+        df['Max PAR'] = df.apply(calc_max_par, axis=1)
+        num_bats = len(df.loc[df['Max PAR'] > 0])
+    print(f"new replacment level numbers are: {replacement_positions}")
+    print(f"new replacement levels are: {rep_levels}")
+
+def get_position_par_calc(df, pos, sort_col, rep_levels):
+    rep_level = get_position_rep_level(df, pos, sort_col)
+    rep_levels[pos] = rep_level
+    col = pos + "_PAR"
+    df[col] = df.apply(calc_bat_par, args=(rep_level, sort_col, pos), axis=1)
 
 def calc_bat_par(row, rep_level, sort_col, pos):
     if pos in row['Position(s)'] or pos == 'Util':
@@ -85,10 +131,10 @@ def calc_bat_par(row, rep_level, sort_col, pos):
             return par_rate * row['PA']
         else:
             return par_rate * row['G']
-    return 0
+    return -1.0
 
 def calc_max_par(row):
-    return np.max([row['C_PAR'], row['1B_PAR'], row['2B_PAR'],row['3B_PAR'],row['SS_PAR'],row['OF_PAR'],row['Util_PAR'],0])
+    return np.max([row['C_PAR'], row['1B_PAR'], row['2B_PAR'],row['3B_PAR'],row['SS_PAR'],row['OF_PAR'],row['Util_PAR']])
 
 def get_position_rep_level(df, pos, sort_col):
     if pos != 'Util':
@@ -171,14 +217,6 @@ pitch_proj['P/IP'] = pitch_proj.apply(calc_ppi, axis=1)
 pos_150pa = pos_proj.loc[pos_proj['PA'] >= 150]
 
 get_position_par(pos_150pa, "P/G")
-#rep_level = {}
-#rep_level['C'] = get_position_rep_level(pos_150pa, 'C', 'P/G')
-#rep_level['1B'] = get_position_rep_level(pos_150pa, '1B', 'P/G')
-#rep_level['2B'] = get_position_rep_level(pos_150pa, '2B', 'P/G')
-#rep_level['3B'] = get_position_rep_level(pos_150pa, '3B', 'P/G')
-#rep_level['SS'] = get_position_rep_level(pos_150pa, 'SS', 'P/G')
-#rep_level['OF'] = get_position_rep_level(pos_150pa, 'OF', 'P/G')
-#rep_level['Util'] = get_position_rep_level(pos_150pa, '', 'P/G')
 
 if print_intermediate:
     filepath = os.path.join(subdirpath, f"pos_par_calc.csv")
