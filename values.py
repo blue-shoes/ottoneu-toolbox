@@ -152,60 +152,99 @@ def get_pitcher_par(df, rp_cap=999):
         rosterable = df.loc[df['PAR'] >= 0]
         num_arms = len(rosterable)
         #...and how many total innings are pitched
-        total_ip = usable_innings(rosterable)
+        rosterable = usable_innings(rosterable)
+        #I had to put the 1 in the args because otherwise it treats "SP" like two arugments "S" and "P" for some reason
+        total_ip = rosterable.apply(usable_ip_calc, args=("SP", 1), axis=1).sum()
+        total_ip += rosterable.apply(usable_ip_calc, args=("RP", 1), axis=1).sum()
         #print(f"sp {replacement_positions['SP']}, rp {replacement_positions['RP']}, total {num_arms}, ip {total_ip}")
+    
+    df = df.merge(rosterable[['RP Multiplier', 'SP Multiplier']], how='left', left_index=True, right_index=True).fillna(0)
+    
+    #Initialize directory for intermediate calc files if required
+    dirname = os.path.dirname(__file__)
+    subdirpath = os.path.join(dirname, 'intermediate')
+    if not path.exists(subdirpath):
+        os.mkdir(subdirpath)
+    filepath = os.path.join(subdirpath, f"pit_rost.csv")
+    rosterable.to_csv(filepath, encoding='utf-8-sig')
+    filepath = os.path.join(subdirpath, f"df_tot.csv")
+    df.to_csv(filepath, encoding='utf-8-sig')
 
-def usable_innings(rosterable):
+    return df
+
+def usable_ip_calc(row, role, default):
+    return row[f'IP {role}'] * row[f'{role} Multiplier']
+
+def usable_par_calc(row, role, default):
+    return row[f'PAR {role}'] * row[f'{role} Multiplier']
+
+def usable_innings(df):
     #Once you get past 5 RP per team, there are diminishing returns on how many relief innings are actually usable
-    df = rosterable.sort_values("P/IP RP", ascending=False)
+    df = df.sort_values("P/IP RP", ascending=False)
+    df['RP Multiplier'] = 0
     start = 0
     end = 60
     rp_ip = 0
     multiplier = 1.0
     while end < replacement_positions['RP']:
-        rp_ip += df.iloc[start:end]['IP RP'].sum()*multiplier
+        df.iloc[start:end, df.columns.get_loc('RP Multiplier')] = multiplier
         start = end
         end += 12
         multiplier -= 0.3
         if multiplier < 0:
             multiplier = 0
-    rp_ip += df.iloc[start:replacement_positions['RP']]['IP RP'].sum()*multiplier
+    df.iloc[start:replacement_positions['RP'], df.columns.get_loc('RP Multiplier')] = multiplier
 
     #We're assuming you use all innings for your top 6 pitchers, 85% of next one, 70% of the next, etc
-    df = rosterable.sort_values("P/IP SP", ascending=False)
+    df = df.sort_values("P/IP SP", ascending=False)
+    df['SP Multiplier'] = 0
     sp_ip = 0
     start = 0
     end = 72
     multiplier = 1.0
     while end < replacement_positions['SP']:
-        sp_ip += df.iloc[start:end]['IP SP'].sum()*multiplier
+        df.iloc[start:end, df.columns.get_loc('SP Multiplier')] = multiplier
         start = end
         end += 12
         multiplier -= 0.05
         if multiplier < 0:
             multiplier = 0
-    sp_ip += df.iloc[start:replacement_positions['SP']]['IP SP'].sum()*multiplier
+    df.iloc[start:replacement_positions['SP'], df.columns.get_loc('SP Multiplier')] = multiplier
 
-    return sp_ip + rp_ip
+    return df
 
 def get_pitcher_par_calc(df):
     sp_rep_level = get_pitcher_rep_level(df, 'SP')
     replacement_levels['SP'] = sp_rep_level
+    df['PAR SP'] = df.apply(calc_pitch_par_role, args=('SP', sp_rep_level), axis=1)
     rp_rep_level = get_pitcher_rep_level(df, 'RP')
     replacement_levels['RP'] = rp_rep_level
-    df["PAR"] = df.apply(calc_pitch_par, args=(sp_rep_level, rp_rep_level), axis=1)
+    df['PAR RP'] = df.apply(calc_pitch_par_role, args=('RP', rp_rep_level), axis=1)
 
-def calc_pitch_par(row, sp_rep_level, rp_rep_level):
+    df['PAR'] = df.apply(sum_role_par, axis=1)
+    #df["PAR"] = df.apply(calc_pitch_par, args=(sp_rep_level, rp_rep_level), axis=1)
+
+def calc_pitch_par_role(row, role, rep_level):
     if row['G'] == 0:
         return -1
-    par = 0
-    if row['IP SP'] > 0:
-        sp_rate = row['P/IP SP'] - sp_rep_level
-        par += sp_rate*row['IP SP']
-    if row['IP RP'] > 0:
-        rp_rate = row['P/IP RP'] - rp_rep_level
-        par += rp_rate*row['IP RP']
-    return par
+    if row[f'IP {role}'] == 0: return 0
+    rate = row[f'P/IP {role}'] - rep_level
+    return rate * row[f'IP {role}']
+
+def sum_role_par(row):
+    return row['PAR SP'] + row['PAR RP']
+
+#def calc_pitch_par(row, sp_rep_level, rp_rep_level):
+#    if row['G'] == 0:
+#        return -1
+#    par = 0
+#    if row['IP SP'] > 0:
+#        sp_rate = row['P/IP SP'] - sp_rep_level
+#        par += sp_rate*row['IP SP']
+#    if row['IP RP'] > 0:
+#        rp_rate = row['P/IP RP'] - rp_rep_level
+#        par += rp_rate*row['IP RP']
+#    return par
 
 def get_pitcher_rep_level(df, pos):
     #Filter DataFrame to just the position of interest
@@ -444,21 +483,32 @@ estimate_role_splits(pitch_proj)
 #Filter to pitchers projected to a baseline amount of playing time
 real_pitchers = pitch_proj.loc[pitch_proj.apply(not_a_belly_itcher_filter, axis=1)]
 
-get_pitcher_par(real_pitchers, 84)
+real_pitchers = get_pitcher_par(real_pitchers, 84)
 
 print(f"Rreplacment level numbers are: {replacement_positions}")
 print(f"Replacement levels are: {replacement_levels}")
 
 rosterable_pos = pos_150pa.loc[pos_150pa['Max PAR'] >= 0]
+print(f"total games = {rosterable_pos['G'].sum()}")
 rosterable_pitch = real_pitchers.loc[real_pitchers['PAR'] >= 0]
+print(f"total innings = {rosterable_pitch['IP'].sum()}")
+
+#if print_intermediate:
+#    filepath = os.path.join(subdirpath, f"pos_rosterable.csv")
+#    rosterable_pos.to_csv(filepath, encoding='utf-8-sig')
+#    filepath = os.path.join(subdirpath, f"pitch_rosterable.csv")
+#    rosterable_pitch.to_csv(filepath, encoding='utf-8-sig')
 
 total_par = rosterable_pos['Max PAR'].sum() + rosterable_pitch['PAR'].sum()
+#I had to put the 1 in the args because otherwise it treats "SP" like two arugments "S" and "P" for some reason
+total_usable_par = rosterable_pos['Max PAR'].sum() + rosterable_pitch.apply(usable_par_calc, args=('SP',1), axis=1).sum() + rosterable_pitch.apply(usable_par_calc, args=('RP',1), axis=1).sum()
+print(f'Total PAR: {total_par}; Total Usable PAR: {total_usable_par}')
 total_players = len(rosterable_pos) + len(rosterable_pitch)
 
 dollars = 400*12
 dollars -= 48 #estimate $4 for prospects per team
 dollars -= total_players #remove a dollar per player at or above replacement
-dol_per_par = dollars / total_par
+dol_per_par = dollars / total_usable_par
 print(f'Dollar/PAR = {dol_per_par}')
 
 rosterable_pos['Value'] = rosterable_pos['Max PAR'].apply(lambda x: "${:.1f}".format(x*dol_per_par + 1.0))
