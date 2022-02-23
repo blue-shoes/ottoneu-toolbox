@@ -8,6 +8,14 @@ from os import path
 from scrape_base import Scrape_Base
 
 class Scrape_Ottoneu(Scrape_Base):
+
+    def __init__(self):
+        #Initialize directory for intermediate calc files if required
+        self.dirname = os.path.dirname(__file__)
+        self.subdirpath = os.path.join(self.dirname, 'output')
+        if not path.exists(self.subdirpath):
+            os.mkdir(self.subdirpath)
+
     def getPlayerPositionsDfSoup(self):
         avg_values_url = 'https://ottoneu.fangraphs.com/averageValues'
         response = requests.get(avg_values_url)
@@ -15,8 +23,6 @@ class Scrape_Ottoneu(Scrape_Base):
         table = avg_val_soup.find_all('table')[0]
         rows = table.find_all('tr')
         parsed_rows = [self.parse_row(row) for row in rows[1:]]
-        print(rows[1])
-        print(parsed_rows[0])
         df = DataFrame(parsed_rows)
         df.columns = self.parse_header(rows[0])
         return df
@@ -67,13 +73,19 @@ class Scrape_Ottoneu(Scrape_Base):
         response = requests.get(prod_url)
         prod_soup = Soup(response.text, 'html.parser')
         sections = prod_soup.find_all('section')
-        dfs.append(self.parse_prod_table(sections[0]))
+        pos_df = self.parse_prod_table(sections[0])
+        if pos_df.empty:
+            return None
+        dfs.append(pos_df)
         dfs.append(self.parse_prod_table(sections[1]))
         return dfs
     
     def parse_prod_table(self, section):
         table = section.find_all('table')[0]
         rows = table.find_all('tr')
+        if len(rows) == 1:
+            #Empty production page. Skip league
+            return DataFrame()
         parsed_rows = [self.parse_prod_row(row) for row in rows[1:]]
         df = DataFrame(parsed_rows)
         df.columns = self.parse_header(rows[0])
@@ -90,14 +102,16 @@ class Scrape_Ottoneu(Scrape_Base):
         league_arm = []
         for team_opt in team_opts:
             id = team_opt['value']
-            if id != -1:
+            if id != '-1':
                 dfs = self.scrape_team_production_page(lg_id, team_opt['value'])
+                if dfs == None:
+                    return []
                 league_bat.append(dfs[0])
                 league_arm.append(dfs[1])
         bat_df = pd.concat(league_bat)
         arm_df = pd.concat(league_arm)
-        print(bat_df.head(20))
-        print(arm_df.head(20))
+        return [bat_df, arm_df]
+        
     
     def parse_leagues_row(self, row):
         tds = row.find_all('td')
@@ -107,7 +121,6 @@ class Scrape_Ottoneu(Scrape_Base):
         parsed_row.append(val)
         for td in tds:
             if len(list(td.children)) > 1:
-                #print(td)
                 parsed_row.append(str(td.contents[0]).strip())
             else:
                 parsed_row.append(td.string)
@@ -128,7 +141,6 @@ class Scrape_Ottoneu(Scrape_Base):
         self.driver.get(url)
         html = self.driver.page_source
         self.driver.close()
-        #print(html)
         browse_soup = Soup(html, 'html.parser')
         table = browse_soup.find_all('table')[0]
         rows = table.find_all('tr')
@@ -138,8 +150,34 @@ class Scrape_Ottoneu(Scrape_Base):
         df.set_index("League Id", inplace=True)
         return df
 
+    def get_universe_production_tables(self, limit=1e6):
+        leagues = self.scrape_league_table()
+        bat_dict = {}
+        arm_dict = {}
+        formats = []
+        count = 0
+        for lg_id, row in leagues.iterrows():
+            if row['Game Type'] not in formats:
+                formats.append(row['Game Type'])
+            print(f'Scraping league {lg_id}, name {row["League Name"]}, format {row["Game Type"]}')
+            dfs = self.scrape_league_production_pages(lg_id)
+            if len(dfs) == 0:
+                #League has no production values
+                continue
+            bat_dict[lg_id] = dfs[0]
+            arm_dict[lg_id] = dfs[1]
+            count += 1
+            if count > limit:
+                break
+
+        for format in formats:
+            filepath = os.path.join(self.subdirpath, f'{format}_prod.xlsx')
+            with pd.ExcelWriter(filepath) as writer:
+                for lg_id, row in leagues.iterrows():
+                    if lg_id in bat_dict:
+                        if row['Game Type'] == format:
+                            bat_dict[lg_id].to_excel(writer, sheet_name=f'{lg_id}_bat')
+                            arm_dict[lg_id].to_excel(writer, sheet_name=f'{lg_id}_arm')
 
 scraper = Scrape_Ottoneu()
-#scraper.scrape_team_production_page(160,1186,'FGP')
-#scraper.scrape_league_production_pages(160)
-scraper.scrape_league_table()
+scraper.get_universe_production_tables()
