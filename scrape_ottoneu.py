@@ -10,7 +10,8 @@ from scrape_base import Scrape_Base
 class Scrape_Ottoneu(Scrape_Base):
 
     def __init__(self):
-        #Initialize directory for intermediate calc files if required
+        super().__init__()
+        #Initialize directory for output calc files if required
         self.dirname = os.path.dirname(__file__)
         self.subdirpath = os.path.join(self.dirname, 'output')
         if not path.exists(self.subdirpath):
@@ -179,5 +180,5 @@ class Scrape_Ottoneu(Scrape_Base):
                             bat_dict[lg_id].to_excel(writer, sheet_name=f'{lg_id}_bat')
                             arm_dict[lg_id].to_excel(writer, sheet_name=f'{lg_id}_arm')
 
-scraper = Scrape_Ottoneu()
-scraper.get_universe_production_tables()
+#scraper = Scrape_Ottoneu()
+#scraper.get_universe_production_tables()
