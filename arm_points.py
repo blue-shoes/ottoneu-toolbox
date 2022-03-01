@@ -15,13 +15,14 @@ target_innings = 1500.0*12.0
 
 class ArmPoint():
 
-    def __init__(self, intermediate_calc=False, replacement_pos=default_replacement_positions, replacement_levels=default_replacement_levels, target_arm=196, SABR=False, rp_limit=999):
+    def __init__(self, intermediate_calc=False, replacement_pos=default_replacement_positions, replacement_levels=default_replacement_levels, target_arm=196, SABR=False, rp_limit=999, force_innings=False):
         self.intermediate_calculations = intermediate_calc
         self.replacement_positions = replacement_pos
         self.replacement_levels = replacement_levels
         self.target_pitch = target_arm
         self.SABR = SABR
         self.rp_limit = rp_limit
+        self.force_innings = force_innings
         if intermediate_calc:
             self.dirname = os.path.dirname(__file__)
             self.intermed_subdirpath = os.path.join(self.dirname, 'intermediate')
@@ -125,6 +126,12 @@ class ArmPoint():
             df.to_csv(filepath, encoding='utf-8-sig')
 
         return df
+
+    def usable_ip_calc(self, row, role, blank):
+        return row[f'IP {role}'] * row[f'{role} Multiplier']
+
+    def usable_par_calc(self, row, role, blank):
+        return row[f'PAR {role}'] * row[f'{role} Multiplier']
 
     def get_pitcher_par_calc(self, df):
         sp_rep_level = self.get_pitcher_rep_level(df, 'SP')

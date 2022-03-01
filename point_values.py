@@ -78,12 +78,6 @@ class PointValues():
                 proj[column] = dc_proj[column]
         return proj
 
-    def usable_ip_calc(self, row, role, blank):
-        return row[f'IP {role}'] * row[f'{role} Multiplier']
-
-    def usable_par_calc(self, row, role, blank):
-        return row[f'PAR {role}'] * row[f'{role} Multiplier']
-
     def calculate_values(self):
         if self.ros:
             self.force = True
@@ -146,7 +140,7 @@ class PointValues():
 
         total_par = rosterable_pos['Max PAR'].sum() + rosterable_pitch['PAR'].sum()
         #I had to put the 1 in the args because otherwise it treats "SP" like two arguments "S" and "P" for some reason
-        total_usable_par = rosterable_pos['Max PAR'].sum() + rosterable_pitch.apply(self.usable_par_calc, args=('SP',1), axis=1).sum() + rosterable_pitch.apply(self.usable_par_calc, args=('RP',1), axis=1).sum()
+        total_usable_par = rosterable_pos['Max PAR'].sum() + rosterable_pitch.apply(arm_points.usable_par_calc, args=('SP',1), axis=1).sum() + rosterable_pitch.apply(arm_points.usable_par_calc, args=('RP',1), axis=1).sum()
         print(f'Total PAR: {total_par}; Total Usable PAR: {total_usable_par}')
         total_players = len(rosterable_pos) + len(rosterable_pitch)
 
