@@ -117,7 +117,6 @@ class ArmPoint():
             #I had to put the 1 in the args because otherwise it treats "SP" like two arugments "S" and "P" for some reason
             total_ip = rosterable.apply(self.usable_ip_calc, args=("SP", 1), axis=1).sum()
             total_ip += rosterable.apply(self.usable_ip_calc, args=("RP", 1), axis=1).sum()
-            print(f'rep_levels = {self.replacement_positions}')
         
         if(self.intermediate_calculations):
             filepath = os.path.join(self.intermed_subdirpath, f"pit_rost.csv")
