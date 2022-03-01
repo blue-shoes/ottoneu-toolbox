@@ -222,7 +222,26 @@ class PointValues():
         #Get the nth value (here the # of players rostered at the position) from the sorted data
         return pos_df.iloc[replacement_positions[pos]][sort_col]
 
+    def rank_position_players(self, df, sort_col):
+        for pos in bat_pos:
+            col = f"Rank {pos} Rate"
+            if pos == 'Util':
+                df[col] = df[sort_col].rank(ascending=False)
+            else:
+                df[col] = df.loc[df['Position(s)'].str.contains(pos)][sort_col].rank(ascending=False)
+                df[col].fillna(-999, inplace=True)
+        col = "Rank MI Rate"
+        df[col] = df.loc[df['Position(s)'].str.contains("2B|SS", case=False, regex=True)][sort_col].rank(ascending=False)
+        df[col].fillna(-999, inplace=True)
+    
     def get_position_par(self, df, sort_col):
+
+        self.rank_position_players(df, sort_col)
+
+        if self.intermediate_calculations:
+            filepath = os.path.join(self.intermed_subdirpath, f"pos_ranks.csv")
+            df.to_csv(filepath, encoding='utf-8-sig')
+
         num_bats = 0
         while num_bats != self.target_bat:
             #Can't do our rep_level adjustment if we haven't initialized replacement levels
@@ -398,8 +417,8 @@ class PointValues():
                 self.projection = 'r' + self.projection
         try:
             fg_scraper = scrape.Scrape_Fg()
-            pos_proj = fg_scraper.getProjectionDataset(f"https://www.fangraphs.com/projections.aspx?pos=all&stats=bat&type={proj_set}&team=0&lg=all&players=0", f'{proj_set}_pos.csv', self.force)
-            pitch_proj = fg_scraper.getProjectionDataset(f"https://www.fangraphs.com/projections.aspx?pos=all&stats=pit&type={proj_set}&team=0&lg=all&players=0", f'{proj_set}_pitch.csv', self.force)
+            pos_proj = fg_scraper.getProjectionDataset(f"https://www.fangraphs.com/projections.aspx?pos=all&stats=bat&type={self.projection}&team=0&lg=all&players=0", f'{self.projection}_pos.csv', self.force)
+            pitch_proj = fg_scraper.getProjectionDataset(f"https://www.fangraphs.com/projections.aspx?pos=all&stats=pit&type={self.projection}&team=0&lg=all&players=0", f'{self.projection}_pitch.csv', self.force)
 
             if self.depthchart_pt:
                 if self.ros:
@@ -417,14 +436,14 @@ class PointValues():
             pitch_proj = self.convertToDcPlayingTime(pitch_proj, dc_pitch_proj, False)
 
             if self.intermediate_calculations:
-                filepath = os.path.join(self.intermed_subdirpath, f"{proj_set}_dc_conv_pos.csv")
+                filepath = os.path.join(self.intermed_subdirpath, f"{self.projection}_dc_conv_pos.csv")
                 pos_proj.to_csv(filepath, encoding='utf-8-sig')
-                filepath = os.path.join(self.intermed_subdirpath, f"{proj_set}_dc_conv_pitch.csv")
+                filepath = os.path.join(self.intermed_subdirpath, f"{self.projection}_dc_conv_pitch.csv")
                 pitch_proj.to_csv(filepath, encoding='utf-8-sig')
 
         try:
             otto_scraper = Scrape_Ottoneu()
-            positions = otto_scraper.get_player_position_ds(force)
+            positions = otto_scraper.get_player_position_ds(self.force)
         finally:
             otto_scraper.close()
 
