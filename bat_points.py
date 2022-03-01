@@ -14,7 +14,7 @@ default_replacement_levels = {}
 
 class BatPoint():
 
-    def __init__(self, intermediate_calc=False, rank_basis="P/G", replacement_pos=default_replacement_positions, replacement_levels=default_replacement_levels, target_bat=262):
+    def __init__(self, intermediate_calc=False, rank_basis="P/G", replacement_pos=default_replacement_positions, replacement_levels=default_replacement_levels, target_bat=244):
         self.intermediate_calculations = intermediate_calc
         self.rank_basis = rank_basis
         self.replacement_positions = replacement_pos
@@ -46,7 +46,6 @@ class BatPoint():
             if pos == 'Util':
                 df[col] = df[self.rank_basis].rank(ascending=False)
             else:
-                print(f'Rank Basis = {self.rank_basis}')
                 df[col] = df.loc[df['Position(s)'].str.contains(pos)][self.rank_basis].rank(ascending=False)
                 df[col].fillna(-999, inplace=True)
         col = "Rank MI Rate"
