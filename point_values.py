@@ -146,8 +146,8 @@ class PointValues():
 
         dollars = 400*12
         #TODO: Make prospect number an input
-        dollars -= 48 #estimate $4 for prospects per team
-        dollars -= total_players #remove a dollar per player at or above replacement
+        dollars -= 48 #estimate $4 for prospects per team on top of $1
+        dollars -= 12*40 #remove a dollar per player at or above replacement
         dol_per_par = dollars / total_usable_par
         print(f'Dollar/PAR = {dol_per_par}')
 
