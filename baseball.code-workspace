@@ -1,0 +1,20 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"name": "pybaseball",
+			"path": "..\\pybaseball\\pybaseball"
+		},
+		{
+			"path": "..\\..\\..\\Dropbox\\Fantasy_Sports\\python\\ltcwbb-workspace"
+		},
+		{
+			"path": "..\\..\\..\\Dropbox\\Fantasy_Sports\\python\\ltcwbb-files-main"
+		}
+	],
+	"settings": {
+		"python.defaultInterpreterPath": "C:/Users/adam.scharf/AppData/Local/Continuum/anaconda3/python.exe"
+	}
+}
