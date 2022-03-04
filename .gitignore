@@ -2,3 +2,5 @@ fangraphs-config.txt
 debug.log
 intermediate/*
 output/*
+*.pyc
+*/*.pyc
