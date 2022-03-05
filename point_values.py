@@ -123,11 +123,11 @@ class PointValues():
         pitch_proj = self.set_positions(pitch_proj, positions)
 
         print('Calculating batters')
-        bat_points = BatPoint(intermediate_calc=self.intermediate_calculations)
+        bat_points = BatPoint(intermediate_calc=self.intermediate_calculations, calc_using_games=True)
         pos_150pa = bat_points.calc_par(pos_proj)
 
         print('Calculating pitchers')
-        arm_points = ArmPoint(intermediate_calc=self.intermediate_calculations, rp_limit=84)
+        arm_points = ArmPoint(intermediate_calc=self.intermediate_calculations, force_innings=True)
         real_pitchers = arm_points.calc_par(pitch_proj)
 
         print(f"Replacment level numbers are: {bat_points.replacement_positions} and {arm_points.replacement_positions}")
