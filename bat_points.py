@@ -177,8 +177,6 @@ class BatPoint():
                 #Set maximum PAR value for each player to determine how many are rosterable
                 df['Max PAR'] = df.apply(self.calc_max_par, axis=1)
                 self.calc_total_games(df)
-                print(f'Replacement pos = {self.replacement_positions}')
-                print(f'Total games = {total_games}')
         else:
             while num_bats != self.target_bat:
                 if num_bats > self.target_bat:
