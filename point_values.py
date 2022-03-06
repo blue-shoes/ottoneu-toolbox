@@ -151,14 +151,14 @@ class PointValues():
         dol_per_par = dollars / total_usable_par
         print(f'Dollar/PAR = {dol_per_par}')
 
-        rosterable_pos['Value'] = rosterable_pos['Max PAR'].apply(lambda x: "${:.1f}".format(x*dol_per_par + 1.0))
-        rosterable_pitch['Value'] = rosterable_pitch['PAR'].apply(lambda x: "${:.1f}".format(x*dol_per_par + 1.0))
+        pos_150pa['Value'] = pos_150pa['Max PAR'].apply(lambda x: "${:.0f}".format(x*dol_per_par + 1.0) if x >= 0 else 0)
+        real_pitchers['Value'] = real_pitchers['PAR'].apply(lambda x: "${:.0f}".format(x*dol_per_par + 1.0) if x >= 0 else 0)
 
         if self.intermediate_calculations:
-            filepath = os.path.join(self.intermed_subdirpath, f"pos_rosterable.csv")
-            rosterable_pos.to_csv(filepath, encoding='utf-8-sig')
-            filepath = os.path.join(self.intermed_subdirpath, f"pitch_rosterable.csv")
-            rosterable_pitch.to_csv(filepath, encoding='utf-8-sig')
+            filepath = os.path.join(self.intermed_subdirpath, f"pos_value_detail.csv")
+            pos_150pa.to_csv(filepath, encoding='utf-8-sig')
+            filepath = os.path.join(self.intermed_subdirpath, f"pitch_value_detail.csv")
+            real_pitchers.to_csv(filepath, encoding='utf-8-sig')
 
 #--------------------------------------------------------------------------------
 #Begin main program
