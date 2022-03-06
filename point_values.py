@@ -151,14 +151,47 @@ class PointValues():
         dol_per_par = dollars / total_usable_par
         print(f'Dollar/PAR = {dol_per_par}')
 
-        pos_150pa['Value'] = pos_150pa['Max PAR'].apply(lambda x: "${:.0f}".format(x*dol_per_par + 1.0) if x >= 0 else 0)
-        real_pitchers['Value'] = real_pitchers['PAR'].apply(lambda x: "${:.0f}".format(x*dol_per_par + 1.0) if x >= 0 else 0)
+        pos_150pa['Value'] = pos_150pa['Max PAR'].apply(lambda x: x*dol_per_par + 1.0 if x >= 0 else 0)
+        pos_150pa.sort_values('Max PAR', inplace=True)
+        real_pitchers['Value'] = real_pitchers['PAR'].apply(lambda x: x*dol_per_par + 1.0 if x >= 0 else 0)
+        real_pitchers.sort_values('PAR', inplace=True)
 
         if self.intermediate_calculations:
             filepath = os.path.join(self.intermed_subdirpath, f"pos_value_detail.csv")
             pos_150pa.to_csv(filepath, encoding='utf-8-sig')
             filepath = os.path.join(self.intermed_subdirpath, f"pitch_value_detail.csv")
             real_pitchers.to_csv(filepath, encoding='utf-8-sig')
+        
+        pos_results = pos_150pa[['OttoneuID', 'Value', 'Name','Team','Position(s)','Points','Max PAR','P/G']]
+        pos_results.rename(columns={'Max PAR':'PAR'}, inplace=True)
+        pitch_results = real_pitchers[['OttoneuID', 'Value', 'Name','Team','Position(s)','Points','PAR','P/IP']]
+
+        if self.intermediate_calculations:
+            filepath = os.path.join(self.intermed_subdirpath, f"pos_result.csv")
+            pos_results.to_csv(filepath, encoding='utf-8-sig')
+            filepath = os.path.join(self.intermed_subdirpath, f"pitch_result.csv")
+            pitch_results.to_csv(filepath, encoding='utf-8-sig')
+
+        pos_index = pos_results.index
+        pitch_index = pitch_results.index
+        intersect = pos_index.intersection(pitch_index)
+
+        results = pos_results
+        results['P/IP'] = 0
+        pitch_results['P/G'] = 0
+        for index in intersect:
+            results.loc[index, 'Value'] = results.loc[index]['Value'] + pitch_results.loc[index]['Value']
+            results.loc[index, 'Points'] = results.loc[index]['Points'] + pitch_results.loc[index]['Points']
+            results.loc[index, 'PAR'] = results.loc[index]['PAR'] + pitch_results.loc[index]['PAR']
+            results.loc[index, 'P/IP'] = pitch_results.loc[index]['P/IP']
+            pitch_results = pitch_results.drop(index=index)
+
+        results = results.append(pitch_results)
+        results['Value'] = results['Value'].apply(lambda x : "${:.0f}".format(x))
+        results = results[['OttoneuID', 'Value', 'Name','Team','Position(s)','Points','PAR','P/G','P/IP']]
+        results.sort_values('PAR', inplace=True, ascending=False)
+        filepath = os.path.join(self.intermed_subdirpath, f"results.csv")
+        results.to_csv(filepath, encoding='utf-8-sig')
 
 #--------------------------------------------------------------------------------
 #Begin main program
