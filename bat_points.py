@@ -95,7 +95,7 @@ class BatPoint():
             else:
                 return 0
         else:
-            #TODO: Finish this
+            #TODO: Finish this. this is tricky and involves splitting multi-position guys up
             return 0
 
     def are_games_filled(self, num_teams=12):
@@ -226,8 +226,8 @@ class BatPoint():
                 return par_rate * row['PA']
             else:
                 return par_rate * row['G']
-        #If the position doesn't apply, set PAR to -1 to differentiate from the replacement player
-        return -1.0
+        #If the position doesn't apply, set PAR to -999.9 to differentiate from the replacement player
+        return -999.9
 
     def calc_max_par(self, row):
         #Find the max PAR for player across all positions
