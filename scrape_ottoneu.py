@@ -4,6 +4,7 @@ import requests
 from pandas import DataFrame
 import os
 from os import path
+from io import StringIO
 
 from scrape_base import Scrape_Base
 
@@ -67,6 +68,14 @@ class Scrape_Ottoneu(Scrape_Base):
         for td in tds:
             parsed_row.append(td.string)
         return parsed_row
+
+    def scrape_roster_export(self, lg_id):
+        roster_export_url = f'https://ottoneu.fangraphs.com/{lg_id}/rosterexport'
+        response = requests.get(roster_export_url)
+        rost_soup = Soup(response.text, 'html.parser')
+        df = pd.read_csv(StringIO(rost_soup.contents[0]))
+        df.set_index("ottoneu ID", inplace=True)
+        return df[["TeamID","Team Name","Name","Salary"]]
 
     def scrape_team_production_page(self, lg_id, team_id):
         dfs = []
@@ -182,3 +191,6 @@ class Scrape_Ottoneu(Scrape_Base):
 
 #scraper = Scrape_Ottoneu()
 #scraper.get_universe_production_tables()
+#scraper = Scrape_Ottoneu()
+#rost = scraper.scrape_roster_export(160)
+#print(rost.head(50))
