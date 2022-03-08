@@ -5,6 +5,8 @@ from pandas import DataFrame
 import os
 from os import path
 from io import StringIO
+import hashlib
+import datetime
 
 from scrape_base import Scrape_Base
 
@@ -15,6 +17,9 @@ class Scrape_Ottoneu(Scrape_Base):
         #Initialize directory for output calc files if required
         self.dirname = os.path.dirname(__file__)
         self.subdirpath = os.path.join(self.dirname, 'output')
+        self.last_trans_hash = '-1a'
+        self.last_hash_change_time = datetime.datetime.now
+        self.last_player_added = -1
         if not path.exists(self.subdirpath):
             os.mkdir(self.subdirpath)
 
@@ -76,6 +81,40 @@ class Scrape_Ottoneu(Scrape_Base):
         df = pd.read_csv(StringIO(rost_soup.contents[0]))
         df.set_index("ottoneu ID", inplace=True)
         return df[["TeamID","Team Name","Name","Salary"]]
+    
+    def parse_trans_row(self, row):
+        tds = row.find_all('td')
+        parsed_row = []
+        #url in form of *id=playerid
+        playerid = tds[2].find('a').get('href').split('=')[1]
+        parsed_row.append(playerid)
+        #url in form of *team=teamid
+        teamid = tds[3].find('a').get('href').split('=')[1]
+        parsed_row.append(teamid)
+        required_tds = [2,3,5]
+        for ind in required_tds:
+            td = tds[ind]
+            if td.find('a') != None:
+                parsed_row.append(td.find('a').string)
+            else:
+                parsed_row.append(td.string.strip())
+        return parsed_row
+
+    def scrape_transaction_page(self, lg_id):
+        transactions_url = f'https://ottoneu.fangraphs.com/{lg_id}/transactions'
+        response = requests.get(transactions_url)
+        #hash = hashlib.md5(response)
+        #if hash != self.last_trans_hash:
+        trans_soup = Soup(response.text, 'html.parser')
+        table = trans_soup.find_all('table')[0]
+        rows = table.find_all('tr')
+        parsed_rows = [self.parse_trans_row(row) for row in rows[1:]]
+        df = DataFrame(parsed_rows)
+        df.columns = ['Ottoneu ID','Team ID','Name','Team','Salary']
+        df.set_index('Ottoneu ID', inplace=True)
+        return df
+
+
 
     def scrape_team_production_page(self, lg_id, team_id):
         dfs = []
@@ -132,6 +171,7 @@ class Scrape_Ottoneu(Scrape_Base):
         for td in tds:
             if len(list(td.children)) > 1:
                 parsed_row.append(str(td.contents[0]).strip())
+                print('children > 1')
             else:
                 parsed_row.append(td.string)
         return parsed_row
@@ -194,3 +234,6 @@ class Scrape_Ottoneu(Scrape_Base):
 #scraper = Scrape_Ottoneu()
 #rost = scraper.scrape_roster_export(160)
 #print(rost.head(50))
+scraper = Scrape_Ottoneu()
+trans = scraper.scrape_transaction_page(160)
+print(trans.head(10))
