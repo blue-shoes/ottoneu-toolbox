@@ -199,7 +199,13 @@ proj_set = input("Pick projection system (steamer, zips, fangraphsdc, atc, theba
 #Peform value calc based on Rest of Season projections
 ros = input("RoS? (y/n): ") == 'y'
 
-if proj_set != 'fangraphsdc':
+if proj_set == 'zips':
+    if ros:
+        dc_pt = True
+    else:
+        proj_set = 'zipsdc'
+        dc_pt = False
+elif proj_set != 'fangraphsdc':
     dc_pt = (input("Use DC playing time (y/n): ")) == 'y'
 
 if not ros:
