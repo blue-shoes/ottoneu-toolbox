@@ -17,9 +17,6 @@ class Scrape_Ottoneu(Scrape_Base):
         #Initialize directory for output calc files if required
         self.dirname = os.path.dirname(__file__)
         self.subdirpath = os.path.join(self.dirname, 'output')
-        self.last_trans_hash = '-1a'
-        self.last_hash_change_time = datetime.datetime.now
-        self.last_player_added = -1
         if not path.exists(self.subdirpath):
             os.mkdir(self.subdirpath)
 
@@ -103,8 +100,6 @@ class Scrape_Ottoneu(Scrape_Base):
     def scrape_transaction_page(self, lg_id):
         transactions_url = f'https://ottoneu.fangraphs.com/{lg_id}/transactions'
         response = requests.get(transactions_url)
-        #hash = hashlib.md5(response)
-        #if hash != self.last_trans_hash:
         trans_soup = Soup(response.text, 'html.parser')
         table = trans_soup.find_all('table')[0]
         rows = table.find_all('tr')
@@ -114,7 +109,27 @@ class Scrape_Ottoneu(Scrape_Base):
         df.set_index('Ottoneu ID', inplace=True)
         return df
 
+    def scrape_recent_trans_api(self, lg_id):
+        rec_trans_url = f'https://ottoneu.fangraphs.com/api/recent_transactions?leagueID={lg_id}'
+        response = requests.get(rec_trans_url)
+        trans_soup = Soup(response.text, 'xml')
+        rows = trans_soup.find_all('transaction')
+        parsed_rows = [self.parse_rec_trans_row(row) for row in rows]
+        df = DataFrame(parsed_rows)
+        df.columns = ['Ottoneu ID','Team ID','Date','Salary','Type']
+        df.set_index('Ottoneu ID', inplace=True)
+        return df
 
+    def parse_rec_trans_row(self, row):
+        player = row.find('player')
+        parsed_row = []
+        parsed_row.append(player.get('id'))
+        team = row.find('team')
+        parsed_row.append(team.get('id'))
+        parsed_row.append(row.find('date').text)
+        parsed_row.append(row.find('salary').text)
+        parsed_row.append(row.find('transaction_type').text)
+        return parsed_row
 
     def scrape_team_production_page(self, lg_id, team_id):
         dfs = []
@@ -234,6 +249,5 @@ class Scrape_Ottoneu(Scrape_Base):
 #scraper = Scrape_Ottoneu()
 #rost = scraper.scrape_roster_export(160)
 #print(rost.head(50))
-scraper = Scrape_Ottoneu()
-trans = scraper.scrape_transaction_page(160)
-print(trans.head(10))
+#trans = scraper.scrape_recent_trans_api(160)
+#print(trans.head(10))
