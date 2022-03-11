@@ -11,7 +11,7 @@ from scrape_ottoneu import Scrape_Ottoneu
 
 pd.options.mode.chained_assignment = None # from https://stackoverflow.com/a/20627316
 
-#bat_pos = ['C','1B','2B','3B','SS','OF','Util']
+bat_pos = ['C','1B','2B','3B','SS','MI','OF','Util']
 pitch_pos = ['SP','RP']
 target_innings = 1500.0*12.0
 #replacement_positions = {"C":24,"1B":40,"2B":38,"3B":40,"SS":42,"OF":95,"Util":200,"SP":85,"RP":70}
@@ -78,7 +78,7 @@ class PointValues():
                 proj[column] = dc_proj[column]
         return proj
 
-    def calculate_values(self):
+    def calculate_values(self, rank_pos):
         if self.ros:
             self.force = True
             if self.projection == 'steamer':
@@ -148,12 +148,34 @@ class PointValues():
         #TODO: Make prospect number an input
         dollars -= 48 #estimate $4 for prospects per team on top of $1
         dollars -= 12*40 #remove a dollar per player at or above replacement
-        dol_per_par = dollars / total_usable_par
-        print(f'Dollar/PAR = {dol_per_par}')
+        self.dol_per_par = dollars / total_usable_par
+        print(f'Dollar/PAR = {self.dol_per_par}')
 
-        pos_150pa['Value'] = pos_150pa['Max PAR'].apply(lambda x: x*dol_per_par + 1.0 if x >= 0 else 0)
+        if rank_pos:
+            for pos in bat_pos:
+                if pos == 'MI':
+                    pos_value = pd.DataFrame(pos_150pa.loc[pos_150pa['Position(s)'].str.contains("2B|SS", case=False, regex=True)])
+                elif pos == 'Util':
+                    pos_value = pd.DataFrame(pos_150pa)
+                else:
+                    pos_value = pd.DataFrame(pos_150pa.loc[pos_150pa['Position(s)'].str.contains(pos)])
+                pos_value['Value'] = pos_value[f'{pos}_PAR'].apply(lambda x: "${:.0f}".format(x*value_calc.dol_per_par + 1.0 if x >= 0 else 0))
+                pos_value.sort_values(f'{pos}_PAR', inplace=True, ascending=False)
+                pos_value = pos_value[['OttoneuID', 'Value', 'Name','Team','Position(s)','Points',f'{pos}_PAR','P/G']]
+                pos_value.to_csv(f"C:\\Users\\adam.scharf\\Documents\\Personal\\FFB\\Staging\\{pos}_values.csv", encoding='utf-8-sig')
+
+        pos_150pa['Value'] = pos_150pa['Max PAR'].apply(lambda x: x*self.dol_per_par + 1.0 if x >= 0 else 0)
         pos_150pa.sort_values('Max PAR', inplace=True)
-        real_pitchers['Value'] = real_pitchers['PAR'].apply(lambda x: x*dol_per_par + 1.0 if x >= 0 else 0)
+
+        if rank_pos:
+            for pos in pitch_pos:
+                pos_value = pd.DataFrame(real_pitchers.loc[real_pitchers['Position(s)'].str.contains(pos)])
+                pos_value['Value'] = pos_value[f'PAR {pos}'].apply(lambda x: "${:.0f}".format(x*value_calc.dol_per_par + 1.0 if x >= 0 else 0))
+                pos_value.sort_values(f'PAR {pos}', inplace=True, ascending=False)
+                pos_value = pos_value[['OttoneuID', 'Value', 'Name','Team','Position(s)','Points',f'PAR {pos}','P/IP']]
+                pos_value.to_csv(f"C:\\Users\\adam.scharf\\Documents\\Personal\\FFB\\Staging\\{pos}_values.csv", encoding='utf-8-sig')
+
+        real_pitchers['Value'] = real_pitchers['PAR'].apply(lambda x: x*self.dol_per_par + 1.0 if x >= 0 else 0)
         real_pitchers.sort_values('PAR', inplace=True)
 
         if self.intermediate_calculations:
@@ -190,8 +212,9 @@ class PointValues():
         results['Value'] = results['Value'].apply(lambda x : "${:.0f}".format(x))
         results = results[['OttoneuID', 'Value', 'Name','Team','Position(s)','Points','PAR','P/G','P/IP']]
         results.sort_values('PAR', inplace=True, ascending=False)
-        filepath = os.path.join(self.intermed_subdirpath, f"results.csv")
-        results.to_csv(filepath, encoding='utf-8-sig')
+        #filepath = os.path.join(self.intermed_subdirpath, f"results.csv")
+        #results.to_csv(filepath, encoding='utf-8-sig')
+        return results
 
 #--------------------------------------------------------------------------------
 #Begin main program
@@ -211,6 +234,9 @@ elif proj_set != 'fangraphsdc':
 if not ros:
     force = (input("Force update (y/n): ")) == 'y'
 
+rank_pos = (input("Rank individual positions (y/n): ")) != 'n'
+
 print_intermediate = (input("Print intermediate datasets (y/n): ")) == 'y'
 value_calc = PointValues(projection=proj_set, depthchart_pt=dc_pt, ros=ros, debug=print_intermediate, rp_limit=84,force_proj_download=force)
-value_calc.calculate_values()
+results = value_calc.calculate_values(rank_pos)
+results.to_csv("C:\\Users\\adam.scharf\\Documents\\Personal\\FFB\\Staging\\values.csv", encoding='utf-8-sig')

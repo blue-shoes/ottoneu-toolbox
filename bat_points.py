@@ -216,9 +216,12 @@ class BatPoint():
         self.replacement_levels[pos] = rep_level
         col = pos + "_PAR"
         df[col] = df.apply(self.calc_bat_par, args=(rep_level, pos), axis=1)
+        if pos in ["SS", "2B"]:
+            rep_level = min(self.get_position_rep_level(df, 'SS'), self.get_position_rep_level(df, '2B'))
+            df['MI_PAR'] = df.apply(self.calc_bat_par, args=(rep_level, 'MI'), axis=1)
 
     def calc_bat_par(self, row, rep_level, pos):
-        if pos in row['Position(s)'] or pos == 'Util':
+        if pos in row['Position(s)'] or pos == 'Util' or (pos == 'MI' and ('SS' in row['Position(s)'] or '2B' in row['Position(s)'])):
             #Filter to the current position
             par_rate = row[self.rank_basis] - rep_level
             #Are we doing P/PA values, or P/G values
