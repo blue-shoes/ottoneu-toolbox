@@ -159,8 +159,9 @@ class PointValues():
                     pos_value = pd.DataFrame(pos_150pa)
                 else:
                     pos_value = pd.DataFrame(pos_150pa.loc[pos_150pa['Position(s)'].str.contains(pos)])
-                pos_value['Value'] = pos_value[f'{pos}_PAR'].apply(lambda x: "${:.0f}".format(x*value_calc.dol_per_par + 1.0 if x >= 0 else 0))
-                pos_value.sort_values(f'{pos}_PAR', inplace=True, ascending=False)
+                pos_value['Value'] = pos_value[f'{pos}_PAR'].apply(lambda x: x*value_calc.dol_per_par + 1.0 if x >= 0 else 0)
+                pos_value.sort_values(by=['Value','P/G'], inplace=True, ascending=[False,False])
+                pos_value['Value'] = pos_value['Value'].apply(lambda x : "${:.0f}".format(x))
                 pos_value = pos_value[['OttoneuID', 'Value', 'Name','Team','Position(s)','Points',f'{pos}_PAR','P/G']]
                 pos_value.to_csv(f"C:\\Users\\adam.scharf\\Documents\\Personal\\FFB\\Staging\\{pos}_values.csv", encoding='utf-8-sig')
 
@@ -170,8 +171,9 @@ class PointValues():
         if rank_pos:
             for pos in pitch_pos:
                 pos_value = pd.DataFrame(real_pitchers.loc[real_pitchers['Position(s)'].str.contains(pos)])
-                pos_value['Value'] = pos_value[f'PAR {pos}'].apply(lambda x: "${:.0f}".format(x*value_calc.dol_per_par + 1.0 if x >= 0 else 0))
-                pos_value.sort_values(f'PAR {pos}', inplace=True, ascending=False)
+                pos_value['Value'] = pos_value[f'PAR {pos}'].apply(lambda x: x*value_calc.dol_per_par + 1.0 if x >= 0 else 0)
+                pos_value.sort_values(by=['Value','P/IP'], inplace=True, ascending=[False,False])
+                pos_value['Value'] = pos_value['Value'].apply(lambda x : "${:.0f}".format(x))
                 pos_value = pos_value[['OttoneuID', 'Value', 'Name','Team','Position(s)','Points',f'PAR {pos}','P/IP']]
                 pos_value.to_csv(f"C:\\Users\\adam.scharf\\Documents\\Personal\\FFB\\Staging\\{pos}_values.csv", encoding='utf-8-sig')
 
