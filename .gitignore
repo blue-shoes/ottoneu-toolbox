@@ -1,5 +1,6 @@
 fangraphs-config.txt
 debug.log
+data_dirs/*
 intermediate/*
 output/*
 *.pyc
