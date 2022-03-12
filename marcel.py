@@ -231,7 +231,7 @@ pos_avg_dict = createLeagueAvgPos(pos_league_dataset)
 position_player_marcels = createPositionPlayerProj(pos_year1_dataset, pos_year2_dataset, pos_year3_dataset, pos_age_dataset, pos_league_dataset, pos_league_depthchart)
 
 dirname = os.path.dirname(__file__)
-subdirpath = os.path.join(dirname, 'projection')
+subdirpath = os.path.join(dirname, 'data_dirs', 'projection')
 filepath = os.path.join(subdirpath, f"Marcels_Pos_{proj_year}.csv")
 
 position_player_marcels.to_csv(filepath, encoding='utf-8-sig')

@@ -35,7 +35,7 @@ class PointValues():
 
         #Initialize directory for intermediate calc files if required
         self.dirname = os.path.dirname(__file__)
-        self.intermed_subdirpath = os.path.join(self.dirname, 'intermediate')
+        self.intermed_subdirpath = os.path.join(self.dirname, 'data_dirs','intermediate')
         if not path.exists(self.intermed_subdirpath):
             os.mkdir(self.intermed_subdirpath)
 

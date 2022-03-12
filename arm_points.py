@@ -28,7 +28,7 @@ class ArmPoint():
         self.num_teams = num_teams
         if intermediate_calc:
             self.dirname = os.path.dirname(__file__)
-            self.intermed_subdirpath = os.path.join(self.dirname, 'intermediate')
+            self.intermed_subdirpath = os.path.join(self.dirname, 'data_dirs','intermediate')
             if not path.exists(self.intermed_subdirpath):
                 os.mkdir(self.intermed_subdirpath)
 

@@ -16,7 +16,7 @@ class Scrape_Ottoneu(Scrape_Base):
         super().__init__()
         #Initialize directory for output calc files if required
         self.dirname = os.path.dirname(__file__)
-        self.subdirpath = os.path.join(self.dirname, 'output')
+        self.subdirpath = os.path.join(self.dirname, 'data_dirs', 'output')
         if not path.exists(self.subdirpath):
             os.mkdir(self.subdirpath)
 
@@ -46,7 +46,7 @@ class Scrape_Ottoneu(Scrape_Base):
 
 
     def get_player_position_ds(self, force_download=False):
-        subdir = f'projection'
+        subdir = 'data_dirs/projection'
         dirname = os.path.dirname(__file__)
         subdirpath = os.path.join(dirname, subdir)
         filepath = os.path.join(subdirpath, "ottoneu_positions.csv")
@@ -77,7 +77,7 @@ class Scrape_Ottoneu(Scrape_Base):
         rost_soup = Soup(response.text, 'html.parser')
         df = pd.read_csv(StringIO(rost_soup.contents[0]))
         df.set_index("ottoneu ID", inplace=True)
-        return df[["TeamID","Team Name","Name","Salary"]]
+        return df
     
     def parse_trans_row(self, row):
         tds = row.find_all('td')

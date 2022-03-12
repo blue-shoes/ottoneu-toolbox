@@ -8,7 +8,7 @@ class Scrape_Fg(scrape_base.Scrape_Base):
 
     def getLeaderboardDataset(self, page, csv_name, force_download=False, player=True):
         #Create filepath info
-        subdir = f'leaderboard'
+        subdir = 'data_dirs/leaderboard'
         dirname = os.path.dirname(__file__)
         subdirpath = os.path.join(dirname, subdir)
         if not path.exists(subdirpath):
@@ -33,7 +33,7 @@ class Scrape_Fg(scrape_base.Scrape_Base):
 
     def getProjectionDataset(self, page, csv_name, force_download=False, player=True):
         #Create filepath info
-        subdir = f'projection'
+        subdir = 'data_dirs/projection'
         dirname = os.path.dirname(__file__)
         subdirpath = os.path.join(dirname, subdir)
         if not path.exists(subdirpath):
