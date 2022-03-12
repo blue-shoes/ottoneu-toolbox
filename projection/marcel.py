@@ -1,6 +1,6 @@
 import pandas as pd
 from sqlalchemy import false
-import scrape_fg as scrape
+from scrape import scrape_fg as scrape
 import os
 from os import path
 
@@ -230,7 +230,7 @@ pos_avg_dict = createLeagueAvgPos(pos_league_dataset)
 
 position_player_marcels = createPositionPlayerProj(pos_year1_dataset, pos_year2_dataset, pos_year3_dataset, pos_age_dataset, pos_league_dataset, pos_league_depthchart)
 
-dirname = os.path.dirname(__file__)
+self.dirname = os.path.abspath(os.path.join(os.path.dirname( __file__ ), '..'))
 subdirpath = os.path.join(dirname, 'data_dirs', 'projection')
 filepath = os.path.join(subdirpath, f"Marcels_Pos_{proj_year}.csv")
 

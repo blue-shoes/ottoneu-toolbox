@@ -1,13 +1,13 @@
 from cmath import pi
 import pandas as pd
 import numpy as np
-from bat_points import BatPoint
-from arm_points import ArmPoint
-import scrape_fg as scrape
+from scrape import scrape_fg
 import os
 from os import path
+import value.bat_points
+import value.arm_points
 
-from scrape_ottoneu import Scrape_Ottoneu
+from scrape import scrape_ottoneu
 
 pd.options.mode.chained_assignment = None # from https://stackoverflow.com/a/20627316
 
@@ -34,7 +34,10 @@ class PointValues():
         self.force = force_proj_download
 
         #Initialize directory for intermediate calc files if required
-        self.dirname = os.path.dirname(__file__)
+        self.dirname = os.path.abspath(os.path.join(os.path.dirname( __file__ ), '..'))
+        self.data_dir = os.path.join(self.dirname, 'data_dirs')
+        if not path.exists(self.data_dir):
+            os.mkdir(self.data_dir)
         self.intermed_subdirpath = os.path.join(self.dirname, 'data_dirs','intermediate')
         if not path.exists(self.intermed_subdirpath):
             os.mkdir(self.intermed_subdirpath)
@@ -87,7 +90,7 @@ class PointValues():
             else:
                 self.projection = 'r' + self.projection
         try:
-            fg_scraper = scrape.Scrape_Fg()
+            fg_scraper = scrape_fg.Scrape_Fg()
             pos_proj = fg_scraper.getProjectionDataset(f"https://www.fangraphs.com/projections.aspx?pos=all&stats=bat&type={self.projection}&team=0&lg=all&players=0", f'{self.projection}_pos.csv', self.force)
             pitch_proj = fg_scraper.getProjectionDataset(f"https://www.fangraphs.com/projections.aspx?pos=all&stats=pit&type={self.projection}&team=0&lg=all&players=0", f'{self.projection}_pitch.csv', self.force)
 
@@ -113,7 +116,7 @@ class PointValues():
                 pitch_proj.to_csv(filepath, encoding='utf-8-sig')
 
         try:
-            otto_scraper = Scrape_Ottoneu()
+            otto_scraper = scrape_ottoneu.Scrape_Ottoneu()
             positions = otto_scraper.get_player_position_ds(self.force)
         finally:
             otto_scraper.close()
@@ -123,15 +126,15 @@ class PointValues():
         pitch_proj = self.set_positions(pitch_proj, positions)
 
         print('Calculating batters')
-        bat_points = BatPoint(intermediate_calc=self.intermediate_calculations, calc_using_games=True)
-        pos_150pa = bat_points.calc_par(pos_proj)
+        pos_points = value.bat_points.BatPoint(intermediate_calc=self.intermediate_calculations, calc_using_games=True)
+        pos_150pa = pos_points.calc_par(pos_proj)
 
         print('Calculating pitchers')
-        arm_points = ArmPoint(intermediate_calc=self.intermediate_calculations, force_innings=True)
-        real_pitchers = arm_points.calc_par(pitch_proj)
+        pitch_points = value.arm_points.ArmPoint(intermediate_calc=self.intermediate_calculations, force_innings=True)
+        real_pitchers = pitch_points.calc_par(pitch_proj)
 
-        print(f"Replacment level numbers are: {bat_points.replacement_positions} and {arm_points.replacement_positions}")
-        print(f"Replacement levels are: {bat_points.replacement_levels} and {arm_points.replacement_levels}")
+        print(f"Replacment level numbers are: {pos_points.replacement_positions} and {pitch_points.replacement_positions}")
+        print(f"Replacement levels are: {pos_points.replacement_levels} and {pitch_points.replacement_levels}")
 
         rosterable_pos = pos_150pa.loc[pos_150pa['Max PAR'] >= 0]
         print(f"total games = {rosterable_pos['G'].sum()}")
@@ -140,7 +143,7 @@ class PointValues():
 
         total_par = rosterable_pos['Max PAR'].sum() + rosterable_pitch['PAR'].sum()
         #I had to put the 1 in the args because otherwise it treats "SP" like two arguments "S" and "P" for some reason
-        total_usable_par = rosterable_pos['Max PAR'].sum() + rosterable_pitch.apply(arm_points.usable_par_calc, args=('SP',1), axis=1).sum() + rosterable_pitch.apply(arm_points.usable_par_calc, args=('RP',1), axis=1).sum()
+        total_usable_par = rosterable_pos['Max PAR'].sum() + rosterable_pitch.apply(pitch_points.usable_par_calc, args=('SP',1), axis=1).sum() + rosterable_pitch.apply(pitch_points.usable_par_calc, args=('RP',1), axis=1).sum()
         print(f'Total PAR: {total_par}; Total Usable PAR: {total_usable_par}')
         total_players = len(rosterable_pos) + len(rosterable_pitch)
 
@@ -159,7 +162,7 @@ class PointValues():
                     pos_value = pd.DataFrame(pos_150pa)
                 else:
                     pos_value = pd.DataFrame(pos_150pa.loc[pos_150pa['Position(s)'].str.contains(pos)])
-                pos_value['Value'] = pos_value[f'{pos}_PAR'].apply(lambda x: x*value_calc.dol_per_par + 1.0 if x >= 0 else 0)
+                pos_value['Value'] = pos_value[f'{pos}_PAR'].apply(lambda x: x*self.dol_per_par + 1.0 if x >= 0 else 0)
                 pos_value.sort_values(by=['Value','P/G'], inplace=True, ascending=[False,False])
                 pos_value['Value'] = pos_value['Value'].apply(lambda x : "${:.0f}".format(x))
                 pos_value = pos_value[['OttoneuID', 'Value', 'Name','Team','Position(s)','Points',f'{pos}_PAR','P/G']]
@@ -171,7 +174,7 @@ class PointValues():
         if rank_pos:
             for pos in pitch_pos:
                 pos_value = pd.DataFrame(real_pitchers.loc[real_pitchers['Position(s)'].str.contains(pos)])
-                pos_value['Value'] = pos_value[f'PAR {pos}'].apply(lambda x: x*value_calc.dol_per_par + 1.0 if x >= 0 else 0)
+                pos_value['Value'] = pos_value[f'PAR {pos}'].apply(lambda x: x*self.dol_per_par + 1.0 if x >= 0 else 0)
                 pos_value.sort_values(by=['Value','P/IP'], inplace=True, ascending=[False,False])
                 pos_value['Value'] = pos_value['Value'].apply(lambda x : "${:.0f}".format(x))
                 pos_value = pos_value[['OttoneuID', 'Value', 'Name','Team','Position(s)','Points',f'PAR {pos}','P/IP']]
@@ -220,25 +223,31 @@ class PointValues():
 
 #--------------------------------------------------------------------------------
 #Begin main program
-proj_set = input("Pick projection system (steamer, zips, fangraphsdc, atc, thebat, thebatx: ")
-#Peform value calc based on Rest of Season projections
-ros = input("RoS? (y/n): ") == 'y'
 
-if proj_set == 'zips':
-    if ros:
-        dc_pt = True
-    else:
-        proj_set = 'zipsdc'
-        dc_pt = False
-elif proj_set != 'fangraphsdc':
-    dc_pt = (input("Use DC playing time (y/n): ")) == 'y'
+def main():
 
-if not ros:
-    force = (input("Force update (y/n): ")) == 'y'
+    proj_set = input("Pick projection system (steamer, zips, fangraphsdc, atc, thebat, thebatx: ")
+    #Peform value calc based on Rest of Season projections
+    ros = input("RoS? (y/n): ") == 'y'
 
-rank_pos = (input("Rank individual positions (y/n): ")) != 'n'
+    if proj_set == 'zips':
+        if ros:
+            dc_pt = True
+        else:
+            proj_set = 'zipsdc'
+            dc_pt = False
+    elif proj_set != 'fangraphsdc':
+        dc_pt = (input("Use DC playing time (y/n): ")) == 'y'
 
-print_intermediate = (input("Print intermediate datasets (y/n): ")) == 'y'
-value_calc = PointValues(projection=proj_set, depthchart_pt=dc_pt, ros=ros, debug=print_intermediate, rp_limit=84,force_proj_download=force)
-results = value_calc.calculate_values(rank_pos)
-results.to_csv("C:\\Users\\adam.scharf\\Documents\\Personal\\FFB\\Staging\\values.csv", encoding='utf-8-sig')
+    if not ros:
+        force = (input("Force update (y/n): ")) == 'y'
+
+    rank_pos = (input("Rank individual positions (y/n): ")) != 'n'
+
+    print_intermediate = (input("Print intermediate datasets (y/n): ")) == 'y'
+    value_calc = PointValues(projection=proj_set, depthchart_pt=dc_pt, ros=ros, debug=print_intermediate, rp_limit=84,force_proj_download=force)
+    results = value_calc.calculate_values(rank_pos)
+    results.to_csv("C:\\Users\\adam.scharf\\Documents\\Personal\\FFB\\Staging\\values.csv", encoding='utf-8-sig')
+
+if __name__ == '__main__':
+    main()

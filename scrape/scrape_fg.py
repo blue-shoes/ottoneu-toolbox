@@ -2,14 +2,14 @@ import configparser
 import os
 from os import path
 import pandas as pd
-import scrape_base
+from scrape import scrape_base
 
 class Scrape_Fg(scrape_base.Scrape_Base):
 
     def getLeaderboardDataset(self, page, csv_name, force_download=False, player=True):
         #Create filepath info
         subdir = 'data_dirs/leaderboard'
-        dirname = os.path.dirname(__file__)
+        dirname = os.path.abspath(os.path.join(os.path.dirname( __file__ ), '..'))
         subdirpath = os.path.join(dirname, subdir)
         if not path.exists(subdirpath):
             os.mkdir(subdirpath)
@@ -34,7 +34,7 @@ class Scrape_Fg(scrape_base.Scrape_Base):
     def getProjectionDataset(self, page, csv_name, force_download=False, player=True):
         #Create filepath info
         subdir = 'data_dirs/projection'
-        dirname = os.path.dirname(__file__)
+        dirname = os.path.abspath(os.path.join(os.path.dirname( __file__ ), '..'))
         subdirpath = os.path.join(dirname, subdir)
         if not path.exists(subdirpath):
             os.mkdir(subdirpath)
@@ -60,7 +60,7 @@ class Scrape_Fg(scrape_base.Scrape_Base):
         #FG login to get rid of ads
         self.driver.get("https://blogs.fangraphs.com/wp-login.php")
         cparser = configparser.RawConfigParser()
-        cparser.read('fangraphs-config.txt')
+        cparser.read('conf/fangraphs-config.txt')
         uname = cparser.get('fangraphs-config', 'username')
         pword = cparser.get('fangraphs-config', 'password')
         self.driver.find_element_by_id("user_login").send_keys(uname)

@@ -8,14 +8,14 @@ from io import StringIO
 import hashlib
 import datetime
 
-from scrape_base import Scrape_Base
+from scrape import scrape_base
 
-class Scrape_Ottoneu(Scrape_Base):
+class Scrape_Ottoneu(scrape_base.Scrape_Base):
 
     def __init__(self):
         super().__init__()
         #Initialize directory for output calc files if required
-        self.dirname = os.path.dirname(__file__)
+        self.dirname = os.path.abspath(os.path.join(os.path.dirname( __file__ ), '..'))
         self.subdirpath = os.path.join(self.dirname, 'data_dirs', 'output')
         if not path.exists(self.subdirpath):
             os.mkdir(self.subdirpath)
@@ -47,8 +47,7 @@ class Scrape_Ottoneu(Scrape_Base):
 
     def get_player_position_ds(self, force_download=False):
         subdir = 'data_dirs/projection'
-        dirname = os.path.dirname(__file__)
-        subdirpath = os.path.join(dirname, subdir)
+        subdirpath = os.path.join(self.dirname, subdir)
         filepath = os.path.join(subdirpath, "ottoneu_positions.csv")
         if path.exists(filepath) and not force_download:
             df = pd.read_csv(filepath)

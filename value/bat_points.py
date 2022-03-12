@@ -2,10 +2,10 @@ from cmath import pi
 import pandas as pd
 import numpy as np
 from sqlalchemy import false
-import scrape_fg as scrape
+from scrape import scrape_fg as scrape
 import os
 from os import path
-from scrape_ottoneu import Scrape_Ottoneu
+from scrape.scrape_ottoneu import Scrape_Ottoneu
 
 pd.options.mode.chained_assignment = None # from https://stackoverflow.com/a/20627316
 
@@ -27,7 +27,7 @@ class BatPoint():
         self.calc_using_games = calc_using_games
         self.max_pos_value = max_pos_value
         if intermediate_calc:
-            self.dirname = os.path.dirname(__file__)
+            self.dirname = os.path.abspath(os.path.join(os.path.dirname( __file__ ), '..'))
             self.intermed_subdirpath = os.path.join(self.dirname, 'data_dirs', 'intermediate')
             if not path.exists(self.intermed_subdirpath):
                 os.mkdir(self.intermed_subdirpath)
