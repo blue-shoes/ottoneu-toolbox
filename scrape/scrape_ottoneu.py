@@ -43,6 +43,37 @@ class Scrape_Ottoneu(scrape_base.Scrape_Base):
 
     def parse_header(self, row):
         return [str(x.string) for x in row.find_all('th')]
+    
+    def get_avg_salary_ds(self, force_download=True, game_type=0):
+        if game_type == 0:
+            avg_salary_url = 'https://ottoneu.fangraphs.com/averageValues?export=xml'
+        else:
+            avg_salary_url = f'https://ottoneu.fangraphs.com/averageValues?export=xml&gameType={game_type}'
+        response = requests.get(avg_salary_url)
+        salary_soup = Soup(response.text, 'xml')
+        rows = salary_soup.find_all('player')
+        parsed_rows = [self.parse_avg_salary_row(row) for row in rows]
+        df = DataFrame(parsed_rows)
+        df.columns = ['Ottoneu ID','FG MajorLeagueID','FG MinorLeagueID','Avg Salary','Min Salary','Max Salary','Last 10','Roster %']
+        df['playerid'] = df['FG MinorLeagueID']
+        df['FG MajorLeagueID'] = df['FG MajorLeagueID'].fillna(-1)
+        df.loc[df['FG MajorLeagueID'] == '','FG MajorLeagueID'] = -1
+        df['FG MajorLeagueID'] = df['FG MajorLeagueID'].astype(int)
+        df.loc[df['FG MajorLeagueID'] != -1, 'playerid'] = df['FG MajorLeagueID']
+        df.set_index('Ottoneu ID', inplace=True)
+        return df
+
+    def parse_avg_salary_row(self, row):
+        parsed_row = []
+        parsed_row.append(row.get('ottoneu_id'))
+        parsed_row.append(row.get('fg_majorleague_id'))
+        parsed_row.append(row.get('fg_minorleague_id'))
+        parsed_row.append(row.find('avg_salary').text)
+        parsed_row.append(row.find('min_salary').text)
+        parsed_row.append(row.find('max_salary').text)
+        parsed_row.append(row.find('last_10').text)
+        parsed_row.append(row.find('rostered_pct').text)
+        return parsed_row
 
 
     def get_player_position_ds(self, force_download=False):
@@ -243,9 +274,15 @@ class Scrape_Ottoneu(scrape_base.Scrape_Base):
                             bat_dict[lg_id].to_excel(writer, sheet_name=f'{lg_id}_bat')
                             arm_dict[lg_id].to_excel(writer, sheet_name=f'{lg_id}_arm')
 
-#scraper = Scrape_Ottoneu()
-#scraper.get_universe_production_tables()
-#rost = scraper.scrape_roster_export(160)
-#print(rost.head(50))
-#trans = scraper.scrape_recent_trans_api(160)
-#print(trans.head())
+def main():
+    scraper = Scrape_Ottoneu()
+    avg = scraper.get_avg_salary_ds(True)
+    print(avg.head())
+    #scraper.get_universe_production_tables()
+    #rost = scraper.scrape_roster_export(160)
+    #print(rost.head(50))
+    #trans = scraper.scrape_recent_trans_api(160)
+    #print(trans.head())
+
+if __name__ == '__main__':
+    main()
