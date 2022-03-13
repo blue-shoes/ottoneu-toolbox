@@ -55,11 +55,6 @@ class Scrape_Ottoneu(scrape_base.Scrape_Base):
         parsed_rows = [self.parse_avg_salary_row(row) for row in rows]
         df = DataFrame(parsed_rows)
         df.columns = ['Ottoneu ID','FG MajorLeagueID','FG MinorLeagueID','Avg Salary','Min Salary','Max Salary','Last 10','Roster %']
-        df['playerid'] = df['FG MinorLeagueID']
-        df['FG MajorLeagueID'] = df['FG MajorLeagueID'].fillna(-1)
-        df.loc[df['FG MajorLeagueID'] == '','FG MajorLeagueID'] = -1
-        df['FG MajorLeagueID'] = df['FG MajorLeagueID'].astype(int)
-        df.loc[df['FG MajorLeagueID'] != -1, 'playerid'] = df['FG MajorLeagueID']
         df.set_index('Ottoneu ID', inplace=True)
         return df
 
