@@ -125,7 +125,7 @@ class Scrape_Ottoneu(scrape_base.Scrape_Base):
         parsed_row.append(player.get('id'))
         team = row.find('team')
         parsed_row.append(team.get('id'))
-        parsed_row.append(row.find('date').text)
+        parsed_row.append(datetime.datetime.strptime(row.find('date').text, '%Y-%m-%d %H:%M:%S'))
         parsed_row.append(row.find('salary').text)
         parsed_row.append(row.find('transaction_type').text)
         return parsed_row
@@ -245,8 +245,7 @@ class Scrape_Ottoneu(scrape_base.Scrape_Base):
 
 #scraper = Scrape_Ottoneu()
 #scraper.get_universe_production_tables()
-#scraper = Scrape_Ottoneu()
 #rost = scraper.scrape_roster_export(160)
 #print(rost.head(50))
 #trans = scraper.scrape_recent_trans_api(160)
-#print(trans.head(10))
+#print(trans.head())
