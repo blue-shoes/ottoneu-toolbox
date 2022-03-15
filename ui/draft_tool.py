@@ -6,6 +6,7 @@ from tkinter.messagebox import showinfo
 import os
 import os.path
 import pandas as pd
+import util.string_util
 
 from scrape.scrape_ottoneu import Scrape_Ottoneu 
 
@@ -42,7 +43,22 @@ class DraftTool:
         self.main_win.title("FBB Draft Tool v0.1")
         main_frame = ttk.Frame(self.main_win)
         ttk.Label(main_frame, text = f"League {self.lg_id} Draft", font='bold').grid(column=0,row=0)
+
+        ttk.Label(main_frame, text = 'Player Search: ', font='bold').grid(column=0,row=1,pady=5)
+
+        sv = tk.StringVar()
+        sv.trace("w", lambda name, index, mode, sv=sv: self.player_search(sv))
+        ttk.Entry(main_frame, textvariable=sv).grid(column=1,row=1)
+
         main_frame.pack()
+
+    def player_search(self, sv):
+        text = sv.get().upper()
+        if text == '':
+            res = pd.DataFrame()
+            return
+        res = self.values.loc[self.values['Search_Name'].str.contains(text, case=False, regex=True)]
+        print(res.head())
 
     
     def create_setup_tab(self, tab):
@@ -76,11 +92,6 @@ class DraftTool:
 
         self.value_dir.set(dir)
         
-        showinfo(
-            title='Selected Directory',
-            message=self.value_dir.get()
-        )
-        
     def initialize_draft(self):
         self.value_file_path = os.path.join(self.value_dir.get(), 'values.csv')
 
@@ -100,6 +111,8 @@ class DraftTool:
 
     def load_values(self):
         self.values = pd.read_csv(self.value_file_path)
+        self.values.set_index('playerid', inplace=True)
+        self.values['Search_Name'] = self.values['Name'].apply(lambda x: util.string_util.normalize(x))
         self.id_type = IdType.FG
         #TODO: data validation here
         self.pos_values = {}
@@ -113,9 +126,6 @@ class DraftTool:
             if os.path.exists(pos_path):
                 self.pos_values[pos] = pd.read_csv(pos_path)
                 #TODO data validation here
-
-    def update_search(self):
-        name = self.search.get()
 
 def main():
     tool = DraftTool()
