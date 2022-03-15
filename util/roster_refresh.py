@@ -4,33 +4,39 @@ import pandas as pd
 from datetime import datetime
 import threading
 
-def refresh_thread(self, lg_id, rosters, rosters_file, ottoneu_pos, run_event):
+def refresh_thread(self, lg_id, rosters, run_event, ottoneu_pos, rosters_file=None, demo_source=None):
     last_time = datetime.now()
     while(run_event.is_set()):
         sleep(60)
-        last_trans = scrape.scrape_ottoneu.Scrape_Ottoneu().scrape_recent_trans_api(lg_id)
+        if demo_source == None:
+            last_trans = scrape.scrape_ottoneu.Scrape_Ottoneu().scrape_recent_trans_api(lg_id)
+        else:
+            last_trans = pd.read_csv(demo_source)
         most_recent = last_trans[0]['Date']
         if most_recent > last_time:
-            index = 0
-            while last_trans[index]['Date'] > last_time:
-                if last_trans[index]['Type'] == 'Add':
-                    row = []
-                    row.append(last_trans[index]['Team ID'])
-                    #team name unimportant
-                    row.append('')
-                    otto_id = last_trans[index]['Ottoneu ID']
-                    row.append(otto_id)
-                    row.append(ottoneu_pos[otto_id]['FG MajorLeagueID'])
-                    row.append(ottoneu_pos[otto_id]['FG MinorLeagueID'])
-                    #name, team, position, unimportant
-                    row.append('')
-                    row.append('')
-                    row.append('')
-                    row.append(last_trans[index]['Salary'])
-                    rosters.append(row)
-                elif last_trans[index] == 'Cut':
-                    rosters.drop(last_trans[index]['Ottoneu ID'])
-            rosters.to_csv(rosters_file, encoding='utf-8-sig')
+            index = len(last_trans)
+            while index >= 0:
+                if last_trans[index]['Date'] > last_time:
+                    if last_trans[index]['Type'] == 'Add':
+                        row = []
+                        row.append(last_trans[index]['Team ID'])
+                        #team name unimportant
+                        row.append('')
+                        otto_id = last_trans[index]['Ottoneu ID']
+                        row.append(otto_id)
+                        row.append(ottoneu_pos[otto_id]['FG MajorLeagueID'])
+                        row.append(ottoneu_pos[otto_id]['FG MinorLeagueID'])
+                        #name, team, position, unimportant
+                        row.append('')
+                        row.append('')
+                        row.append('')
+                        row.append(last_trans[index]['Salary'])
+                        rosters.append(row)
+                    elif last_trans[index] == 'Cut':
+                        rosters.drop(last_trans[index]['Ottoneu ID'])
+                index -= index
+            if rosters_file != None:
+                rosters.to_csv(rosters_file, encoding='utf-8-sig')
             last_time = most_recent
 
 def roster_refresh_setup(lg_id):
@@ -42,7 +48,7 @@ def roster_refresh_setup(lg_id):
     rosters.to_csv(rosters_file, encoding='utf-8-sig')
     run_event = threading.Event()
     run_event.set()
-    t1 = threading.Thread(target = refresh_thread, args = (lg_id,rosters,rosters_file,ottoneu_pos, run_event))
+    t1 = threading.Thread(target = refresh_thread, args = (lg_id, rosters, run_event, ottoneu_pos, rosters_file))
     t1.start()
     try:
         while 1:
