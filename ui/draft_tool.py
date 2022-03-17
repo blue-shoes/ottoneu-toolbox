@@ -12,8 +12,6 @@ from scrape.scrape_ottoneu import Scrape_Ottoneu
 
 from pathlib import Path
 
-from pandastable import Table, TableModel
-
 from enum import Enum
 
 bat_pos = ['C','1B','2B','3B','SS','MI','OF','Util']
@@ -69,7 +67,8 @@ class DraftTool:
         text = self.search_string.get().upper()
         if text == '':
             df = pd.DataFrame()
-        df = self.values.loc[self.values['Search_Name'].str.contains(text, case=False, regex=True)]
+        else:
+            df = self.values.loc[self.values['Search_Name'].str.contains(text, case=False, regex=True)]
         #from https://stackoverflow.com/a/27068344
         self.search_view.delete(*self.search_view.get_children())
         for i in range(len(df)):
