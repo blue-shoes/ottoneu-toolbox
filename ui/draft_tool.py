@@ -12,6 +12,8 @@ from scrape.scrape_ottoneu import Scrape_Ottoneu
 
 from pathlib import Path
 
+from pandastable import Table, TableModel
+
 from enum import Enum
 
 bat_pos = ['C','1B','2B','3B','SS','MI','OF','Util']
@@ -44,21 +46,41 @@ class DraftTool:
         main_frame = ttk.Frame(self.main_win)
         ttk.Label(main_frame, text = f"League {self.lg_id} Draft", font='bold').grid(column=0,row=0)
 
-        ttk.Label(main_frame, text = 'Player Search: ', font='bold').grid(column=0,row=1,pady=5)
+        search_frame = ttk.Frame(main_frame)
+        search_frame.grid(column=0,row=1)
+        ttk.Label(search_frame, text = 'Player Search: ', font='bold').grid(column=0,row=1,pady=5)
 
         sv = tk.StringVar()
         sv.trace("w", lambda name, index, mode, sv=sv: self.player_search(sv))
-        ttk.Entry(main_frame, textvariable=sv).grid(column=1,row=1)
+        ttk.Entry(search_frame, textvariable=sv).grid(column=1,row=1)
+
+        f = ttk.Frame(main_frame)
+        f.grid(column=1,row=1)
+
+        cols = ('Name','Value','Pos','Team','Points','P/G','P/IP')
+        self.search_view = ttk.Treeview(f, columns=cols, show='headings')    
+        for col in cols:
+            self.search_view.heading(col, text=col) 
+        self.search_view.grid(column=0,row=0)   
 
         main_frame.pack()
 
     def player_search(self, sv):
         text = sv.get().upper()
         if text == '':
-            res = pd.DataFrame()
-            return
-        res = self.values.loc[self.values['Search_Name'].str.contains(text, case=False, regex=True)]
-        print(res.head())
+            df = pd.DataFrame()
+        df = self.values.loc[self.values['Search_Name'].str.contains(text, case=False, regex=True)]
+        #from https://stackoverflow.com/a/27068344
+        self.search_view.delete(*self.search_view.get_children())
+        for i in range(len(df)):
+            name = df.iloc[i, 2]
+            value = df.iloc[i, 1]
+            pos = df.iloc[i, 4]
+            team = df.iloc[i, 3]
+            pts = "{:.1f}".format(df.iloc[i, 5])
+            ppg = "{:.2f}".format(df.iloc[i, 7])
+            pip = "{:.2f}".format(df.iloc[i, 8])
+            self.search_view.insert('', tk.END, values=(name, value, pos, team, pts, ppg, pip))
 
     
     def create_setup_tab(self, tab):
