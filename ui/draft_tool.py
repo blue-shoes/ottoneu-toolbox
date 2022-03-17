@@ -50,8 +50,8 @@ class DraftTool:
         search_frame.grid(column=0,row=1)
         ttk.Label(search_frame, text = 'Player Search: ', font='bold').grid(column=0,row=1,pady=5)
 
-        sv = tk.StringVar()
-        sv.trace("w", lambda name, index, mode, sv=sv: self.player_search(sv))
+        self.search_string = sv = tk.StringVar()
+        sv.trace("w", lambda name, index, mode, sv=sv: self.update_player_search())
         ttk.Entry(search_frame, textvariable=sv).grid(column=1,row=1)
 
         f = ttk.Frame(main_frame)
@@ -65,8 +65,8 @@ class DraftTool:
 
         main_frame.pack()
 
-    def player_search(self, sv):
-        text = sv.get().upper()
+    def update_player_search(self):
+        text = self.search_string.get().upper()
         if text == '':
             df = pd.DataFrame()
         df = self.values.loc[self.values['Search_Name'].str.contains(text, case=False, regex=True)]
