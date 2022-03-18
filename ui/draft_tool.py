@@ -68,6 +68,7 @@ class DraftTool:
         for col in cols:
             self.search_view.heading(col, text=col) 
         self.search_view.grid(column=0,row=0)   
+        self.search_view.bind('<<TreeviewSelect>>', self.on_select)
 
         tab_control = ttk.Notebook(main_frame)
         tab_control.grid(row=2, column=0, columnspan=2)
@@ -79,11 +80,13 @@ class DraftTool:
         self.overall_view = ttk.Treeview(overall_frame, columns=cols, show='headings')
         for col in cols:
             self.overall_view.heading(col, text=col)
+        self.overall_view.bind('<<TreeviewSelect>>', self.on_select)
         self.overall_view.pack()
         vsb = ttk.Scrollbar(overall_frame, orient="vertical", command=self.overall_view.yview)
         vsb.pack(side='right', fill='y')
         pos_df = self.values.loc[self.values['Salary'] == '$0']
         for i in range(len(pos_df)):
+            id = pos_df.iloc[i, 0]
             name = pos_df.iloc[i, 2]
             value = pos_df.iloc[i, 1]
             pos = pos_df.iloc[i, 4]
@@ -91,7 +94,7 @@ class DraftTool:
             pts = "{:.1f}".format(pos_df.iloc[i, 5])
             ppg = "{:.2f}".format(pos_df.iloc[i, 7])
             pip = "{:.2f}".format(pos_df.iloc[i, 8])
-            self.overall_view.insert('', tk.END, values=(name, value, pos, team, pts, ppg, pip))
+            self.overall_view.insert('', tk.END, text=id, values=(name, value, pos, team, pts, ppg, pip))
 
         for pos in self.pos_values:
             pos_frame = ttk.Frame(tab_control)
@@ -103,20 +106,26 @@ class DraftTool:
             self.pos_view[pos] = ttk.Treeview(pos_frame, columns=cols, show='headings')
             for col in cols:
                 self.pos_view[pos].heading(col, text=col)
+            self.pos_view[pos].bind('<<TreeviewSelect>>', self.on_select)
             self.pos_view[pos].pack()
             vsb = ttk.Scrollbar(pos_frame, orient="vertical", command=self.pos_view[pos].yview)
             vsb.pack(side='right', fill='y')
             pos_df = self.pos_values[pos].loc[self.pos_values[pos]['Salary'] == '$0']
             for i in range(len(pos_df)):
+                id = pos_df.iloc[i, 0]
                 name = pos_df.iloc[i, 2]
                 value = pos_df.iloc[i, 1]
                 position = pos_df.iloc[i, 4]
                 team = pos_df.iloc[i, 3]
                 pts = "{:.1f}".format(pos_df.iloc[i, 5])
                 rate = "{:.2f}".format(pos_df.iloc[i, 7])
-                self.pos_view[pos].insert('', tk.END, values=(name, value, position, team, pts, rate))
+                self.pos_view[pos].insert('', tk.END, text=id, values=(name, value, position, team, pts, rate))
 
         main_frame.pack()
+
+    def on_select(self, event):
+        if len(event.widget.selection()) == 1:
+            print(f'Selection is {event.widget.item(event.widget.selection()[0])["text"]}')
 
     def start_draft_monitor(self):
         self.run_event = threading.Event()
@@ -176,6 +185,7 @@ class DraftTool:
         #from https://stackoverflow.com/a/27068344
         self.search_view.delete(*self.search_view.get_children())
         for i in range(len(df)):
+            id = df.iloc[i, 0]
             name = df.iloc[i, 2]
             value = df.iloc[i, 1]
             salary = df.iloc[i,10]
