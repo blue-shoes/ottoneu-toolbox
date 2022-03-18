@@ -34,7 +34,7 @@ def refresh_thread(self, lg_id, rosters, run_event, ottoneu_pos, rosters_file=No
                         rosters.append(row)
                     elif last_trans[index] == 'Cut':
                         rosters.drop(last_trans[index]['Ottoneu ID'])
-                index -= index
+                index -= 1
             if rosters_file != None:
                 rosters.to_csv(rosters_file, encoding='utf-8-sig')
             last_time = most_recent
