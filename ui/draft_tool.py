@@ -8,6 +8,7 @@ import os
 import os.path
 import pandas as pd
 import util.string_util
+import queue
 
 from scrape.scrape_ottoneu import Scrape_Ottoneu 
 
@@ -26,8 +27,9 @@ class IdType(Enum):
     FG = 1
 
 class DraftTool:
-    def __init__(self):
-        self.demo_source = None
+    def __init__(self, demo_source=None):
+        self.demo_source = demo_source
+        self.queue = queue.Queue()
         self.setup_win = tk.Tk() 
         self.value_dir = tk.StringVar()
         self.value_dir.set(Path.home())
@@ -84,17 +86,6 @@ class DraftTool:
         self.overall_view.pack()
         vsb = ttk.Scrollbar(overall_frame, orient="vertical", command=self.overall_view.yview)
         vsb.pack(side='right', fill='y')
-        pos_df = self.values.loc[self.values['Salary'] == '$0']
-        for i in range(len(pos_df)):
-            id = pos_df.iloc[i, 0]
-            name = pos_df.iloc[i, 2]
-            value = pos_df.iloc[i, 1]
-            pos = pos_df.iloc[i, 4]
-            team = pos_df.iloc[i, 3]
-            pts = "{:.1f}".format(pos_df.iloc[i, 5])
-            ppg = "{:.2f}".format(pos_df.iloc[i, 7])
-            pip = "{:.2f}".format(pos_df.iloc[i, 8])
-            self.overall_view.insert('', tk.END, text=id, values=(name, value, pos, team, pts, ppg, pip))
 
         for pos in self.pos_values:
             pos_frame = ttk.Frame(tab_control)
@@ -110,16 +101,8 @@ class DraftTool:
             self.pos_view[pos].pack()
             vsb = ttk.Scrollbar(pos_frame, orient="vertical", command=self.pos_view[pos].yview)
             vsb.pack(side='right', fill='y')
-            pos_df = self.pos_values[pos].loc[self.pos_values[pos]['Salary'] == '$0']
-            for i in range(len(pos_df)):
-                id = pos_df.iloc[i, 0]
-                name = pos_df.iloc[i, 2]
-                value = pos_df.iloc[i, 1]
-                position = pos_df.iloc[i, 4]
-                team = pos_df.iloc[i, 3]
-                pts = "{:.1f}".format(pos_df.iloc[i, 5])
-                rate = "{:.2f}".format(pos_df.iloc[i, 7])
-                self.pos_view[pos].insert('', tk.END, text=id, values=(name, value, position, team, pts, rate))
+
+        self.refresh_views()
 
         main_frame.pack()
 
@@ -130,14 +113,17 @@ class DraftTool:
     def start_draft_monitor(self):
         self.run_event = threading.Event()
         self.run_event.set()
-        t1 = threading.Thread(target = self.refresh_thread)
-        t1.start()
-        try:
-            while 1:
-                sleep(5)
-        except KeyboardInterrupt:
-            self.run_event.clear()
-            t1.join()
+        self.monitor_thread = threading.Thread(target = self.refresh_thread)
+        self.monitor_thread.start()
+        self.main_win.after(1000, self.update_ui)
+
+    def update_ui(self):
+        if not self.run_event.is_set and self.queue.empty():
+            return
+        if not self.queue.empty():
+            key, data = self.queue.get()
+            self.refresh_views(data)
+        self.main_win.after(1000, self.update_ui)
     
     def stop_draft_monitor(self):
         self.run_event.clear()
@@ -149,37 +135,76 @@ class DraftTool:
             if self.demo_source == None:
                 last_trans = Scrape_Ottoneu().scrape_recent_trans_api(self.lg_id)
             else:
+                print("demo_source")
                 last_trans = pd.read_csv(self.demo_source)
-            most_recent = last_trans[0]['Date']
+                last_trans['Date'] = last_trans['Date'].apply(lambda x: datetime.strptime(x, '%Y-%m-%d %H:%M:%S.%f'))
+            most_recent = last_trans.iloc[0]['Date']
             if most_recent > last_time:
-                index = len(last_trans)
+                index = len(last_trans)-1
                 while index >= 0:
-                    if last_trans[index]['Date'] > last_time:
-                        if last_trans[index]['Type'] == 'Add':
-                            row = []
-                            row.append(last_trans[index]['Team ID'])
-                            #team name unimportant
-                            row.append('')
-                            otto_id = last_trans[index]['Ottoneu ID']
-                            row.append(otto_id)
-                            row.append(self.positions[otto_id]['FG MajorLeagueID'])
-                            row.append(self.positions[otto_id]['FG MinorLeagueID'])
-                            #name, team, position, unimportant
-                            row.append('')
-                            row.append('')
-                            row.append('')
-                            row.append(last_trans[index]['Salary'])
-                            self.rosters.append(row, ignore_index=True)
-                        elif last_trans[index] == 'Cut':
-                            self.rosters.drop(last_trans[index]['Ottoneu ID'])
-                    index -= index
+                    if last_trans.iloc[index]['Date'] > last_time:
+                        otto_id = last_trans.iloc[index]['Ottoneu ID']
+                        #if not otto_id in self.positions:
+                            #self.extraneous_salary += last_trans.loc[index]['Salary']
+                        if self.positions.loc[otto_id]['FG MajorLeagueID'] == '':
+                            playerid = self.positions.loc[otto_id]['FG MinorLeagueID']
+                        else:
+                            playerid = self.positions.loc[otto_id]['FG MajorLeagueID']
+                        pos = self.positions.loc[otto_id, 'Position(s)'].split("/")
+                        if '2B' in pos or 'SS' in pos:
+                            pos.append('MI')
+                        if not ('SP' in pos or 'RP' in pos) and not 'Util' in pos:
+                            pos.append('Util')
+                        if last_trans.iloc[index]['Type'] == 'Add':
+                            self.values.at[playerid, 'Salary'] = last_trans.iloc[index]['Salary']
+                            for p in pos:
+                                self.pos_values[p].at[playerid, 'Salary'] = last_trans.iloc[index]['Salary']
+                        elif last_trans.iloc[index]['Type'] == 'Cut':
+                            self.values.at[playerid, 'Salary'] = "$0"
+                            for p in pos:
+                                self.pos_values[p].at[playerid, 'Salary'] = "$0"
+                    index -= 1
                 last_time = most_recent
-                self.refresh_views()
+                self.queue.put(('pos', pos))
+
+    def refresh_views(self, pos_keys=None):
+        self.overall_view.delete(*self.overall_view.get_children())
+        pos_df = self.values.loc[self.values['Salary'] == '$0']
+        for i in range(len(pos_df)):
+            id = pos_df.iloc[i, 0]
+            name = pos_df.iloc[i, 2]
+            value = pos_df.iloc[i, 1]
+            position = pos_df.iloc[i, 4]
+            team = pos_df.iloc[i, 3]
+            pts = "{:.1f}".format(pos_df.iloc[i, 5])
+            ppg = "{:.2f}".format(pos_df.iloc[i, 7])
+            pip = "{:.2f}".format(pos_df.iloc[i, 8])
+            self.overall_view.insert('', tk.END, text=id, values=(name, value, position, team, pts, ppg, pip))
+        
+        if pos_keys == None:
+            for pos in self.pos_values:
+                self.refresh_pos_table(pos)
+        else:
+            for pos in pos_keys:
+                self.refresh_pos_table(pos)
+
+    def refresh_pos_table(self, pos):
+        self.pos_view[pos].delete(*self.pos_view[pos].get_children())
+        pos_df = self.pos_values[pos].loc[self.pos_values[pos]['Salary'] == '$0']
+        for i in range(len(pos_df)):
+            id = pos_df.iloc[i, 0]
+            name = pos_df.iloc[i, 2]
+            value = pos_df.iloc[i, 1]
+            position = pos_df.iloc[i, 4]
+            team = pos_df.iloc[i, 3]
+            pts = "{:.1f}".format(pos_df.iloc[i, 5])
+            rate = "{:.2f}".format(pos_df.iloc[i, 7])
+            self.pos_view[pos].insert('', tk.END, text=id, values=(name, value, position, team, pts, rate))
 
     def update_player_search(self):
         text = self.search_string.get().upper()
         if text == '':
-            df = pd.DataFrame()
+            df = pd.DataFrame() 
         else:
             df = self.values.loc[self.values['Search_Name'].str.contains(text, case=False, regex=True)]
         #from https://stackoverflow.com/a/27068344
@@ -273,7 +298,12 @@ class DraftTool:
                 #TODO data validation here
 
 def main():
-    tool = DraftTool()
+    try:
+        tool = DraftTool(demo_source='C:\\Users\\adam.scharf\\Documents\\Personal\\FFB\\Demo\\recent_transactions.csv')
+    except KeyboardInterrupt:
+        if tool.run_event.is_set:
+            tool.run_event.clear()
+            tool.monitor_thread.join()
 
 if __name__ == '__main__':
     main()
