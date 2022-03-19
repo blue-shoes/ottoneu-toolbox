@@ -54,8 +54,9 @@ class Scrape_Ottoneu(scrape_base.Scrape_Base):
         rows = salary_soup.find_all('player')
         parsed_rows = [self.parse_avg_salary_row(row) for row in rows]
         df = DataFrame(parsed_rows)
-        df.columns = ['Ottoneu ID','FG MajorLeagueID','FG MinorLeagueID','Avg Salary','Min Salary','Max Salary','Last 10','Roster %']
+        df.columns = ['Ottoneu ID','FG MajorLeagueID','FG MinorLeagueID','Avg Salary','Min Salary','Max Salary','Last 10','Roster %','Position(s)']
         df.set_index('Ottoneu ID', inplace=True)
+        df.index = df.index.astype(int, copy=False)
         return df
 
     def parse_avg_salary_row(self, row):
@@ -68,6 +69,7 @@ class Scrape_Ottoneu(scrape_base.Scrape_Base):
         parsed_row.append(row.find('max_salary').text)
         parsed_row.append(row.find('last_10').text)
         parsed_row.append(row.find('rostered_pct').text)
+        parsed_row.append(row.find('positions').text)
         return parsed_row
 
 
@@ -272,7 +274,7 @@ class Scrape_Ottoneu(scrape_base.Scrape_Base):
 def main():
     scraper = Scrape_Ottoneu()
     avg = scraper.get_avg_salary_ds(True)
-    print(avg.head())
+    print(avg.index.dtype)
     #scraper.get_universe_production_tables()
     #rost = scraper.scrape_roster_export(160)
     #print(rost.head(50))
