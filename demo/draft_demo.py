@@ -26,7 +26,8 @@ def demo_draft(player_source='C:\\Users\\adam.scharf\\Documents\\Personal\\FFB\\
     index = 0
     print('---BEGINNING DRAFT---')
     while index < len(results):
-        sleep(randint(20,45))
+        sleep(randint(5,10))
+        print('!!!Getting player!!!')
         df = df.append(load_player_from_source(results, index), ignore_index=True)
         recent = pd.DataFrame()
         recent = recent.append(copy_to_recent_trans(df,-1), ignore_index=True)
@@ -44,11 +45,13 @@ def load_player_from_source(results, index, old=False):
     row = {}
     if old:
         row['Ottoneu ID'] = index
+        row['Date']= (datetime.datetime.now() - datetime.timedelta(minutes=10))
     else:
         print(results.iloc[index])
         row['Ottoneu ID'] = results.index[index]
+        row['Date']= datetime.datetime.now()
     row['Team ID'] = (results['TeamID'].iloc[index])
-    row['Date']= (datetime.datetime.now() - datetime.timedelta(minutes=10))
+    
     row['Salary'] = (results['Price'].iloc[index])
     row['Type'] = (results['Type'].iloc[index])
     print(row)
@@ -58,7 +61,7 @@ def copy_to_recent_trans(loaded, index):
     row = {}
     row['Ottoneu ID'] = loaded['Ottoneu ID'].iloc[index]
     row['Team ID'] = (loaded['Team ID'].iloc[index])
-    row['Date']= datetime.datetime.now()
+    row['Date']= loaded['Date'].iloc[index]
     row['Salary'] = loaded['Salary'].iloc[index]
     row['Type'] = loaded['Type'].iloc[index]
     return row
