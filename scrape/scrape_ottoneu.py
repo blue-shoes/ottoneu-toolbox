@@ -62,7 +62,7 @@ class Scrape_Ottoneu(scrape_base.Scrape_Base):
     def parse_avg_salary_row(self, row):
         parsed_row = []
         parsed_row.append(row.get('ottoneu_id'))
-        parsed_row.append(row.get('fg_majorleague_id'))
+        parsed_row.append(str(row.get('fg_majorleague_id')))
         parsed_row.append(row.get('fg_minorleague_id'))
         parsed_row.append(row.find('avg_salary').text)
         parsed_row.append(row.find('min_salary').text)
@@ -144,15 +144,14 @@ class Scrape_Ottoneu(scrape_base.Scrape_Base):
         parsed_rows = [self.parse_rec_trans_row(row) for row in rows]
         df = DataFrame(parsed_rows)
         df.columns = ['Ottoneu ID','Team ID','Date','Salary','Type']
-        df.set_index('Ottoneu ID', inplace=True)
         return df
 
     def parse_rec_trans_row(self, row):
         player = row.find('player')
         parsed_row = []
-        parsed_row.append(player.get('id'))
+        parsed_row.append(int(player.get('id')))
         team = row.find('team')
-        parsed_row.append(team.get('id'))
+        parsed_row.append(int(team.get('id')))
         parsed_row.append(datetime.datetime.strptime(row.find('date').text, '%Y-%m-%d %H:%M:%S'))
         parsed_row.append(row.find('salary').text)
         parsed_row.append(row.find('transaction_type').text)
