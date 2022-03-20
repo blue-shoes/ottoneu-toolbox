@@ -7,6 +7,7 @@ from tkinter.messagebox import showinfo
 import os
 import os.path
 import pandas as pd
+import numpy as np
 import util.string_util
 import queue
 
@@ -15,7 +16,7 @@ from scrape.scrape_ottoneu import Scrape_Ottoneu
 from pathlib import Path
 import threading
 from time import sleep
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from enum import Enum
 
@@ -91,9 +92,9 @@ class DraftTool:
             pos_frame = ttk.Frame(tab_control)
             tab_control.add(pos_frame, text=pos) 
             if pos in bat_pos:
-                cols = ('Name','Value','Salary','Pos','Team','Points','P/G')
+                cols = ('Name','Value','Pos','Team','Points','P/G')
             else:
-                cols = ('Name','Value','Salary','Pos','Team','Points','P/IP')
+                cols = ('Name','Value','Pos','Team','Points','P/IP')
             self.pos_view[pos] = ttk.Treeview(pos_frame, columns=cols, show='headings')
             for col in cols:
                 self.pos_view[pos].heading(col, text=col)
@@ -122,6 +123,7 @@ class DraftTool:
             return
         if not self.queue.empty():
             key, data = self.queue.get()
+            print(f'data = {data}')
             self.refresh_views(data)
         self.main_win.after(1000, self.update_ui)
     
@@ -129,9 +131,11 @@ class DraftTool:
         self.run_event.clear()
     
     def refresh_thread(self):
-        last_time = datetime.now()
+        #commented out for testing
+        #last_time = datetime.now()
+        last_time = datetime.now() - timedelta(days=10)
         while(self.run_event.is_set()):
-            sleep(60)
+            #sleep(60)
             if self.demo_source == None:
                 last_trans = Scrape_Ottoneu().scrape_recent_trans_api(self.lg_id)
             else:
@@ -141,6 +145,7 @@ class DraftTool:
             most_recent = last_trans.iloc[0]['Date']
             if most_recent > last_time:
                 index = len(last_trans)-1
+                update_pos = []
                 while index >= 0:
                     if last_trans.iloc[index]['Date'] > last_time:
                         otto_id = last_trans.iloc[index]['Ottoneu ID']
@@ -150,26 +155,37 @@ class DraftTool:
                             playerid = self.positions.loc[otto_id]['FG MinorLeagueID']
                         else:
                             playerid = self.positions.loc[otto_id]['FG MajorLeagueID']
+                        print(f'playerid={playerid}')
                         pos = self.positions.loc[otto_id, 'Position(s)'].split("/")
                         if '2B' in pos or 'SS' in pos:
                             pos.append('MI')
                         if not ('SP' in pos or 'RP' in pos) and not 'Util' in pos:
                             pos.append('Util')
-                        if last_trans.iloc[index]['Type'] == 'Add':
+                        update_pos = np.append(update_pos, pos)
+                        print(f'self.values.index.dtype = {self.values.index.dtype}')
+                        #print(f'playerid.dtype = {playerid.type()}')
+                        if not playerid in self.values.index:
+                            print(f'id {playerid} not in values')
+                            index -= 1
+                            continue
+                        if last_trans.iloc[index]['Type'].upper() == 'ADD':
+                            print(self.values.loc[playerid])
                             self.values.at[playerid, 'Salary'] = last_trans.iloc[index]['Salary']
                             for p in pos:
                                 self.pos_values[p].at[playerid, 'Salary'] = last_trans.iloc[index]['Salary']
-                        elif last_trans.iloc[index]['Type'] == 'Cut':
+                                print(self.pos_values[p]['Salary'].loc[playerid])
+                        elif last_trans.iloc[index]['Type'].upper() == 'CUT':
                             self.values.at[playerid, 'Salary'] = "$0"
                             for p in pos:
                                 self.pos_values[p].at[playerid, 'Salary'] = "$0"
                     index -= 1
                 last_time = most_recent
-                self.queue.put(('pos', pos))
+                self.queue.put(('pos', list(set(update_pos))))
 
     def refresh_views(self, pos_keys=None):
         self.overall_view.delete(*self.overall_view.get_children())
         pos_df = self.values.loc[self.values['Salary'] == '$0']
+        #print(pos_df.head())
         for i in range(len(pos_df)):
             id = pos_df.iloc[i, 0]
             name = pos_df.iloc[i, 2]
@@ -186,11 +202,14 @@ class DraftTool:
                 self.refresh_pos_table(pos)
         else:
             for pos in pos_keys:
+                print(f'updating {pos}')
                 self.refresh_pos_table(pos)
 
     def refresh_pos_table(self, pos):
         self.pos_view[pos].delete(*self.pos_view[pos].get_children())
         pos_df = self.pos_values[pos].loc[self.pos_values[pos]['Salary'] == '$0']
+        print(pos_df.head(10))
+        #print(pos_df.head())
         for i in range(len(pos_df)):
             id = pos_df.iloc[i, 0]
             name = pos_df.iloc[i, 2]
@@ -266,7 +285,10 @@ class DraftTool:
         self.positions = scraper.get_avg_salary_ds()
 
         self.lg_id = self.league_num_entry.get()
-        self.rosters = scraper.scrape_roster_export(self.lg_id)
+        #Commented out for testing
+        #self.rosters = scraper.scrape_roster_export(self.lg_id)
+        self.rosters = pd.read_csv('C:\\Users\\adam.scharf\\Documents\\Personal\\FFB\\Test\\rosters.csv')
+        self.rosters.set_index("ottoneu ID", inplace=True)
 
         self.update_rostered_players()
 
@@ -280,6 +302,7 @@ class DraftTool:
     def load_values(self):
         self.values = pd.read_csv(self.value_file_path)
         self.values.set_index('playerid', inplace=True)
+        self.values.index = self.values.index.astype(str, copy = False)
         self.values['Search_Name'] = self.values['Name'].apply(lambda x: util.string_util.normalize(x))
         self.id_type = IdType.FG
         #TODO: data validation here
@@ -299,8 +322,13 @@ class DraftTool:
 
 def main():
     try:
-        tool = DraftTool(demo_source='C:\\Users\\adam.scharf\\Documents\\Personal\\FFB\\Demo\\recent_transactions.csv')
+        #tool = DraftTool(demo_source='C:\\Users\\adam.scharf\\Documents\\Personal\\FFB\\Demo\\recent_transactions.csv')
+        tool = DraftTool()
     except KeyboardInterrupt:
+        if tool.run_event.is_set:
+            tool.run_event.clear()
+            tool.monitor_thread.join()
+    finally:
         if tool.run_event.is_set:
             tool.run_event.clear()
             tool.monitor_thread.join()
