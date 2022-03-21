@@ -9,8 +9,10 @@ import os
 import os.path
 import pandas as pd
 import numpy as np
+from sklearn.metrics import jaccard_score
 import util.string_util
 import queue
+import logging
 
 from scrape.scrape_ottoneu import Scrape_Ottoneu 
 
@@ -30,6 +32,8 @@ class IdType(Enum):
 
 class DraftTool:
     def __init__(self, run_event, demo_source=None):
+        self.setup_logging()
+        logging.info('Starting session')
         self.demo_source = demo_source
         self.run_event = run_event
         self.queue = queue.Queue()
@@ -40,14 +44,26 @@ class DraftTool:
         self.extra_cost = 0
 
         setup_tab = ttk.Frame(self.setup_win)
-
+        
+        logging.debug('Creating setup tab')
         self.create_setup_tab(setup_tab)
 
+        logging.debug('Starting setup window')
         self.setup_win.mainloop()   
+
+        logging.info(f'League id = {self.lg_id}; Values Directory: {self.value_dir}')
 
         self.create_main()
 
+        logging.debug('Starting main loop')
         self.main_win.mainloop()
+    
+    def setup_logging(self, config=None):
+        if config != None and 'log_level' in config:
+            level = logging.getLevelName(config['log_level'].upper())
+        else:
+            level = logging.INFO
+        logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s %(message)s', level=level, filename='C:\\Users\\adam.scharf\\Documents\\Personal\\FFB\\Test\\draft_log.txt')
 
     def create_main(self):
         self.main_win = tk.Tk()
@@ -145,6 +161,7 @@ class DraftTool:
             print(f'Selection is {event.widget.item(event.widget.selection()[0])["text"]}')
 
     def start_draft_monitor(self):
+        logging.info('---Starting Draft Monitor---')
         self.run_event.set()
         self.monitor_thread = threading.Thread(target = self.refresh_thread)
         self.monitor_thread.start()
@@ -155,22 +172,23 @@ class DraftTool:
             return
         if not self.queue.empty():
             key, data = self.queue.get()
-            print(f'data = {data}')
+            logging.debug(f'Updating the following positions: {data}')
             self.refresh_views(data)
         self.main_win.after(1000, self.update_ui)
     
     def stop_draft_monitor(self):
+        logging.info('!!!Stopping Draft Monitor!!!')
         self.run_event.clear()
     
     def refresh_thread(self):
-        #commented out for testing
-        #last_time = datetime.now()
-        last_time = datetime.now() - timedelta(days=10)
+        last_time = datetime.now()
+        #Below line for testing against api outside of draft
+        #last_time = datetime.now() - timedelta(days=10)
         while(self.run_event.is_set()):
             if self.demo_source == None:
                 last_trans = Scrape_Ottoneu().scrape_recent_trans_api(self.lg_id)
             else:
-                print("demo_source")
+                logging.debug("demo_source")
                 last_trans = pd.read_csv(self.demo_source)
                 last_trans['Date'] = last_trans['Date'].apply(lambda x: datetime.strptime(x, '%Y-%m-%d %H:%M:%S.%f'))
             most_recent = last_trans.iloc[0]['Date']
@@ -180,26 +198,25 @@ class DraftTool:
                 while index >= 0:
                     if last_trans.iloc[index]['Date'] > last_time:
                         otto_id = last_trans.iloc[index]['Ottoneu ID']
-                        #if not otto_id in self.positions:
-                            #self.extraneous_salary += last_trans.loc[index]['Salary']
                         if self.positions.loc[otto_id]['FG MajorLeagueID'] == '':
                             playerid = self.positions.loc[otto_id]['FG MinorLeagueID']
                         else:
                             playerid = self.positions.loc[otto_id]['FG MajorLeagueID']
-                        pos = self.positions.loc[otto_id, 'Position(s)'].split("/")
+                        if not otto_id in self.positions.index:
+                            logging.info(f'Otto id {otto_id} not in self.positions.index')
+                            self.extra_cost += int(last_trans.iloc[index]['Salary'].split('$')[1])
+                        else:
+                            self.positions.at[otto_id, "Int Salary"] = int(last_trans.iloc[index]['Salary'].split('$')[1])
+                        if not playerid in self.values.index:
+                            logging.info(f'id {playerid} not in values')
+                            index -= 1
+                            continue
+                        pos = self.values.loc[playerid, 'Position(s)'].split("/")
                         if '2B' in pos or 'SS' in pos:
                             pos.append('MI')
                         if not ('SP' in pos or 'RP' in pos) and not 'Util' in pos:
                             pos.append('Util')
                         update_pos = np.append(update_pos, pos)
-                        if not otto_id in self.positions.index:
-                            self.extra_cost += int(last_trans.iloc[index]['Salary'].split('$')[1])
-                        else:
-                            self.positions.at[otto_id, "Int Salary"] = int(last_trans.iloc[index]['Salary'].split('$')[1])
-                        if not playerid in self.values.index:
-                            print(f'id {playerid} not in values')
-                            index -= 1
-                            continue
                         if last_trans.iloc[index]['Type'].upper() == 'ADD':
                             self.values.at[playerid, 'Salary'] = last_trans.iloc[index]['Salary']
                             self.values.at[playerid, 'Int Salary'] = int(last_trans.iloc[index]['Salary'].split('$')[1])
@@ -237,7 +254,7 @@ class DraftTool:
                 self.refresh_pos_table(pos)
         else:
             for pos in pos_keys:
-                print(f'updating {pos}')
+                logging.debug(f'updating {pos}')
                 self.refresh_pos_table(pos)
 
     def refresh_pos_table(self, pos):
@@ -320,10 +337,10 @@ class DraftTool:
         self.positions = scraper.get_avg_salary_ds()
 
         self.lg_id = self.league_num_entry.get()
-        #Commented out for testing
-        #self.rosters = scraper.scrape_roster_export(self.lg_id)
-        self.rosters = pd.read_csv('C:\\Users\\adam.scharf\\Documents\\Personal\\FFB\\Test\\rosters.csv')
-        self.rosters.set_index("ottoneu ID", inplace=True)
+        self.rosters = scraper.scrape_roster_export(self.lg_id)
+        #Below used for api testing
+        #self.rosters = pd.read_csv('C:\\Users\\adam.scharf\\Documents\\Personal\\FFB\\Test\\rosters.csv')
+        #self.rosters.set_index("ottoneu ID", inplace=True)
 
         self.update_rostered_players()
 
