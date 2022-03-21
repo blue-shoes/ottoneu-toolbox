@@ -1,5 +1,6 @@
 from re import search
-import tkinter as tk                     
+import tkinter as tk     
+from tkinter import *              
 from tkinter import ttk 
 from tkinter import filedialog as fd
 from tkinter import messagebox as mb
@@ -28,8 +29,9 @@ class IdType(Enum):
     FG = 1
 
 class DraftTool:
-    def __init__(self, demo_source=None):
+    def __init__(self, run_event, demo_source=None):
         self.demo_source = demo_source
+        self.run_event = run_event
         self.queue = queue.Queue()
         self.setup_win = tk.Tk() 
         self.value_dir = tk.StringVar()
@@ -73,11 +75,20 @@ class DraftTool:
         f.grid(column=1,row=1)
 
         cols = ('Name','Value','Salary','Inf. Cost','Pos','Team','Points','P/G','P/IP')
-        self.search_view = ttk.Treeview(f, columns=cols, show='headings')    
+        self.search_view = sv = ttk.Treeview(f, columns=cols, show='headings')    
         for col in cols:
             self.search_view.heading(col, text=col) 
         self.search_view.grid(column=0,row=0)   
         self.search_view.bind('<<TreeviewSelect>>', self.on_select)
+        sv.column("# 1",anchor=W, stretch=NO, width=200)
+        sv.column("# 2",anchor=CENTER, stretch=NO, width=50)
+        sv.column("# 3",anchor=CENTER, stretch=NO, width=50)
+        sv.column("# 4",anchor=CENTER, stretch=NO, width=50)
+        sv.column("# 5",anchor=CENTER, stretch=NO, width=50)
+        sv.column("# 6",anchor=CENTER, stretch=NO, width=50)
+        sv.column("# 7",anchor=CENTER, stretch=NO, width=50)
+        sv.column("# 8",anchor=CENTER, stretch=NO, width=50)
+        sv.column("# 9",anchor=CENTER, stretch=NO, width=50)
 
         tab_control = ttk.Notebook(main_frame)
         tab_control.grid(row=2, column=0, columnspan=2)
@@ -87,7 +98,15 @@ class DraftTool:
         overall_frame = ttk.Frame(tab_control)
         tab_control.add(overall_frame, text='Overall')
         cols = ('Name','Value','Inf. Cost','Pos','Team','Points','P/G','P/IP')
-        self.overall_view = ttk.Treeview(overall_frame, columns=cols, show='headings')
+        self.overall_view = ov = ttk.Treeview(overall_frame, columns=cols, show='headings')
+        ov.column("# 1",anchor=W, stretch=NO, width=200)
+        ov.column("# 2",anchor=CENTER, stretch=NO, width=50)
+        ov.column("# 3",anchor=CENTER, stretch=NO, width=50)
+        ov.column("# 4",anchor=CENTER, stretch=NO, width=50)
+        ov.column("# 5",anchor=CENTER, stretch=NO, width=50)
+        ov.column("# 6",anchor=CENTER, stretch=NO, width=50)
+        ov.column("# 7",anchor=CENTER, stretch=NO, width=50)
+        ov.column("# 8",anchor=CENTER, stretch=NO, width=50)
         for col in cols:
             self.overall_view.heading(col, text=col)
         self.overall_view.bind('<<TreeviewSelect>>', self.on_select)
@@ -102,7 +121,14 @@ class DraftTool:
                 cols = ('Name','Value','Inf. Cost','Pos','Team','Points','P/G')
             else:
                 cols = ('Name','Value','Inf. Cost','Pos','Team','Points','P/IP')
-            self.pos_view[pos] = ttk.Treeview(pos_frame, columns=cols, show='headings')
+            self.pos_view[pos] = pv = ttk.Treeview(pos_frame, columns=cols, show='headings')
+            pv.column("# 1",anchor=W, stretch=NO, width=200)
+            pv.column("# 2",anchor=CENTER, stretch=NO, width=50)
+            pv.column("# 3",anchor=CENTER, stretch=NO, width=50)
+            pv.column("# 4",anchor=CENTER, stretch=NO, width=50)
+            pv.column("# 5",anchor=CENTER, stretch=NO, width=50)
+            pv.column("# 6",anchor=CENTER, stretch=NO, width=50)
+            pv.column("# 7",anchor=CENTER, stretch=NO, width=50)
             for col in cols:
                 self.pos_view[pos].heading(col, text=col)
             self.pos_view[pos].bind('<<TreeviewSelect>>', self.on_select)
@@ -119,7 +145,6 @@ class DraftTool:
             print(f'Selection is {event.widget.item(event.widget.selection()[0])["text"]}')
 
     def start_draft_monitor(self):
-        self.run_event = threading.Event()
         self.run_event.set()
         self.monitor_thread = threading.Thread(target = self.refresh_thread)
         self.monitor_thread.start()
@@ -248,7 +273,7 @@ class DraftTool:
             pts = "{:.1f}".format(df.iloc[i, 5])
             ppg = "{:.2f}".format(df.iloc[i, 7])
             pip = "{:.2f}".format(df.iloc[i, 8])
-            self.search_view.insert('', tk.END, values=(name, value, inf_cost, salary, pos, team, pts, ppg, pip))
+            self.search_view.insert('', tk.END, values=(name, value, salary, inf_cost,pos, team, pts, ppg, pip))
 
     
     def create_setup_tab(self, tab):
@@ -349,15 +374,14 @@ class DraftTool:
 def main():
     try:
         #tool = DraftTool(demo_source='C:\\Users\\adam.scharf\\Documents\\Personal\\FFB\\Demo\\recent_transactions.csv')
-        tool = DraftTool()
+        run_event = threading.Event()
+        tool = DraftTool(run_event)
     except KeyboardInterrupt:
-        if tool.run_event.is_set:
-            tool.run_event.clear()
-            tool.monitor_thread.join()
+        if run_event.is_set:
+            run_event.clear()
     finally:
-        if tool.run_event.is_set:
-            tool.run_event.clear()
-            tool.monitor_thread.join()
+        if run_event.is_set:
+            run_event.clear()
 
 if __name__ == '__main__':
     main()
