@@ -42,8 +42,9 @@ class DraftTool:
         self.value_dir = tk.StringVar()
         self.value_dir.set(Path.home())
         #self.value_dir.set('C:\\Users\\adam.scharf\\Documents\\Personal\\FFB\\Staging')
-        self.setup_win.title("FBB Draft Tool v0.1") 
+        self.setup_win.title("FBB Draft Tool v0.8") 
         self.extra_cost = 0
+        self.lg_id = None
 
         setup_tab = ttk.Frame(self.setup_win)
         
@@ -52,6 +53,9 @@ class DraftTool:
 
         logging.debug('Starting setup window')
         self.setup_win.mainloop()   
+
+        if self.lg_id == None:
+            return
 
         logging.info(f'League id = {self.lg_id}; Values Directory: {self.value_dir.get()}')
 
@@ -365,7 +369,6 @@ class DraftTool:
     
     def calc_inflation(self):
         self.remaining_dollars = 12*400 - (self.positions['Int Salary'].sum() + self.extra_cost)
-        print(f'remaining dol = {self.remaining_dollars}, remain val = {self.remaining_value}')
         self.inflation = self.remaining_dollars / self.remaining_value
         self.inflation_str_var.set(f'Inflation: {"{:.1f}".format((self.inflation - 1.0)*100)}%')
 
@@ -459,7 +462,7 @@ def main():
         #tool = DraftTool(demo_source='C:\\Users\\adam.scharf\\Documents\\Personal\\FFB\\Demo\\recent_transactions.csv')
         run_event = threading.Event()
         tool = DraftTool(run_event)
-    except KeyboardInterrupt:
+    except Exception:
         if run_event.is_set:
             run_event.clear()
     finally:
