@@ -39,7 +39,8 @@ class DraftTool:
         self.queue = queue.Queue()
         self.setup_win = tk.Tk() 
         self.value_dir = tk.StringVar()
-        self.value_dir.set(Path.home())
+        #self.value_dir.set(Path.home())
+        self.value_dir.set('C:\\Users\\adam.scharf\\Documents\\Personal\\FFB\\Staging')
         self.setup_win.title("FBB Draft Tool v0.1") 
         self.extra_cost = 0
 
@@ -51,7 +52,7 @@ class DraftTool:
         logging.debug('Starting setup window')
         self.setup_win.mainloop()   
 
-        logging.info(f'League id = {self.lg_id}; Values Directory: {self.value_dir}')
+        logging.info(f'League id = {self.lg_id}; Values Directory: {self.value_dir.get()}')
 
         self.create_main()
 
@@ -220,7 +221,7 @@ class DraftTool:
                         if last_trans.iloc[index]['Type'].upper() == 'ADD':
                             self.values.at[playerid, 'Salary'] = last_trans.iloc[index]['Salary']
                             self.values.at[playerid, 'Int Salary'] = int(last_trans.iloc[index]['Salary'].split('$')[1])
-                            for p in pos:
+                            for p in pos:                                    
                                 self.pos_values[p].at[playerid, 'Salary'] = last_trans.iloc[index]['Salary']
                         elif last_trans.iloc[index]['Type'].upper() == 'CUT':
                             self.values.at[playerid, 'Salary'] = "$0"
@@ -230,7 +231,7 @@ class DraftTool:
                     index -= 1
                 last_time = most_recent
                 self.queue.put(('pos', list(set(update_pos))))
-            sleep(60)
+            sleep(45)
 
     def refresh_views(self, pos_keys=None):
         self.overall_view.delete(*self.overall_view.get_children())
@@ -359,6 +360,8 @@ class DraftTool:
         self.positions.to_csv('C:\\Users\\adam.scharf\\Documents\\Personal\\FFB\\Test\\positions.csv')
         for pos in self.pos_values:
             self.pos_values[pos] = self.pos_values[pos].merge(self.rosters[['Salary']], how='left', left_on='OttoneuID', right_index=True).fillna('$0')
+            #set index to str because if you managed to get them all as ints, you will not match up on the back side
+            self.pos_values[pos].index = self.pos_values[pos].index.astype(str, copy = False)
 
     def load_roster_salaries(self, salary_col):
         split = salary_col.split('$')
