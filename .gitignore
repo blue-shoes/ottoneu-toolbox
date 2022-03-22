@@ -3,6 +3,7 @@ debug.log
 data_dirs/*
 intermediate/*
 output/*
+logs/*
 *.pyc
 */*.pyc
 __pycache__/*

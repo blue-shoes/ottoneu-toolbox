@@ -13,6 +13,7 @@ from sklearn.metrics import jaccard_score
 import util.string_util
 import queue
 import logging
+import math
 
 from scrape.scrape_ottoneu import Scrape_Ottoneu 
 
@@ -64,6 +65,8 @@ class DraftTool:
             level = logging.getLevelName(config['log_level'].upper())
         else:
             level = logging.INFO
+        if not os.path.exists('.\\logs'):
+            os.mkdir('.\\logs')
         logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s %(message)s', level=level, filename='.\\logs\\draft.log')
 
     def create_main(self):
@@ -274,7 +277,7 @@ class DraftTool:
 
     def update_player_search(self):
         text = self.search_string.get().upper()
-        if text == '':
+        if text == '' or len(text) == 1:
             df = pd.DataFrame() 
         else:
             df = self.values.loc[self.values['Search_Name'].str.contains(text, case=False, regex=True)]
@@ -318,10 +321,12 @@ class DraftTool:
             initialdir=self.value_dir.get())
 
         value_file = os.path.join(dir, 'values.csv')
-
+        
         if not os.path.exists(value_file):
-            mb.showinfo('Bad Directory', f'The directory {dir} does not contain a values.csv file. Please select a different directory.')
-            return
+            value_file = os.path.join(dir, 'ottoneu_values.csv')
+            if not os.path.exists(value_file):
+                mb.showinfo('Bad Directory', f'The directory {dir} does not contain a values.csv or ottoneu_values.csv file. Please select a different directory.')
+                return
 
         self.value_dir.set(dir)
         
@@ -329,13 +334,18 @@ class DraftTool:
         self.value_file_path = os.path.join(self.value_dir.get(), 'values.csv')
 
         if not os.path.exists(self.value_file_path):
-            mb.showinfo('Bad Directory', f'The directory {self.value_dir.get()} does not contain a values.csv file. Please select a different directory.')
-            return
-
-        self.load_values()
-
+            self.value_file_path = os.path.join(self.value_dir.get(), 'ottoneu_values.csv')
+            if not os.path.exists(self.value_file_path):
+                mb.showinfo('Bad Directory', f'The directory {self.value_dir.get()} does not contain a values.csv or ottoneu_values.csv file. Please select a different directory.')
+                return
+        
         scraper = Scrape_Ottoneu()
         self.positions = scraper.get_avg_salary_ds()
+
+        result = self.load_values()
+        if not result:
+            mb.showinfo('Bad Player Ids', f'The player ids did not match Ottoneu or FanGraphs ids. Please use one of these player id types.')
+            return
 
         self.lg_id = self.league_num_entry.get()
         self.rosters = scraper.scrape_roster_export(self.lg_id)
@@ -344,7 +354,12 @@ class DraftTool:
         #self.rosters.set_index("ottoneu ID", inplace=True)
 
         self.update_rostered_players()
-
+        if 'Blank col 0' in self.values.columns:
+            self.values.sort_values(by=['Blank col 0'], ascending=[False], inplace=True)
+            for pos in bat_pos:
+                self.pos_values[pos].sort_values(by=['P/G'], ascending=[False], inplace=True)
+            for pos in pitch_pos:
+                self.pos_values[pos].sort_values(by=['P/IP'], ascending=[False], inplace=True)
         self.setup_win.destroy()
     
     def calc_inflation(self):
@@ -353,13 +368,19 @@ class DraftTool:
         self.inflation_str_var.set(f'Inflation: {"{:.1f}".format((self.inflation - 1.0)*100)}%')
 
     def update_rostered_players(self):
-        self.values = self.values.merge(self.rosters[['Salary']], how='left', left_on='OttoneuID', right_index=True).fillna('$0')
+        if self.id_type == IdType.FG:
+            self.values = self.values.merge(self.rosters[['Salary']], how='left', left_on='OttoneuID', right_index=True, sort=False).fillna('$0')
+        else:
+            self.values = self.values.merge(self.rosters[['Salary']], how='left', left_index=True, right_index=True, sort=False).fillna('$0')
         self.values['Int Salary'] = self.values['Salary'].apply(self.load_roster_salaries)
-        self.positions = self.positions.merge(self.rosters[['Salary']], how='left', left_index=True, right_index=True).fillna('$0')
+        self.positions = self.positions.merge(self.rosters[['Salary']], how='left', left_index=True, right_index=True, sort=False).fillna('$0')
         self.positions['Int Salary'] = self.positions['Salary'].apply(self.load_roster_salaries)
         #self.positions.to_csv('C:\\Users\\adam.scharf\\Documents\\Personal\\FFB\\Test\\positions.csv')
         for pos in self.pos_values:
-            self.pos_values[pos] = self.pos_values[pos].merge(self.rosters[['Salary']], how='left', left_on='OttoneuID', right_index=True).fillna('$0')
+            if self.id_type == IdType.FG:
+                self.pos_values[pos] = self.pos_values[pos].merge(self.rosters[['Salary']], how='left', left_on='OttoneuID', right_index=True, sort=False).fillna('$0')
+            else:
+                self.pos_values[pos] = self.pos_values[pos].merge(self.rosters[['Salary']], how='left', left_index=True, right_index=True, sort=False).fillna('$0')
             #set index to str because if you managed to get them all as ints, you will not match up on the back side
             self.pos_values[pos].index = self.pos_values[pos].index.astype(str, copy = False)
 
@@ -370,26 +391,66 @@ class DraftTool:
         else:
             return 0
 
+    def convert_rates(self, value):
+        if value == 'NA' or math.isnan(value):
+            return float(0)
+        else:
+            return float(value)
+
     def load_values(self):
-        self.values = pd.read_csv(self.value_file_path)
-        self.values.set_index('playerid', inplace=True)
+        self.values = pd.read_csv(self.value_file_path, index_col=0)
+        #self.values.set_index('ottoneu_ID', inplace=True)
         self.values.index = self.values.index.astype(str, copy = False)
+        soto_id = self.values.index[self.values['Name'] == "Juan Soto"].tolist()[0]
+        if soto_id == '23717':
+            self.id_type = IdType.OTTONEU
+        elif soto_id == '20123':
+            self.id_type = IdType.FG
+        else:
+            return False
+        if 'price' in self.values.columns:
+            #Leif output. Remap columns
+            self.values.rename(columns={'price': 'Value', 'Pos':'Position(s)', 'FGPts':'Points', 'FGPtspIP':'P/IP', 'FGPtspG':'P/G'}, inplace=True)
+            
+            self.values['Blank col 0'] = self.values['Value']
+            self.values['Value'] = self.values['Value'].apply(lambda x: "${:.0f}".format(x))
+            self.values['PAR'] = 0
+            self.values['Team'] = '---'
+            self.values['P/G'] = self.values['P/G'].apply(self.convert_rates)
+            self.values['P/IP'] = self.values['P/IP'].apply(self.convert_rates)
+            self.values = self.values[['Blank col 0', 'Value', 'Name', 'Team', 'Position(s)', 'Points', 'PAR', 'P/G', 'P/IP']]
+            if self.id_type == IdType.OTTONEU:
+                #Leif doesn't have teams, need to merge here
+                self.values = self.values.merge(self.positions[['Org']], how='left', left_index=True, right_index=True, sort=False).fillna('---')
+                self.values['Team'] = self.values['Org']
+                self.values = self.values.drop('Org', axis=1)            
+
         self.values['Search_Name'] = self.values['Name'].apply(lambda x: util.string_util.normalize(x))
-        self.id_type = IdType.FG
         #TODO: data validation here
         self.pos_values = {}
         for pos in bat_pos:
             pos_path = os.path.join(self.value_dir.get(), f'{pos}_values.csv')
             if os.path.exists(pos_path):
-                self.pos_values[pos] = pd.read_csv(pos_path)
-                self.pos_values[pos].set_index('playerid', inplace=True)
+                self.pos_values[pos] = pd.read_csv(pos_path, index_col=0)
+                #self.pos_values[pos].set_index('playerid', inplace=True)
                 #TODO data validation here
+            else:
+                if pos == 'MI':
+                    self.pos_values[pos] = self.values.loc[self.values['Position(s)'].str.contains("2B|SS", case=False, regex=True)].sort_values(by=['P/G'], ascending=[False])
+                elif pos == 'Util':
+                    self.pos_values[pos] = self.values.loc[self.values['P/G'] > 0].sort_values(by=['P/G'], ascending=[False])
+                else:
+                    self.pos_values[pos] = self.values.loc[self.values['Position(s)'].str.contains(pos)].sort_values(by=['P/G'], ascending=[False])
         for pos in pitch_pos:
             pos_path = os.path.join(self.value_dir.get(), f'{pos}_values.csv')
             if os.path.exists(pos_path):
-                self.pos_values[pos] = pd.read_csv(pos_path)
-                self.pos_values[pos].set_index('playerid', inplace=True)
+                self.pos_values[pos] = pd.read_csv(pos_path, index_col=0)
+                #self.pos_values[pos].set_index('playerid', inplace=True)
                 #TODO data validation here
+            else:
+                self.pos_values[pos] = self.values.loc[self.values['Position(s)'].str.contains(pos)].sort_values(by=['P/IP'], ascending=[False])
+                self.pos_values[pos] = self.pos_values[pos].drop('P/G', axis=1)
+        return True
 
 def main():
     try:
