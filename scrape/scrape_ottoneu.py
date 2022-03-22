@@ -54,9 +54,9 @@ class Scrape_Ottoneu(scrape_base.Scrape_Base):
         rows = salary_soup.find_all('player')
         parsed_rows = [self.parse_avg_salary_row(row) for row in rows]
         df = DataFrame(parsed_rows)
-        df.columns = ['Ottoneu ID','FG MajorLeagueID','FG MinorLeagueID','Avg Salary','Min Salary','Max Salary','Last 10','Roster %','Position(s)']
+        df.columns = ['Ottoneu ID','FG MajorLeagueID','FG MinorLeagueID','Avg Salary','Min Salary','Max Salary','Last 10','Roster %','Position(s)','Org']
         df.set_index('Ottoneu ID', inplace=True)
-        df.index = df.index.astype(int, copy=False)
+        df.index = df.index.astype(str, copy=False)
         return df
 
     def parse_avg_salary_row(self, row):
@@ -70,6 +70,7 @@ class Scrape_Ottoneu(scrape_base.Scrape_Base):
         parsed_row.append(row.find('last_10').text)
         parsed_row.append(row.find('rostered_pct').text)
         parsed_row.append(row.find('positions').text)
+        parsed_row.append(row.find('mlb_org').text)
         return parsed_row
 
 
@@ -104,6 +105,7 @@ class Scrape_Ottoneu(scrape_base.Scrape_Base):
         rost_soup = Soup(response.text, 'html.parser')
         df = pd.read_csv(StringIO(rost_soup.contents[0]))
         df.set_index("ottoneu ID", inplace=True)
+        df.index = df.index.astype(str, copy = False)
         return df
     
     def parse_trans_row(self, row):
