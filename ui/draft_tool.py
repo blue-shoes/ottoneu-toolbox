@@ -239,7 +239,8 @@ class DraftTool:
     def refresh_views(self, pos_keys=None):
         self.overall_view.delete(*self.overall_view.get_children())
         pos_df = self.values.loc[self.values['Salary'] == '$0']
-        self.remaining_value = pos_df['Value'].apply(lambda x: int(x.split('$')[1])).sum()
+        pos_val = pos_df.loc[~pos_df['Value'].str.contains("-")]
+        self.remaining_value = pos_val['Value'].apply(lambda x: int(x.split('$')[1])).sum()
         self.calc_inflation()
         for i in range(len(pos_df)):
             id = pos_df.iloc[i, 0]
@@ -364,6 +365,7 @@ class DraftTool:
     
     def calc_inflation(self):
         self.remaining_dollars = 12*400 - (self.positions['Int Salary'].sum() + self.extra_cost)
+        print(f'remaining dol = {self.remaining_dollars}, remain val = {self.remaining_value}')
         self.inflation = self.remaining_dollars / self.remaining_value
         self.inflation_str_var.set(f'Inflation: {"{:.1f}".format((self.inflation - 1.0)*100)}%')
 
