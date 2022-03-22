@@ -39,8 +39,8 @@ class DraftTool:
         self.queue = queue.Queue()
         self.setup_win = tk.Tk() 
         self.value_dir = tk.StringVar()
-        #self.value_dir.set(Path.home())
-        self.value_dir.set('C:\\Users\\adam.scharf\\Documents\\Personal\\FFB\\Staging')
+        self.value_dir.set(Path.home())
+        #self.value_dir.set('C:\\Users\\adam.scharf\\Documents\\Personal\\FFB\\Staging')
         self.setup_win.title("FBB Draft Tool v0.1") 
         self.extra_cost = 0
 
@@ -64,7 +64,7 @@ class DraftTool:
             level = logging.getLevelName(config['log_level'].upper())
         else:
             level = logging.INFO
-        logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s %(message)s', level=level, filename='C:\\Users\\adam.scharf\\Documents\\Personal\\FFB\\Test\\draft_log.txt')
+        logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s %(message)s', level=level, filename='.\\logs\\draft.log')
 
     def create_main(self):
         self.main_win = tk.Tk()
@@ -357,7 +357,7 @@ class DraftTool:
         self.values['Int Salary'] = self.values['Salary'].apply(self.load_roster_salaries)
         self.positions = self.positions.merge(self.rosters[['Salary']], how='left', left_index=True, right_index=True).fillna('$0')
         self.positions['Int Salary'] = self.positions['Salary'].apply(self.load_roster_salaries)
-        self.positions.to_csv('C:\\Users\\adam.scharf\\Documents\\Personal\\FFB\\Test\\positions.csv')
+        #self.positions.to_csv('C:\\Users\\adam.scharf\\Documents\\Personal\\FFB\\Test\\positions.csv')
         for pos in self.pos_values:
             self.pos_values[pos] = self.pos_values[pos].merge(self.rosters[['Salary']], how='left', left_on='OttoneuID', right_index=True).fillna('$0')
             #set index to str because if you managed to get them all as ints, you will not match up on the back side
