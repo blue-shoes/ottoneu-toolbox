@@ -9,7 +9,6 @@ import os
 import os.path
 import pandas as pd
 import numpy as np
-from sklearn.metrics import jaccard_score
 import util.string_util
 import queue
 import logging
@@ -27,6 +26,8 @@ from enum import Enum
 bat_pos = ['C','1B','2B','3B','SS','MI','OF','Util']
 pitch_pos = ['SP','RP']
 
+__version__ = '0.8.0'
+
 class IdType(Enum):
     OTTONEU = 0
     FG = 1
@@ -42,7 +43,7 @@ class DraftTool:
         self.value_dir = tk.StringVar()
         self.value_dir.set(Path.home())
         #self.value_dir.set('C:\\Users\\adam.scharf\\Documents\\Personal\\FFB\\Staging')
-        self.setup_win.title("FBB Draft Tool v0.8") 
+        self.setup_win.title(f"Ottoneu Draft Tool v{__version__}") 
         self.extra_cost = 0
         self.lg_id = None
 
@@ -75,7 +76,7 @@ class DraftTool:
 
     def create_main(self):
         self.main_win = tk.Tk()
-        self.main_win.title("FBB Draft Tool v0.1")
+        self.main_win.title(f'Ottoneu Draft Tool v{__version__}')
         main_frame = ttk.Frame(self.main_win)
         ttk.Label(main_frame, text = f"League {self.lg_id} Draft", font='bold').grid(column=0,row=0)
 
@@ -411,6 +412,7 @@ class DraftTool:
             self.id_type = IdType.OTTONEU
         elif soto_id == '20123':
             self.id_type = IdType.FG
+            self.values = self.values.astype({'OttoneuID': 'str'})
         else:
             return False
         if 'price' in self.values.columns:
@@ -437,6 +439,7 @@ class DraftTool:
             pos_path = os.path.join(self.value_dir.get(), f'{pos}_values.csv')
             if os.path.exists(pos_path):
                 self.pos_values[pos] = pd.read_csv(pos_path, index_col=0)
+                self.pos_values[pos] = self.pos_values[pos].astype({'OttoneuID': 'str'})
                 #self.pos_values[pos].set_index('playerid', inplace=True)
                 #TODO data validation here
             else:
@@ -450,6 +453,7 @@ class DraftTool:
             pos_path = os.path.join(self.value_dir.get(), f'{pos}_values.csv')
             if os.path.exists(pos_path):
                 self.pos_values[pos] = pd.read_csv(pos_path, index_col=0)
+                self.pos_values[pos] = self.pos_values[pos].astype({'OttoneuID': 'str'})
                 #self.pos_values[pos].set_index('playerid', inplace=True)
                 #TODO data validation here
             else:

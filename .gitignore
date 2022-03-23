@@ -4,6 +4,9 @@ data_dirs/*
 intermediate/*
 output/*
 logs/*
+dist/logs*
+dist/otto_draft_tool/*
+build/*
 *.pyc
 */*.pyc
 __pycache__/*
