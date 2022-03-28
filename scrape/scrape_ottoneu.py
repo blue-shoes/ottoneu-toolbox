@@ -16,6 +16,9 @@ class Scrape_Ottoneu(scrape_base.Scrape_Base):
         super().__init__()
         #Initialize directory for output calc files if required
         self.dirname = os.path.abspath(os.path.join(os.path.dirname( __file__ ), '..'))
+        dir_path = os.path.join(self.dirname, 'data_dirs')
+        if not path.exists(dir_path):
+            os.mkdir(dir_path)
         self.subdirpath = os.path.join(self.dirname, 'data_dirs', 'output')
         if not path.exists(self.subdirpath):
             os.mkdir(self.subdirpath)
@@ -146,6 +149,7 @@ class Scrape_Ottoneu(scrape_base.Scrape_Base):
         parsed_rows = [self.parse_rec_trans_row(row) for row in rows]
         df = DataFrame(parsed_rows)
         df.columns = ['Ottoneu ID','Team ID','Date','Salary','Type']
+        df = df.astype({'Ottoneu ID': 'str'})
         return df
 
     def parse_rec_trans_row(self, row):
