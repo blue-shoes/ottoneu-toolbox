@@ -5,16 +5,7 @@
 			"path": "."
 		},
 		{
-			"name": "pybaseball",
-			"path": "..\\pybaseball\\pybaseball"
-		},
-		{
-			"name": "ltcwbb-workspace",
-			"path": "..\\..\\..\\Dropbox\\Fantasy_Sports\\python\\ltcwbb-workspace"
-		},
-		{
-			"name": "ltcwbb-files-main",
-			"path": "..\\..\\..\\Dropbox\\Fantasy_Sports\\python\\ltcwbb-files-main"
+			"path": "..\\otto-tools"
 		}
 	],
 	"settings": {
