@@ -22,7 +22,7 @@ class Scrape_Base(object):
 
     def close(self):
         if self.driver != None:
-            self.driver.close()
+            self.driver.quit()
 
     def getDataset(self, page, element_id, filepath):
         #Click the passed element id to download the csv file

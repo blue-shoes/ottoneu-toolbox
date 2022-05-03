@@ -239,7 +239,7 @@ class Scrape_Ottoneu(scrape_base.Scrape_Base):
         self.setupDriver()
         self.driver.get(url)
         html = self.driver.page_source
-        self.driver.close()
+        self.driver.quit()
         browse_soup = Soup(html, 'html.parser')
         table = browse_soup.find_all('table')[0]
         rows = table.find_all('tr')
