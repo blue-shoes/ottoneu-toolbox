@@ -57,7 +57,7 @@ class Scrape_Ottoneu(scrape_base.Scrape_Base):
         rows = salary_soup.find_all('player')
         parsed_rows = [self.parse_avg_salary_row(row) for row in rows]
         df = DataFrame(parsed_rows)
-        df.columns = ['Ottoneu ID','FG MajorLeagueID','FG MinorLeagueID','Avg Salary','Min Salary','Max Salary','Last 10','Roster %','Position(s)','Org']
+        df.columns = ['Ottoneu ID','Name','FG MajorLeagueID','FG MinorLeagueID','Avg Salary','Min Salary','Max Salary','Median Salary','Last 10','Roster %','Position(s)','Org']
         df.set_index('Ottoneu ID', inplace=True)
         df.index = df.index.astype(str, copy=False)
         return df
@@ -65,11 +65,13 @@ class Scrape_Ottoneu(scrape_base.Scrape_Base):
     def parse_avg_salary_row(self, row):
         parsed_row = []
         parsed_row.append(row.get('ottoneu_id'))
+        parsed_row.append(row.get('name'))
         parsed_row.append(str(row.get('fg_majorleague_id')))
         parsed_row.append(row.get('fg_minorleague_id'))
         parsed_row.append(row.find('avg_salary').text)
         parsed_row.append(row.find('min_salary').text)
         parsed_row.append(row.find('max_salary').text)
+        parsed_row.append(row.find('median_salary').text)
         parsed_row.append(row.find('last_10').text)
         parsed_row.append(row.find('rostered_pct').text)
         parsed_row.append(row.find('positions').text)
