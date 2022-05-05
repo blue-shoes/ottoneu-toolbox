@@ -18,7 +18,7 @@ def main():
 
     player_sql.to_sql('player',engine)
 
-    roster_sql = player_df[['Avg Salary','Median Salary','Min Salary','Max Salary','Last 10','Roster %']]
+    roster_sql = player_df[['Avg Salary','Median Salary','Min Salary','Max Salary','Last 10','Roster %']].reset_index()
     roster_sql['game_type'] = 0
 
     roster_sql.to_sql('salary_info', engine)
