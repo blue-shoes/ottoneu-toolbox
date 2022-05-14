@@ -21,7 +21,8 @@ class Player(Base):
 
     roster_spots = relationship("Roster_Spot", back_populates="player")
     salary_info = relationship("Salary_Info", back_populates="player")
-    values = relationship("Value", back_populates="player")
+    values = relationship("PlayerValue", back_populates="player")
+    projections = relationship("PlayerProjection", back_populates="player")
 
 class League(Base):
     __tablename__ = "league"
@@ -71,13 +72,75 @@ class Salary_Info(Base):
     last_10 = Column("Last 10",Float)
     roster_percentage = Column("Roster %",Float)
 
-class Value(Base):
+class PlayerValue(Base):
     __tablename__ = "point_value"
     index = Column(Integer, primary_key=True)
 
     ottoneu_id = Column(Integer, ForeignKey("player.Ottoneu ID"))
     player = relationship("Player", back_populates="values")
 
+    calculation_id = Column(Integer, ForeignKey="value_calculation.index")
+    calculation = relationship("ValueCalculation", back_populates="values")
+
     value = Column(Float)
+
+class ValueCalculation(Base):
+    __tablename__ = "value_calculation"
+    index = Column(Integer, primary_key=True)
+
+    projection_id = Column(Integer, ForeignKey("projection.index"))
+    projection = relationship("Projection", back_populates="values")
     game_type = Column(Integer)
+
+    values = relationship("PlayerValue", back_populates="player_values")
+    data = relationship("ValueData", back_populates="calculation")
+
+class ValueData(Base):
+    __tablename__ = "value_data"
+    index = Column(Integer, primary_key=True)
+
+    # This corresponds to the CalculationDataType
+    data_type = Column(Integer, nullable=False)
+
+    value = Column(Float, nullable=False)
+
+    calculation_id = Column(Integer, ForeignKey="value_calculation.index")
+    calculation = relationship("ValueCalculation", back_populates="data")
     
+class Projection(Base):
+    __tablename__ = "projection"
+    index = Column(Integer, primary_key=True)
+    
+    # This corresponds to the ProjectionType enum
+    type = Column(Integer)
+    # Timestamp must be converted to Text
+    timestamp = Column(String)
+    name = Column(String)
+    detail = Column(String)
+
+    ros = Column(Boolean)
+    dc_pt = Column(Boolean)
+    hide = Column(Boolean)
+    player_projections = relationship("PlayerProjection", back_populates="projection")
+
+class PlayerProjection(Base):
+    __tablename__ = "player_projection"
+    index = Column(Integer, primary_key=True)
+
+    ottoneu_id = Column(Integer, ForeignKey("player.Ottoneu ID"))
+    player = relationship("Player", back_populates="projections")
+
+    projection_id = Column(Integer, ForeignKey("projection.index"))
+    projection = relationship("Projection", back_populates="player_projections")
+
+    projection_data = relationship("ProjectionData", back_populates="player_projection")
+
+class ProjectionData(Base):
+    __tablename__ = "projection_data"
+    index = Column(Integer, primary_key=True)
+
+    player_projection_id = Column(Integer, ForeignKey("player_projection.index"))
+    player_projection = relationship("PlayerProjection", back_populates="projection_data")
+
+    stat_type = Column(Integer, nullable=False) 
+    stat_value = Column(Float)
