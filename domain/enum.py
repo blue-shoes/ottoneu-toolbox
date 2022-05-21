@@ -50,7 +50,6 @@ class CalculationInput(Enum):
     RP_IP_TO_RANK = 25
     COMBINE_TWO_WAY_PLAYERS = 26
     
-
 class StatType(Enum):
     G_HIT = 0
     GS_HIT = 1
@@ -72,7 +71,7 @@ class StatType(Enum):
     SLG = 17
     OPS = 18
     WOBA = 19
-    WRC_PLUS = 20
+    #WRC_PLUS = 20
     G_PIT = 21
     GS_PIT = 22
     IP = 23
@@ -92,3 +91,123 @@ class StatType(Enum):
     BB_PER_9 = 37
     ERA = 38
     FIP = 39
+
+    hit_to_enum_dict = {
+        'G' : G_HIT,
+        'GS' : GS_HIT,
+        'PA': PA,
+        'AB' : AB,
+        'H' : H,
+        '2B' : DOUBLE,
+        '3B' : TRIPLE, 
+        'HR' : HR,
+        'R' : R,
+        'RBI' : RBI,
+        'BB' : BB,
+        'SO'  : SO,
+        'HBP' : HBP,
+        'SB' : SB,
+        'CS' : CS,
+        'AVG' : AVG,
+        'OBP' : OBP,
+        'SLG' : SLG,
+        'OPS' : OPS,
+        'wOBA' : WOBA
+    }
+
+    pitch_to_enum_dict = {
+        'G': G_PIT,
+        'GS': GS_PIT,
+        'IP' : IP,
+        'W' : W,
+        'L' : L,
+        'QS' : QS,
+        'SV' : SV,
+        'HLD' : HLD,
+        'H' : H_ALLOWED,
+        'ER' : ER,
+        'HR' : HR_ALLOWED,
+        'K' : K,
+        'BB' : BB_ALLOWED,
+        'HBP' : HBP_ALLOWED,
+        'WHIP' : WHIP,
+        'K/9' : K_PER_9,
+        'BB/9' : BB_PER_9,
+        'ERA' : ERA,
+        'FIP' : FIP
+    }
+
+    enum_to_display_dict = {
+        G_HIT: 'G',
+        GS_HIT : 'GS',
+        PA : 'PA',
+        AB : 'AB',
+        H : 'H',
+        DOUBLE : '2B',
+        TRIPLE : '3B', 
+        HR : 'HR',
+        R : 'R',
+        RBI : 'RBI',
+        BB : 'BB',
+        SO : 'SO',
+        HBP : 'HBP',
+        SB : 'SB',
+        CS : 'CS',
+        AVG : 'AVG',
+        OBP : 'OBP',
+        SLG : 'SLG',
+        OPS : 'OPS',
+        WOBA : 'wOBA',
+        G_PIT : 'G',
+        GS_PIT : 'GS',
+        IP : 'IP',
+        W : 'W',
+        L : 'L',
+        QS : 'QS',
+        SV : 'SV',
+        HLD : 'HLD',
+        H_ALLOWED : 'H',
+        ER : 'ER',
+        HR_ALLOWED : 'HR',
+        K : 'K',
+        BB_ALLOWED : 'BB',
+        HBP_ALLOWED : 'HBP',
+        WHIP : 'WHIP',
+        K_PER_9 : 'K/9',
+        BB_PER_9 : 'BB/9',
+        ERA : 'ERA',
+        FIP : 'FIP'
+    }
+
+class ScoringFormat(Enum):
+    ALL = 0
+    CLASSIC_4X4 = 1
+    OLD_SCHOOL_5X5 = 2
+    FG_POINTS = 3
+    SABR_POINTS = 4
+    H2H_FG_POINTS = 5
+    H2H_SABR_POINTS = 6
+
+    name_to_enum_map = {'All' : ALL,
+                        'Ottoneu Classic (4x4)': CLASSIC_4X4, 
+                        'Old School (5x5)': OLD_SCHOOL_5X5,
+                        'FanGraphs Points': FG_POINTS,
+                        'SABR Points': SABR_POINTS,
+                        'H2H FanGraphs Points': H2H_FG_POINTS,
+                        'H2H SABR Points': H2H_FG_POINTS}
+    
+    enum_to_full_name_map = {ALL : "All",
+                            CLASSIC_4X4: 'Ottoneu Classic (4x4)',
+                            OLD_SCHOOL_5X5: 'Old School (5x5)',
+                            FG_POINTS: 'FanGraphs Points',
+                            SABR_POINTS: 'SABR Points',
+                            H2H_FG_POINTS: 'H2H FanGraphs Points',
+                            H2H_SABR_POINTS: 'H2H SABR Points'}
+
+    enum_to_short_name_map = {ALL : "All",
+                            CLASSIC_4X4: '4x4',
+                            OLD_SCHOOL_5X5: '5x5',
+                            FG_POINTS: 'FGP',
+                            SABR_POINTS: 'SABR',
+                            H2H_FG_POINTS: 'H2H FGP',
+                            H2H_SABR_POINTS: 'H2H SABR'}

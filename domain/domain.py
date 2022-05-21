@@ -19,18 +19,20 @@ class Player(Base):
     team = Column("Org",String(7))
     position = Column("Position(s)",String)
 
-    roster_spots = relationship("Roster_Spot", back_populates="player")
-    salary_info = relationship("Salary_Info", back_populates="player")
-    values = relationship("PlayerValue", back_populates="player")
-    projections = relationship("PlayerProjection", back_populates="player")
+    roster_spots = relationship("Roster_Spot", back_populates="player", cascade="all, delete")
+    salary_info = relationship("Salary_Info", back_populates="player", cascade="all, delete")
+    values = relationship("PlayerValue", back_populates="player", cascade="all, delete")
+    projections = relationship("PlayerProjection", back_populates="player", cascade="all, delete")
 
 class League(Base):
     __tablename__ = "league"
     index = Column(Integer, primary_key=True)
     name = Column(String)
+    # Corresponds to ScoringFormat enum
     format = Column(Integer)
+    num_teams = Column(Integer)
 
-    teams = relationship("Team", back_populates="league")
+    teams = relationship("Team", back_populates="league", cascade="all, delete")
 
 class Team(Base):
     __tablename__ = "team"
@@ -42,7 +44,7 @@ class Team(Base):
     name = Column(String)
     users_team = Column(Boolean)
     
-    roster_spots = relationship("Roster_Spot", back_populates="team")
+    roster_spots = relationship("Roster_Spot", back_populates="team", cascade="all, delete")
 
 class Roster_Spot(Base):
     __tablename__ = "roster_spot"
@@ -63,7 +65,8 @@ class Salary_Info(Base):
     ottoneu_id = Column("Ottoneu ID",Integer, ForeignKey("player.Ottoneu ID"))
     player = relationship("Player", back_populates="salary_info")
 
-    game_type = Column(Integer)
+    # Corresponds to ScoringFormat enum
+    format = Column(Integer)
     
     avg_salary = Column("Avg Salary",Float)
     med_salary = Column("Median Salary",Float)
@@ -90,10 +93,24 @@ class ValueCalculation(Base):
 
     projection_id = Column(Integer, ForeignKey("projection.index"))
     projection = relationship("Projection", back_populates="values")
-    game_type = Column(Integer)
+    # Corresponds to ScoringFormat enum
+    format = Column(Integer)
 
-    values = relationship("PlayerValue", back_populates="player_values")
-    data = relationship("ValueData", back_populates="calculation")
+    inputs = relationship("CalculationInput", back_populates="calculation", cascade="all, delete")
+    values = relationship("PlayerValue", back_populates="calculation", cascade="all, delete")
+    data = relationship("ValueData", back_populates="calculation", cascade="all, delete")
+
+class CalculationInput(Base):
+    __tablename__ = "calculation_input"
+    index = Column(Integer, primary_key=True)
+
+    # This corresponds to the CalculationInput enum
+    data_type = Column(Integer, nullable=False)
+
+    value = Column(Float, nullable=False)
+
+    calculation_id = Column(Integer, ForeignKey="value_calculation.index")
+    calculation = relationship("ValueCalculation", back_populates="inputs")
 
 class ValueData(Base):
     __tablename__ = "value_data"
@@ -121,7 +138,7 @@ class Projection(Base):
     ros = Column(Boolean)
     dc_pt = Column(Boolean)
     hide = Column(Boolean)
-    player_projections = relationship("PlayerProjection", back_populates="projection")
+    player_projections = relationship("PlayerProjection", back_populates="projection", cascade="all, delete")
 
 class PlayerProjection(Base):
     __tablename__ = "player_projection"
@@ -133,7 +150,7 @@ class PlayerProjection(Base):
     projection_id = Column(Integer, ForeignKey("projection.index"))
     projection = relationship("Projection", back_populates="player_projections")
 
-    projection_data = relationship("ProjectionData", back_populates="player_projection")
+    projection_data = relationship("ProjectionData", back_populates="player_projection", cascade="all, delete")
 
 class ProjectionData(Base):
     __tablename__ = "projection_data"
@@ -142,5 +159,6 @@ class ProjectionData(Base):
     player_projection_id = Column(Integer, ForeignKey("player_projection.index"))
     player_projection = relationship("PlayerProjection", back_populates="projection_data")
 
+    # Corresponds to StatType enum
     stat_type = Column(Integer, nullable=False) 
     stat_value = Column(Float)
