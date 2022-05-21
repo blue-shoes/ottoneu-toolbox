@@ -82,7 +82,7 @@ class PlayerValue(Base):
     ottoneu_id = Column(Integer, ForeignKey("player.Ottoneu ID"))
     player = relationship("Player", back_populates="values")
 
-    calculation_id = Column(Integer, ForeignKey="value_calculation.index")
+    calculation_id = Column(Integer, ForeignKey("value_calculation.index"))
     calculation = relationship("ValueCalculation", back_populates="values")
 
     value = Column(Float)
@@ -109,7 +109,7 @@ class CalculationInput(Base):
 
     value = Column(Float, nullable=False)
 
-    calculation_id = Column(Integer, ForeignKey="value_calculation.index")
+    calculation_id = Column(Integer, ForeignKey("value_calculation.index"))
     calculation = relationship("ValueCalculation", back_populates="inputs")
 
 class ValueData(Base):
@@ -121,7 +121,7 @@ class ValueData(Base):
 
     value = Column(Float, nullable=False)
 
-    calculation_id = Column(Integer, ForeignKey="value_calculation.index")
+    calculation_id = Column(Integer, ForeignKey("value_calculation.index"))
     calculation = relationship("ValueCalculation", back_populates="data")
     
 class Projection(Base):
