@@ -12,7 +12,8 @@ Base = declarative_base()
 
 class Player(Base):
     __tablename__ = "player"
-    ottoneu_id = Column('Ottoneu ID', Integer, primary_key=True)
+    index = Column(Integer, primary_key=True)
+    ottoneu_id = Column('Ottoneu ID', Integer)
     fg_major_id = Column('FG MajorLeagueID', String)
     fg_minor_id = Column('FG MinorLeagueID', String)
     name = Column("Name",String)
@@ -53,7 +54,7 @@ class Roster_Spot(Base):
     team_id = Column(Integer, ForeignKey("team.index"))
     team = relationship("Team", back_populates="roster_spots")
 
-    ottoneu_id = Column(Integer, ForeignKey("player.Ottoneu ID"))
+    ottoneu_id = Column(Integer, ForeignKey("player.index"))
     player = relationship("Player", back_populates="roster_spots")
 
     salary = Column(Integer)
@@ -62,7 +63,7 @@ class Salary_Info(Base):
     __tablename__ = "salary_info"
     index = Column(Integer, primary_key=True)
 
-    ottoneu_id = Column("Ottoneu ID",Integer, ForeignKey("player.Ottoneu ID"))
+    ottoneu_id = Column("Ottoneu ID",Integer, ForeignKey("player.index"))
     player = relationship("Player", back_populates="salary_info")
 
     # Corresponds to ScoringFormat enum
@@ -79,7 +80,7 @@ class PlayerValue(Base):
     __tablename__ = "point_value"
     index = Column(Integer, primary_key=True)
 
-    ottoneu_id = Column(Integer, ForeignKey("player.Ottoneu ID"))
+    ottoneu_id = Column(Integer, ForeignKey("player.index"))
     player = relationship("Player", back_populates="values")
 
     calculation_id = Column(Integer, ForeignKey("value_calculation.index"))
@@ -145,7 +146,7 @@ class PlayerProjection(Base):
     __tablename__ = "player_projection"
     index = Column(Integer, primary_key=True)
 
-    ottoneu_id = Column(Integer, ForeignKey("player.Ottoneu ID"))
+    ottoneu_id = Column(Integer, ForeignKey("player.index"))
     player = relationship("Player", back_populates="projections")
 
     projection_id = Column(Integer, ForeignKey("projection.index"))
