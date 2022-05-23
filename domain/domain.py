@@ -1,12 +1,7 @@
-from sqlalchemy import Column, PrimaryKeyConstraint
-from sqlalchemy import ForeignKey
-from sqlalchemy import Integer
-from sqlalchemy import String
-from sqlalchemy import Boolean
-from sqlalchemy import Float
+from sqlalchemy import Column, ForeignKey
+from sqlalchemy import Integer, String, Boolean, Float
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
-from tables import StringCol
 
 Base = declarative_base()
 
@@ -24,6 +19,12 @@ class Player(Base):
     salary_info = relationship("Salary_Info", back_populates="player", cascade="all, delete")
     values = relationship("PlayerValue", back_populates="player", cascade="all, delete")
     projections = relationship("PlayerProjection", back_populates="player", cascade="all, delete")
+
+    def get_fg_id(self):
+        if self.fg_major_id != None:
+            return self.fg_major_id
+        else:
+            return self.fg_minor_id
 
 class League(Base):
     __tablename__ = "league"
