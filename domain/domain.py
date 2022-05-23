@@ -92,7 +92,7 @@ class ValueCalculation(Base):
     index = Column(Integer, primary_key=True)
 
     projection_id = Column(Integer, ForeignKey("projection.index"))
-    projection = relationship("Projection", back_populates="values")
+    projection = relationship("Projection", back_populates="calculations")
     # Corresponds to ScoringFormat enum
     format = Column(Integer)
 
@@ -139,6 +139,7 @@ class Projection(Base):
     dc_pt = Column(Boolean)
     hide = Column(Boolean)
     player_projections = relationship("PlayerProjection", back_populates="projection", cascade="all, delete")
+    calculations = relationship("ValueCalculation", back_populates="projection", cascade="all, delete")
 
 class PlayerProjection(Base):
     __tablename__ = "player_projection"
