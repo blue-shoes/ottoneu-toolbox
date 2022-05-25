@@ -11,10 +11,14 @@ class PlayerDAO():
         with Session() as session:
 
             for idx, u_player in salary_df.iterrows():
-                if session.query(Player).filter(Player.ottoneu_id == idx).first() is None:
+                player = session.query(Player).filter(Player.ottoneu_id == idx).first()
+                if player is None:
                     #Player does not exist in universe, need to add
                     player = self.create_player(idx, u_player)
                     session.add(player)
+                else:
+                    #Update player in case attributes have changed
+                    self.update_player(player, u_player)
 
             current_players = session.query(Player).join(Salary_Info).all()
             for c_player in current_players:
@@ -31,10 +35,13 @@ class PlayerDAO():
                 else:
                     u_player = salary_df.loc(c_player.ottoneu_id)
                     self.update_salary(si, u_player)
-                    c_player.team = u_player['Org']
-                    c_player.position = u_player['Position(s)']
+                    
             session.commit()
-                
+
+    def update_player(self, player, u_player):
+        player.fg_major_id = u_player['FG MajorLeagueID']
+        player.team = u_player['Org']
+        player.position = u_player['Position(s)']
 
     def get_format_salary_info(self, player, format):
         for si in player.salary_info:
@@ -44,24 +51,33 @@ class PlayerDAO():
         player.salary_info.append(si)
         return si
 
-
     def create_player_universe(self):
         player_df = Scrape_Ottoneu().get_avg_salary_ds()
         with Session() as session:
             for idx, row in player_df.iterrows():
-                player = self.create_player(idx, row)
+                player = self.create_player(row, ottoneu_id=idx)
                 self.create_salary(row, 0, player)
                 session.add(player)
             session.commit()
     
-    def create_player(self, idx, player_row):
+    def create_player(self, player_row, ottoneu_id=None, fg_id=None):
         player = Player()
-        player.ottoneu_id = int(idx)
-        player.fg_major_id = player_row['FG MajorLeagueID']
-        player.fg_minor_id = player_row['FG MinorLeagueID']
-        player.name = player_row['Name']
-        player.team = player_row['Org']
-        player.position = player_row['Position(s)']
+        if ottoneu_id != None:
+            player.ottoneu_id = int(ottoneu_id)
+            player.fg_major_id = player_row['FG MajorLeagueID']
+            player.fg_minor_id = player_row['FG MinorLeagueID']
+            player.name = player_row['Name']
+            player.team = player_row['Org']
+            player.position = player_row['Position(s)']
+        else:
+            # This must have come from a FG leaderboard
+            if fg_id.isnumber():
+                player.fg_major_id = int(fg_id)
+            else:
+                player.fg_minor_id = fg_id
+            player.name = player_row['Name']
+            player.team = player_row['Team']
+            player.position = 'Util'
         player.salary_info = []
         return player
     
