@@ -1,4 +1,4 @@
-from sqlalchemy import Column, ForeignKey
+from sqlalchemy import Column, ForeignKey, Index
 from sqlalchemy import Integer, String, Boolean, Float
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
@@ -8,7 +8,7 @@ Base = declarative_base()
 class Player(Base):
     __tablename__ = "player"
     index = Column(Integer, primary_key=True)
-    ottoneu_id = Column('Ottoneu ID', Integer)
+    ottoneu_id = Column('Ottoneu ID', Integer, index=True)
     fg_major_id = Column('FG MajorLeagueID', String)
     fg_minor_id = Column('FG MinorLeagueID', String)
     name = Column("Name",String)
@@ -19,6 +19,8 @@ class Player(Base):
     salary_info = relationship("Salary_Info", back_populates="player", cascade="all, delete")
     values = relationship("PlayerValue", back_populates="player", cascade="all, delete")
     projections = relationship("PlayerProjection", back_populates="player", cascade="all, delete")
+
+    __table_args__ = (Index('idx_fg_id','FG MajorLeagueID','FG MinorLeagueID'))
 
     def get_fg_id(self):
         if self.fg_major_id != None:
