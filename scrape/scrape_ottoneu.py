@@ -7,10 +7,19 @@ from os import path
 from io import StringIO
 import hashlib
 import datetime
+from decimal import Decimal
+from re import sub
 
 from scrape import scrape_base
 
 class Scrape_Ottoneu(scrape_base.Scrape_Base):
+
+    def get_soup(self, url, xml=False):
+        response = requests.get(url)
+        if xml:
+            return Soup(response.text, 'xml')
+        else:
+            return Soup(response.text, 'html.parser')
 
     def __init__(self):
         super().__init__()
@@ -25,8 +34,9 @@ class Scrape_Ottoneu(scrape_base.Scrape_Base):
 
     def getPlayerPositionsDfSoup(self):
         avg_values_url = 'https://ottoneu.fangraphs.com/averageValues'
-        response = requests.get(avg_values_url)
-        avg_val_soup = Soup(response.text, 'html.parser')
+        #response = requests.get(avg_values_url)
+        #avg_val_soup = Soup(response.text, 'html.parser')
+        avg_val_soup = self.get_soup(avg_values_url)
         table = avg_val_soup.find_all('table')[0]
         rows = table.find_all('tr')
         parsed_rows = [self.parse_row(row) for row in rows[1:]]
@@ -52,8 +62,9 @@ class Scrape_Ottoneu(scrape_base.Scrape_Base):
             avg_salary_url = 'https://ottoneu.fangraphs.com/averageValues?export=xml'
         else:
             avg_salary_url = f'https://ottoneu.fangraphs.com/averageValues?export=xml&gameType={game_type}'
-        response = requests.get(avg_salary_url)
-        salary_soup = Soup(response.text, 'xml')
+        #response = requests.get(avg_salary_url)
+        #salary_soup = Soup(response.text, 'xml')
+        salary_soup = self.get_soup(avg_salary_url, True)
         rows = salary_soup.find_all('player')
         parsed_rows = [self.parse_avg_salary_row(row) for row in rows]
         df = DataFrame(parsed_rows)
@@ -106,8 +117,9 @@ class Scrape_Ottoneu(scrape_base.Scrape_Base):
 
     def scrape_roster_export(self, lg_id):
         roster_export_url = f'https://ottoneu.fangraphs.com/{lg_id}/rosterexport'
-        response = requests.get(roster_export_url)
-        rost_soup = Soup(response.text, 'html.parser')
+        #response = requests.get(roster_export_url)
+        #rost_soup = Soup(response.text, 'html.parser')
+        rost_soup = self.get_soup(roster_export_url)
         df = pd.read_csv(StringIO(rost_soup.contents[0]))
         df.set_index("ottoneu ID", inplace=True)
         df.index = df.index.astype(str, copy = False)
@@ -133,8 +145,9 @@ class Scrape_Ottoneu(scrape_base.Scrape_Base):
 
     def scrape_transaction_page(self, lg_id):
         transactions_url = f'https://ottoneu.fangraphs.com/{lg_id}/transactions'
-        response = requests.get(transactions_url)
-        trans_soup = Soup(response.text, 'html.parser')
+        #response = requests.get(transactions_url)
+        #trans_soup = Soup(response.text, 'html.parser')
+        trans_soup = self.get_soup(transactions_url)
         table = trans_soup.find_all('table')[0]
         rows = table.find_all('tr')
         parsed_rows = [self.parse_trans_row(row) for row in rows[1:]]
@@ -145,8 +158,9 @@ class Scrape_Ottoneu(scrape_base.Scrape_Base):
 
     def scrape_recent_trans_api(self, lg_id):
         rec_trans_url = f'https://ottoneu.fangraphs.com/api/recent_transactions?leagueID={lg_id}'
-        response = requests.get(rec_trans_url)
-        trans_soup = Soup(response.text, 'xml')
+        #response = requests.get(rec_trans_url)
+        #trans_soup = Soup(response.text, 'xml')
+        trans_soup = self.get_soup(rec_trans_url, True)
         rows = trans_soup.find_all('transaction')
         parsed_rows = [self.parse_rec_trans_row(row) for row in rows]
         df = DataFrame(parsed_rows)
@@ -168,8 +182,9 @@ class Scrape_Ottoneu(scrape_base.Scrape_Base):
     def scrape_team_production_page(self, lg_id, team_id):
         dfs = []
         prod_url = f'https://ottoneu.fangraphs.com/{lg_id}/teamproduction?teamID={team_id}'
-        response = requests.get(prod_url)
-        prod_soup = Soup(response.text, 'html.parser')
+        #response = requests.get(prod_url)
+        #prod_soup = Soup(response.text, 'html.parser')
+        prod_soup = self.get_soup(prod_url)
         sections = prod_soup.find_all('section')
         pos_df = self.parse_prod_table(sections[0])
         if pos_df.empty:
@@ -192,8 +207,9 @@ class Scrape_Ottoneu(scrape_base.Scrape_Base):
     
     def scrape_league_production_pages(self, lg_id):
         prod_url = f'https://ottoneu.fangraphs.com/{lg_id}/teamproduction'
-        response = requests.get(prod_url)
-        prod_soup = Soup(response.text, 'html.parser')
+        #response = requests.get(prod_url)
+        #prod_soup = Soup(response.text, 'html.parser')
+        prod_soup = self.get_soup(prod_url)
         select = prod_soup.find_all('select')[0]
         team_opts = select.find_all('option')
         league_bat = []
@@ -278,10 +294,52 @@ class Scrape_Ottoneu(scrape_base.Scrape_Base):
                             bat_dict[lg_id].to_excel(writer, sheet_name=f'{lg_id}_bat')
                             arm_dict[lg_id].to_excel(writer, sheet_name=f'{lg_id}_arm')
 
+    def scrape_league_info_page(self, lg_id):
+        lg_data = {}
+        lg_data['ID'] = lg_id
+        url = f'https://ottoneu.fangraphs.com/{lg_id}/settings'
+        info_soup = self.get_soup(url)
+        body = info_soup.find_all('body')[0]
+        lg_data['Name'] = body.find_all('h1')[1].string
+        tbody = info_soup.find_all('tbody')[0]
+        lg_data['Num Teams'] = tbody.find_all('tr')[3].find_all('td')[1].string
+        lg_data['Format'] = tbody.find_all('tr')[6].find_all('td')[1].find('a').string
+        return lg_data
+    
+    def scrape_finances_page(self, lg_id):
+        url = f'https://ottoneu.fangraphs.com/{lg_id}/tools'
+        fin_soup = self.get_soup(url)
+        fin_tbl_rows = fin_soup.find(id='finances').find_all('tbody')[0].find_all('tr')
+        depth_tbl_rows = fin_soup.find_all('table')[1].find_all('tbody')[0].find_all('tr')
+        team_rows = [self.parse_finance_rows(row, depth_tbl_rows) for row in fin_tbl_rows[:]]
+        fin_df = DataFrame(team_rows)
+        fin_df.columns = ['ID', 'Name','Players','Spots','Base Salaries','Cap Penalties','Loans In','Loans Out','Cap Space','C Depth','1B Depth','2B Depth','SS Depth', '3B Depth', 'OF Depth','Util Depth','SP Depth','RP Depth']
+        fin_df.set_index("ID", inplace=True)
+        fin_df.index = fin_df.index.astype(int, copy = False)
+        return fin_df
+
+    def parse_finance_rows(self, fin_row, depth_tbl_rows):
+        tds = fin_row.find_all('td')
+        parsed_row = []
+        id = tds[0].find('a').get('href').split('=')[1]
+        parsed_row.append(id)
+        parsed_row.append(tds[0].find('a').string)
+        parsed_row.append(tds[1].string)
+        parsed_row.append(tds[2].string)
+        for idx in range(3,8):
+            parsed_row.append(Decimal(sub(r'[^\d.]', '', tds[idx].string)))
+        for row in depth_tbl_rows:
+            depth_id = row.find('a').get('href').split('=')[1]
+            if id == depth_id:
+                depth_tds = row.find_all('td')
+                for td in depth_tds[1:]:
+                    parsed_row.append(td.string)
+        return parsed_row
+
 def main():
     scraper = Scrape_Ottoneu()
-    avg = scraper.get_avg_salary_ds(True)
-    print(avg.index.dtype)
+    #avg = scraper.get_avg_salary_ds(True)
+    print(scraper.scrape_finances_page(160))
     #scraper.get_universe_production_tables()
     #rost = scraper.scrape_roster_export(160)
     #print(rost.head(50))
