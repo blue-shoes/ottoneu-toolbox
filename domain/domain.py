@@ -20,7 +20,7 @@ class Player(Base):
     values = relationship("PlayerValue", back_populates="player", cascade="all, delete")
     projections = relationship("PlayerProjection", back_populates="player", cascade="all, delete")
 
-    __table_args__ = (Index('idx_fg_id','FG MajorLeagueID','FG MinorLeagueID'))
+    __table_args__ = (Index('idx_fg_id','FG MajorLeagueID','FG MinorLeagueID'),)
 
     def get_fg_id(self):
         if self.fg_major_id != None:
