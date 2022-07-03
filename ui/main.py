@@ -5,50 +5,57 @@ from scrape import scrape_ottoneu
 from domain.domain import Base, Player, Salary_Info
 from dao.session import Session
 from services import player_services
+import logging
+import tkinter as tk     
+from tkinter import *              
+from tkinter import ttk 
+from tkinter import filedialog as fd
+from tkinter import messagebox as mb
+from tkinter.messagebox import showinfo
+from ui import draft_tool
+
+__version__ = '0.9.0'
+
+class OttoneuToolBox():
+    def __init__(self):  
+        self.setup_logging()
+        logging.info('Starting session')
+        self.main_win = tk.Tk() 
+        self.main_win.title(f"Ottoneu Tool Box v{__version__}") 
+        main_frame = ttk.Frame(self.main_win)
+        main_lbl = ttk.Label(main_frame, text = "Select a module", font='bold')
+        main_lbl.grid(column=0,row=0, pady=5, columnspan=2)
+
+        values_btn = ttk.Button(main_frame, text='Create Player Values', command=self.create_player_values_click).grid(column=0,row=1)
+        draft_btn = ttk.Button(main_frame, text='Run Draft Tracker', command=self.run_draft_tracker).grid(column=1,row=1)
+
+        main_frame.pack()
+
+        logging.debug('Starting main window')
+        self.main_win.mainloop()   
+
+    def create_player_values_click(self):
+        # Move to Create Player Values Module
+        a = 1
+
+    def run_draft_tracker(self):
+        draft_tool.main()
+
+    def setup_logging(self, config=None):
+        if config != None and 'log_level' in config:
+            level = logging.getLevelName(config['log_level'].upper())
+        else:
+            level = logging.INFO
+        if not os.path.exists('.\\logs'):
+            os.mkdir('.\\logs')
+        logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s %(message)s', level=level, filename='.\\logs\\toolbox.log')
 
 def main():
-    #dirname = os.path.abspath(os.path.join(os.path.dirname( __file__ ), '..'))
-    #db_dir = os.path.join(dirname, 'db')
-    #if not os.path.exists(db_dir):
-    #    os.mkdir(db_dir)
-    #db_loc = os.path.join(dirname, 'db', 'otto_toolbox.db')
-    #engine = create_engine(f"sqlite:///{db_loc}", echo=True)
-    #conn = connection.Connection(db_loc)
-    #Base.metadata.create_all(engine)
-
-    #player_df = scrape_ottoneu.Scrape_Ottoneu().get_avg_salary_ds()
-
-    #player_sql = player_df[['FG MajorLeagueID','FG MinorLeagueID','Name','Org','Position(s)']]
-
-    #player_sql.to_sql('player',engine)
-
-    #roster_sql = player_df[['Avg Salary','Median Salary','Min Salary','Max Salary','Last 10','Roster %']].reset_index()
-    #roster_sql['game_type'] = 0
-    #roster_sql['Avg Salary'] = roster_sql['Avg Salary'].apply(lambda x : Decimal(sub(r'[^\d.]', '', x)))
-    #roster_sql['Median Salary'] = roster_sql['Median Salary'].apply(lambda x : Decimal(sub(r'[^\d.]', '', x)))
-    #roster_sql['Min Salary'] = roster_sql['Min Salary'].apply(lambda x : Decimal(sub(r'[^\d.]', '', x)))
-    #roster_sql['Max Salary'] = roster_sql['Max Salary'].apply(lambda x : Decimal(sub(r'[^\d.]', '', x)))
-    #roster_sql['Last 10'] = roster_sql['Last 10'].apply(lambda x : Decimal(sub(r'[^\d.]', '', x)))
-
-    #roster_sql.to_sql('salary_info', engine)
-
-    #print("Made it")
-
-    #create_player_universe(player_df, session)
-    #session.commit()
-
-    player_services.create_player_universe()
-
-
-    test_retrieve = Session().query(Player).join(Salary_Info).filter(Salary_Info.avg_salary > 20.0).all()
-    #test_retrieve = select(Player).join(Player.salary_info).where(Salary_Info.avg_salary > 20.0)
-
-    #players = session.scalars(test_retrieve)
-
-    for player in test_retrieve:
-        print(f"Name: {player.name}, avg_salary: {player.salary_info[0].avg_salary}")
-
-
+    try:
+        program = OttoneuToolBox()
+    except Exception as e:
+        logging.exception("Error encountered")
+        mb.showerror("Error", f'Fatal program error. See ./logs/toolbox.log')
 
 if __name__ == '__main__':
     main()
