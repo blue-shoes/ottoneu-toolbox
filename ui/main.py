@@ -1,11 +1,10 @@
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
 import os
-from sql import connection
 from scrape import scrape_ottoneu
 from domain.domain import Base, Player, Salary_Info
-from dao.dao import PlayerDAO
 from dao.session import Session
+from services import player_services
 
 def main():
     #dirname = os.path.abspath(os.path.join(os.path.dirname( __file__ ), '..'))
@@ -38,7 +37,7 @@ def main():
     #create_player_universe(player_df, session)
     #session.commit()
 
-    PlayerDAO().create_player_universe()
+    player_services.create_player_universe()
 
 
     test_retrieve = Session().query(Player).join(Salary_Info).filter(Salary_Info.avg_salary > 20.0).all()
