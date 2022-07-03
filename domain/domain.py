@@ -167,3 +167,9 @@ class ProjectionData(Base):
     # Corresponds to StatType enum
     stat_type = Column(Integer, nullable=False) 
     stat_value = Column(Float)
+
+class Salary_Refresh(Base):
+    # Class to track how recently the Ottoverse average values have been refrehsed
+    __tablename__ = "salary_refresh"
+    format = Column(Integer, primary_key=True)
+    last_refresh = Column(Date)
