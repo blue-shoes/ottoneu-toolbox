@@ -1,5 +1,5 @@
 from sqlalchemy import Column, ForeignKey, Index
-from sqlalchemy import Integer, String, Boolean, Float
+from sqlalchemy import Integer, String, Boolean, Float, Date
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 
@@ -35,6 +35,7 @@ class League(Base):
     # Corresponds to ScoringFormat enum
     format = Column(Integer)
     num_teams = Column(Integer)
+    last_refresh = Column(Date)
 
     teams = relationship("Team", back_populates="league", cascade="all, delete")
 
@@ -134,8 +135,7 @@ class Projection(Base):
     
     # This corresponds to the ProjectionType enum
     type = Column(Integer)
-    # Timestamp must be converted to Text
-    timestamp = Column(String)
+    timestamp = Column(Date)
     name = Column(String)
     detail = Column(String)
 
