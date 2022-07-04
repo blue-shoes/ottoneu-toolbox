@@ -20,6 +20,10 @@ class OttoneuToolBox():
     def __init__(self):  
         self.setup_logging()
         logging.info('Starting session')
+
+        self.create_main_win()
+
+    def create_main_win(self):
         self.main_win = tk.Tk() 
         self.main_win.title(f"Ottoneu Tool Box v{__version__}") 
         main_frame = ttk.Frame(self.main_win)
@@ -28,18 +32,33 @@ class OttoneuToolBox():
 
         values_btn = ttk.Button(main_frame, text='Create Player Values', command=self.create_player_values_click).grid(column=0,row=1)
         draft_btn = ttk.Button(main_frame, text='Run Draft Tracker', command=self.run_draft_tracker).grid(column=1,row=1)
+        league_btn = ttk.Button(main_frame, text='League Analysis', command=self.open_league_analysis).grid(column=0,row=2)
+        exit_btn = ttk.Button(main_frame, text='Exit', command=self.exit).grid(column=1,row=2)
 
         main_frame.pack()
 
         logging.debug('Starting main window')
-        self.main_win.mainloop()   
+        self.main_win.mainloop()
 
     def create_player_values_click(self):
-        # Move to Create Player Values Module
+        # TODO: Move to Create Player Values Module
+        self.main_win.destroy()
         a = 1
+        self.create_main_win()
 
     def run_draft_tracker(self):
+        self.main_win.destroy()
         draft_tool.main()
+        self.create_main_win()
+
+    def open_league_analysis(self):
+        # TODO: Move to league analysis
+        self.main_win.destroy()
+        a = 1
+        self.create_main_win()
+    
+    def exit(self):
+        self.main_win.destroy()
 
     def setup_logging(self, config=None):
         if config != None and 'log_level' in config:
