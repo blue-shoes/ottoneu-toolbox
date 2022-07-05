@@ -1,6 +1,4 @@
-from cmath import pi
 import pandas as pd
-import numpy as np
 from scrape import scrape_fg
 import os
 from os import path

@@ -1,10 +1,6 @@
-from cmath import pi
 import pandas as pd
-import numpy as np
-from scrape import scrape_fg as scrape
 import os
 from os import path
-from scrape.scrape_ottoneu import Scrape_Ottoneu
 
 pd.options.mode.chained_assignment = None # from https://stackoverflow.com/a/20627316
 
