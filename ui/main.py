@@ -12,25 +12,18 @@ from tkinter import ttk
 from tkinter import filedialog as fd
 from tkinter import messagebox as mb
 from tkinter.messagebox import showinfo
-from ui import draft_tool
-from ui.dialog import preferences
+from ui import draft_tool, values
+from ui.base import BaseUi
 
-__version__ = '0.9.0'
-
-class OttoneuToolBox():
-    def __init__(self):  
-        self.preferences = {}
+class OttoneuToolBox(BaseUi):
+    def __init__(self):
+        super().__init__(preferences={})  
         self.setup_logging()
         logging.info('Starting session')
 
         self.create_main_win()
 
     def create_main_win(self):
-        self.main_win = tk.Tk() 
-        self.main_win.title(f"Ottoneu Tool Box v{__version__}") 
-
-        self.create_menu()
-
         main_frame = ttk.Frame(self.main_win)
         main_lbl = ttk.Label(main_frame, text = "Select a module", font='bold')
         main_lbl.grid(column=0,row=0, pady=5, columnspan=2)
@@ -48,33 +41,22 @@ class OttoneuToolBox():
     def create_player_values_click(self):
         # TODO: Move to Create Player Values Module
         self.main_win.destroy()
-        a = 1
-        self.create_main_win()
+        values.main(self.preferences)
+        #self.create_main_win()
 
     def run_draft_tracker(self):
         self.main_win.destroy()
         draft_tool.main()
-        self.create_main_win()
+        #self.create_main_win()
 
     def open_league_analysis(self):
         # TODO: Move to league analysis
         self.main_win.destroy()
         a = 1
-        self.create_main_win()
+        #self.create_main_win()
     
     def exit(self):
         self.main_win.destroy()
-    
-    def create_menu(self):
-        self.menubar = mb = tk.Menu(self.main_win)
-        self.main_menu = mm = tk.Menu(mb, tearoff=0)
-        mm.add_command(label="Preferences", command=self.open_preferences)
-
-        mb.add_cascade(label="Menu", menu=mm)
-        self.main_win.config(menu=mb)
-    
-    def open_preferences(self):
-        preferences.Dialog(self.preferences)
 
     def setup_logging(self, config=None):
         if config != None and 'log_level' in config:
