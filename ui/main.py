@@ -13,11 +13,13 @@ from tkinter import filedialog as fd
 from tkinter import messagebox as mb
 from tkinter.messagebox import showinfo
 from ui import draft_tool
+from ui.dialog import preferences
 
 __version__ = '0.9.0'
 
 class OttoneuToolBox():
     def __init__(self):  
+        self.preferences = {}
         self.setup_logging()
         logging.info('Starting session')
 
@@ -26,14 +28,17 @@ class OttoneuToolBox():
     def create_main_win(self):
         self.main_win = tk.Tk() 
         self.main_win.title(f"Ottoneu Tool Box v{__version__}") 
+
+        self.create_menu()
+
         main_frame = ttk.Frame(self.main_win)
         main_lbl = ttk.Label(main_frame, text = "Select a module", font='bold')
         main_lbl.grid(column=0,row=0, pady=5, columnspan=2)
 
-        values_btn = ttk.Button(main_frame, text='Create Player Values', command=self.create_player_values_click).grid(column=0,row=1)
-        draft_btn = ttk.Button(main_frame, text='Run Draft Tracker', command=self.run_draft_tracker).grid(column=1,row=1)
-        league_btn = ttk.Button(main_frame, text='League Analysis', command=self.open_league_analysis).grid(column=0,row=2)
-        exit_btn = ttk.Button(main_frame, text='Exit', command=self.exit).grid(column=1,row=2)
+        ttk.Button(main_frame, text='Create Player Values', command=self.create_player_values_click).grid(column=0,row=1)
+        ttk.Button(main_frame, text='Run Draft Tracker', command=self.run_draft_tracker).grid(column=1,row=1)
+        ttk.Button(main_frame, text='League Analysis', command=self.open_league_analysis).grid(column=0,row=2)
+        ttk.Button(main_frame, text='Exit', command=self.exit).grid(column=1,row=2)
 
         main_frame.pack()
 
@@ -59,6 +64,17 @@ class OttoneuToolBox():
     
     def exit(self):
         self.main_win.destroy()
+    
+    def create_menu(self):
+        self.menubar = mb = tk.Menu(self.main_win)
+        self.main_menu = mm = tk.Menu(mb, tearoff=0)
+        mm.add_command(label="Preferences", command=self.open_preferences)
+
+        mb.add_cascade(label="Menu", menu=mm)
+        self.main_win.config(menu=mb)
+    
+    def open_preferences(self):
+        preferences.Dialog(self.preferences)
 
     def setup_logging(self, config=None):
         if config != None and 'log_level' in config:
