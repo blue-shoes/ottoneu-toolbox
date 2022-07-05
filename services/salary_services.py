@@ -1,12 +1,14 @@
 from dao.session import Session
 from scrape.scrape_ottoneu import Scrape_Ottoneu
-from domain.domain import Player, Salary_Info
+from domain.domain import Player, Salary_Info, Salary_Refresh
 from decimal import Decimal
 from re import sub
 from services import player_services
+from datetime import datetime
 
 def update_salary_info(format):
         salary_df = Scrape_Ottoneu.get_avg_salary_ds(game_type = format)
+        refresh = Salary_Refresh(format=format,last_refresh=datetime.now())
         with Session() as session:
 
             for idx, u_player in salary_df.iterrows():
@@ -34,8 +36,9 @@ def update_salary_info(format):
                 else:
                     u_player = salary_df.loc(c_player.ottoneu_id)
                     update_salary(si, u_player)
-                    
+            session.add(refresh)
             session.commit()
+
 def get_format_salary_info(player, format):
     for si in player.salary_info:
         if si.format == format:

@@ -1,15 +1,18 @@
-from domain.domain import Player
+from datetime import datetime
+from domain.domain import Player, Salary_Refresh
 from scrape.scrape_ottoneu import Scrape_Ottoneu
 from dao.session import Session
 from services import salary_services
 
 def create_player_universe():
     player_df = Scrape_Ottoneu().get_avg_salary_ds()
+    refresh = Salary_Refresh(format=0,last_refresh=datetime.now())
     with Session() as session:
         for idx, row in player_df.iterrows():
             player = create_player(row, ottoneu_id=idx)
             salary_services.create_salary(row, 0, player)
             session.add(player)
+        session.add(refresh)
         session.commit()
 
 def update_player(player, u_player):
