@@ -9,6 +9,16 @@ class ProjectionType(Enum):
     THE_BATX = 5
     CUSTOM = 6
 
+    enum_to_name_dict = {
+        STEAMER : "Steamer",
+        ZIPS : "ZiPS",
+        DEPTH_CHARTS : "FG Depth Charts",
+        ATC : "ATC",
+        THE_BAT : "THE BAT",
+        THE_BATX : "THE BATX",
+        CUSTOM : "Custom"
+    }
+
 class CalculationDataType(Enum):
     DOLLARS_PER_FOM = 0
     REP_LEVEL_C = 1
