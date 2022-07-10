@@ -5,6 +5,8 @@ from os import path
 import value.bat_points
 import value.arm_points
 
+from services import projection_services
+
 from scrape import scrape_ottoneu
 
 pd.options.mode.chained_assignment = None # from https://stackoverflow.com/a/20627316
@@ -80,44 +82,7 @@ class PointValues():
         return proj
 
     def calculate_values(self, rank_pos):
-        if self.ros:
-            self.force = True
-            if self.projection == 'steamer':
-                #steamer has a different convention for reasons
-                self.projection = 'steamerr'
-            else:
-                self.projection = 'r' + self.projection
-        try:
-            fg_scraper = scrape_fg.Scrape_Fg()
-            pos_proj = fg_scraper.getProjectionDataset(f"https://www.fangraphs.com/projections.aspx?pos=all&stats=bat&type={self.projection}&team=0&lg=all&players=0", f'{self.projection}_pos.csv', self.force)
-            #THE BAT X does not have pitcher projections, so revert them to simply THE BAT
-            if self.projection == 'thebatx':
-                pitch_proj = fg_scraper.getProjectionDataset(f"https://www.fangraphs.com/projections.aspx?pos=all&stats=pit&type=thebat&team=0&lg=all&players=0", f'thebat_pitch.csv', self.force)     
-            elif self.projection == 'thebatxr':
-                fg_scraper.getProjectionDataset(f"https://www.fangraphs.com/projections.aspx?pos=all&stats=pit&type=thebatr&team=0&lg=all&players=0", f'thebatr_pitch.csv', self.force)
-            else:
-                pitch_proj = fg_scraper.getProjectionDataset(f"https://www.fangraphs.com/projections.aspx?pos=all&stats=pit&type={self.projection}&team=0&lg=all&players=0", f'{self.projection}_pitch.csv', self.force)
-
-            if self.depthchart_pt:
-                if self.ros:
-                    dc_set = 'rfangraphsdc'
-                else:
-                    dc_set = 'fangraphsdc'
-                dc_pos_proj = fg_scraper.getProjectionDataset(f"https://www.fangraphs.com/projections.aspx?pos=all&stats=bat&type={dc_set}&team=0&lg=all&players=0", f'{dc_set}_pos.csv', self.force)
-                dc_pitch_proj = fg_scraper.getProjectionDataset(f"https://www.fangraphs.com/projections.aspx?pos=all&stats=pit&type={dc_set}&team=0&lg=all&players=0", f'{dc_set}_pitch.csv', self.force)
-
-        finally:
-            fg_scraper.close()
-
-        if self.depthchart_pt:
-            pos_proj = self.convertToDcPlayingTime(pos_proj, dc_pos_proj, True)
-            pitch_proj = self.convertToDcPlayingTime(pitch_proj, dc_pitch_proj, False)
-
-            if self.intermediate_calculations:
-                filepath = os.path.join(self.intermed_subdirpath, f"{self.projection}_dc_conv_pos.csv")
-                pos_proj.to_csv(filepath, encoding='utf-8-sig')
-                filepath = os.path.join(self.intermed_subdirpath, f"{self.projection}_dc_conv_pitch.csv")
-                pitch_proj.to_csv(filepath, encoding='utf-8-sig')
+        projection_services.get_projections(self.projection, self.ros, self.depthchart_pt)
 
         try:
             otto_scraper = scrape_ottoneu.Scrape_Ottoneu()
