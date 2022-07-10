@@ -149,7 +149,7 @@ class PlayerProjection(Base):
     __tablename__ = "player_projection"
     index = Column(Integer, primary_key=True)
 
-    ottoneu_id = Column(Integer, ForeignKey("player.index"))
+    player_id = Column(Integer, ForeignKey("player.index"))
     player = relationship("Player", back_populates="projections")
 
     projection_id = Column(Integer, ForeignKey("projection.index"))
