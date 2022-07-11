@@ -1,6 +1,6 @@
 from domain.domain import Player, PlayerProjection, Projection, ProjectionData
 from scrape import scrape_fg
-from domain.enum import ProjectionType
+from domain.enum import ProjectionType, StatType
 from datetime import datetime
 from services import player_services
 from dao.session import Session
@@ -101,11 +101,16 @@ def create_projection(type, ros=False, dc_pt=False):
     projection.ros = ros
     projection.timestamp = datetime.now()
 
+    proj_type_url = ProjectionType.enum_to_url(type)
     projs = get_projections(type, ros, dc_pt)
 
     with Session as session:
         for proj in projs:
             stat_cols = proj.columns
+            if 'IP' in stat_cols:
+                pitch = True
+            else:
+                pitch = False
             for idx, row in proj:
                 player = player_services.get_player_by_fg_id(idx)
                 if player == None:
@@ -120,8 +125,16 @@ def create_projection(type, ros=False, dc_pt=False):
                         data = ProjectionData()
                         data.player_projection = player_proj
                         player_proj.append(data)
-                        data.stat_type = col
+                        if pitch:
+                            data.stat_type = StatType.pitch_to_enum_dict[col]
+                        else:
+                            data.stat_type = StatType.hit_to_enum_dict[col]
                         data.stat_value = row[col]
         session.add(projection)
         session.commit()
+
+def get_projection_count():
+    with Session as session:
+        count = session.query(Projection).count()
+    return count
 
