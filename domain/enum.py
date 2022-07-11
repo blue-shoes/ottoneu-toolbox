@@ -9,6 +9,8 @@ class ProjectionType(Enum):
     THE_BATX = 5
     CUSTOM = 6
 
+    fg_downloadable = [STEAMER, ZIPS, DEPTH_CHARTS, ATC, THE_BAT, THE_BATX]
+
     enum_to_name_dict = {
         STEAMER : "Steamer",
         ZIPS : "ZiPS",
@@ -17,6 +19,25 @@ class ProjectionType(Enum):
         THE_BAT : "THE BAT",
         THE_BATX : "THE BATX",
         CUSTOM : "Custom"
+    }
+
+    name_to_enum_dict = {
+        "Steamer" : STEAMER,
+        "ZiPS" : ZIPS,
+        "FG Depth Charts" : DEPTH_CHARTS,
+        "ATC" : ATC,
+        "THE BAT" : THE_BAT,
+        "THE BATX" : THE_BATX,
+        "Custom" : CUSTOM
+    }
+
+    enum_to_url = {
+        STEAMER : "steamer",
+        ZIPS : "zips",
+        DEPTH_CHARTS : "fangraphsdc",
+        ATC : "atc",
+        THE_BAT : "thebat",
+        THE_BATX : "thebatx"
     }
 
 class CalculationDataType(Enum):
@@ -81,7 +102,7 @@ class StatType(Enum):
     SLG = 17
     OPS = 18
     WOBA = 19
-    #WRC_PLUS = 20
+    WRC_PLUS = 20
     G_PIT = 21
     GS_PIT = 22
     IP = 23
