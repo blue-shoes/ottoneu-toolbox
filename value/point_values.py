@@ -82,8 +82,10 @@ class PointValues():
         return proj
 
     def calculate_values(self, rank_pos):
-        projection_services.get_projections(self.projection, self.ros, self.depthchart_pt)
-
+        projs = projection_services.download_projections(self.projection, self.ros, self.depthchart_pt)
+        pos_proj = projs[0]
+        pitch_proj = projs[1]
+        
         try:
             otto_scraper = scrape_ottoneu.Scrape_Ottoneu()
             positions = otto_scraper.get_player_position_ds(self.force)

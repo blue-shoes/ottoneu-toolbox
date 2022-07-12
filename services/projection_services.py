@@ -5,7 +5,7 @@ from datetime import datetime
 from services import player_services
 from dao.session import Session
 
-def get_projections(projection, ros=False, dc_pt=False):
+def download_projections(projection, ros=False, dc_pt=False):
     """Returns a list of projection dataframes. Item 1 is the batting projections. Item 2 is the pitching projections"""
 
     if ros:
