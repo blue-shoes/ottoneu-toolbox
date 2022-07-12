@@ -157,6 +157,14 @@ class PlayerProjection(Base):
 
     projection_data = relationship("ProjectionData", back_populates="player_projection", cascade="all, delete")
 
+    pitcher = Column(Boolean)
+
+    def get_stat(self, stat_type):
+        for pd in self.projection_data:
+            if pd.stat_type == stat_type:
+                return pd.stat_value
+        return -1
+
 class ProjectionData(Base):
     __tablename__ = "projection_data"
     index = Column(Integer, primary_key=True)
