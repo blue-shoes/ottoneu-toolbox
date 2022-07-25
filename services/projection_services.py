@@ -103,20 +103,21 @@ def save_projection(projection, projs):
                     seen_players[idx] = player
                 player_proj = PlayerProjection()
                 player_proj.player = player
-                player_proj.projection = projection
                 player_proj.pitcher = pitch
-                projection.player_projections.append(player_proj)
                 player_proj.projection_data = []
                 for col in stat_cols:
                     if col not in ['Name','Team','-1','playerid']:
-                        data = ProjectionData()
-                        data.player_projection = player_proj
-                        player_proj.projection_data.append(data)
                         if pitch:
-                            data.stat_type = StatType.pitch_to_enum_dict().get(col)
+                            stat_type = StatType.pitch_to_enum_dict().get(col)
                         else:
-                            data.stat_type = StatType.hit_to_enum_dict().get(col)
-                        data.stat_value = row[col]
+                            stat_type = StatType.hit_to_enum_dict().get(col)                            
+                        if stat_type != None:
+                            data = ProjectionData()
+                            data.stat_type = stat_type
+                            data.stat_value = row[col]
+                            player_proj.projection_data.append(data)
+                projection.player_projections.append(player_proj)
+
         session.add(projection)
         session.commit()
 
