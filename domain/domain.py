@@ -1,7 +1,8 @@
 from sqlalchemy import Column, ForeignKey, Index
-from sqlalchemy import Integer, String, Boolean, Float, Date
+from sqlalchemy import Integer, String, Boolean, Float, Date, Enum
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
+from domain.enum import CalculationDataType, CalculationInput, ProjectionType, ScoringFormat, StatType
 
 Base = declarative_base()
 
@@ -33,7 +34,7 @@ class League(Base):
     index = Column(Integer, primary_key=True)
     name = Column(String)
     # Corresponds to ScoringFormat enum
-    format = Column(Integer)
+    format = Column(Enum(ScoringFormat))
     num_teams = Column(Integer)
     last_refresh = Column(Date)
 
@@ -70,7 +71,7 @@ class Salary_Info(Base):
     ottoneu_id = Column("Ottoneu ID",Integer, ForeignKey("player.index"))
     player = relationship("Player", back_populates="salary_info")
 
-    # Corresponds to ScoringFormat enum
+    # TODO: set to Enum column. Corresponds to ScoringFormat enum
     format = Column(Integer)
     
     avg_salary = Column("Avg Salary",Float)
@@ -99,7 +100,7 @@ class ValueCalculation(Base):
     projection_id = Column(Integer, ForeignKey("projection.index"))
     projection = relationship("Projection", back_populates="calculations")
     # Corresponds to ScoringFormat enum
-    format = Column(Integer)
+    format = Column(Enum(ScoringFormat))
 
     inputs = relationship("CalculationInput", back_populates="calculation", cascade="all, delete")
     values = relationship("PlayerValue", back_populates="calculation", cascade="all, delete")
@@ -110,7 +111,7 @@ class CalculationInput(Base):
     index = Column(Integer, primary_key=True)
 
     # This corresponds to the CalculationInput enum
-    data_type = Column(Integer, nullable=False)
+    data_type = Column(Enum(CalculationInput), nullable=False)
 
     value = Column(Float, nullable=False)
 
@@ -122,7 +123,7 @@ class ValueData(Base):
     index = Column(Integer, primary_key=True)
 
     # This corresponds to the CalculationDataType
-    data_type = Column(Integer, nullable=False)
+    data_type = Column(Enum(CalculationDataType), nullable=False)
 
     value = Column(Float, nullable=False)
 
@@ -134,7 +135,7 @@ class Projection(Base):
     index = Column(Integer, primary_key=True)
     
     # This corresponds to the ProjectionType enum
-    type = Column(Integer)
+    type = Column(Enum(ProjectionType))
     timestamp = Column(Date)
     name = Column(String)
     detail = Column(String)
@@ -173,7 +174,7 @@ class ProjectionData(Base):
     player_projection = relationship("PlayerProjection", back_populates="projection_data")
 
     # Corresponds to StatType enum
-    stat_type = Column(Integer, nullable=False) 
+    stat_type = Column(Enum(StatType), nullable=False) 
     stat_value = Column(Float)
 
 class Salary_Refresh(Base):
