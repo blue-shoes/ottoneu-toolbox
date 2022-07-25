@@ -11,33 +11,39 @@ class ProjectionType(Enum):
 
     fg_downloadable = [STEAMER, ZIPS, DEPTH_CHARTS, ATC, THE_BAT, THE_BATX]
 
-    enum_to_name_dict = {
-        STEAMER : "Steamer",
-        ZIPS : "ZiPS",
-        DEPTH_CHARTS : "FG Depth Charts",
-        ATC : "ATC",
-        THE_BAT : "THE BAT",
-        THE_BATX : "THE BATX",
-        CUSTOM : "Custom"
+    @classmethod
+    def enum_to_name_dict(self):
+        return {
+        self.STEAMER : "Steamer",
+        self.ZIPS : "ZiPS",
+        self.DEPTH_CHARTS : "FG Depth Charts",
+        self.ATC : "ATC",
+        self.THE_BAT : "THE BAT",
+        self.THE_BATX : "THE BATX",
+        self.CUSTOM : "Custom"
     }
 
-    name_to_enum_dict = {
-        "Steamer" : STEAMER,
-        "ZiPS" : ZIPS,
-        "FG Depth Charts" : DEPTH_CHARTS,
-        "ATC" : ATC,
-        "THE BAT" : THE_BAT,
-        "THE BATX" : THE_BATX,
-        "Custom" : CUSTOM
+    @classmethod
+    def name_to_enum_dict(self):
+        return {
+        "Steamer" : self.STEAMER,
+        "ZiPS" : self.ZIPS,
+        "FG Depth Charts" : self.DEPTH_CHARTS,
+        "ATC" : self.ATC,
+        "THE BAT" : self.THE_BAT,
+        "THE BATX" : self.THE_BATX,
+        "Custom" : self.CUSTOM
     }
 
-    enum_to_url = {
-        STEAMER : "steamer",
-        ZIPS : "zips",
-        DEPTH_CHARTS : "fangraphsdc",
-        ATC : "atc",
-        THE_BAT : "thebat",
-        THE_BATX : "thebatx"
+    @classmethod
+    def enum_to_url(self):
+        return {
+        self.STEAMER : "steamer",
+        self.ZIPS : "zips",
+        self.DEPTH_CHARTS : "fangraphsdc",
+        self.ATC : "atc",
+        self.THE_BAT : "thebat",
+        self.THE_BATX : "thebatx"
     }
 
 class CalculationDataType(Enum):
@@ -123,91 +129,97 @@ class StatType(Enum):
     ERA = 38
     FIP = 39
 
-    hit_to_enum_dict = {
-        'G' : G_HIT,
-        'GS' : GS_HIT,
-        'PA': PA,
-        'AB' : AB,
-        'H' : H,
-        '2B' : DOUBLE,
-        '3B' : TRIPLE, 
-        'HR' : HR,
-        'R' : R,
-        'RBI' : RBI,
-        'BB' : BB,
-        'SO'  : SO,
-        'HBP' : HBP,
-        'SB' : SB,
-        'CS' : CS,
-        'AVG' : AVG,
-        'OBP' : OBP,
-        'SLG' : SLG,
-        'OPS' : OPS,
-        'wOBA' : WOBA
+    @classmethod
+    def hit_to_enum_dict(self):
+        return {
+        'G' : self.G_HIT,
+        'GS' : self.GS_HIT,
+        'PA': self.PA,
+        'AB' : self.AB,
+        'H' : self.H,
+        '2B' : self.DOUBLE,
+        '3B' : self.TRIPLE, 
+        'HR' : self.HR,
+        'R' : self.R,
+        'RBI' : self.RBI,
+        'BB' : self.BB,
+        'SO'  : self.SO,
+        'HBP' : self.HBP,
+        'SB' : self.SB,
+        'CS' : self.CS,
+        'AVG' : self.AVG,
+        'OBP' : self.OBP,
+        'SLG' : self.SLG,
+        'OPS' : self.OPS,
+        'wOBA' : self.WOBA
     }
 
-    pitch_to_enum_dict = {
-        'G': G_PIT,
-        'GS': GS_PIT,
-        'IP' : IP,
-        'W' : W,
-        'L' : L,
-        'QS' : QS,
-        'SV' : SV,
-        'HLD' : HLD,
-        'H' : H_ALLOWED,
-        'ER' : ER,
-        'HR' : HR_ALLOWED,
-        'K' : K,
-        'BB' : BB_ALLOWED,
-        'HBP' : HBP_ALLOWED,
-        'WHIP' : WHIP,
-        'K/9' : K_PER_9,
-        'BB/9' : BB_PER_9,
-        'ERA' : ERA,
-        'FIP' : FIP
+    @classmethod
+    def pitch_to_enum_dict(self):
+        return {
+        'G': self.G_PIT,
+        'GS': self.GS_PIT,
+        'IP' : self.IP,
+        'W' : self.W,
+        'L' : self.L,
+        'QS' : self.QS,
+        'SV' : self.SV,
+        'HLD' : self.HLD,
+        'H' : self.H_ALLOWED,
+        'ER' : self.ER,
+        'HR' : self.HR_ALLOWED,
+        'K' : self.K,
+        'BB' : self.BB_ALLOWED,
+        'HBP' : self.HBP_ALLOWED,
+        'WHIP' : self.WHIP,
+        'K/9' : self.K_PER_9,
+        'BB/9' : self.BB_PER_9,
+        'ERA' : self.ERA,
+        'FIP' : self.FIP
     }
 
-    enum_to_display_dict = {
-        G_HIT: 'G',
-        GS_HIT : 'GS',
-        PA : 'PA',
-        AB : 'AB',
-        H : 'H',
-        DOUBLE : '2B',
-        TRIPLE : '3B', 
-        HR : 'HR',
-        R : 'R',
-        RBI : 'RBI',
-        BB : 'BB',
-        SO : 'SO',
-        HBP : 'HBP',
-        SB : 'SB',
-        CS : 'CS',
-        AVG : 'AVG',
-        OBP : 'OBP',
-        SLG : 'SLG',
-        OPS : 'OPS',
-        WOBA : 'wOBA',
-        G_PIT : 'G',
-        GS_PIT : 'GS',
-        IP : 'IP',
-        W : 'W',
-        L : 'L',
-        QS : 'QS',
-        SV : 'SV',
-        HLD : 'HLD',
-        H_ALLOWED : 'H',
-        ER : 'ER',
-        HR_ALLOWED : 'HR',
-        K : 'K',
-        BB_ALLOWED : 'BB',
-        HBP_ALLOWED : 'HBP',
-        WHIP : 'WHIP',
-        K_PER_9 : 'K/9',
-        BB_PER_9 : 'BB/9',
-        ERA : 'ERA',
-        FIP : 'FIP'
+    @classmethod
+    def enum_to_display_dict(self):
+        return {
+        self.G_HIT: 'G',
+        self.GS_HIT : 'GS',
+        self.PA : 'PA',
+        self.AB : 'AB',
+        self.H : 'H',
+        self.DOUBLE : '2B',
+        self.TRIPLE : '3B', 
+        self.HR : 'HR',
+        self.R : 'R',
+        self.RBI : 'RBI',
+        self.BB : 'BB',
+        self.SO : 'SO',
+        self.HBP : 'HBP',
+        self.SB : 'SB',
+        self.CS : 'CS',
+        self.AVG : 'AVG',
+        self.OBP : 'OBP',
+        self.SLG : 'SLG',
+        self.OPS : 'OPS',
+        self.WOBA : 'wOBA',
+        self.G_PIT : 'G',
+        self.GS_PIT : 'GS',
+        self.IP : 'IP',
+        self.W : 'W',
+        self.L : 'L',
+        self.QS : 'QS',
+        self.SV : 'SV',
+        self.HLD : 'HLD',
+        self.H_ALLOWED : 'H',
+        self.ER : 'ER',
+        self.HR_ALLOWED : 'HR',
+        self.K : 'K',
+        self.BB_ALLOWED : 'BB',
+        self.HBP_ALLOWED : 'HBP',
+        self.WHIP : 'WHIP',
+        self.K_PER_9 : 'K/9',
+        self.BB_PER_9 : 'BB/9',
+        self.ERA : 'ERA',
+        self.FIP : 'FIP'
     }
 
 class ScoringFormat(Enum):
@@ -219,26 +231,32 @@ class ScoringFormat(Enum):
     H2H_FG_POINTS = 5
     H2H_SABR_POINTS = 6
 
-    name_to_enum_map = {'All' : ALL,
-                        'Ottoneu Classic (4x4)': CLASSIC_4X4, 
-                        'Old School (5x5)': OLD_SCHOOL_5X5,
-                        'FanGraphs Points': FG_POINTS,
-                        'SABR Points': SABR_POINTS,
-                        'H2H FanGraphs Points': H2H_FG_POINTS,
-                        'H2H SABR Points': H2H_FG_POINTS}
+    @classmethod
+    def name_to_enum_map(self):
+        return {'All' : self.ALL,
+                        'Ottoneu Classic (4x4)': self.CLASSIC_4X4, 
+                        'Old School (5x5)': self.OLD_SCHOOL_5X5,
+                        'FanGraphs Points': self.FG_POINTS,
+                        'SABR Points': self.SABR_POINTS,
+                        'H2H FanGraphs Points': self.H2H_FG_POINTS,
+                        'H2H SABR Points': self.H2H_FG_POINTS}
     
-    enum_to_full_name_map = {ALL : "All",
-                            CLASSIC_4X4: 'Ottoneu Classic (4x4)',
-                            OLD_SCHOOL_5X5: 'Old School (5x5)',
-                            FG_POINTS: 'FanGraphs Points',
-                            SABR_POINTS: 'SABR Points',
-                            H2H_FG_POINTS: 'H2H FanGraphs Points',
-                            H2H_SABR_POINTS: 'H2H SABR Points'}
+    @classmethod
+    def enum_to_full_name_map(self):
+        return {self.ALL : "All",
+                            self.CLASSIC_4X4: 'Ottoneu Classic (4x4)',
+                            self.OLD_SCHOOL_5X5: 'Old School (5x5)',
+                            self.FG_POINTS: 'FanGraphs Points',
+                            self.SABR_POINTS: 'SABR Points',
+                            self.H2H_FG_POINTS: 'H2H FanGraphs Points',
+                            self.H2H_SABR_POINTS: 'H2H SABR Points'}
 
-    enum_to_short_name_map = {ALL : "All",
-                            CLASSIC_4X4: '4x4',
-                            OLD_SCHOOL_5X5: '5x5',
-                            FG_POINTS: 'FGP',
-                            SABR_POINTS: 'SABR',
-                            H2H_FG_POINTS: 'H2H FGP',
-                            H2H_SABR_POINTS: 'H2H SABR'}
+    @classmethod
+    def enum_to_short_name_map(self): 
+        return {self.ALL : "All",
+                            self.CLASSIC_4X4: '4x4',
+                            self.OLD_SCHOOL_5X5: '5x5',
+                            self.FG_POINTS: 'FGP',
+                            self.SABR_POINTS: 'SABR',
+                            self.H2H_FG_POINTS: 'H2H FGP',
+                            self.H2H_SABR_POINTS: 'H2H SABR'}

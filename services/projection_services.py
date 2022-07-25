@@ -108,9 +108,9 @@ def save_projection(projection, projs):
                         data.player_projection = player_proj
                         player_proj.append(data)
                         if pitch:
-                            data.stat_type = StatType.pitch_to_enum_dict[col]
+                            data.stat_type = StatType.pitch_to_enum_dict().get(col)
                         else:
-                            data.stat_type = StatType.hit_to_enum_dict[col]
+                            data.stat_type = StatType.hit_to_enum_dict().get(col)
                         data.stat_value = row[col]
         session.add(projection)
         session.commit()
@@ -145,7 +145,7 @@ def create_projection_from_download(type, ros=False, dc_pt=False):
         dc_string = ' DC Playing Time'
     else:
         dc_string = ''
-    projection.name = f"{ProjectionType.enum_to_name_dict[type]}{ros_string}{dc_string}"
+    projection.name = f"{ProjectionType.enum_to_name_dict().get(type)}{ros_string}{dc_string}"
     projection.calculations = []
     projection.dc_pt = dc_pt
     projection.detail = ''
@@ -154,7 +154,7 @@ def create_projection_from_download(type, ros=False, dc_pt=False):
     projection.ros = ros
     projection.timestamp = datetime.now()
 
-    proj_type_url = ProjectionType.enum_to_url(type)
+    proj_type_url = ProjectionType.enum_to_url().get(type)
     projs = download_projections(proj_type_url, ros, dc_pt)
 
     save_projection(projection, projs)
@@ -201,10 +201,10 @@ def convert_to_df(proj):
 
     pos_header = ['Name','Team']
     for col in pos_col:
-        pos_header.append(StatType.enum_to_display_dict[col])
+        pos_header.append(StatType.enum_to_display_dict().get(col))
     pitch_header = ['Name', 'Team']
     for col in pitch_col:
-        pitch_header.append(StatType.enum_to_display_dict[col])
+        pitch_header.append(StatType.enum_to_display_dict().get(col))
     
     pos_proj.columns = pos_header
     pitch_proj.columns = pitch_header
