@@ -42,7 +42,7 @@ def create_player(player_row, ottoneu_id=None, fg_id=None):
         return player
 
 def get_player_by_fg_id(player_id):
-    with Session as session:
+    with Session() as session:
         if player_id.isdigit():
             player = session.query(Player).filter(Player.fg_major_id == player_id).first()
         else:

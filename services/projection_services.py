@@ -85,7 +85,7 @@ def convertToDcPlayingTime(proj, ros, position, fg_scraper=None):
     return proj
 
 def save_projection(projection, projs):
-    with Session as session:
+    with Session() as session:
         for proj in projs:
             stat_cols = proj.columns
             if 'IP' in stat_cols:
@@ -160,18 +160,21 @@ def create_projection_from_download(type, ros=False, dc_pt=False):
     save_projection(projection, projs)
 
 def get_projection_count():
-    with Session as session:
+    with Session() as session:
         count = session.query(Projection).count()
     return count
 
-def get_projection(proj_id):
-    with Session as session:
-        proj = (session.query(Projection)
-            .options(joinedload(Projection.player_projections)
-            .options(joinedload(PlayerProjection.projection_data))
-            .options(joinedload(PlayerProjection.player)))
-            .filter_by(Projection.index == proj_id).all()
-        )
+def get_projection(proj_id, player_data=True):
+    with Session() as session:
+        if player_data:
+            proj = (session.query(Projection)
+                .options(joinedload(Projection.player_projections)
+                .options(joinedload(PlayerProjection.projection_data))
+                .options(joinedload(PlayerProjection.player)))
+                .filter_by(Projection.index == proj_id).all()
+            )
+        else:
+            proj = session.query(Projection).filter(Projection.index == proj_id).first()
     return proj     
 
 def convert_to_df(proj):
