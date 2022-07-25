@@ -31,7 +31,7 @@ def create_player(player_row, ottoneu_id=None, fg_id=None):
             player.position = player_row['Position(s)']
         else:
             # This must have come from a FG leaderboard
-            if fg_id.isnumber():
+            if fg_id.isnumeric():
                 player.fg_major_id = int(fg_id)
             else:
                 player.fg_minor_id = fg_id
