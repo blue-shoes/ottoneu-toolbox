@@ -151,7 +151,8 @@ class StatType(Enum):
         'OBP' : self.OBP,
         'SLG' : self.SLG,
         'OPS' : self.OPS,
-        'wOBA' : self.WOBA
+        'wOBA' : self.WOBA,
+        'wRC+' : self.WRC_PLUS
     }
 
     @classmethod
@@ -201,6 +202,7 @@ class StatType(Enum):
         self.SLG : 'SLG',
         self.OPS : 'OPS',
         self.WOBA : 'wOBA',
+        self.WRC_PLUS: 'wRC+',
         self.G_PIT : 'G',
         self.GS_PIT : 'GS',
         self.IP : 'IP',
