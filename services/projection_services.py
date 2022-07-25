@@ -86,16 +86,21 @@ def convertToDcPlayingTime(proj, ros, position, fg_scraper=None):
 
 def save_projection(projection, projs):
     with Session() as session:
+        seen_players = {}
         for proj in projs:
             stat_cols = proj.columns
             if 'IP' in stat_cols:
                 pitch = True
             else:
                 pitch = False
-            for idx, row in proj:
-                player = player_services.get_player_by_fg_id(idx)
-                if player == None:
-                    player = player_services.create_player(idx, row)
+            for idx, row in proj.iterrows():
+                if idx in seen_players:
+                    player = seen_players[idx]
+                else:
+                    player = player_services.get_player_by_fg_id(idx)
+                    if player == None:
+                        player = player_services.create_player(row, fg_id=idx)
+                    seen_players[idx] = player
                 player_proj = PlayerProjection()
                 player_proj.player = player
                 player_proj.projection = projection
@@ -106,7 +111,7 @@ def save_projection(projection, projs):
                     if col not in ['Name','Team','-1','playerid']:
                         data = ProjectionData()
                         data.player_projection = player_proj
-                        player_proj.append(data)
+                        player_proj.projection_data.append(data)
                         if pitch:
                             data.stat_type = StatType.pitch_to_enum_dict().get(col)
                         else:
@@ -114,6 +119,9 @@ def save_projection(projection, projs):
                         data.stat_value = row[col]
         session.add(projection)
         session.commit()
+
+        new_proj = get_projection(projection.index, player_data=False) 
+    return new_proj
 
 def create_projection_from_upload(pos_file, pitch_file, name, desc='', ros=False):
     projection = Projection()
@@ -132,7 +140,7 @@ def create_projection_from_upload(pos_file, pitch_file, name, desc='', ros=False
     pitch_df = pd.read_csv(pitch_file)
     # TODO: Need to confirm data matches expected format/headers/index
 
-    save_projection(projection, [pos_df, pitch_df])
+    return save_projection(projection, [pos_df, pitch_df])
 
 def create_projection_from_download(type, ros=False, dc_pt=False):
     projection = Projection()
@@ -157,7 +165,7 @@ def create_projection_from_download(type, ros=False, dc_pt=False):
     proj_type_url = ProjectionType.enum_to_url().get(type)
     projs = download_projections(proj_type_url, ros, dc_pt)
 
-    save_projection(projection, projs)
+    return save_projection(projection, projs)
 
 def get_projection_count():
     with Session() as session:
