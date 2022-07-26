@@ -1,4 +1,5 @@
 import tkinter as tk  
+from tkinter import ttk 
 from ui.dialog import preferences
    
 __version__ = '0.9.0'
@@ -22,3 +23,21 @@ class BaseUi():
     
     def open_preferences(self):
         preferences.Dialog(self.preferences)
+    
+    def initialize_treeview_style(self):
+        #Fix for Tkinter version issue found here: https://stackoverflow.com/a/67141755
+        s = ttk.Style()
+
+        #from os import name as OS_Name
+        if self.main_win.getvar('tk_patchLevel')=='8.6.9': #and OS_Name=='nt':
+            def fixed_map(option):
+                # Fix for setting text colour for Tkinter 8.6.9
+                # From: https://core.tcl.tk/tk/info/509cafafae
+                #
+                # Returns the style map for 'option' with any styles starting with
+                # ('!disabled', '!selected', ...) filtered out.
+                #
+                # style.map() returns an empty list for missing options, so this
+                # should be future-safe.
+                return [elm for elm in s.map('Treeview', query_opt=option) if elm[:2] != ('!disabled', '!selected')]
+            s.map('Treeview', foreground=fixed_map('foreground'), background=fixed_map('background'))
