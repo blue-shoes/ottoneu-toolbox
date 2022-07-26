@@ -124,7 +124,7 @@ def save_projection(projection, projs):
         new_proj = get_projection(projection.index, player_data=False) 
     return new_proj
 
-def create_projection_from_upload(pos_file, pitch_file, name, desc='', ros=False):
+def create_projection_from_upload(pos_file, pitch_file, name, desc='', ros=False, year=None):
     projection = Projection()
     projection.type = ProjectionType.CUSTOM
 
@@ -136,6 +136,9 @@ def create_projection_from_upload(pos_file, pitch_file, name, desc='', ros=False
     projection.player_projections = []
     projection.ros = ros
     projection.timestamp = datetime.now()
+    if year == None:
+        year = get_current_projection_year()
+    projection.season = year
 
     pos_df = pd.read_csv(pos_file)
     pitch_df = pd.read_csv(pitch_file)
@@ -143,7 +146,7 @@ def create_projection_from_upload(pos_file, pitch_file, name, desc='', ros=False
 
     return save_projection(projection, [pos_df, pitch_df])
 
-def create_projection_from_download(type, ros=False, dc_pt=False):
+def create_projection_from_download(type, ros=False, dc_pt=False, year=None):
     projection = Projection()
     projection.type = type
     if ros:
@@ -162,6 +165,9 @@ def create_projection_from_download(type, ros=False, dc_pt=False):
     projection.player_projections = []
     projection.ros = ros
     projection.timestamp = datetime.now()
+    if year == None:
+        year = get_current_projection_year()
+    projection.season = year
 
     proj_type_url = ProjectionType.enum_to_url().get(type)
     projs = download_projections(proj_type_url, ros, dc_pt)
@@ -232,5 +238,11 @@ def db_rows_to_df(player_proj, columns):
         row.append(player_proj.get_stat(col))
     return row
 
-
+def get_current_projection_year():
+    """Gets the current year for projections. Assumes October and later is next year, otherwise current year"""
+    now = datetime.now()
+    if now.month > 9:
+        return now.year + 1
+    else:
+        return now.year
 
