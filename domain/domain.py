@@ -34,9 +34,9 @@ class League(Base):
     index = Column(Integer, primary_key=True)
     name = Column(String)
     # Corresponds to ScoringFormat enum
-    format = Column(Enum(ScoringFormat))
-    num_teams = Column(Integer)
-    last_refresh = Column(Date)
+    format = Column(Enum(ScoringFormat), nullable=False)
+    num_teams = Column(Integer, nullable=False)
+    last_refresh = Column(Date, nullable=False)
 
     teams = relationship("Team", back_populates="league", cascade="all, delete")
 
@@ -136,13 +136,14 @@ class Projection(Base):
     
     # This corresponds to the ProjectionType enum
     type = Column(Enum(ProjectionType))
-    timestamp = Column(Date)
-    name = Column(String)
+    timestamp = Column(Date, nullable=False)
+    name = Column(String, nullable=False)
     detail = Column(String)
+    season = Column(Integer, nullable=False)
 
-    ros = Column(Boolean)
-    dc_pt = Column(Boolean)
-    hide = Column(Boolean)
+    ros = Column(Boolean, nullable=False)
+    dc_pt = Column(Boolean, nullable=False)
+    hide = Column(Boolean, nullable=False)
     player_projections = relationship("PlayerProjection", back_populates="projection", cascade="all, delete")
     calculations = relationship("ValueCalculation", back_populates="projection", cascade="all, delete")
 
@@ -175,10 +176,10 @@ class ProjectionData(Base):
 
     # Corresponds to StatType enum
     stat_type = Column(Enum(StatType), nullable=False) 
-    stat_value = Column(Float)
+    stat_value = Column(Float, nullable=False)
 
 class Salary_Refresh(Base):
     # Class to track how recently the Ottoverse average values have been refrehsed
     __tablename__ = "salary_refresh"
     format = Column(Integer, primary_key=True)
-    last_refresh = Column(Date)
+    last_refresh = Column(Date, nullable=False)
