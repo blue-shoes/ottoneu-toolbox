@@ -246,3 +246,15 @@ def get_current_projection_year():
     else:
         return now.year
 
+def get_projections_for_current_year():
+    return get_projections_for_year(get_current_projection_year)
+
+def get_projections_for_year(year):
+    with Session() as session:
+        projs = session.query(Projection).filter(Projection.season == year)
+    return projs
+
+def get_available_seasons():
+    with Session() as session:
+        seasons = session.query(Projection.season).distinct()
+    return sorted(seasons, reverse=True)
