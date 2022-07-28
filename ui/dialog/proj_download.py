@@ -51,14 +51,23 @@ class Dialog(tk.Toplevel):
         self.custom_frm = tk.Frame(frm, borderwidth=4)
         self.custom_frm.grid(row=2,column=0,columnspan=3)
 
-        ttk.Label(self.custom_frm, text = "Hitter Projections File (csv):").grid(column=0,row=0, pady=5, stick=tk.E)
+        hitter_label = ttk.Label(self.custom_frm, text = "Hitter Projections File (csv):")
+        hitter_label.grid(column=0,row=0, pady=5, stick=tk.E)
+        hitter_label.configure(state='disable')
+
         self.hitter_proj_file = tk.StringVar()
-        ttk.Button(self.custom_frm, textvariable = self.hitter_proj_file, command=self.select_hitter_proj_file).grid(column=1,row=0, padx=5)
+        hitter_btn = ttk.Button(self.custom_frm, textvariable = self.hitter_proj_file, command=self.select_hitter_proj_file)
+        hitter_btn.grid(column=1,row=0, padx=5)
+        hitter_btn.configure(state='disable')
         self.hitter_proj_file.set(Path.home())
 
-        ttk.Label(self.custom_frm, text = "Pitcher Projections File (csv):").grid(column=0,row=1, pady=5, stick=tk.E)
+        pitcher_label = ttk.Label(self.custom_frm, text = "Pitcher Projections File (csv):")
+        pitcher_label.grid(column=0,row=1, pady=5, stick=tk.E)
+        pitcher_label.configure(state='disable')
         self.pitcher_proj_file = tk.StringVar()
-        ttk.Button(self.custom_frm, textvariable = self.pitcher_proj_file, command=self.select_pitcher_proj_file).grid(column=1,row=1, padx=5)
+        pitcher_btn = ttk.Button(self.custom_frm, textvariable = self.pitcher_proj_file, command=self.select_pitcher_proj_file)
+        pitcher_btn.grid(column=1,row=1, padx=5)
+        pitcher_btn.configure(state='disable')
         self.pitcher_proj_file.set(Path.home())
 
         ttk.Button(frm, text="OK", command=self.populate_projection).grid(row=3, column=0)
