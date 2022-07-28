@@ -251,7 +251,7 @@ def get_projections_for_current_year():
 
 def get_projections_for_year(year):
     with Session() as session:
-        projs = session.query(Projection).filter(Projection.season == year)
+        projs = session.query(Projection).filter(Projection.season == year).all()
     return projs
 
 def get_available_seasons():
