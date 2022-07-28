@@ -40,7 +40,7 @@ class ValuesCalculation(BaseUi):
         if count == 0:
             dialog = proj_download.Dialog(self.main_win)
         else:
-            dialog = selection_projection.Dialog()
+            dialog = selection_projection.Dialog(self.main_win)
         self.projection = dialog.projection
         self.sel_proj.set(self.projection.name)
 
