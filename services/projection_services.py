@@ -7,6 +7,7 @@ from services import player_services
 from dao.session import Session
 from sqlalchemy.orm import joinedload, load_only
 import pandas as pd
+import math
 
 def download_projections(projection, ros=False, dc_pt=False):
     """Returns a list of projection dataframes. Item 1 is the batting projections. Item 2 is the pitching projections"""
@@ -84,7 +85,7 @@ def convertToDcPlayingTime(proj, ros, position, fg_scraper=None):
             proj[column] = dc_proj[column]
     return proj
 
-def save_projection(projection, projs):
+def save_projection(projection, projs, progress=None):
     with Session() as session:
         seen_players = {}
         for proj in projs:
@@ -93,6 +94,8 @@ def save_projection(projection, projs):
                 pitch = True
             else:
                 pitch = False
+            inc_div = math.ceil(len(proj)/25)
+            inc_count=0
             for idx, row in proj.iterrows():
                 if idx in seen_players:
                     player = seen_players[idx]
@@ -117,6 +120,10 @@ def save_projection(projection, projs):
                             data.stat_value = row[col]
                             player_proj.projection_data.append(data)
                 projection.player_projections.append(player_proj)
+                inc_count += 1
+                if inc_count == inc_div and progress is not None:
+                    progress.increment_completion_percent(1)
+                    inc_count = 0
 
         session.add(projection)
         session.commit()
@@ -124,7 +131,7 @@ def save_projection(projection, projs):
         new_proj = get_projection(projection.index, player_data=False) 
     return new_proj
 
-def create_projection_from_upload(pos_file, pitch_file, name, desc='', ros=False, year=None):
+def create_projection_from_upload(pos_file, pitch_file, name, desc='', ros=False, year=None, progress=None):
     projection = Projection()
     projection.type = ProjectionType.CUSTOM
 
@@ -140,13 +147,17 @@ def create_projection_from_upload(pos_file, pitch_file, name, desc='', ros=False
         year = get_current_projection_year()
     projection.season = year
 
+    if progress is not None:
+        progress.set_task_title('Loading projections...')
     pos_df = pd.read_csv(pos_file)
     pitch_df = pd.read_csv(pitch_file)
     # TODO: Need to confirm data matches expected format/headers/index
-
+    if progress is not None:
+        progress.increment_completion_percent(50)
+        progress.set_task_title('Saving projections to database...')
     return save_projection(projection, [pos_df, pitch_df])
 
-def create_projection_from_download(type, ros=False, dc_pt=False, year=None):
+def create_projection_from_download(type, ros=False, dc_pt=False, year=None, progress=None):
     projection = Projection()
     projection.type = type
     if ros:
@@ -170,9 +181,14 @@ def create_projection_from_download(type, ros=False, dc_pt=False, year=None):
     projection.season = year
 
     proj_type_url = ProjectionType.enum_to_url().get(type)
+    if progress is not None:
+        progress.set_task_title('Downloading projections...')
     projs = download_projections(proj_type_url, ros, dc_pt)
+    if progress is not None:
+        progress.increment_completion_percent(50)
+        progress.set_task_title('Saving projections to database...')
 
-    return save_projection(projection, projs)
+    return save_projection(projection, projs, progress)
 
 def get_projection_count():
     with Session() as session:

@@ -7,6 +7,7 @@ from tkinter import messagebox as mb
 
 from services import projection_services
 from domain.enum import ProjectionType
+from ui.dialog.progress import ProgressDialog
 from pathlib import Path
 import os
 import os.path
@@ -108,14 +109,16 @@ class Dialog(tk.Toplevel):
         self.destroy()
     
     def populate_projection(self):
-        #TODO: Wrap in progress dialog
         #TODO: Second dialog to set name/description?
+        pd = ProgressDialog(self.master, title='Getting Projection Set')
         year = projection_services.get_current_projection_year()
         if self.source_var.get():
             #Download proj from FG
-            self.projection = projection_services.create_projection_from_download(ProjectionType.name_to_enum_dict().get(self.proj_type.get()), self.ros_var.get(), self.dc_var.get(), year=year)
+            self.projection = projection_services.create_projection_from_download(ProjectionType.name_to_enum_dict().get(self.proj_type.get()), self.ros_var.get(), self.dc_var.get(), year=year, progress=pd)
         else:
             #Upload proj from files
             #TODO: need user entry of name/desc and indicate it's RoS
-            self.projection = projection_services.create_projection_from_upload(self.hitter_proj_file, self.pitcher_proj_file, name="User Custom", year=year)
+            self.projection = projection_services.create_projection_from_upload(self.hitter_proj_file, self.pitcher_proj_file, name="User Custom", year=year, progress=pd)
+        pd.set_completion_percent(100)
+        pd.destroy()
         self.destroy()

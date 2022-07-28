@@ -1,6 +1,7 @@
 import tkinter as tk     
 from tkinter import *              
 from tkinter import ttk 
+from ui.dialog import proj_download
 from ui.table import Table, bool_to_table
 
 from services import projection_services
@@ -42,11 +43,18 @@ class Dialog(tk.Toplevel):
 
         ttk.Button(frm, text="OK", command=self.set_projection).grid(row=3, column=0)
         ttk.Button(frm, text="Cancel", command=self.cancel).grid(row=3, column=1)
+        ttk.Button(frm, text="Import New...", command=self.import_projection).grid(row=3,column=2)
 
         frm.pack()
 
         self.wait_window()
     
+    def import_projection(self):
+        dialog = proj_download.Dialog(self.master)
+        if dialog.projection is not None:
+            self.projection = dialog.projection
+            self.destroy()
+
     def update_season(self):
         self.proj_list = projection_services.get_projections_for_year(int(self.season.get()))
         self.proj_table.refresh()
