@@ -48,3 +48,8 @@ def get_player_by_fg_id(player_id):
         else:
             player = session.query(Player).filter(Player.fg_minor_id == player_id).first()
     return player
+
+def is_populated():
+    with Session() as session:
+        count = session.query(Player).count()
+    return count > 0

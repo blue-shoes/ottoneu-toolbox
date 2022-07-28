@@ -4,7 +4,7 @@ import os
 from scrape import scrape_ottoneu
 from domain.domain import Base, Player, Salary_Info
 from dao.session import Session
-from services import player_services
+from services import player_services, salary_services
 import logging
 import tkinter as tk     
 from tkinter import *              
@@ -20,6 +20,8 @@ class OttoneuToolBox(BaseUi):
         super().__init__(preferences={})  
         self.setup_logging()
         logging.info('Starting session')
+
+        self.startup_tasks()
 
         self.create_main_win()
 
@@ -66,6 +68,13 @@ class OttoneuToolBox(BaseUi):
         if not os.path.exists('.\\logs'):
             os.mkdir('.\\logs')
         logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s %(message)s', level=level, filename='.\\logs\\toolbox.log')
+    
+    def startup_tasks(self):
+        #Check that database has players in it, and populate if it doesn't
+        if not player_services.is_populated():
+            salary_services.update_salary_info()
+        #TODO: Automatic updates based on user prefs
+    
 
 def main():
     try:
