@@ -46,11 +46,20 @@ class Table(ttk.Treeview):
         self.bind('<<TreeviewSelect>>', select_method)
     
     def sort(self, col):
-        self.sort_col = sort
+        #TODO: Make sort go ascending and descending
+        if self.sort_col == col:
+            self.sort_col = None
+        else:
+            self.sort_col = sort
         self.refresh()
     
     def refresh(self):
+        self.delete(*self.get_children())
         self.refresh_method()
         self.vsb.pack()
-    
-    
+
+def bool_to_table(val):
+    if val:
+        return 'X'
+    else:
+        return ''
