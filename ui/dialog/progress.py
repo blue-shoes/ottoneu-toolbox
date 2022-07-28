@@ -6,7 +6,8 @@ from tkinter import messagebox as mb
 
 
 class ProgressDialog(tk.Toplevel):
-    def __init__(self, title):
+    def __init__(self, parent, title):
+        super().__init__(parent)
         tk.Label(self, text=title).grid(row=0,column=0)
         self.progress = 0
         self.progress_var = tk.DoubleVar()

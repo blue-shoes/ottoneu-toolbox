@@ -1,9 +1,5 @@
-from sqlalchemy import create_engine, select
-from sqlalchemy.orm import sessionmaker
+
 import os
-from scrape import scrape_ottoneu
-from domain.domain import Base, Player, Salary_Info
-from dao.session import Session
 from services import player_services, salary_services
 import logging
 import tkinter as tk     
@@ -11,9 +7,9 @@ from tkinter import *
 from tkinter import ttk 
 from tkinter import filedialog as fd
 from tkinter import messagebox as mb
-from tkinter.messagebox import showinfo
 from ui import draft_tool, values
 from ui.base import BaseUi
+from ui.dialog.progress import ProgressDialog
 
 class OttoneuToolBox(BaseUi):
     def __init__(self):
@@ -70,10 +66,17 @@ class OttoneuToolBox(BaseUi):
         logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s %(message)s', level=level, filename='.\\logs\\toolbox.log')
     
     def startup_tasks(self):
+        progress_dialog = ProgressDialog(self.main_win, "Startup Tasks")
         #Check that database has players in it, and populate if it doesn't
         if not player_services.is_populated():
+            progress_dialog.set_task_title("Populating Player Database")
             salary_services.update_salary_info()
+            progress_dialog.increment_completion_percent(33)
         #TODO: Automatic updates based on user prefs
+
+        progress_dialog.set_completion_percent(100)
+        #TODO: Destroying this pushes the whole window to the background for some reason
+        #progress_dialog.destroy()
     
 
 def main():
