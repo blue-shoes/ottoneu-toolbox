@@ -9,6 +9,7 @@ import hashlib
 import datetime
 from decimal import Decimal
 from re import sub
+from domain.enum import ScoringFormat
 
 from scrape import scrape_base
 
@@ -57,11 +58,11 @@ class Scrape_Ottoneu(scrape_base.Scrape_Base):
     def parse_header(self, row):
         return [str(x.string) for x in row.find_all('th')]
     
-    def get_avg_salary_ds(self, force_download=True, game_type=0):
-        if game_type == 0:
+    def get_avg_salary_ds(self, force_download=True, game_type=ScoringFormat.ALL):
+        if game_type == ScoringFormat.ALL:
             avg_salary_url = 'https://ottoneu.fangraphs.com/averageValues?export=xml'
         else:
-            avg_salary_url = f'https://ottoneu.fangraphs.com/averageValues?export=xml&gameType={game_type}'
+            avg_salary_url = f'https://ottoneu.fangraphs.com/averageValues?export=xml&gameType={game_type.value}'
         #response = requests.get(avg_salary_url)
         #salary_soup = Soup(response.text, 'xml')
         salary_soup = self.get_soup(avg_salary_url, True)

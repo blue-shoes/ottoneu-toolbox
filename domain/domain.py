@@ -71,8 +71,7 @@ class Salary_Info(Base):
     ottoneu_id = Column("Ottoneu ID",Integer, ForeignKey("player.index"))
     player = relationship("Player", back_populates="salary_info")
 
-    # TODO: set to Enum column. Corresponds to ScoringFormat enum
-    format = Column(Integer)
+    format = Column(Enum(ScoringFormat))
     
     avg_salary = Column("Avg Salary",Float)
     med_salary = Column("Median Salary",Float)
@@ -181,5 +180,5 @@ class ProjectionData(Base):
 class Salary_Refresh(Base):
     # Class to track how recently the Ottoverse average values have been refrehsed
     __tablename__ = "salary_refresh"
-    format = Column(Integer, primary_key=True)
+    format = Column(Enum(ScoringFormat), primary_key=True)
     last_refresh = Column(Date, nullable=False)
