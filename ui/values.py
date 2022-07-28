@@ -6,7 +6,7 @@ from tkinter import messagebox as mb
 from ui.base import BaseUi
 from domain.domain import ValueData, ValueCalculation
 from services import projection_services
-from ui.dialog import proj_download, proj_selection
+from ui.dialog import proj_download, selection_projection
 
 class ValuesCalculation(BaseUi):
     def __init__(self, preferences):
@@ -40,7 +40,7 @@ class ValuesCalculation(BaseUi):
         if count == 0:
             dialog = proj_download.Dialog(self.main_win)
         else:
-            dialog = proj_selection.Dialog()
+            dialog = selection_projection.Dialog()
         self.projection = dialog.projection
         self.sel_proj.set(self.projection.name)
 
