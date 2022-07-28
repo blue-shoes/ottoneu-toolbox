@@ -86,6 +86,13 @@ class CalculationInput(Enum):
     SP_IP_TO_RANK = 24
     RP_IP_TO_RANK = 25
     COMBINE_TWO_WAY_PLAYERS = 26
+
+class RankingBasis(Enum):
+    PPG = 0
+    PPPA = 1
+    PIP  = 2
+    ZSCORE = 3
+    SGP = 4
     
 class StatType(Enum):
     G_HIT = 0
