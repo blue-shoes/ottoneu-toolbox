@@ -15,22 +15,16 @@ class Dialog(tk.Toplevel):
         tk.Label(frm, text="Select projection season: ").grid(row=0,column=0)
         self.season = tk.StringVar()
         season_cb = ttk.Combobox(frm, textvariable=self.season)
-        #seasons = projection_services.get_available_seasons()
-        #str_seasons = []
-        #for season in seasons:
-        #    print(season)
-        #    str_seasons.append(str(season))
-        #print(seasons)
-        #print(str_seasons)
-        #season_cb['values'] = [str_seasons]
-        season_cb['values'] = ['2022']
+        seasons = projection_services.get_available_seasons()
+        str_seasons = []
+        for season in seasons:
+            str_seasons.append(str(season))
+        season_cb['values'] = [str_seasons]
         season_cb.grid(row=0,column=1)
-        #self.season.set(str_seasons[0])
-        self.season.set('2022')
+        self.season.set(str_seasons[0])
         season_cb.bind("<<ComboboxSelected>>", self.update_season)
 
-        #self.proj_list = projection_services.get_projections_for_year(seasons[0])
-        self.proj_list = projection_services.get_projections_for_year(2022)
+        self.proj_list = projection_services.get_projections_for_year(seasons[0])
 
         cols = ('Name', 'Type', 'Detail', 'Timestamp','RoS?','DC PT?')
         align = {}
@@ -63,7 +57,7 @@ class Dialog(tk.Toplevel):
         else:
             sorted_proj = sorted(self.proj_list, key=lambda x: x.timestamp, reverse=True)
         for proj in sorted_proj:
-            self.proj_table.insert('', tk.END, text=id, values=(proj.name, proj.type, proj.detail, proj.timestamp, bool_to_table(proj.ros), bool_to_table(proj.dc_pt)), tags=('removed',))
+            self.proj_table.insert('', tk.END, text=str(proj.index), values=(proj.name, proj.type, proj.detail, proj.timestamp, bool_to_table(proj.ros), bool_to_table(proj.dc_pt)), tags=('removed',))
 
 
     def on_select(self, event):

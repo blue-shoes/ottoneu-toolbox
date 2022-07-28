@@ -5,7 +5,7 @@ from domain.enum import ProjectionType, StatType
 from datetime import datetime
 from services import player_services
 from dao.session import Session
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, load_only
 import pandas as pd
 
 def download_projections(projection, ros=False, dc_pt=False):
@@ -256,5 +256,6 @@ def get_projections_for_year(year):
 
 def get_available_seasons():
     with Session() as session:
-        seasons = session.query(Projection.season).distinct()
-    return sorted(seasons, reverse=True)
+        seasons = session.query(Projection).options(load_only(Projection.season)).distinct().all()
+    tmp_seasons = [record.season for record in seasons]
+    return sorted(tmp_seasons, reverse=True)
