@@ -5,6 +5,7 @@ from tkinter import ttk
 from tkinter import messagebox as mb
 from ui.base import BaseUi
 from domain.domain import ValueData, ValueCalculation
+from domain.enum import RepLevelScheme
 from services import projection_services
 from ui.dialog import proj_download, selection_projection
 
@@ -13,13 +14,18 @@ class ValuesCalculation(BaseUi):
         super().__init__(preferences=preferences)
         
         self.value_calc = ValueCalculation()
+        self.rep_level_dict = {}
 
         self.create_input_frame()
+        self.create_proj_val_frame()
         self.create_output_frame()
 
     def create_input_frame(self):
+
         self.input_frame = inpf = ttk.Frame(self.main_win)
         inpf.grid(column=0,row=0, padx=5, sticky=tk.N, pady=17)
+
+        validation = inpf.register(self.int_validation)
 
         ttk.Label(inpf, text="Selected Projections:").grid(column=0,row=0, pady=5)
         self.sel_proj = tk.StringVar()
@@ -27,7 +33,6 @@ class ValuesCalculation(BaseUi):
         self.projection = None
         ttk.Label(inpf, textvariable=self.sel_proj).grid(column=1,row=0)
         ttk.Button(inpf, text="Select...", command=self.select_projection).grid(column=2,row=0)
-
 
         ttk.Label(inpf, text="Game Type:").grid(column=0,row=2,pady=5)
         self.game_type = StringVar()
@@ -41,7 +46,9 @@ class ValuesCalculation(BaseUi):
         ttk.Label(inpf, text="Number of Teams:").grid(column=0, row=3,pady=5)
         self.num_teams_str = StringVar()
         self.num_teams_str.set("12")
-        ttk.Entry(inpf, textvariable=self.num_teams_str).grid(column=1,row=3,pady=5)
+        team_entry = ttk.Entry(inpf, textvariable=self.num_teams_str)
+        team_entry.grid(column=1,row=3,pady=5)
+        team_entry.config(validate="key", validatecommand=(validation, '%P'))
 
         ttk.Label(inpf, text="Manually assign hitter/pitcher split?").grid(column=0, row=4,pady=5)
         self.manual_split = BooleanVar()
@@ -60,7 +67,9 @@ class ValuesCalculation(BaseUi):
         ttk.Label(inpf, text="Non-productive salaries (e.g. prospects):").grid(column=0, row=6,pady=5)
         self.non_prod_dollars_str = StringVar()
         self.non_prod_dollars_str.set("48")
-        ttk.Entry(inpf, textvariable=self.non_prod_dollars_str).grid(column=1,row=6,pady=5)
+        non_prod = ttk.Entry(inpf, textvariable=self.non_prod_dollars_str)
+        non_prod.grid(column=1,row=6,pady=5)
+        non_prod.config(validate="key", validatecommand=(validation, '%P'))
 
         ttk.Label(inpf, text="Hitter Value Basis:").grid(column=0,row=7,pady=5)
         self.hitter_basis = StringVar()
@@ -69,12 +78,38 @@ class ValuesCalculation(BaseUi):
         hbcb['values'] = ('P/G','P/PA')
         hbcb.grid(column=1,row=7,pady=5)
 
-        ttk.Label(inpf, text="Pitcher Value Basis:").grid(column=0,row=8,pady=5)
+        ttk.Label(inpf, text="Min PA to Rank:").grid(column=0, row= 8, pady=5)
+        self.min_pa = StringVar()
+        self.min_pa.set("150")
+        pa_entry = ttk.Entry(inpf, textvariable=self.min_pa)
+        pa_entry.grid(column=1,row=8, pady=5)
+        pa_entry.config(validate="key", validatecommand=(validation, '%P'))
+        
+        ttk.Label(inpf, text="Pitcher Value Basis:").grid(column=0,row=9,pady=5)
         self.pitcher_basis = StringVar()
         self.pitcher_basis.set('P/IP')
         self.pitcher_basis_cb = pbcb = ttk.Combobox(inpf, textvariable=self.pitcher_basis)
         pbcb['values'] = ('P/IP','P/G')
-        pbcb.grid(column=1,row=8,pady=5)
+        pbcb.grid(column=1,row=9,pady=5)
+
+        ttk.Label(inpf, text="Min SP IP to Rank:").grid(column=0, row= 10, pady=5)
+        self.min_sp_ip = StringVar()
+        self.min_sp_ip.set("70")
+        ttk.Entry(inpf, textvariable=self.min_sp_ip).grid(column=1,row=10, pady=5)
+
+        ttk.Label(inpf, text="Min RP IP to Rank:").grid(column=0, row= 11, pady=5)
+        self.min_rp_ip = StringVar()
+        self.min_rp_ip.set("30")
+        ttk.Entry(inpf, textvariable=self.min_rp_ip).grid(column=1,row=11, pady=5)
+        
+        # This is its own method to make the __init__ more readable
+        self.set_replacement_level_ui(inpf)
+
+        ttk.Button(inpf, text="Calculate", command=self.calculate_values).grid(row=24, column=0)
+
+    def create_proj_val_frame(self):
+        self.proj_val_frame = pvf = ttk.Frame(self.main_win)
+        pvf.grid(column=1,row=0,padx=5, sticky=tk.N, pady=17)
     
     def update_game_type(self):
         i = 1
@@ -89,9 +124,10 @@ class ValuesCalculation(BaseUi):
         self.projection = dialog.projection
         self.sel_proj.set(self.projection.name)
 
+        self.populate_projection_frame()
     
     def create_output_frame(self):
-        self.create_output_frame = outf = ttk.Frame(self.main_win)
+        self.output_frame = outf = ttk.Frame(self.main_win)
         outf.grid(column=2,row=0, padx=5, sticky=tk.N, pady=17)
 
     def toggle_manual_split(self):
@@ -101,6 +137,106 @@ class ValuesCalculation(BaseUi):
         else:
             self.hitter_aloc_lbl.configure(state='disable')
             self.hitter_aloc_entry.configure(state='disable')
+    
+    def set_replacement_level_ui(self, inpf):
+        ttk.Label(inpf, text="Select Replacement Level Scheme").grid(column=0,row=12,columnspan=2,pady=5)
+
+        self.rep_level_scheme = IntVar()
+        self.rep_level_scheme.set(RepLevelScheme.NUM_ROSTERED.value)
+
+        ttk.Radiobutton(inpf, text="Number Rostered", value=RepLevelScheme.NUM_ROSTERED.value, command=self.update_rep_level_scheme, variable=self.rep_level_scheme).grid(column=0,row=13,pady=5)
+        ttk.Radiobutton(inpf, text="Replacment Level", value=RepLevelScheme.STATIC_REP_LEVEL.value, command=self.update_rep_level_scheme, variable=self.rep_level_scheme).grid(column=1,row=13,pady=5)
+        ttk.Radiobutton(inpf, text="Fill Games", value=RepLevelScheme.FILL_GAMES.value, command=self.update_rep_level_scheme, variable=self.rep_level_scheme).grid(column=2,row=13,pady=5)
+    
+        self.rep_level_txt = StringVar()
+        self.rep_level_txt.set("Set number of rostered players at each position:")
+        ttk.Label(inpf, textvariable=self.rep_level_txt).grid(column=0, row=14, columnspan=2, pady=5)
+        
+        ttk.Label(inpf, text="C").grid(row=15, column=0)
+        self.rep_level_dict["C"] = StringVar()
+        self.rep_level_dict["C"].set("24")
+        ttk.Entry(inpf, textvariable=self.rep_level_dict["C"]).grid(row=15,column=1)
+
+        ttk.Label(inpf, text="1B").grid(row=16, column=0)
+        self.rep_level_dict["1B"] = StringVar()
+        self.rep_level_dict["1B"].set("40")
+        ttk.Entry(inpf, textvariable=self.rep_level_dict["1B"]).grid(row=16,column=1)
+
+        ttk.Label(inpf, text="2B").grid(row=17, column=0)
+        self.rep_level_dict["2B"] = StringVar()
+        self.rep_level_dict["2B"].set("38")
+        ttk.Entry(inpf, textvariable=self.rep_level_dict["2B"]).grid(row=17,column=1)
+
+        ttk.Label(inpf, text="SS").grid(row=18, column=0)
+        self.rep_level_dict["SS"] = StringVar()
+        self.rep_level_dict["SS"].set("42")
+        ttk.Entry(inpf, textvariable=self.rep_level_dict["SS"]).grid(row=18,column=1)
+
+        ttk.Label(inpf, text="3B").grid(row=19, column=0)
+        self.rep_level_dict["3B"] = StringVar()
+        self.rep_level_dict["3B"].set("24")
+        ttk.Entry(inpf, textvariable=self.rep_level_dict["3B"]).grid(row=19,column=1)
+
+        ttk.Label(inpf, text="OF").grid(row=20, column=0)
+        self.rep_level_dict["OF"] = StringVar()
+        self.rep_level_dict["OF"].set("95")
+        ttk.Entry(inpf, textvariable=self.rep_level_dict["OF"]).grid(row=20,column=1)
+
+        ttk.Label(inpf, text="Util").grid(row=21, column=0)
+        self.rep_level_dict["Util"] = StringVar()
+        self.rep_level_dict["Util"].set("200")
+        ttk.Entry(inpf, textvariable=self.rep_level_dict["Util"]).grid(row=21,column=1)
+
+        ttk.Label(inpf, text="SP").grid(row=22, column=0)
+        self.rep_level_dict["SP"] = StringVar()
+        self.rep_level_dict["SP"].set("85")
+        ttk.Entry(inpf, textvariable=self.rep_level_dict["SP"]).grid(row=22,column=1)
+
+        ttk.Label(inpf, text="RP").grid(row=23, column=0)
+        self.rep_level_dict["RP"] = StringVar()
+        self.rep_level_dict["RP"].set("70")
+        ttk.Entry(inpf, textvariable=self.rep_level_dict["RP"]).grid(row=23,column=1)
+    
+    def update_rep_level_scheme(self):
+        if self.rep_level_scheme.get() == RepLevelScheme.NUM_ROSTERED.value:
+            self.rep_level_txt.set("Set number of rostered players for each position:")
+        elif self.rep_level_scheme.get() == RepLevelScheme.STATIC_REP_LEVEL.value:
+            self.rep_level_txt.set("Set replacement level production for each position:")
+        else:
+            self.rep_level_txt.set("Set number of rostered players beyond games filled for each position:")
+    
+    def calculate_values(self):
+        if self.has_errors():
+            return
+    
+    def int_validation(self, input):
+        if input.isdigit():
+            return True
+        if input == "":
+            return True
+        return False
+        
+    def has_errors(self):
+        errors = []
+        bad_rep_level = []
+        if self.rep_level_scheme.get() == RepLevelScheme.NUM_ROSTERED.value or self.rep_level_scheme.get() == RepLevelScheme.FILL_GAMES.value:
+            for key, value in self.rep_level_dict:
+                if not value.get().isnumeric():
+                    bad_rep_level.append(key)
+        else:
+            for key, value in self.rep_level_dict:
+                if not value.get().isnumeric() or float(value.get()) > 10.0:
+                    bad_rep_level.append(key)
+        
+        if len(bad_rep_level) > 0:
+            errors.append(f'The following positions have bad replacement level inputs (check scheme): {", ".join(bad_rep_level)}')
+
+        #TODO Other validations
+
+        if len(errors) > 0:
+            mb.showerror("Input Error(s)", f'Errors in inputs. Please correct: \n\t -{"\n\t- ".join(errors)}')
+
+        return len(errors) == 0
 
 def main(preferences):
     try:
