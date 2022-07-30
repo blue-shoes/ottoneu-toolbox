@@ -82,11 +82,11 @@ class RepLevelScheme(Enum):
     FILL_GAMES = 2
 
 class RankingBasis(Enum):
-    PPG = 0
-    PPPA = 1
-    PIP  = 2
-    ZSCORE = 3
-    SGP = 4
+    PPG = 'P/G'
+    PPPA = 'P/PA'
+    PIP  = 'P/IP'
+    ZSCORE = 'z-Score'
+    SGP = 'SGP'
     
 class StatType(Enum):
     G_HIT = 0
@@ -263,3 +263,15 @@ class ScoringFormat(Enum):
                             self.SABR_POINTS: 'SABR',
                             self.H2H_FG_POINTS: 'H2H FGP',
                             self.H2H_SABR_POINTS: 'H2H SABR'}
+
+class Position(Enum):
+    POS_C = 'C'
+    POS_1B = '1B'
+    POS_2B = '2B'
+    POS_3B = '3B'
+    POS_SS = 'SS'
+    POS_MI = 'MI'
+    POS_OF = 'OF'
+    POS_UTIL = 'Util'
+    POS_SP = 'SP'
+    POS_RP = 'RP'    
