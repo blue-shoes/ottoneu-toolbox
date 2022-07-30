@@ -234,7 +234,8 @@ class ValuesCalculation(BaseUi):
         #TODO Other validations
 
         if len(errors) > 0:
-            mb.showerror("Input Error(s)", f'Errors in inputs. Please correct: \n\t -{"\n\t- ".join(errors)}')
+            delim = "\n\t-"
+            mb.showerror("Input Error(s)", f'Errors in inputs. Please correct: \n\t-{delim.join(errors)}')
 
         return len(errors) == 0
 
