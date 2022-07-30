@@ -2,7 +2,7 @@ from sqlalchemy import Column, ForeignKey, Index
 from sqlalchemy import Integer, String, Boolean, Float, Date, Enum
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
-from domain.enum import CalculationDataType, CalculationInput, ProjectionType, ScoringFormat, StatType
+from domain.enum import CalculationDataType, ProjectionType, ScoringFormat, StatType
 
 Base = declarative_base()
 
@@ -110,7 +110,7 @@ class CalculationInput(Base):
     index = Column(Integer, primary_key=True)
 
     # This corresponds to the CalculationInput enum
-    data_type = Column(Enum(CalculationInput), nullable=False)
+    data_type = Column(Enum(CalculationDataType), nullable=False)
 
     value = Column(Float, nullable=False)
 
