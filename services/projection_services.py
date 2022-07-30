@@ -202,7 +202,7 @@ def get_projection(proj_id, player_data=True):
                 .options(joinedload(Projection.player_projections)
                 .options(joinedload(PlayerProjection.projection_data))
                 .options(joinedload(PlayerProjection.player)))
-                .filter_by(Projection.index == proj_id).all()
+                .filter_by(index = proj_id).first()
             )
         else:
             proj = session.query(Projection).filter(Projection.index == proj_id).first()
