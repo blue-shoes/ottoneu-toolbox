@@ -60,19 +60,15 @@ class Dialog(tk.Toplevel):
         self.proj_table.refresh()
     
     def populate_table(self):
-        if self.proj_table.sort_col == "Name":
-            sorted_proj = sorted(self.proj_list, key=lambda x: x.name)
-        else:
-            sorted_proj = sorted(self.proj_list, key=lambda x: x.timestamp, reverse=True)
-        for proj in sorted_proj:
-            self.proj_table.insert('', tk.END, text=str(proj.index), values=(proj.name, proj.type, proj.detail, proj.timestamp, bool_to_table(proj.ros), bool_to_table(proj.dc_pt)), tags=('removed',))
-
+        for proj in self.proj_list:
+            self.proj_table.insert('', tk.END, text=str(proj.index), values=(proj.name, proj.type, proj.detail, proj.timestamp, bool_to_table(proj.ros), bool_to_table(proj.dc_pt)))
+        self.proj_table.treeview_sort_column(self.proj_table.sort_col, self.proj_table.reverse_sort)
 
     def on_select(self, event):
         selection = event.widget.item(event.widget.selection()[0])["text"]
         for proj in self.proj_list:
             if proj.index == int(selection):
-                self.projection = proj
+                self.projection = projection_services.get_projection(proj_id=proj.index)
                 break
 
     def cancel(self):
