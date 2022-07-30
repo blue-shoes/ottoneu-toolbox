@@ -164,7 +164,7 @@ class PlayerProjection(Base):
         for pd in self.projection_data:
             if pd.stat_type == stat_type:
                 return pd.stat_value
-        return -1
+        return None
 
 class ProjectionData(Base):
     __tablename__ = "projection_data"
