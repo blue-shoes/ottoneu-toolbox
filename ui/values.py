@@ -3,9 +3,10 @@ import tkinter as tk
 from tkinter import *              
 from tkinter import ttk 
 from tkinter import messagebox as mb
+from ui.table import Table
 from ui.base import BaseUi
 from domain.domain import ValueData, ValueCalculation
-from domain.enum import RepLevelScheme
+from domain.enum import RepLevelScheme, StatType
 from services import projection_services
 from ui.dialog import proj_download, selection_projection
 
@@ -110,7 +111,31 @@ class ValuesCalculation(BaseUi):
     def create_proj_val_frame(self):
         self.proj_val_frame = pvf = ttk.Frame(self.main_win)
         pvf.grid(column=1,row=0,padx=5, sticky=tk.N, pady=17)
-    
+
+        self.tab_control = ttk.Notebook(pvf, width=570, height=300)
+        self.tab_control.grid(row=0, column=0)
+
+        bat_frame = ttk.Frame(self.tab_control)
+        self.tab_control.add(bat_frame, text='Hitters')
+
+        arm_frame = ttk.Frame(self.tab_control)
+        self.tab_control.add(arm_frame, text='Pitchers')
+
+        self.player_columns = ('Value', 'Name', 'Team', 'Pos')
+        self.hitting_columns = ('P/G', 'Points', 'G', 'PA', 'AB', 'H', '2B', '3B', 'HR', 'BB', 'HBP', 'SB','CS')
+        self.pitching_columns = ('P/IP', 'Points', 'G', 'GS', 'IP', 'K','H','BB','HBP','HR','SV','HLD')
+        
+        col_align = {}
+        col_align['Name'] = W
+
+        self.bat_table = Table(bat_frame, self.player_columns + self.hitting_columns, column_alignments=col_align, sortable_columns=self.player_columns + self.hitting_columns)
+        self.bat_table.set_refresh_method(self.refresh_hitters)
+        self.bat_table.grid(row=0, column=0)
+
+        self.arm_table = Table(arm_frame, self.player_columns + self.pitching_columns, column_alignments=col_align, sortable_columns=self.player_columns + self.pitching_columns)
+        self.arm_table.set_refresh_method(self.refresh_pitchers)
+        self.arm_table.grid(row=0,column=0)
+
     def update_game_type(self):
         i = 1
         #TODO: Update input fields for unique game types
@@ -124,7 +149,50 @@ class ValuesCalculation(BaseUi):
         self.projection = dialog.projection
         self.sel_proj.set(self.projection.name)
 
-        self.populate_projection_frame()
+        self.populate_projections()
+    
+    def populate_projections(self):
+        self.bat_table.refresh()
+        self.arm_table.refresh()
+    
+    def get_player_row(self, pp, enum_dict, cols):
+        val = []
+        if len(self.value_calc.values) > 0:
+            i = 1
+            #TODO: after calc values
+        else:
+            val.append('-')
+        val.append(pp.player.name)
+        val.append(pp.player.team)
+        val.append(pp.player.position)
+        if len(self.value_calc.values) > 0:
+            #TODO: after calc values
+            i = 1
+        else:
+            val.append('-')
+            val.append('-')
+        for col in cols:
+            if col in enum_dict:
+                stat = pp.get_stat(enum_dict[col])
+                if stat is None:
+                    val.append(0)
+                else:
+                    val.append(stat)
+        return val
+
+    def refresh_hitters(self):
+        print('in refresh hitters')
+        for pp in self.projection.player_projections:
+            if pp.get_stat(StatType.AB) is not None:
+                val = self.get_player_row(pp, StatType.hit_to_enum_dict(), self.hitting_columns)
+                self.bat_table.insert('', tk.END, text=str(pp.index), values=val)
+    
+    def refresh_pitchers(self):
+        print('in refresh pitchers')
+        for pp in self.projection.player_projections:
+            if pp.get_stat(StatType.IP) is not None:
+                val = self.get_player_row(pp, StatType.pitch_to_enum_dict(), self.pitching_columns)
+                self.arm_table.insert('', tk.END, text=str(pp.index), values=val)
     
     def create_output_frame(self):
         self.output_frame = outf = ttk.Frame(self.main_win)
