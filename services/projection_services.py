@@ -128,8 +128,8 @@ def save_projection(projection, projs, progress=None):
         session.add(projection)
         session.commit()
 
-        #new_proj = get_projection(projection.index, player_data=False) 
-    return projection
+        new_proj = get_projection(projection.index, player_data=False) 
+    return new_proj
 
 def create_projection_from_upload(pos_file, pitch_file, name, desc='', ros=False, year=None, progress=None):
     projection = Projection()

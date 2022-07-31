@@ -8,7 +8,7 @@ from ui.base import BaseUi
 from domain.domain import ValueData, ValueCalculation
 from domain.enum import RepLevelScheme, StatType
 from services import projection_services
-from ui.dialog import proj_download, selection_projection
+from ui.dialog import proj_download, selection_projection, progress
 
 class ValuesCalculation(BaseUi):
     def __init__(self, preferences):
@@ -144,10 +144,19 @@ class ValuesCalculation(BaseUi):
         count = projection_services.get_projection_count()
         if count == 0:
             dialog = proj_download.Dialog(self.main_win)
+            self.projection = dialog.projection
         else:
             dialog = selection_projection.Dialog(self.main_win)
-        self.projection = dialog.projection
-        self.sel_proj.set(self.projection.name)
+        if dialog.projection is not None:
+            pd = progress.ProgressDialog(self.main_win, title='Loading Projection')
+            pd.increment_completion_percent(15)
+            self.projection = projection_services.get_projection(dialog.projection.index)
+            pd.set_completion_percent(100)
+            pd.destroy()
+            self.sel_proj.set(self.projection.name)
+        else:
+            self.projection = None
+            self.sel_proj.set("No Projection Selected")
 
         self.populate_projections()
     

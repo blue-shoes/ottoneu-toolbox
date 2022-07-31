@@ -68,7 +68,7 @@ class Dialog(tk.Toplevel):
         selection = event.widget.item(event.widget.selection()[0])["text"]
         for proj in self.proj_list:
             if proj.index == int(selection):
-                self.projection = projection_services.get_projection(proj_id=proj.index)
+                self.projection = projection_services.get_projection(proj_id=proj.index, player_data=False)
                 break
 
     def cancel(self):
