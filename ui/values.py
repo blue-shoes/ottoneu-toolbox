@@ -5,8 +5,8 @@ from tkinter import ttk
 from tkinter import messagebox as mb
 from ui.table import Table
 from ui.base import BaseUi
-from domain.domain import ValueData, ValueCalculation
-from domain.enum import RepLevelScheme, StatType
+from domain.domain import CalculationInput, ValueData, ValueCalculation, ScoringFormat
+from domain.enum import CalculationDataType, RankingBasis, RepLevelScheme, StatType
 from services import projection_services
 from ui.dialog import proj_download, selection_projection, progress
 
@@ -35,13 +35,15 @@ class ValuesCalculation(BaseUi):
         ttk.Label(inpf, textvariable=self.sel_proj).grid(column=1,row=0)
         ttk.Button(inpf, text="Select...", command=self.select_projection).grid(column=2,row=0)
 
+        gt_map = ScoringFormat.enum_to_full_name_map()
         ttk.Label(inpf, text="Game Type:").grid(column=0,row=2,pady=5)
         self.game_type = StringVar()
-        self.game_type.set('FGP')
+        self.game_type.set(gt_map[ScoringFormat.FG_POINTS])
         gt_combo = ttk.Combobox(inpf, textvariable=self.game_type)
         gt_combo.bind("<<ComboboxSelected>>", self.update_game_type)
         # TODO: Don't hardcode game types, include other types
-        gt_combo['values'] = ('FGP', 'SABR')
+
+        gt_combo['values'] = (gt_map(ScoringFormat.FG_POINTS), gt_map(ScoringFormat.SABR_POINTS))
         gt_combo.grid(column=1,row=2,pady=5)
 
         ttk.Label(inpf, text="Number of Teams:").grid(column=0, row=3,pady=5)
@@ -207,6 +209,8 @@ class ValuesCalculation(BaseUi):
         self.output_frame = outf = ttk.Frame(self.main_win)
         outf.grid(column=2,row=0, padx=5, sticky=tk.N, pady=17)
 
+        ttk.Label(outf, text='Create or Load Player Value Set')
+
     def toggle_manual_split(self):
         if self.manual_split.get():
             self.hitter_aloc_lbl.configure(state='active')
@@ -285,6 +289,41 @@ class ValuesCalculation(BaseUi):
     def calculate_values(self):
         if self.has_errors():
             return
+        self.value_calc.projection = self.projection
+        self.value_calc.format = ScoringFormat.name_to_enum_map()[self.game_type.get()]
+        self.value_calc.inputs = []
+        self.value_calc.inputs.append(CalculationInput(CalculationDataType.NUM_TEAMS, float(self.num_teams_str.get())))
+        if self.manual_split.get():
+            self.value_calc.inputs.append(CalculationInput(CalculationDataType.HITTER_SPLIT, float(self.hitter_allocation.get())))
+        self.value_calc.inputs.append(CalculationInput(CalculationDataType.NON_PRODUCTIVE_DOLLARS, float(self.non_prod_dollars_str.get())))
+        self.value_calc.inputs.append(CalculationInput(CalculationDataType.HITTER_RANKING_BASIS, float(RankingBasis.display_to_enum_map(self.hitter_basis.get()).value)))
+        self.value_calc.inputs.append(CalculationInput(CalculationDataType.PA_TO_RANK, float(self.min_pa.get())))
+        self.value_calc.inputs.append(CalculationInput(CalculationDataType.PITCHER_RANKING_BASIS, float(RankingBasis.display_to_enum_map(self.pitcher_basis.get()).value)))
+        self.value_calc.inputs.append(CalculationInput(CalculationDataType.SP_IP_TO_RANK, float(self.min_sp_ip.get())))
+        self.value_calc.inputs.append(CalculationInput(CalculationDataType.RP_IP_TO_RANK, float(self.min_rp_ip.get())))
+        self.value_calc.inputs.append(CalculationInput(CalculationDataType.REP_LEVEL_SCHEME, float(self.rep_level_scheme.get())))
+        if self.rep_level_scheme.get() == RepLevelScheme.STATIC_REP_LEVEL.value:
+            self.value_calc.inputs.append(CalculationInput(CalculationDataType.REP_LEVEL_C, float(self.rep_level_dict['C'])))
+            self.value_calc.inputs.append(CalculationInput(CalculationDataType.REP_LEVEL_1B, float(self.rep_level_dict['1B'])))
+            self.value_calc.inputs.append(CalculationInput(CalculationDataType.REP_LEVEL_2B, float(self.rep_level_dict['2B'])))
+            self.value_calc.inputs.append(CalculationInput(CalculationDataType.REP_LEVEL_SS, float(self.rep_level_dict['SS'])))
+            self.value_calc.inputs.append(CalculationInput(CalculationDataType.REP_LEVEL_3B, float(self.rep_level_dict['3B'])))
+            self.value_calc.inputs.append(CalculationInput(CalculationDataType.REP_LEVEL_OF, float(self.rep_level_dict['OF'])))
+            self.value_calc.inputs.append(CalculationInput(CalculationDataType.REP_LEVEL_UTIL, float(self.rep_level_dict['Util'])))
+            self.value_calc.inputs.append(CalculationInput(CalculationDataType.REP_LEVEL_SP, float(self.rep_level_dict['SP'])))
+            self.value_calc.inputs.append(CalculationInput(CalculationDataType.REP_LEVEL_RP, float(self.rep_level_dict['RP'])))
+        else:
+            self.value_calc.inputs.append(CalculationInput(CalculationDataType.ROSTERED_C, float(self.rep_level_dict['C'])))
+            self.value_calc.inputs.append(CalculationInput(CalculationDataType.ROSTERED_1B, float(self.rep_level_dict['1B'])))
+            self.value_calc.inputs.append(CalculationInput(CalculationDataType.ROSTERED_2B, float(self.rep_level_dict['2B'])))
+            self.value_calc.inputs.append(CalculationInput(CalculationDataType.ROSTERED_SS, float(self.rep_level_dict['SS'])))
+            self.value_calc.inputs.append(CalculationInput(CalculationDataType.ROSTERED_3B, float(self.rep_level_dict['3B'])))
+            self.value_calc.inputs.append(CalculationInput(CalculationDataType.ROSTERED_OF, float(self.rep_level_dict['OF'])))
+            self.value_calc.inputs.append(CalculationInput(CalculationDataType.ROSTERED_UTIL, float(self.rep_level_dict['Util'])))
+            self.value_calc.inputs.append(CalculationInput(CalculationDataType.ROSTERED_SP, float(self.rep_level_dict['SP'])))
+            self.value_calc.inputs.append(CalculationInput(CalculationDataType.ROSTERED_RP, float(self.rep_level_dict['RP'])))
+        
+
     
     def int_validation(self, input):
         if input.isdigit():
