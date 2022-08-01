@@ -70,23 +70,56 @@ class CalculationDataType(Enum):
     NUM_TEAMS = 20
     HITTER_SPLIT = 21
     NON_PRODUCTIVE_DOLLARS = 22
-    RANKING_BASIS = 22
+    HITTER_RANKING_BASIS = 22
     PA_TO_RANK = 24
     SP_IP_TO_RANK = 25
     RP_IP_TO_RANK = 26
     COMBINE_TWO_WAY_PLAYERS = 27
+    PITCHER_RANKING_BASIS = 28
 
 class RepLevelScheme(Enum):
     NUM_ROSTERED = 0
     STATIC_REP_LEVEL = 1
     FILL_GAMES = 2
+    TOTAL_ROSTERED = 3
 
 class RankingBasis(Enum):
-    PPG = 'P/G'
-    PPPA = 'P/PA'
-    PIP  = 'P/IP'
-    ZSCORE = 'z-Score'
-    SGP = 'SGP'
+    PPG = 0
+    PPPA = 1
+    PIP  = 2
+    ZSCORE = 3
+    SGP = 4
+
+    @classmethod
+    def num_to_enum_map(self):
+        return {
+            0 : self.PPG,
+            1 : self.PPPA,
+            2 : self.PIP,
+            3 : self.ZSCORE,
+            4 : self.SGP
+        }
+    
+    @classmethod
+    def display_to_enum_map(self):
+        return {
+            'P/G' : self.PPG,
+            'P/PA' : self.PPPA,
+            'P/IP' : self.PIP,
+            'z-Score' : self.ZSCORE,
+            'SGP' : self.SGP
+        }
+    
+    @classmethod
+    def enum_to_display_dict(self):
+        return {
+            self.PPG : 'P/G',
+            self.PPPA : 'P/PA',
+            self.PIP : 'P/IP',
+            self.ZSCORE : 'z-Score',
+            self.SGP : 'SGP'
+        }
+
     
 class StatType(Enum):
     G_HIT = 0
@@ -275,3 +308,4 @@ class Position(Enum):
     POS_UTIL = 'Util'
     POS_SP = 'SP'
     POS_RP = 'RP'    
+    POS_TWO_WAY = 'Two-Way'
