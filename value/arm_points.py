@@ -2,26 +2,30 @@ import pandas as pd
 import os
 from os import path
 
+from domain.enum import RepLevelScheme, RankingBasis
+
 pd.options.mode.chained_assignment = None # from https://stackoverflow.com/a/20627316
 
 pitch_pos = ['SP','RP']
 default_replacement_positions = {"SP":60,"RP":30}
 default_replacement_levels = {}
-target_innings = 1500.0*12.0
 
 class ArmPoint():
 
     def __init__(self, intermediate_calc=False, replacement_pos=default_replacement_positions, replacement_levels=default_replacement_levels, target_arm=196, SABR=False, rp_limit=999, 
-        force_innings=False, rp_ip_per_team=300, num_teams=12):
+        rep_level_scheme=RepLevelScheme.FILL_GAMES, rp_ip_per_team=300, num_teams=12, rank_basis=RankingBasis.PIP):
         self.intermediate_calculations = intermediate_calc
         self.replacement_positions = replacement_pos
         self.replacement_levels = replacement_levels
         self.target_pitch = target_arm
         self.SABR = SABR
         self.rp_limit = rp_limit
-        self.force_innings = force_innings
+        self.rep_level_scheme = rep_level_scheme
         self.rp_ip_per_team = rp_ip_per_team
         self.num_teams = num_teams
+        self.target_innings = 1500.0 * num_teams
+        #TODO implemetn P/G rank basis for H2H
+        self.rank_basis = rank_basis
         if intermediate_calc:
             self.dirname = os.path.abspath(os.path.join(os.path.dirname( __file__ ), '..'))
             self.intermed_subdirpath = os.path.join(self.dirname, 'data_dirs','intermediate')
@@ -80,7 +84,7 @@ class ArmPoint():
         rp_ip = rosterable.apply(self.usable_ip_calc, args=("RP", 1), axis=1).sum()
         total_ip = sp_ip + rp_ip
 
-        if self.force_innings:
+        if self.rep_level_scheme == RepLevelScheme.FILL_GAMES:
             while sp_ip < self.num_teams * (1500-self.rp_ip_per_team):
                 self.replacement_positions['SP'] = self.replacement_positions['SP'] + 1
                 self.get_pitcher_par_calc(df)
@@ -94,14 +98,14 @@ class ArmPoint():
                 #I had to put the 1 in the args because otherwise it treats "RP" like two arugments "R" and "P" for some reason
                 rp_ip = rosterable.apply(self.usable_ip_calc, args=("RP", 1), axis=1).sum()
 
-        else:
-            while num_arms != self.target_pitch or (abs(total_ip-target_innings) > 100 and self.replacement_positions['RP'] != self.rp_limit):
+        elif self.rep_level_scheme == RepLevelScheme.TOTAL_ROSTERED:
+            while num_arms != self.target_pitch or (abs(total_ip-self.target_innings) > 100 and self.replacement_positions['RP'] != self.rp_limit):
                 #Going to do optional capping of relievers. It can get a bit out of control otherwise
                 if num_arms < self.target_pitch and self.replacement_positions['RP'] == self.rp_limit:
                     self.replacement_positions['SP'] = self.replacement_positions['SP'] + 1
                 elif num_arms == self.target_pitch:
                     #We have the right number of arms, but not in the inning threshold
-                    if total_ip < target_innings:
+                    if total_ip < self.target_innings:
                         #Too many relievers
                         self.replacement_positions['SP'] = self.replacement_positions['SP'] + 1
                         self.replacement_positions['RP'] = self.replacement_positions['RP'] - 1
@@ -110,7 +114,7 @@ class ArmPoint():
                         self.replacement_positions['SP'] = self.replacement_positions['SP'] - 1
                         self.replacement_positions['RP'] = self.replacement_positions['RP'] + 1
                 elif num_arms < self.target_pitch:
-                    if self.target_pitch-num_arms == 1 and target_innings - total_ip > 200:
+                    if self.target_pitch-num_arms == 1 and self.target_innings - total_ip > 200:
                         #Add starter, a reliever isn't going to get it done, so don't bother
                         #I got caught in a loop without this
                         self.replacement_positions['SP'] = self.replacement_positions['SP'] + 1
@@ -121,7 +125,7 @@ class ArmPoint():
                     else:
                         self.replacement_positions['RP'] = self.replacement_positions['RP'] + 1
                 else:
-                    if self.target_pitch-num_arms == -1 and target_innings - total_ip > 50:
+                    if self.target_pitch-num_arms == -1 and self.target_innings - total_ip > 50:
                         #Remove a reliever. We're already short on innings, so removing a starter isn't going to get it done, so don't bother
                         #I got caught in a loop without this
                         self.replacement_positions['RP'] = self.replacement_positions['RP'] - 1
@@ -139,6 +143,12 @@ class ArmPoint():
                 #I had to put the 1 in the args because otherwise it treats "SP" like two arugments "S" and "P" for some reason
                 total_ip = rosterable.apply(self.usable_ip_calc, args=("SP", 1), axis=1).sum()
                 total_ip += rosterable.apply(self.usable_ip_calc, args=("RP", 1), axis=1).sum()
+        elif self.rep_level_scheme == RepLevelScheme.NUM_ROSTERED:
+            #TODO Implement this
+            i=1
+        else:
+            #TODO Implement this (static rep levels)
+            i=1
         
         if(self.intermediate_calculations):
             filepath = os.path.join(self.intermed_subdirpath, f"pit_rost.csv")
@@ -245,18 +255,18 @@ class ArmPoint():
 
     def sp_multiplier_assignment(self, row):
         #We're assuming you use all innings for your top 6 pitchers, 95% of next one, 90% of the next, etc
-        if row['Rank SP Rate'] <=72:
+        if row['Rank SP Rate'] <=6 * self.num_teams:
             return 1.0
-        non_top_rank = row['Rank SP Rate'] - 72
-        factor = non_top_rank // 12 + 1
+        non_top_rank = row['Rank SP Rate'] - 6 * self.num_teams
+        factor = non_top_rank // self.num_teams + 1
         return 1 - factor * 0.05
 
     def rp_multiplier_assignment(self, row):
         #Once you get past 5 RP per team, there are diminishing returns on how many relief innings are actually usable
-        if row['Rank RP Rate'] <=60:
+        if row['Rank RP Rate'] <=5 * self.num_teams:
             return 1.0
-        non_top_rank = row['Rank RP Rate'] - 60
-        factor = non_top_rank // 12 + 1
+        non_top_rank = row['Rank RP Rate'] - 5 * self.num_teams
+        factor = non_top_rank // self.num_teams + 1
         return 1 - factor * 0.3
 
     def estimate_role_splits(self, df):

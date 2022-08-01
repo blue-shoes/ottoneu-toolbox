@@ -1,7 +1,10 @@
+from modulefinder import ReplacePackage
 import pandas as pd
 import numpy as np
 import os
 from os import path
+
+from domain.enum import RankingBasis, RepLevelScheme
 
 pd.options.mode.chained_assignment = None # from https://stackoverflow.com/a/20627316
 
@@ -13,15 +16,16 @@ games_filled = {}
 
 class BatPoint():
 
-    def __init__(self, intermediate_calc=False, rank_basis="P/G", replacement_pos=default_replacement_positions, replacement_levels=default_replacement_levels, target_bat=244, 
-    calc_using_games=False, max_pos_value=True):
+    def __init__(self, intermediate_calc=False, rank_basis=RankingBasis.PPG, replacement_pos=default_replacement_positions, replacement_levels=default_replacement_levels, target_bat=244, 
+    rep_level_scheme=RepLevelScheme.FILL_GAMES, max_pos_value=True, num_teams=12):
         self.intermediate_calculations = intermediate_calc
-        self.rank_basis = rank_basis
+        self.rank_basis = RankingBasis.enum_to_display_dict()[rank_basis]
         self.replacement_positions = replacement_pos
         self.replacement_levels = replacement_levels
         self.target_bat = target_bat
-        self.calc_using_games = calc_using_games
+        self.rep_level_scheme = rep_level_scheme
         self.max_pos_value = max_pos_value
+        self.num_teams = num_teams
         if intermediate_calc:
             self.dirname = os.path.abspath(os.path.join(os.path.dirname( __file__ ), '..'))
             self.intermed_subdirpath = os.path.join(self.dirname, 'data_dirs', 'intermediate')
@@ -149,11 +153,11 @@ class BatPoint():
         for pos in bat_pos:
             self.get_position_par_calc(df, pos)
 
-        if self.calc_using_games:
+        if self.rep_level_scheme == RepLevelScheme.FILL_GAMES:
             #Set maximum PAR value for each player to determine how many are rosterable
             df['Max PAR'] = df.apply(self.calc_max_par, axis=1)
             self.calc_total_games(df)
-            while not self.are_games_filled():
+            while not self.are_games_filled(self.num_teams):
                 max_rep_lvl = 0.0
                 for pos, rep_lvl in self.replacement_levels.items():
                     if pos == 'Util': continue
@@ -173,7 +177,7 @@ class BatPoint():
                 #Set maximum PAR value for each player to determine how many are rosterable
                 df['Max PAR'] = df.apply(self.calc_max_par, axis=1)
                 self.calc_total_games(df)
-        else:
+        elif self.rep_level_scheme == RepLevelScheme.TOTAL_ROSTERED:
             while num_bats != self.target_bat:
                 if num_bats > self.target_bat:
                     #Too many players, find the current minimum replacement level and bump that replacement_position down by 1
@@ -206,6 +210,13 @@ class BatPoint():
                 df['Max PAR'] = df.apply(self.calc_max_par, axis=1)
                 #FOM is how many bats with a non-negative max PAR
                 num_bats = len(df.loc[df['Max PAR'] >= 0])
+        elif self.rep_level_scheme == RepLevelScheme.NUM_ROSTERED:
+            #TODO: Fill this out
+            i=1
+        else:
+            #Static replacement levels
+            #TODO: Fill this out
+            i=1
 
     def get_position_par_calc(self, df, pos):
         rep_level = self.get_position_rep_level(df, pos)
@@ -248,13 +259,13 @@ class BatPoint():
                     max_rep_lvl = rep_level
             return max_rep_lvl
 
-    def calc_par(self, pos_proj):
+    def calc_par(self, pos_proj, min_pa):
         pos_proj['Points'] = pos_proj.apply(self.calc_bat_points, axis=1)
         pos_proj['P/G'] = pos_proj.apply(self.calc_ppg, axis=1)
         pos_proj['P/PA'] = pos_proj.apply(self.calc_pppa, axis=1)
 
         #Filter to players projected to a baseline amount of playing time
-        pos_150pa = pos_proj.loc[pos_proj['PA'] >= 150]
+        pos_min_pa = pos_proj.loc[pos_proj['PA'] >= min_pa]
 
-        self.get_position_par(pos_150pa)
-        return pos_150pa
+        self.get_position_par(pos_min_pa)
+        return pos_min_pa

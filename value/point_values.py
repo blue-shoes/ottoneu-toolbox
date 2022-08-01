@@ -5,7 +5,8 @@ from os import path
 import value.bat_points
 import value.arm_points
 
-from services import projection_services
+from services import projection_services, calculation_services
+from domain.enum import CalculationDataType, RepLevelScheme, RankingBasis, ScoringFormat
 
 from scrape import scrape_ottoneu
 
@@ -21,7 +22,7 @@ replacement_levels = {}
 
 class PointValues():
 
-    def __init__(self, projection='steamer', depthchart_pt=False, ros=False, debug=False, rostered_hitters=244, rostered_pitchers=196,
+    def __init__(self, value_calc = None, projection='steamer', depthchart_pt=False, ros=False, debug=False, rostered_hitters=244, rostered_pitchers=196,
                     rp_limit=999, SABR_points=False, force_proj_download=False):
         self.projection = projection
         self.depthchart_pt = depthchart_pt
@@ -32,6 +33,7 @@ class PointValues():
         self.rp_limit = rp_limit
         self.SABR = SABR_points
         self.force = force_proj_download
+        self.value_calc = value_calc
 
         #Initialize directory for intermediate calc files if required
         self.dirname = os.path.abspath(os.path.join(os.path.dirname( __file__ ), '..'))
@@ -80,8 +82,8 @@ class PointValues():
             if column in proj.columns:
                 proj[column] = dc_proj[column]
         return proj
-
-    def calculate_values(self, rank_pos):
+    
+    def set_up_calc(self):
         projs = projection_services.download_projections(self.projection, self.ros, self.depthchart_pt)
         pos_proj = projs[0]
         pitch_proj = projs[1]
@@ -93,21 +95,74 @@ class PointValues():
             otto_scraper.close()
 
         #Set position data from Ottoneu
-        pos_proj = self.set_positions(pos_proj, positions)
-        pitch_proj = self.set_positions(pitch_proj, positions)
+        self.pos_proj = self.set_positions(pos_proj, positions)
+        self.pitch_proj = self.set_positions(pitch_proj, positions)
 
-        print('Calculating batters')
-        pos_points = value.bat_points.BatPoint(intermediate_calc=self.intermediate_calculations, calc_using_games=True)
-        pos_150pa = pos_points.calc_par(pos_proj)
+    def calculate_values(self, rank_pos, pd=None):
 
-        print('Calculating pitchers')
-        pitch_points = value.arm_points.ArmPoint(intermediate_calc=self.intermediate_calculations, force_innings=True)
-        real_pitchers = pitch_points.calc_par(pitch_proj)
+        if self.value_calc is None:
+            self.set_up_calc()
+            rep_level_scheme = RepLevelScheme.FILL_GAMES
+            hitter_rank_basis = RankingBasis.PPG
+            num_teams = 12
+            sabr = False
+            non_prod_salary = 48
+        else:
+            projs = projection_services.convert_to_df(self.value_calc.projection)
+            self.pos_proj = projs[0]
+            self.pitch_proj = projs[1]
+            self.intermediate_calculations = False
+            rep_level_scheme = RepLevelScheme._value2member_map_[int(self.value_calc.get_input(CalculationDataType.REP_LEVEL_SCHEME))]
+            hitter_rank_basis = RankingBasis._value2member_map_[int(self.value_calc.get_input(CalculationDataType.HITTER_RANKING_BASIS))]
+            pitcher_rank_basis = RankingBasis._value2member_map_[int(self.value_calc.get_input(CalculationDataType.PITCHER_RANKING_BASIS))]
+            num_teams = int(self.value_calc.get_input(CalculationDataType.NUM_TEAMS))
+            sabr = self.value_calc.format == ScoringFormat.SABR_POINTS or self.value_calc.format == ScoringFormat.H2H_SABR_POINTS
+            non_prod_salary = int(self.value_calc.get_input(CalculationDataType.NON_PRODUCTIVE_DOLLARS))
+            rep_nums = None
+            rep_levels = None
+            if rep_level_scheme == RepLevelScheme.NUM_ROSTERED or rep_level_scheme == RepLevelScheme.FILL_GAMES:
+                rep_nums = calculation_services.get_num_rostered_rep_levels(self.value_calc)
+            elif rep_level_scheme == RepLevelScheme.STATIC_REP_LEVEL:
+                rep_levels = calculation_services.get_rep_levels(self.value_calc)
+        
+        self.update_progress(pd, 'Calculating Batters', 10)
+        pos_points = value.bat_points.BatPoint(
+            intermediate_calc=self.intermediate_calculations, 
+            rep_level_scheme=rep_level_scheme,
+            rank_basis=hitter_rank_basis,
+            num_teams=num_teams
+        )
+        if self.value_calc is not None:
+            if rep_nums is not None:
+                pos_points.replacement_positions = rep_nums
+            if rep_levels is not None:
+                pos_points.replacement_levels = rep_levels
+        pos_min_pa = pos_points.calc_par(self.pos_proj, self.value_calc.get_input(CalculationDataType.PA_TO_RANK))
 
-        print(f"Replacment level numbers are: {pos_points.replacement_positions} and {pitch_points.replacement_positions}")
-        print(f"Replacement levels are: {pos_points.replacement_levels} and {pitch_points.replacement_levels}")
+        self.update_progress(pd, 'Calculating pitchers', 40)
+        #TODO Might need to add usable RP innings as argument
+        pitch_points = value.arm_points.ArmPoint(
+            intermediate_calc=self.intermediate_calculations, 
+            rep_level_scheme=rep_level_scheme,
+            num_teams=num_teams,
+            rank_basis=pitcher_rank_basis
+            )
+        if self.value_calc is not None:
+            if rep_nums is not None:
+                pitch_points.replacement_positions = rep_nums
+            if rep_levels is not None:
+                pitch_points.replacement_levels = rep_levels
+        real_pitchers = pitch_points.calc_par(self.pitch_proj)
 
-        rosterable_pos = pos_150pa.loc[pos_150pa['Max PAR'] >= 0]
+        if self.value_calc is None:
+            print(f"Replacment level numbers are: {pos_points.replacement_positions} and {pitch_points.replacement_positions}")
+            print(f"Replacement levels are: {pos_points.replacement_levels} and {pitch_points.replacement_levels}")
+        else:
+            #TODO: write replacement level info to ValueCalculation.data
+            i=1
+
+        self.update_progress(pd, 'Calculating $/PAR and applying', 30)
+        rosterable_pos = pos_min_pa.loc[pos_min_pa['Max PAR'] >= 0]
         print(f"total games = {rosterable_pos['G'].sum()}")
         rosterable_pitch = real_pitchers.loc[real_pitchers['PAR'] >= 0]
         print(f"total innings = {rosterable_pitch['IP'].sum()}")
@@ -118,29 +173,28 @@ class PointValues():
         print(f'Total PAR: {total_par}; Total Usable PAR: {total_usable_par}')
         total_players = len(rosterable_pos) + len(rosterable_pitch)
 
-        dollars = 400*12
-        #TODO: Make prospect number an input
-        dollars -= 48 #estimate $4 for prospects per team on top of $1
-        dollars -= 12*40 #remove a dollar per player at or above replacement
+        dollars = 400*num_teams
+        dollars -= non_prod_salary
+        dollars -= num_teams*40 #remove a dollar per player at or above replacement
         self.dol_per_par = dollars / total_usable_par
         print(f'Dollar/PAR = {self.dol_per_par}')
 
         if rank_pos:
             for pos in bat_pos:
                 if pos == 'MI':
-                    pos_value = pd.DataFrame(pos_150pa.loc[pos_150pa['Position(s)'].str.contains("2B|SS", case=False, regex=True)])
+                    pos_value = pd.DataFrame(pos_min_pa.loc[pos_min_pa['Position(s)'].str.contains("2B|SS", case=False, regex=True)])
                 elif pos == 'Util':
-                    pos_value = pd.DataFrame(pos_150pa)
+                    pos_value = pd.DataFrame(pos_min_pa)
                 else:
-                    pos_value = pd.DataFrame(pos_150pa.loc[pos_150pa['Position(s)'].str.contains(pos)])
+                    pos_value = pd.DataFrame(pos_min_pa.loc[pos_min_pa['Position(s)'].str.contains(pos)])
                 pos_value['Value'] = pos_value[f'{pos}_PAR'].apply(lambda x: x*self.dol_per_par + 1.0 if x >= 0 else 0)
                 pos_value.sort_values(by=['Value','P/G'], inplace=True, ascending=[False,False])
                 pos_value['Value'] = pos_value['Value'].apply(lambda x : "${:.0f}".format(x))
                 pos_value = pos_value[['OttoneuID', 'Value', 'Name','Team','Position(s)','Points',f'{pos}_PAR','P/G']]
                 pos_value.to_csv(f"C:\\Users\\adam.scharf\\Documents\\Personal\\FFB\\Staging\\{pos}_values.csv", encoding='utf-8-sig')
 
-        pos_150pa['Value'] = pos_150pa['Max PAR'].apply(lambda x: x*self.dol_per_par + 1.0 if x >= 0 else 0)
-        pos_150pa.sort_values('Max PAR', inplace=True)
+        pos_min_pa['Value'] = pos_min_pa['Max PAR'].apply(lambda x: x*self.dol_per_par + 1.0 if x >= 0 else 0)
+        pos_min_pa.sort_values('Max PAR', inplace=True)
 
         if rank_pos:
             for pos in pitch_pos:
@@ -156,11 +210,11 @@ class PointValues():
 
         if self.intermediate_calculations:
             filepath = os.path.join(self.intermed_subdirpath, f"pos_value_detail.csv")
-            pos_150pa.to_csv(filepath, encoding='utf-8-sig')
+            pos_min_pa.to_csv(filepath, encoding='utf-8-sig')
             filepath = os.path.join(self.intermed_subdirpath, f"pitch_value_detail.csv")
             real_pitchers.to_csv(filepath, encoding='utf-8-sig')
         
-        pos_results = pos_150pa[['OttoneuID', 'Value', 'Name','Team','Position(s)','Points','Max PAR','P/G']]
+        pos_results = pos_min_pa[['OttoneuID', 'Value', 'Name','Team','Position(s)','Points','Max PAR','P/G']]
         pos_results.rename(columns={'Max PAR':'PAR'}, inplace=True)
         pitch_results = real_pitchers[['OttoneuID', 'Value', 'Name','Team','Position(s)','Points','PAR','P/IP']]
 
@@ -191,6 +245,13 @@ class PointValues():
         #filepath = os.path.join(self.intermed_subdirpath, f"results.csv")
         #results.to_csv(filepath, encoding='utf-8-sig')
         return results
+    
+    def update_progress(self, pd, task, increment):
+        if pd is not None:
+            pd.set_task_title(f"{task}...")
+            pd.increment_completion_percent(increment)
+        else:
+            print(task)
 
 #--------------------------------------------------------------------------------
 #Begin main program
