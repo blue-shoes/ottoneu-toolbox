@@ -2,7 +2,7 @@ from sqlalchemy import Column, ForeignKey, Index
 from sqlalchemy import Integer, String, Boolean, Float, Date, Enum
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
-from domain.enum import CalculationDataType, ProjectionType, ScoringFormat, StatType
+from domain.enum import CalculationDataType, ProjectionType, ScoringFormat, StatType, Position
 
 Base = declarative_base()
 
@@ -87,6 +87,8 @@ class PlayerValue(Base):
     ottoneu_id = Column(Integer, ForeignKey("player.index"))
     player = relationship("Player", back_populates="values")
 
+    position = Column(Enum(Position))
+
     calculation_id = Column(Integer, ForeignKey("value_calculation.index"))
     calculation = relationship("ValueCalculation", back_populates="values")
 
@@ -105,7 +107,18 @@ class ValueCalculation(Base):
     values = relationship("PlayerValue", back_populates="calculation", cascade="all, delete")
     data = relationship("ValueData", back_populates="calculation", cascade="all, delete")
 
+    def get_input(self, data_type):
+        for inp in self.inputs:
+            if inp.data_type == data_type:
+                return inp.value
+        return None
+
 class CalculationInput(Base):
+
+    def __init__(self, data_type, value):
+        self.data_type = data_type
+        self.value = value
+
     __tablename__ = "calculation_input"
     index = Column(Integer, primary_key=True)
 
