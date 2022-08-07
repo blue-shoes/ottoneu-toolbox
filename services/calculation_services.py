@@ -1,8 +1,9 @@
 from dao.session import Session
 from domain.enum import Position, CalculationDataType
 from value.point_values import PointValues
+from services import player_services
 
-def perform_calculation(value_calc, pd = None):
+def perform_point_calculation(value_calc, pd = None):
     if pd is not None:
         pd.set_task_title("Initializing Value Calculation...")
         pd.increment_completion_percent(5)
@@ -37,4 +38,15 @@ def get_rep_levels(value_calc):
     rl_dict[Position.POS_SP.value] = value_calc.get_input(CalculationDataType.REP_LEVEL_SP)
     rl_dict[Position.POS_RP.value] = value_calc.get_input(CalculationDataType.REP_LEVEL_RP)
     return rl_dict
+
+def save_calculation(value_calc):
+    with Session() as session:
+        seen_players = {}
+        for pv in value_calc.values:
+            if pv.player_id in seen_players:
+                player = seen_players[pv.player_id]
+            else:
+                player = player_services.get_player(pv.player_id)
+            pv.player = player
+        session.add(value_calc)
     
