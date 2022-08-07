@@ -1,12 +1,12 @@
 import pandas as pd
-from scrape import scrape_fg
 import os
 from os import path
 import value.bat_points
 import value.arm_points
 
 from services import projection_services, calculation_services
-from domain.enum import CalculationDataType, RepLevelScheme, RankingBasis, ScoringFormat
+from domain.enum import CalculationDataType, Position, RepLevelScheme, RankingBasis, ScoringFormat
+from domain.domain import PlayerValue
 
 from scrape import scrape_ottoneu
 
@@ -145,7 +145,8 @@ class PointValues():
             intermediate_calc=self.intermediate_calculations, 
             rep_level_scheme=rep_level_scheme,
             num_teams=num_teams,
-            rank_basis=pitcher_rank_basis
+            rank_basis=pitcher_rank_basis,
+            SABR=sabr
             )
         if self.value_calc is not None:
             if rep_nums is not None:
@@ -181,21 +182,31 @@ class PointValues():
 
         self.update_progress(pd, 'Calculating $/PAR and applying', 30)
         rosterable_pos = pos_min_pa.loc[pos_min_pa['Max PAR'] >= 0]
-        print(f"total games = {rosterable_pos['G'].sum()}")
         rosterable_pitch = real_pitchers.loc[real_pitchers['PAR'] >= 0]
-        print(f"total innings = {rosterable_pitch['IP'].sum()}")
 
         total_par = rosterable_pos['Max PAR'].sum() + rosterable_pitch['PAR'].sum()
         #I had to put the 1 in the args because otherwise it treats "SP" like two arguments "S" and "P" for some reason
         total_usable_par = rosterable_pos['Max PAR'].sum() + rosterable_pitch.apply(pitch_points.usable_par_calc, args=('SP',1), axis=1).sum() + rosterable_pitch.apply(pitch_points.usable_par_calc, args=('RP',1), axis=1).sum()
-        print(f'Total PAR: {total_par}; Total Usable PAR: {total_usable_par}')
         total_players = len(rosterable_pos) + len(rosterable_pitch)
 
         dollars = 400*num_teams
         dollars -= non_prod_salary
         dollars -= num_teams*40 #remove a dollar per player at or above replacement
         self.dol_per_par = dollars / total_usable_par
-        print(f'Dollar/PAR = {self.dol_per_par}')
+
+        if self.value_calc is None:
+            print(f"total games = {rosterable_pos['G'].sum()}")
+            print(f"total innings = {rosterable_pitch['IP'].sum()}")
+            print(f'Total PAR: {total_par}; Total Usable PAR: {total_usable_par}')
+            print(f'Dollar/PAR = {self.dol_per_par}')
+        else:
+            self.value_calc.set_output(CalculationDataType.TOTAL_GAMES_PLAYED, rosterable_pos['G'].sum())
+            self.value_calc.set_output(CalculationDataType.TOTAL_INNINGS_PITCHED, rosterable_pitch['IP'].sum())
+            self.value_calc.set_output(CalculationDataType.TOTAL_FOM_ABOVE_REPLACEMENT, total_usable_par)
+            self.value_calc.set_output(CalculationDataType.DOLLARS_PER_FOM, self.dol_per_par)
+
+        if self.value_calc is not None:
+            self.value_calc.values= [] 
 
         if rank_pos:
             for pos in bat_pos:
@@ -209,7 +220,11 @@ class PointValues():
                 pos_value.sort_values(by=['Value','P/G'], inplace=True, ascending=[False,False])
                 pos_value['Value'] = pos_value['Value'].apply(lambda x : "${:.0f}".format(x))
                 pos_value = pos_value[['OttoneuID', 'Value', 'Name','Team','Position(s)','Points',f'{pos}_PAR','P/G']]
-                pos_value.to_csv(f"C:\\Users\\adam.scharf\\Documents\\Personal\\FFB\\Staging\\{pos}_values.csv", encoding='utf-8-sig')
+                if self.value_calc is None:
+                    pos_value.to_csv(f"C:\\Users\\adam.scharf\\Documents\\Personal\\FFB\\Staging\\{pos}_values.csv", encoding='utf-8-sig')
+                else:
+                    for index, row in pos_value:
+                        self.value_calc.set_player_value(index, pos, row['Value'])
 
         pos_min_pa['Value'] = pos_min_pa['Max PAR'].apply(lambda x: x*self.dol_per_par + 1.0 if x >= 0 else 0)
         pos_min_pa.sort_values('Max PAR', inplace=True)
@@ -221,48 +236,56 @@ class PointValues():
                 pos_value.sort_values(by=['Value','P/IP'], inplace=True, ascending=[False,False])
                 pos_value['Value'] = pos_value['Value'].apply(lambda x : "${:.0f}".format(x))
                 pos_value = pos_value[['OttoneuID', 'Value', 'Name','Team','Position(s)','Points',f'PAR {pos}','P/IP']]
-                pos_value.to_csv(f"C:\\Users\\adam.scharf\\Documents\\Personal\\FFB\\Staging\\{pos}_values.csv", encoding='utf-8-sig')
+                if self.value_calc is None:
+                    pos_value.to_csv(f"C:\\Users\\adam.scharf\\Documents\\Personal\\FFB\\Staging\\{pos}_values.csv", encoding='utf-8-sig')
+                else:
+                    for index, row in pos_value:
+                        self.value_calc.set_player_value(index, pos, row['Value'])
 
-        real_pitchers['Value'] = real_pitchers['PAR'].apply(lambda x: x*self.dol_per_par + 1.0 if x >= 0 else 0)
-        real_pitchers.sort_values('PAR', inplace=True)
+        if self.value_calc is None:
 
-        if self.intermediate_calculations:
-            filepath = os.path.join(self.intermed_subdirpath, f"pos_value_detail.csv")
-            pos_min_pa.to_csv(filepath, encoding='utf-8-sig')
-            filepath = os.path.join(self.intermed_subdirpath, f"pitch_value_detail.csv")
-            real_pitchers.to_csv(filepath, encoding='utf-8-sig')
-        
-        pos_results = pos_min_pa[['OttoneuID', 'Value', 'Name','Team','Position(s)','Points','Max PAR','P/G']]
-        pos_results.rename(columns={'Max PAR':'PAR'}, inplace=True)
-        pitch_results = real_pitchers[['OttoneuID', 'Value', 'Name','Team','Position(s)','Points','PAR','P/IP']]
+            real_pitchers['Value'] = real_pitchers['PAR'].apply(lambda x: x*self.dol_per_par + 1.0 if x >= 0 else 0)
+            real_pitchers.sort_values('PAR', inplace=True)
 
-        if self.intermediate_calculations:
-            filepath = os.path.join(self.intermed_subdirpath, f"pos_result.csv")
-            pos_results.to_csv(filepath, encoding='utf-8-sig')
-            filepath = os.path.join(self.intermed_subdirpath, f"pitch_result.csv")
-            pitch_results.to_csv(filepath, encoding='utf-8-sig')
+            if self.intermediate_calculations:
+                filepath = os.path.join(self.intermed_subdirpath, f"pos_value_detail.csv")
+                pos_min_pa.to_csv(filepath, encoding='utf-8-sig')
+                filepath = os.path.join(self.intermed_subdirpath, f"pitch_value_detail.csv")
+                real_pitchers.to_csv(filepath, encoding='utf-8-sig')
+            
+            pos_results = pos_min_pa[['OttoneuID', 'Value', 'Name','Team','Position(s)','Points','Max PAR','P/G']]
+            pos_results.rename(columns={'Max PAR':'PAR'}, inplace=True)
+            pitch_results = real_pitchers[['OttoneuID', 'Value', 'Name','Team','Position(s)','Points','PAR','P/IP']]
 
-        pos_index = pos_results.index
-        pitch_index = pitch_results.index
-        intersect = pos_index.intersection(pitch_index)
+            if self.intermediate_calculations:
+                filepath = os.path.join(self.intermed_subdirpath, f"pos_result.csv")
+                pos_results.to_csv(filepath, encoding='utf-8-sig')
+                filepath = os.path.join(self.intermed_subdirpath, f"pitch_result.csv")
+                pitch_results.to_csv(filepath, encoding='utf-8-sig')
 
-        results = pos_results
-        results['P/IP'] = 0
-        pitch_results['P/G'] = 0
-        for index in intersect:
-            results.loc[index, 'Value'] = results.loc[index]['Value'] + pitch_results.loc[index]['Value']
-            results.loc[index, 'Points'] = results.loc[index]['Points'] + pitch_results.loc[index]['Points']
-            results.loc[index, 'PAR'] = results.loc[index]['PAR'] + pitch_results.loc[index]['PAR']
-            results.loc[index, 'P/IP'] = pitch_results.loc[index]['P/IP']
-            pitch_results = pitch_results.drop(index=index)
+            pos_index = pos_results.index
+            pitch_index = pitch_results.index
+            intersect = pos_index.intersection(pitch_index)
 
-        results = results.append(pitch_results)
-        results['Value'] = results['Value'].apply(lambda x : "${:.0f}".format(x))
-        results = results[['OttoneuID', 'Value', 'Name','Team','Position(s)','Points','PAR','P/G','P/IP']]
-        results.sort_values('PAR', inplace=True, ascending=False)
-        #filepath = os.path.join(self.intermed_subdirpath, f"results.csv")
-        #results.to_csv(filepath, encoding='utf-8-sig')
-        return results
+            results = pos_results
+            results['P/IP'] = 0
+            pitch_results['P/G'] = 0
+            for index in intersect:
+                results.loc[index, 'Value'] = results.loc[index]['Value'] + pitch_results.loc[index]['Value']
+                results.loc[index, 'Points'] = results.loc[index]['Points'] + pitch_results.loc[index]['Points']
+                results.loc[index, 'PAR'] = results.loc[index]['PAR'] + pitch_results.loc[index]['PAR']
+                results.loc[index, 'P/IP'] = pitch_results.loc[index]['P/IP']
+                pitch_results = pitch_results.drop(index=index)
+
+            results = results.append(pitch_results)
+            results['Value'] = results['Value'].apply(lambda x : "${:.0f}".format(x))
+            results = results[['OttoneuID', 'Value', 'Name','Team','Position(s)','Points','PAR','P/G','P/IP']]
+            results.sort_values('PAR', inplace=True, ascending=False)
+            #filepath = os.path.join(self.intermed_subdirpath, f"results.csv")
+            #results.to_csv(filepath, encoding='utf-8-sig')
+            return results
+        else:
+            return
     
     def update_progress(self, pd, task, increment):
         if pd is not None:
