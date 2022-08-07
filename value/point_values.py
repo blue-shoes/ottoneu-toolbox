@@ -159,7 +159,25 @@ class PointValues():
             print(f"Replacement levels are: {pos_points.replacement_levels} and {pitch_points.replacement_levels}")
         else:
             #TODO: write replacement level info to ValueCalculation.data
-            i=1
+            self.value_calc.set_output(CalculationDataType.REP_LEVEL_C, pos_points.replacement_levels[Position.POS_C.value])
+            self.value_calc.set_output(CalculationDataType.REP_LEVEL_1B, pos_points.replacement_levels[Position.POS_1B.value])
+            self.value_calc.set_output(CalculationDataType.REP_LEVEL_2B, pos_points.replacement_levels[Position.POS_2B.value])
+            self.value_calc.set_output(CalculationDataType.REP_LEVEL_SS, pos_points.replacement_levels[Position.POS_SS.value])
+            self.value_calc.set_output(CalculationDataType.REP_LEVEL_3B, pos_points.replacement_levels[Position.POS_3B.value])
+            self.value_calc.set_output(CalculationDataType.REP_LEVEL_OF, pos_points.replacement_levels[Position.POS_OF.value])
+            self.value_calc.set_output(CalculationDataType.REP_LEVEL_UTIL, pos_points.replacement_levels[Position.POS_UTIL.value])
+            self.value_calc.set_output(CalculationDataType.REP_LEVEL_SP, pitch_points.replacement_levels[Position.POS_SP.value])
+            self.value_calc.set_output(CalculationDataType.REP_LEVEL_RP, pitch_points.replacement_levels[Position.POS_RP.value])
+
+            self.value_calc.set_output(CalculationDataType.ROSTERED_C, pos_points.replacement_positions[Position.POS_C.value])
+            self.value_calc.set_output(CalculationDataType.ROSTERED_1B, pos_points.replacement_positions[Position.POS_1B.value])
+            self.value_calc.set_output(CalculationDataType.ROSTERED_2B, pos_points.replacement_positions[Position.POS_2B.value])
+            self.value_calc.set_output(CalculationDataType.ROSTERED_SS, pos_points.replacement_positions[Position.POS_SS.value])
+            self.value_calc.set_output(CalculationDataType.ROSTERED_3B, pos_points.replacement_positions[Position.POS_3B.value])
+            self.value_calc.set_output(CalculationDataType.ROSTERED_OF, pos_points.replacement_positions[Position.POS_OF.value])
+            self.value_calc.set_output(CalculationDataType.ROSTERED_UTIL, pos_points.replacement_positions[Position.POS_UTIL.value])
+            self.value_calc.set_output(CalculationDataType.ROSTERED_SP, pitch_points.replacement_positions[Position.POS_SP.value])
+            self.value_calc.set_output(CalculationDataType.ROSTERED_RP, pitch_points.replacement_positions[Position.POS_RP.value])
 
         self.update_progress(pd, 'Calculating $/PAR and applying', 30)
         rosterable_pos = pos_min_pa.loc[pos_min_pa['Max PAR'] >= 0]

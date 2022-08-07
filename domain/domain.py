@@ -107,17 +107,39 @@ class ValueCalculation(Base):
     values = relationship("PlayerValue", back_populates="calculation", cascade="all, delete")
     data = relationship("ValueData", back_populates="calculation", cascade="all, delete")
 
+    def set_input(self, data_type, value):
+        for inp in self.inputs:
+            if inp.data_type == data_type:
+                inp.value = value
+                return
+        ci = CalculationInput()
+        ci.data_type = data_type
+        ci.value = value
+        self.inputs.append(ci)
+
     def get_input(self, data_type):
         for inp in self.inputs:
             if inp.data_type == data_type:
                 return inp.value
         return None
+    
+    def set_output(self, data_type, value):
+        for data in self.data:
+            if data.data_type == data_type:
+                data.value = value
+                return
+        vd = ValueData()
+        vd.data_type = data_type
+        vd.value = value
+        self.data.append(vd)
+
+    def get_output(self, data_type):
+        for data in self.data:
+            if data.data_type == data_type:
+                return data.value
+        return None
 
 class CalculationInput(Base):
-
-    def __init__(self, data_type, value):
-        self.data_type = data_type
-        self.value = value
 
     __tablename__ = "calculation_input"
     index = Column(Integer, primary_key=True)
