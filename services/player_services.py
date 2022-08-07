@@ -54,3 +54,7 @@ def is_populated():
     with Session() as session:
         count = session.query(Player).count()
     return count > 0
+
+def get_player(player_id):
+    with Session() as session:
+        return session.query(Player).filter(Player.index == player_id).first()
