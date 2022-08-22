@@ -6,8 +6,8 @@ from tkinter import messagebox as mb
 from ui.table import Table
 from ui.base import BaseUi
 from domain.domain import CalculationInput, ValueData, ValueCalculation, ScoringFormat
-from domain.enum import CalculationDataType, RankingBasis, RepLevelScheme, StatType
-from services import projection_services
+from domain.enum import CalculationDataType, RankingBasis, RepLevelScheme, StatType, Position
+from services import projection_services, calculation_services
 from ui.dialog import proj_download, selection_projection, progress
 
 class ValuesCalculation(BaseUi):
@@ -125,7 +125,7 @@ class ValuesCalculation(BaseUi):
 
         self.player_columns = ('Value', 'Name', 'Team', 'Pos')
         self.hitting_columns = ('P/G', 'Points', 'G', 'PA', 'AB', 'H', '2B', '3B', 'HR', 'BB', 'HBP', 'SB','CS')
-        self.pitching_columns = ('P/IP', 'Points', 'G', 'GS', 'IP', 'K','H','BB','HBP','HR','SV','HLD')
+        self.pitching_columns = ('P/IP', 'Points', 'G', 'GS', 'IP', 'SO','H','BB','HBP','HR','SV','HLD')
         
         col_align = {}
         col_align['Name'] = W
@@ -133,10 +133,12 @@ class ValuesCalculation(BaseUi):
         self.bat_table = Table(bat_frame, self.player_columns + self.hitting_columns, column_alignments=col_align, sortable_columns=self.player_columns + self.hitting_columns)
         self.bat_table.set_refresh_method(self.refresh_hitters)
         self.bat_table.grid(row=0, column=0)
+        self.bat_table.add_scrollbar()
 
         self.arm_table = Table(arm_frame, self.player_columns + self.pitching_columns, column_alignments=col_align, sortable_columns=self.player_columns + self.pitching_columns)
         self.arm_table.set_refresh_method(self.refresh_pitchers)
         self.arm_table.grid(row=0,column=0)
+        self.arm_table.add_scrollbar()
 
     def update_game_type(self):
         i = 1
@@ -166,19 +168,30 @@ class ValuesCalculation(BaseUi):
         self.bat_table.refresh()
         self.arm_table.refresh()
     
-    def get_player_row(self, pp, enum_dict, cols):
+    def get_player_row(self, pp, enum_dict, cols, pos):
         val = []
         if len(self.value_calc.values) > 0:
-            i = 1
-            #TODO: after calc values
+            val.append(self.value_calc.get_player_value(pp.player.index, pos))
         else:
             val.append('-')
         val.append(pp.player.name)
         val.append(pp.player.team)
         val.append(pp.player.position)
         if len(self.value_calc.values) > 0:
-            #TODO: after calc values
-            i = 1
+            points = calculation_services.get_points(pp, pos)
+            if pos in Position.get_offensive_pos():
+                games = pp.get_stat(StatType.G_HIT)
+                if games is None or games == 0:
+                    val.append(0)
+                else:
+                    val.append(points / games)
+            else:
+                ip = pp.get_stat(StatType.IP)
+                if ip is None or ip == 0:
+                    val.append(0)
+                else:
+                    val.append(points/ip)
+            val.append(points)
         else:
             val.append('-')
             val.append('-')
@@ -195,21 +208,34 @@ class ValuesCalculation(BaseUi):
         print('in refresh hitters')
         for pp in self.projection.player_projections:
             if pp.get_stat(StatType.AB) is not None:
-                val = self.get_player_row(pp, StatType.hit_to_enum_dict(), self.hitting_columns)
+                val = self.get_player_row(pp, StatType.hit_to_enum_dict(), self.hitting_columns, Position.OFFENSE)
                 self.bat_table.insert('', tk.END, text=str(pp.index), values=val)
     
     def refresh_pitchers(self):
         print('in refresh pitchers')
         for pp in self.projection.player_projections:
             if pp.get_stat(StatType.IP) is not None:
-                val = self.get_player_row(pp, StatType.pitch_to_enum_dict(), self.pitching_columns)
+                val = self.get_player_row(pp, StatType.pitch_to_enum_dict(), self.pitching_columns, Position.PITCHER)
                 self.arm_table.insert('', tk.END, text=str(pp.index), values=val)
     
     def create_output_frame(self):
         self.output_frame = outf = ttk.Frame(self.main_win)
         outf.grid(column=2,row=0, padx=5, sticky=tk.N, pady=17)
 
-        ttk.Label(outf, text='Create or Load Player Value Set')
+        self.output_title = StringVar()
+        self.output_title.set('Create or Load Player Value Set')
+        ttk.Label(outf, textvariable=self.output_title).grid(row=0, column=0)
+
+        self.dollars_per_fom_lbl = StringVar()
+        self.dollars_per_fom_lbl.set('Calculated $/PAR')
+        ttk.Label(outf, textvariable=self.dollars_per_fom_lbl).grid(row=1, column=0)
+
+        self.dollars_per_fom_val = StringVar()
+        self.dollars_per_fom_val.set('$--')
+        ttk.Label(outf, textvariable=self.dollars_per_fom_val).grid(row=1,column=1)
+    
+    def update_calc_output_frame(self):
+        self.dollars_per_fom_val.set('$' + "{:.3f}".format(self.value_calc.get_output(CalculationDataType.DOLLARS_PER_FOM)))
 
     def toggle_manual_split(self):
         if self.manual_split.get():
@@ -288,6 +314,7 @@ class ValuesCalculation(BaseUi):
     
     def calculate_values(self):
         if self.has_errors():
+            logging.warning("Input errors")
             return
         self.value_calc.projection = self.projection
         self.value_calc.format = ScoringFormat.name_to_enum_map()[self.game_type.get()]
@@ -296,33 +323,38 @@ class ValuesCalculation(BaseUi):
         if self.manual_split.get():
             self.value_calc.set_input(CalculationDataType.HITTER_SPLIT, float(self.hitter_allocation.get()))
         self.value_calc.set_input(CalculationDataType.NON_PRODUCTIVE_DOLLARS, float(self.non_prod_dollars_str.get()))
-        self.value_calc.set_input(CalculationDataType.HITTER_RANKING_BASIS, float(RankingBasis.display_to_enum_map(self.hitter_basis.get()).value))
+        self.value_calc.set_input(CalculationDataType.HITTER_RANKING_BASIS, float(RankingBasis.display_to_enum_map()[self.hitter_basis.get()].value))
         self.value_calc.set_input(CalculationDataType.PA_TO_RANK, float(self.min_pa.get()))
-        self.value_calc.set_input(CalculationDataType.PITCHER_RANKING_BASIS, float(RankingBasis.display_to_enum_map(self.pitcher_basis.get()).value))
+        self.value_calc.set_input(CalculationDataType.PITCHER_RANKING_BASIS, float(RankingBasis.display_to_enum_map()[self.pitcher_basis.get()].value))
         self.value_calc.set_input(CalculationDataType.SP_IP_TO_RANK, float(self.min_sp_ip.get()))
         self.value_calc.set_input(CalculationDataType.RP_IP_TO_RANK, float(self.min_rp_ip.get()))
         self.value_calc.set_input(CalculationDataType.REP_LEVEL_SCHEME, float(self.rep_level_scheme.get()))
         if self.rep_level_scheme.get() == RepLevelScheme.STATIC_REP_LEVEL.value:
-            self.value_calc.set_input(CalculationDataType.REP_LEVEL_C, float(self.rep_level_dict['C']))
-            self.value_calc.set_input(CalculationDataType.REP_LEVEL_1B, float(self.rep_level_dict['1B']))
-            self.value_calc.set_input(CalculationDataType.REP_LEVEL_2B, float(self.rep_level_dict['2B']))
-            self.value_calc.set_input(CalculationDataType.REP_LEVEL_SS, float(self.rep_level_dict['SS']))
-            self.value_calc.set_input(CalculationDataType.REP_LEVEL_3B, float(self.rep_level_dict['3B']))
-            self.value_calc.set_input(CalculationDataType.REP_LEVEL_OF, float(self.rep_level_dict['OF']))
-            self.value_calc.set_input(CalculationDataType.REP_LEVEL_UTIL, float(self.rep_level_dict['Util']))
-            self.value_calc.set_input(CalculationDataType.REP_LEVEL_SP, float(self.rep_level_dict['SP']))
-            self.value_calc.set_input(CalculationDataType.REP_LEVEL_RP, float(self.rep_level_dict['RP']))
+            self.value_calc.set_input(CalculationDataType.REP_LEVEL_C, float(self.rep_level_dict['C'].get()))
+            self.value_calc.set_input(CalculationDataType.REP_LEVEL_1B, float(self.rep_level_dict['1B'].get()))
+            self.value_calc.set_input(CalculationDataType.REP_LEVEL_2B, float(self.rep_level_dict['2B'].get()))
+            self.value_calc.set_input(CalculationDataType.REP_LEVEL_SS, float(self.rep_level_dict['SS'].get()))
+            self.value_calc.set_input(CalculationDataType.REP_LEVEL_3B, float(self.rep_level_dict['3B'].get()))
+            self.value_calc.set_input(CalculationDataType.REP_LEVEL_OF, float(self.rep_level_dict['OF'].get()))
+            self.value_calc.set_input(CalculationDataType.REP_LEVEL_UTIL, float(self.rep_level_dict['Util'].get()))
+            self.value_calc.set_input(CalculationDataType.REP_LEVEL_SP, float(self.rep_level_dict['SP'].get()))
+            self.value_calc.set_input(CalculationDataType.REP_LEVEL_RP, float(self.rep_level_dict['RP'].get()))
         else:
-            self.value_calc.set_input(CalculationDataType.ROSTERED_C, float(self.rep_level_dict['C']))
-            self.value_calc.set_input(CalculationDataType.ROSTERED_1B, float(self.rep_level_dict['1B']))
-            self.value_calc.set_input(CalculationDataType.ROSTERED_2B, float(self.rep_level_dict['2B']))
-            self.value_calc.set_input(CalculationDataType.ROSTERED_SS, float(self.rep_level_dict['SS']))
-            self.value_calc.set_input(CalculationDataType.ROSTERED_3B, float(self.rep_level_dict['3B']))
-            self.value_calc.set_input(CalculationDataType.ROSTERED_OF, float(self.rep_level_dict['OF']))
-            self.value_calc.set_input(CalculationDataType.ROSTERED_UTIL, float(self.rep_level_dict['Util']))
-            self.value_calc.set_input(CalculationDataType.ROSTERED_SP, float(self.rep_level_dict['SP']))
-            self.value_calc.set_input(CalculationDataType.ROSTERED_RP, float(self.rep_level_dict['RP']))
+            self.value_calc.set_input(CalculationDataType.ROSTERED_C, int(self.rep_level_dict['C'].get()))
+            self.value_calc.set_input(CalculationDataType.ROSTERED_1B, int(self.rep_level_dict['1B'].get()))
+            self.value_calc.set_input(CalculationDataType.ROSTERED_2B, int(self.rep_level_dict['2B'].get()))
+            self.value_calc.set_input(CalculationDataType.ROSTERED_SS, int(self.rep_level_dict['SS'].get()))
+            self.value_calc.set_input(CalculationDataType.ROSTERED_3B, int(self.rep_level_dict['3B'].get()))
+            self.value_calc.set_input(CalculationDataType.ROSTERED_OF, int(self.rep_level_dict['OF'].get()))
+            self.value_calc.set_input(CalculationDataType.ROSTERED_UTIL, int(self.rep_level_dict['Util'].get()))
+            self.value_calc.set_input(CalculationDataType.ROSTERED_SP, int(self.rep_level_dict['SP'].get()))
+            self.value_calc.set_input(CalculationDataType.ROSTERED_RP, int(self.rep_level_dict['RP'].get()))
         
+        logging.debug("About to perform point_calc")
+        calculation_services.perform_point_calculation(self.value_calc, progress.ProgressDialog(self.main_win, title='Performing Calculation'))
+        logging.debug("Performed calc")
+        self.populate_projections()
+        self.update_calc_output_frame()
 
     
     def int_validation(self, input):
@@ -336,11 +368,11 @@ class ValuesCalculation(BaseUi):
         errors = []
         bad_rep_level = []
         if self.rep_level_scheme.get() == RepLevelScheme.NUM_ROSTERED.value or self.rep_level_scheme.get() == RepLevelScheme.FILL_GAMES.value:
-            for key, value in self.rep_level_dict:
+            for key, value in self.rep_level_dict.items():
                 if not value.get().isnumeric():
                     bad_rep_level.append(key)
         else:
-            for key, value in self.rep_level_dict:
+            for key, value in self.rep_level_dict.items():
                 if not value.get().isnumeric() or float(value.get()) > 10.0:
                     bad_rep_level.append(key)
         
@@ -353,7 +385,7 @@ class ValuesCalculation(BaseUi):
             delim = "\n\t-"
             mb.showerror("Input Error(s)", f'Errors in inputs. Please correct: \n\t-{delim.join(errors)}')
 
-        return len(errors) == 0
+        return len(errors) != 0
 
 def main(preferences):
     try:

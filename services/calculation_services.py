@@ -1,5 +1,5 @@
 from dao.session import Session
-from domain.enum import Position, CalculationDataType
+from domain.enum import Position, CalculationDataType, StatType
 from value.point_values import PointValues
 from services import player_services
 
@@ -8,10 +8,11 @@ def perform_point_calculation(value_calc, pd = None):
         pd.set_task_title("Initializing Value Calculation...")
         pd.increment_completion_percent(5)
     value_calculation = PointValues(value_calc=value_calc)
-    value_calculation.calculate_values(rank_pos=True, pd = pd)
+    value_calculation.calculate_values(rank_pos=True, progress=pd)
     if pd is not None:
         pd.set_task_title("Completed")
         pd.set_completion_percent(100)
+        pd.destroy()
 
 def get_num_rostered_rep_levels(value_calc):
     rl_dict = {}
@@ -49,4 +50,18 @@ def save_calculation(value_calc):
                 player = player_services.get_player(pv.player_id)
             pv.player = player
         session.add(value_calc)
-    
+
+def get_points(player_proj, pos, sabr=False):
+    if pos in Position.get_offensive_pos():
+        return -1.0*player_proj.get_stat(StatType.AB) + 5.6*player_proj.get_stat(StatType.H) + 2.9*player_proj.get_stat(StatType.DOUBLE) \
+            + 5.7*player_proj.get_stat(StatType.TRIPLE) + 9.4*player_proj.get_stat(StatType.HR) +3.0*player_proj.get_stat(StatType.BB) \
+            + 3.0*player_proj.get_stat(StatType.HBP) + 1.9*player_proj.get_stat(StatType.SB) - 2.8*player_proj.get_stat(StatType.CS)
+    if pos in Position.get_pitching_pos():
+        if sabr:
+            return 5.0*player_proj.get_stat(StatType.IP) + 2.0*player_proj.get_stat(StatType.SO) - 3.0*player_proj.get_stat(StatType.BB_ALLOWED) \
+                - 3.0*player_proj.get_stat(StatType.HBP_ALLOWED) - 13.0*player_proj.get_stat(StatType.HR_ALLOWED) \
+                + 5.0*player_proj.get_stat(StatType.SV) + 4.0*player_proj.get_stat(StatType.HLD)
+        else:
+            return 7.4*player_proj.get_stat(StatType.IP) + 2.0*player_proj.get_stat(StatType.SO) - 2.6*player_proj.get_stat(StatType.H_ALLOWED) \
+                - 3.0*player_proj.get_stat(StatType.BB_ALLOWED) - 3.0*player_proj.get_stat(StatType.HBP_ALLOWED) - 12.3*player_proj.get_stat(StatType.HR_ALLOWED) \
+                + 5.0*player_proj.get_stat(StatType.SV) + 4.0*player_proj.get_stat(StatType.HLD)

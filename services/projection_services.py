@@ -184,11 +184,18 @@ def create_projection_from_download(type, ros=False, dc_pt=False, year=None, pro
     if progress is not None:
         progress.set_task_title('Downloading projections...')
     projs = download_projections(proj_type_url, ros, dc_pt)
+    projection_check(projs)
     if progress is not None:
         progress.increment_completion_percent(50)
         progress.set_task_title('Saving projections to database...')
-
     return save_projection(projection, projs, progress)
+
+def projection_check(projs):
+    # Perform checks here, update data as needed
+    pitch_proj = projs[1]
+    if StatType.enum_to_display_dict()[StatType.HBP_ALLOWED] not in pitch_proj.columns:
+        # If HBP allowed is blank, fill with pre-calculated regression vs BB
+        pitch_proj[StatType.enum_to_display_dict()[StatType.HBP_ALLOWED]] = pitch_proj[StatType.enum_to_display_dict()[StatType.BB_ALLOWED]].apply(lambda bb: 0.0951*bb+0.4181)
 
 def get_projection_count():
     with Session() as session:
@@ -233,23 +240,26 @@ def convert_to_df(proj):
     pos_proj = DataFrame(pos_rows)
     pitch_proj = DataFrame(pitch_rows)
 
-    pos_header = ['Name','Team']
+    pos_header = ['ID', 'Name','Team', 'Position(s)']
     for col in pos_col:
         pos_header.append(StatType.enum_to_display_dict().get(col))
-    pitch_header = ['Name', 'Team']
+    pitch_header = ['ID', 'Name', 'Team', 'Position(s)']
     for col in pitch_col:
         pitch_header.append(StatType.enum_to_display_dict().get(col))
     
     pos_proj.columns = pos_header
+    pos_proj.set_index('ID', inplace=True)
     pitch_proj.columns = pitch_header
+    pitch_proj.set_index('ID', inplace=True)
 
     return [pos_proj, pitch_proj]
 
 def db_rows_to_df(player_proj, columns):
     row = []
-    row.append[player_proj.index]
+    row.append(player_proj.index)
     row.append(player_proj.player.name)
     row.append(player_proj.player.team)
+    row.append(player_proj.player.position)
     for col in columns:
         row.append(player_proj.get_stat(col))
     return row
