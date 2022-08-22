@@ -316,3 +316,24 @@ class Position(Enum):
     POS_SP = 'SP'
     POS_RP = 'RP'    
     POS_TWO_WAY = 'Two-Way'
+    OFFENSE = "Offense"
+    PITCHER = "Pitcher"
+    OVERALL = 'Overall'
+
+    @classmethod
+    def get_offensive_pos(self):
+        return [self.POS_C, 
+            self.POS_1B,
+            self.POS_2B,
+            self.POS_3B,
+            self.POS_SS,
+            self.POS_OF,
+            self.POS_MI,
+            self.POS_UTIL,
+            self.OFFENSE]
+    
+    @classmethod
+    def get_pitching_pos(self):
+        return [self.POS_SP,
+            self.POS_RP,
+            self.PITCHER]
