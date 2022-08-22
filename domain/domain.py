@@ -146,48 +146,19 @@ class ValueCalculation(Base):
             if pv.player_id == player_id and pv.position == pos:
                 pv.value = value
                 return
-        pv = Player(value)
+        pv = PlayerValue()
         pv.player_id = player_id
         pv.position = pos
         pv.value = value
         self.values.append(pv)
     
-    def get_player_value(self, player_id, pos=None, overall=False):
+    def get_player_value(self, player_id, pos=None):
         if pos is None:
             #Get all positions
             vals = []
             for pv in self.values:
                 if pv.player_id == player_id:
                     vals.append(pv)
-            if overall:
-                #Need to get max value and combine two-way players
-                max_bat = None
-                max_arm = None
-                for pv in vals:
-                    if pv.position == Position.POS_SP or pv.position == Position.POS_RP:
-                        if max_arm is None:
-                            max_arm = pv
-                        else:
-                            if max_arm.value < pv.value:
-                                max_arm = pv
-                    else:
-                        if max_bat is None:
-                            max_bat = pv
-                        else:
-                            if max_bat.value < pv.value:
-                                max_bat = pv
-                
-                if max_bat is not None and max_arm is not None:
-                    pv = PlayerValue()
-                    pv.player_id = player_id
-                    pv.position = Position.POS_TWO_WAY
-                    pv.value = max_arm.value + max_bat.value
-                    return pv
-                elif max_bat is not None:
-                    return max_bat
-                else:
-                    return max_arm
-            else:
                 return vals
         else:
             for pv in self.values:
