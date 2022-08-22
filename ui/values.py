@@ -43,7 +43,7 @@ class ValuesCalculation(BaseUi):
         gt_combo.bind("<<ComboboxSelected>>", self.update_game_type)
         # TODO: Don't hardcode game types, include other types
 
-        gt_combo['values'] = (gt_map(ScoringFormat.FG_POINTS), gt_map(ScoringFormat.SABR_POINTS))
+        gt_combo['values'] = (gt_map[ScoringFormat.FG_POINTS], gt_map[ScoringFormat.SABR_POINTS])
         gt_combo.grid(column=1,row=2,pady=5)
 
         ttk.Label(inpf, text="Number of Teams:").grid(column=0, row=3,pady=5)
