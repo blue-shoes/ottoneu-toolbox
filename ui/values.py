@@ -171,7 +171,11 @@ class ValuesCalculation(BaseUi):
     def get_player_row(self, pp, enum_dict, cols, pos):
         val = []
         if len(self.value_calc.values) > 0:
-            val.append(self.value_calc.get_player_value(pp.player.index, pos))
+            pv = self.value_calc.get_player_value(pp.player.index, pos)
+            if pv is None:
+                val.append("$0")
+            else:
+                val.append(f"${pv.value}")
         else:
             val.append('-')
         val.append(pp.player.name)
