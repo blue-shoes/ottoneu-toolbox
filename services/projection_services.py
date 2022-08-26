@@ -256,7 +256,7 @@ def convert_to_df(proj):
 
 def db_rows_to_df(player_proj, columns):
     row = []
-    row.append(player_proj.index)
+    row.append(player_proj.player.index)
     row.append(player_proj.player.name)
     row.append(player_proj.player.team)
     row.append(player_proj.player.position)
