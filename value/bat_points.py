@@ -3,29 +3,33 @@ import pandas as pd
 import numpy as np
 import os
 from os import path
+from copy import deepcopy
 
 from domain.enum import RankingBasis, RepLevelScheme
 
 pd.options.mode.chained_assignment = None # from https://stackoverflow.com/a/20627316
 
-bat_pos = ['C','1B','2B','3B','SS','OF','Util']
-default_replacement_positions = {"C":12,"1B":12,"2B":18,"3B":12,"SS":18,"OF":60,"Util":200}
-default_replacement_levels = {}
-total_games = {}
-games_filled = {}
-
 class BatPoint():
 
+    bat_pos = ['C','1B','2B','3B','SS','OF','Util']
+    default_replacement_positions = {"C":24,"1B":12,"2B":18,"3B":12,"SS":18,"OF":60,"Util":150}
+    default_surplus_pos = {"C":0,"1B":0,"2B":0,"3B":0,"SS":0,"OF":0,"Util":0}
+    default_replacement_levels = {}
+    
+
     def __init__(self, intermediate_calc=False, rank_basis=RankingBasis.PPG, replacement_pos=default_replacement_positions, replacement_levels=default_replacement_levels, target_bat=244, 
-    rep_level_scheme=RepLevelScheme.FILL_GAMES, max_pos_value=True, num_teams=12):
+    rep_level_scheme=RepLevelScheme.FILL_GAMES, max_pos_value=True, num_teams=12, surplus_pos=default_surplus_pos):
         self.intermediate_calculations = intermediate_calc
         self.rank_basis = RankingBasis.enum_to_display_dict()[rank_basis]
-        self.replacement_positions = replacement_pos
-        self.replacement_levels = replacement_levels
+        self.replacement_positions = deepcopy(replacement_pos)
+        self.replacement_levels = deepcopy(replacement_levels)
         self.target_bat = target_bat
         self.rep_level_scheme = rep_level_scheme
         self.max_pos_value = max_pos_value
         self.num_teams = num_teams
+        self.surplus_pos = deepcopy(surplus_pos)
+        self.total_games = {}
+        self.games_filled = {}
         if intermediate_calc:
             self.dirname = os.path.abspath(os.path.join(os.path.dirname( __file__ ), '..'))
             self.intermed_subdirpath = os.path.join(self.dirname, 'data_dirs', 'intermediate')
@@ -47,7 +51,7 @@ class BatPoint():
         return row['Points'] / row['PA']
 
     def rank_position_players(self, df):
-        for pos in bat_pos:
+        for pos in self.bat_pos:
             col = f"Rank {pos} Rate"
             g_col = f"{pos} Games"
             df[g_col] = 0
@@ -62,10 +66,10 @@ class BatPoint():
         df['MI Games'] = 0
     
     def calc_total_games(self, df):
-        for pos in bat_pos:
+        for pos in self.bat_pos:
             col = f"{pos} Games"
             df[col] = df.apply(self.calc_pos_games, args=(pos, 1), axis=1)
-            total_games[pos] = df[col].sum()
+            self.total_games[pos] = df[col].sum()
 
     def calc_pos_games(self, row, pos, empty):
         if pos == 'MI':
@@ -100,44 +104,44 @@ class BatPoint():
 
     def are_games_filled(self, num_teams=12):
         filled_games = True
-        if total_games['C'] < num_teams * 162:
-            games_filled['C'] = False
+        if self.total_games['C'] < num_teams * 162:
+            self.games_filled['C'] = False
             filled_games = False
         else:
-            games_filled['C'] = True
-        if total_games['1B'] < num_teams * 162:
-            games_filled['1B'] = False
+            self.games_filled['C'] = True
+        if self.total_games['1B'] < num_teams * 162:
+            self.games_filled['1B'] = False
             filled_games = False
         else:
-            games_filled['1B'] = True
-        if total_games['3B'] < num_teams * 162:
-            games_filled['3B'] = False
+            self.games_filled['1B'] = True
+        if self.total_games['3B'] < num_teams * 162:
+            self.games_filled['3B'] = False
             filled_games = False
         else:
-            games_filled['3B'] = True
-        if total_games['SS'] + total_games['2B'] < 3*num_teams * 162:
-            games_filled['SS'] = False
-            games_filled['2B'] = False
+            self.games_filled['3B'] = True
+        if self.total_games['SS'] + self.total_games['2B'] < 3*num_teams * 162:
+            self.games_filled['SS'] = False
+            self.games_filled['2B'] = False
             filled_games = False
         else:
-            games_filled['SS'] = True
-            games_filled['2B'] = True
-        if total_games['OF'] < num_teams * 162 * 5:
-            games_filled['OF'] = False
+            self.games_filled['SS'] = True
+            self.games_filled['2B'] = True
+        if self.total_games['OF'] < num_teams * 162 * 5:
+            self.games_filled['OF'] = False
             filled_games = False
         else:
-            games_filled['OF'] = True
+            self.games_filled['OF'] = True
         
         if self.are_util_games_filled(num_teams):
-            games_filled['Util'] = True
+            self.games_filled['Util'] = True
         else:
-            games_filled['Util'] = False
+            self.games_filled['Util'] = False
             filled_games = False
         return filled_games
     
     def are_util_games_filled(self, num_teams=12):
         #judgement call that you aren't using C to fill Util
-        return total_games['1B'] - 162*num_teams +  total_games['3B'] - 162*num_teams + (total_games['2B'] + total_games['SS'] - 3*162*num_teams) + total_games['OF']-5*162*num_teams + total_games['Util'] >= num_teams*162
+        return self.total_games['1B'] - 162*num_teams +  self.total_games['3B'] - 162*num_teams + (self.total_games['2B'] + self.total_games['SS'] - 3*162*num_teams) + self.total_games['OF']-5*162*num_teams + self.total_games['Util'] >= num_teams*162
 
     def get_position_par(self, df):
 
@@ -150,7 +154,7 @@ class BatPoint():
         num_bats = 0
 
         #Initial calculation of replacement levels and PAR
-        for pos in bat_pos:
+        for pos in self.bat_pos:
             self.get_position_par_calc(df, pos)
 
         if self.rep_level_scheme == RepLevelScheme.FILL_GAMES:
@@ -161,7 +165,7 @@ class BatPoint():
                 max_rep_lvl = 0.0
                 for pos, rep_lvl in self.replacement_levels.items():
                     if pos == 'Util': continue
-                    if not games_filled[pos] and rep_lvl > max_rep_lvl:
+                    if not self.games_filled[pos] and rep_lvl > max_rep_lvl:
                         max_rep_lvl = rep_lvl
                         max_pos = pos
                 if max_rep_lvl == 0.0:
@@ -177,6 +181,11 @@ class BatPoint():
                 #Set maximum PAR value for each player to determine how many are rosterable
                 df['Max PAR'] = df.apply(self.calc_max_par, axis=1)
                 self.calc_total_games(df)
+            #Augment the replacement levels by the input surpluses to get the final numbers
+            for pos in self.replacement_positions:
+                self.replacement_positions[pos] = self.replacement_positions[pos] + self.surplus_pos[pos]
+                self.get_position_par_calc(df, pos)
+            df['Max PAR'] = df.apply(self.calc_max_par, axis=1)
         elif self.rep_level_scheme == RepLevelScheme.TOTAL_ROSTERED:
             while num_bats != self.target_bat:
                 if num_bats > self.target_bat:

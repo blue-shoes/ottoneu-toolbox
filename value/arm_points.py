@@ -6,11 +6,11 @@ from domain.enum import RepLevelScheme, RankingBasis
 
 pd.options.mode.chained_assignment = None # from https://stackoverflow.com/a/20627316
 
-pitch_pos = ['SP','RP']
-default_replacement_positions = {"SP":60,"RP":30}
-default_replacement_levels = {}
-
 class ArmPoint():
+
+    pitch_pos = ['SP','RP']
+    default_replacement_positions = {"SP":60,"RP":30}
+    default_replacement_levels = {}
 
     def __init__(self, intermediate_calc=False, replacement_pos=default_replacement_positions, replacement_levels=default_replacement_levels, target_arm=196, SABR=False, rp_limit=999, 
         rep_level_scheme=RepLevelScheme.FILL_GAMES, rp_ip_per_team=300, num_teams=12, rank_basis=RankingBasis.PIP):

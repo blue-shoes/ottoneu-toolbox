@@ -13,15 +13,15 @@ from scrape import scrape_ottoneu
 
 pd.options.mode.chained_assignment = None # from https://stackoverflow.com/a/20627316
 
-bat_pos = ['C','1B','2B','3B','SS','MI','OF','Util']
-pitch_pos = ['SP','RP']
-target_innings = 1500.0*12.0
-#replacement_positions = {"C":24,"1B":40,"2B":38,"3B":40,"SS":42,"OF":95,"Util":200,"SP":85,"RP":70}
-#These are essentially minimums for the positions. I would really not expect to go below these. C and Util are unaffected by the algorithm
-replacement_positions = {"C":24,"1B":12,"2B":18,"3B":12,"SS":18,"OF":60,"Util":200,"SP":60,"RP":60}
-replacement_levels = {}
-
 class PointValues():
+
+    bat_pos = ['C','1B','2B','3B','SS','MI','OF','Util']
+    pitch_pos = ['SP','RP']
+    target_innings = 1500.0*12.0
+    #replacement_positions = {"C":24,"1B":40,"2B":38,"3B":40,"SS":42,"OF":95,"Util":200,"SP":85,"RP":70}
+    #These are essentially minimums for the positions. I would really not expect to go below these. C and Util are unaffected by the algorithm
+    replacement_positions = {"C":24,"1B":12,"2B":18,"3B":12,"SS":18,"OF":60,"Util":200,"SP":60,"RP":60}
+    replacement_levels = {}
 
     def __init__(self, value_calc = None, projection='steamer', depthchart_pt=False, ros=False, debug=False, rostered_hitters=244, rostered_pitchers=196,
                     rp_limit=999, SABR_points=False, force_proj_download=False):
@@ -108,6 +108,7 @@ class PointValues():
             num_teams = 12
             sabr = False
             non_prod_salary = 48
+            surplus_pos = {}
         else:
             projs = projection_services.convert_to_df(self.value_calc.projection)
             self.pos_proj = projs[0]
@@ -121,10 +122,12 @@ class PointValues():
             non_prod_salary = self.value_calc.get_input(CalculationDataType.NON_PRODUCTIVE_DOLLARS)
             rep_nums = None
             rep_levels = None
-            if rep_level_scheme == RepLevelScheme.NUM_ROSTERED or rep_level_scheme == RepLevelScheme.FILL_GAMES:
+            if rep_level_scheme == RepLevelScheme.NUM_ROSTERED:
                 rep_nums = calculation_services.get_num_rostered_rep_levels(self.value_calc)
             elif rep_level_scheme == RepLevelScheme.STATIC_REP_LEVEL:
                 rep_levels = calculation_services.get_rep_levels(self.value_calc)
+            elif rep_level_scheme == RepLevelScheme.FILL_GAMES:
+                surplus_pos = calculation_services.get_num_rostered_rep_levels(self.value_calc)
             logging.debug(f'rep_level_scheme = {rep_level_scheme.value}')
         
         self.update_progress(progress, 'Calculating Batters', 10)
@@ -139,6 +142,8 @@ class PointValues():
                 pos_points.replacement_positions = rep_nums
             if rep_levels is not None:
                 pos_points.replacement_levels = rep_levels
+            if surplus_pos is not None:
+                pos_points.surplus_pos = surplus_pos
         pos_min_pa = pos_points.calc_par(self.pos_proj, self.value_calc.get_input(CalculationDataType.PA_TO_RANK))
 
         self.update_progress(progress, 'Calculating pitchers', 40)
@@ -211,7 +216,7 @@ class PointValues():
             self.value_calc.values= [] 
 
         if rank_pos:
-            for pos in bat_pos:
+            for pos in self.bat_pos:
                 if pos == 'MI':
                     pos_value = pd.DataFrame(pos_min_pa.loc[pos_min_pa['Position(s)'].str.contains("2B|SS", case=False, regex=True)])
                 elif pos == 'Util':
@@ -232,7 +237,7 @@ class PointValues():
         pos_min_pa.sort_values('Max PAR', inplace=True)
 
         if rank_pos:
-            for pos in pitch_pos:
+            for pos in self.pitch_pos:
                 pos_value = pd.DataFrame(real_pitchers.loc[real_pitchers['Position(s)'].str.contains(pos)])
                 pos_value['Value'] = pos_value[f'PAR {pos}'].apply(lambda x: x*self.dol_per_par + 1.0 if x >= 0 else 0)
                 pos_value.sort_values(by=['Value','P/IP'], inplace=True, ascending=[False,False])
