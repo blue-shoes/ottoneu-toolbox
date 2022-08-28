@@ -1,6 +1,7 @@
 import pandas as pd
 import os
 from os import path
+from copy import deepcopy
 
 from domain.enum import RepLevelScheme, RankingBasis
 
@@ -11,12 +12,13 @@ class ArmPoint():
     pitch_pos = ['SP','RP']
     default_replacement_positions = {"SP":60,"RP":30}
     default_replacement_levels = {}
+    default_surplus_pos = {"SP": 0, "RP": 0}
 
     def __init__(self, intermediate_calc=False, replacement_pos=default_replacement_positions, replacement_levels=default_replacement_levels, target_arm=196, SABR=False, rp_limit=999, 
-        rep_level_scheme=RepLevelScheme.FILL_GAMES, rp_ip_per_team=300, num_teams=12, rank_basis=RankingBasis.PIP):
+        rep_level_scheme=RepLevelScheme.FILL_GAMES, rp_ip_per_team=300, num_teams=12, rank_basis=RankingBasis.PIP, surplus_pos=default_surplus_pos):
         self.intermediate_calculations = intermediate_calc
-        self.replacement_positions = replacement_pos
-        self.replacement_levels = replacement_levels
+        self.replacement_positions = deepcopy(replacement_pos)
+        self.replacement_levels = deepcopy(replacement_levels)
         self.target_pitch = target_arm
         self.SABR = SABR
         self.rp_limit = rp_limit
@@ -24,6 +26,7 @@ class ArmPoint():
         self.rp_ip_per_team = rp_ip_per_team
         self.num_teams = num_teams
         self.target_innings = 1500.0 * num_teams
+        self.surplus_pos = deepcopy(surplus_pos)
         #TODO implemetn P/G rank basis for H2H
         self.rank_basis = rank_basis
         if intermediate_calc:
@@ -97,6 +100,9 @@ class ArmPoint():
                 rosterable = df.loc[df['PAR'] >= 0]
                 #I had to put the 1 in the args because otherwise it treats "RP" like two arugments "R" and "P" for some reason
                 rp_ip = rosterable.apply(self.usable_ip_calc, args=("RP", 1), axis=1).sum()
+            self.replacement_positions['SP'] = self.replacement_positions['SP'] + self.surplus_pos['SP']
+            self.replacement_positions['RP'] = self.replacement_positions['RP'] + self.surplus_pos['RP']
+            self.get_pitcher_par_calc(df)
 
         elif self.rep_level_scheme == RepLevelScheme.TOTAL_ROSTERED:
             while num_arms != self.target_pitch or (abs(total_ip-self.target_innings) > 100 and self.replacement_positions['RP'] != self.rp_limit):

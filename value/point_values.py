@@ -160,6 +160,8 @@ class PointValues():
                 pitch_points.replacement_positions = rep_nums
             if rep_levels is not None:
                 pitch_points.replacement_levels = rep_levels
+            if surplus_pos is not None:
+                pitch_points.surplus_pos = surplus_pos
         real_pitchers = pitch_points.calc_par(self.pitch_proj)
 
         if self.value_calc is None:
