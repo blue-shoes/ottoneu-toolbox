@@ -70,7 +70,7 @@ class CalculationDataType(Enum):
     NUM_TEAMS = 20
     HITTER_SPLIT = 21
     NON_PRODUCTIVE_DOLLARS = 22
-    HITTER_RANKING_BASIS = 22
+    HITTER_RANKING_BASIS = 23
     PA_TO_RANK = 24
     SP_IP_TO_RANK = 25
     RP_IP_TO_RANK = 26
