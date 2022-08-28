@@ -84,6 +84,34 @@ class CalculationDataType(Enum):
     TOTAL_INNINGS_PITCHED = 34
     TOTAL_FOM_ABOVE_REPLACEMENT = 35
 
+    @classmethod
+    def pos_to_num_rostered(self):
+        return {
+            Position.POS_C : self.ROSTERED_C,
+            Position.POS_1B : self.ROSTERED_1B,
+            Position.POS_2B : self.ROSTERED_2B,
+            Position.POS_3B : self.ROSTERED_3B,
+            Position.POS_SS : self.ROSTERED_SS,
+            Position.POS_OF : self.ROSTERED_OF,
+            Position.POS_UTIL : self.ROSTERED_UTIL,
+            Position.POS_SP : self.ROSTERED_SP,
+            Position.POS_RP : self.ROSTERED_RP
+        }
+    
+    @classmethod
+    def pos_to_rep_level(self):
+        return {
+            Position.POS_C : self.REP_LEVEL_C,
+            Position.POS_1B : self.REP_LEVEL_1B,
+            Position.POS_2B : self.REP_LEVEL_2B,
+            Position.POS_3B : self.REP_LEVEL_3B,
+            Position.POS_SS : self.REP_LEVEL_SS,
+            Position.POS_OF : self.REP_LEVEL_OF,
+            Position.POS_UTIL : self.REP_LEVEL_UTIL,
+            Position.POS_SP : self.REP_LEVEL_SP,
+            Position.POS_RP : self.REP_LEVEL_RP
+        }
+
 class RepLevelScheme(Enum):
     NUM_ROSTERED = 0
     STATIC_REP_LEVEL = 1
@@ -333,7 +361,21 @@ class Position(Enum):
             self.OFFENSE]
     
     @classmethod
+    def get_discrete_offensive_pos(self):
+        return [self.POS_C, 
+            self.POS_1B,
+            self.POS_2B,
+            self.POS_3B,
+            self.POS_SS,
+            self.POS_OF,
+            self.POS_UTIL]
+    
+    @classmethod
     def get_pitching_pos(self):
         return [self.POS_SP,
             self.POS_RP,
             self.PITCHER]
+
+    @classmethod
+    def get_discrete_pitching_pos(self):
+        return [self.POS_SP, self.POS_RP]
