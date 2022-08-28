@@ -114,11 +114,11 @@ class PointValues():
             self.pitch_proj = projs[1]
             self.intermediate_calculations = False
             rep_level_scheme = RepLevelScheme._value2member_map_[int(self.value_calc.get_input(CalculationDataType.REP_LEVEL_SCHEME))]
-            hitter_rank_basis = RankingBasis._value2member_map_[int(self.value_calc.get_input(CalculationDataType.HITTER_RANKING_BASIS))]
-            pitcher_rank_basis = RankingBasis._value2member_map_[int(self.value_calc.get_input(CalculationDataType.PITCHER_RANKING_BASIS))]
+            hitter_rank_basis = self.value_calc.get_input(CalculationDataType.HITTER_RANKING_BASIS)
+            pitcher_rank_basis = self.value_calc.get_input(CalculationDataType.PITCHER_RANKING_BASIS)
             num_teams = int(self.value_calc.get_input(CalculationDataType.NUM_TEAMS))
             sabr = self.value_calc.format == ScoringFormat.SABR_POINTS or self.value_calc.format == ScoringFormat.H2H_SABR_POINTS
-            non_prod_salary = int(self.value_calc.get_input(CalculationDataType.NON_PRODUCTIVE_DOLLARS))
+            non_prod_salary = self.value_calc.get_input(CalculationDataType.NON_PRODUCTIVE_DOLLARS)
             rep_nums = None
             rep_levels = None
             if rep_level_scheme == RepLevelScheme.NUM_ROSTERED or rep_level_scheme == RepLevelScheme.FILL_GAMES:

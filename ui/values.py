@@ -326,10 +326,10 @@ class ValuesCalculation(BaseUi):
         self.value_calc.set_input(CalculationDataType.NUM_TEAMS, float(self.num_teams_str.get()))
         if self.manual_split.get():
             self.value_calc.set_input(CalculationDataType.HITTER_SPLIT, float(self.hitter_allocation.get()))
-        self.value_calc.set_input(CalculationDataType.NON_PRODUCTIVE_DOLLARS, float(self.non_prod_dollars_str.get()))
-        self.value_calc.set_input(CalculationDataType.HITTER_RANKING_BASIS, float(RankingBasis.display_to_enum_map()[self.hitter_basis.get()].value))
+        self.value_calc.set_input(CalculationDataType.NON_PRODUCTIVE_DOLLARS, int(self.non_prod_dollars_str.get()))
+        self.value_calc.set_input(CalculationDataType.HITTER_RANKING_BASIS, RankingBasis.display_to_enum_map()[self.hitter_basis.get()])
         self.value_calc.set_input(CalculationDataType.PA_TO_RANK, float(self.min_pa.get()))
-        self.value_calc.set_input(CalculationDataType.PITCHER_RANKING_BASIS, float(RankingBasis.display_to_enum_map()[self.pitcher_basis.get()].value))
+        self.value_calc.set_input(CalculationDataType.PITCHER_RANKING_BASIS, RankingBasis.display_to_enum_map()[self.pitcher_basis.get()])
         self.value_calc.set_input(CalculationDataType.SP_IP_TO_RANK, float(self.min_sp_ip.get()))
         self.value_calc.set_input(CalculationDataType.RP_IP_TO_RANK, float(self.min_rp_ip.get()))
         self.value_calc.set_input(CalculationDataType.REP_LEVEL_SCHEME, float(self.rep_level_scheme.get()))
