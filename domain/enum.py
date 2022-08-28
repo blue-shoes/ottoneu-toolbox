@@ -293,6 +293,55 @@ class StatType(Enum):
         self.FIP : 'FIP'
     }
 
+    @classmethod
+    def get_stat_format(self):
+        zero_decimal = "{:.0f}"
+        one_decimal = "{:.1f}"
+        two_decimal = "{:.2f}"
+        three_decimal = "{:.3f}"
+        return {
+            self.G_HIT: zero_decimal,
+            self.GS_HIT : zero_decimal,
+            self.PA : zero_decimal,
+            self.AB : zero_decimal,
+            self.H : zero_decimal,
+            self.DOUBLE : zero_decimal,
+            self.TRIPLE : zero_decimal, 
+            self.HR : zero_decimal,
+            self.R : zero_decimal,
+            self.RBI : zero_decimal,
+            self.BB : zero_decimal,
+            self.SO : zero_decimal,
+            self.HBP : zero_decimal,
+            self.SB : zero_decimal,
+            self.CS : zero_decimal,
+            self.AVG : three_decimal,
+            self.OBP : three_decimal,
+            self.SLG : three_decimal,
+            self.OPS : three_decimal,
+            self.WOBA : three_decimal,
+            self.WRC_PLUS: zero_decimal,
+            self.G_PIT : zero_decimal,
+            self.GS_PIT : zero_decimal,
+            self.IP : one_decimal,
+            self.W : zero_decimal,
+            self.L : zero_decimal,
+            self.QS : zero_decimal,
+            self.SV : zero_decimal,
+            self.HLD : zero_decimal,
+            self.H_ALLOWED : zero_decimal,
+            self.ER : zero_decimal,
+            self.HR_ALLOWED : zero_decimal,
+            self.K : zero_decimal,
+            self.BB_ALLOWED : zero_decimal,
+            self.HBP_ALLOWED : zero_decimal,
+            self.WHIP : two_decimal,
+            self.K_PER_9 : two_decimal,
+            self.BB_PER_9 : two_decimal,
+            self.ERA : two_decimal,
+            self.FIP : two_decimal
+        }
+
 class ScoringFormat(Enum):
     ALL = 0
     CLASSIC_4X4 = 1

@@ -173,9 +173,9 @@ class ValuesCalculation(BaseUi):
         if len(self.value_calc.values) > 0:
             pv = self.value_calc.get_player_value(pp.player.index, pos)
             if pv is None:
-                val.append("$0")
+                val.append("$0.0")
             else:
-                val.append(f"${pv.value}")
+                val.append("${:.1f}".format(pv.value))
         else:
             val.append('-')
         val.append(pp.player.name)
@@ -186,26 +186,27 @@ class ValuesCalculation(BaseUi):
             if pos in Position.get_offensive_pos():
                 games = pp.get_stat(StatType.G_HIT)
                 if games is None or games == 0:
-                    val.append(0)
+                    val.append("0.00")
                 else:
-                    val.append(points / games)
+                    val.append("{:.2f}".format(points / games))
             else:
                 ip = pp.get_stat(StatType.IP)
                 if ip is None or ip == 0:
-                    val.append(0)
+                    val.append("0.00")
                 else:
-                    val.append(points/ip)
-            val.append(points)
+                    val.append("{:.2f}".format(points/ip))
+            val.append("{:.1f}".format(points))
         else:
             val.append('-')
             val.append('-')
         for col in cols:
             if col in enum_dict:
                 stat = pp.get_stat(enum_dict[col])
+                fmt = StatType.get_stat_format()[enum_dict[col]]
                 if stat is None:
-                    val.append(0)
+                    val.append(fmt.format(0))
                 else:
-                    val.append(stat)
+                    val.append(fmt.format(stat))
         return val
 
     def refresh_hitters(self):
