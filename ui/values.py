@@ -237,9 +237,84 @@ class ValuesCalculation(BaseUi):
         self.dollars_per_fom_val = StringVar()
         self.dollars_per_fom_val.set('$--')
         ttk.Label(outf, textvariable=self.dollars_per_fom_val).grid(row=1,column=1)
-    
+
+        self.total_fom_lbl_sv = StringVar()
+        self.total_fom_lbl_sv.set("Total PAR:")
+        ttk.Label(outf, textvariable=self.total_fom_lbl_sv).grid(row=2, column=0)
+        self.total_fom_sv = StringVar()
+        self.total_fom_sv.set("--")
+        ttk.Label(outf, textvariable=self.total_fom_sv).grid(row=2, column=1)
+
+        ttk.Label(outf, text="Position", font='bold').grid(row=3, column=0)
+        ttk.Label(outf, text="# Rostered", font='bold').grid(row=3, column=1)
+        self.bat_rep_level_lbl = StringVar()
+        self.bat_rep_level_lbl.set("Rep. Level")
+        ttk.Label(outf, textvariable=self.bat_rep_level_lbl, font='bold').grid(row=3, column=2)
+
+        row = 4
+        self.pos_rostered_sv = {}
+        self.pos_rep_lvl_sv = {}
+        for pos in Position.get_discrete_offensive_pos():
+            ttk.Label(outf, text=pos.value).grid(row=row, column=0)
+            pos_rep = StringVar()
+            pos_rep.set("--")
+            self.pos_rostered_sv[pos] = pos_rep
+            ttk.Label(outf, textvariable=pos_rep).grid(row=row, column=1)
+            rep_lvl = StringVar()
+            rep_lvl.set("--")
+            self.pos_rep_lvl_sv[pos] = rep_lvl
+            ttk.Label(outf, textvariable=rep_lvl).grid(row=row, column=2)
+            row += 1
+        
+        ttk.Label(outf, text="Total Rostered:").grid(row=row, column=0)
+        self.total_bat_rostered_sv = StringVar()
+        self.total_bat_rostered_sv.set("--")
+        ttk.Label(outf, textvariable=self.total_bat_rostered_sv).grid(row=row, column=1)
+        row += 1
+        
+        ttk.Label(outf, text="Position", font='bold').grid(row=row, column=0)
+        ttk.Label(outf, text="# Rostered", font='bold').grid(row=row, column=1)
+        self.pitch_rep_level_lbl = StringVar()
+        self.pitch_rep_level_lbl.set("Rep. Level")
+        ttk.Label(outf, textvariable=self.pitch_rep_level_lbl, font='bold').grid(row=row, column=2)
+
+        for pos in Position.get_discrete_pitching_pos():
+            row += 1
+            ttk.Label(outf, text=pos.value).grid(row=row, column=0)
+            pos_rep = StringVar()
+            pos_rep.set("--")
+            self.pos_rostered_sv[pos] = pos_rep
+            ttk.Label(outf, textvariable=pos_rep).grid(row=row, column=1)
+            rep_lvl = StringVar()
+            rep_lvl.set("--")
+            self.pos_rep_lvl_sv[pos] = rep_lvl
+            ttk.Label(outf, textvariable=rep_lvl).grid(row=row, column=2)
+            
+        row += 1
+        ttk.Label(outf, text="Total Rostered:").grid(row=row, column=0)
+        self.total_pitch_rostered_sv = StringVar()
+        self.total_pitch_rostered_sv.set("--")
+        ttk.Label(outf, textvariable=self.total_pitch_rostered_sv).grid(row=row, column=1)
+        row += 1
+
     def update_calc_output_frame(self):
+        self.output_title.set("Value Calculation Results")
         self.dollars_per_fom_val.set('$' + "{:.3f}".format(self.value_calc.get_output(CalculationDataType.DOLLARS_PER_FOM)))
+        self.total_fom_sv.set("{:.0f}".format(self.value_calc.get_output(CalculationDataType.TOTAL_FOM_ABOVE_REPLACEMENT)))
+        self.total_bat_rostered_sv.set(self.value_calc.get_output(CalculationDataType.TOTAL_HITTERS_ROSTERED))
+        self.total_pitch_rostered_sv.set(self.value_calc.get_output(CalculationDataType.TOTAL_PITCHERS_ROSTERED))
+        hitter_rb = RankingBasis.enum_to_display_dict()[self.value_calc.get_input(CalculationDataType.HITTER_RANKING_BASIS)]
+        self.bat_rep_level_lbl.set(f"Rep. Level ({hitter_rb})")
+        pitcher_rb = RankingBasis.enum_to_display_dict()[self.value_calc.get_input(CalculationDataType.PITCHER_RANKING_BASIS)]
+        self.pitch_rep_level_lbl.set(f"Rep. Level ({pitcher_rb})")
+
+        for pos in Position.get_discrete_offensive_pos():
+            self.pos_rostered_sv[pos].set(self.value_calc.get_output(CalculationDataType.pos_to_num_rostered()[pos]))
+            self.pos_rep_lvl_sv[pos].set("{:.2f}".format(self.value_calc.get_output(CalculationDataType.pos_to_rep_level()[pos])))
+        
+        for pos in Position.get_discrete_pitching_pos():
+            self.pos_rostered_sv[pos].set(self.value_calc.get_output(CalculationDataType.pos_to_num_rostered()[pos]))
+            self.pos_rep_lvl_sv[pos].set("{:.2f}".format(self.value_calc.get_output(CalculationDataType.pos_to_rep_level()[pos])))
 
     def toggle_manual_split(self):
         if self.manual_split.get():
