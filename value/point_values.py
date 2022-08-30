@@ -124,6 +124,7 @@ class PointValues():
             non_prod_salary = self.value_calc.get_input(CalculationDataType.NON_PRODUCTIVE_DOLLARS)
             rep_nums = None
             rep_levels = None
+            surplus_pos = None
             if rep_level_scheme == RepLevelScheme.NUM_ROSTERED:
                 rep_nums = calculation_services.get_num_rostered_rep_levels(self.value_calc)
             elif rep_level_scheme == RepLevelScheme.STATIC_REP_LEVEL:

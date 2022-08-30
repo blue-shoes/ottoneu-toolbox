@@ -152,8 +152,7 @@ class ArmPoint():
                 total_ip = rosterable.apply(self.usable_ip_calc, args=("SP", 1), axis=1).sum()
                 total_ip += rosterable.apply(self.usable_ip_calc, args=("RP", 1), axis=1).sum()
         elif self.rep_level_scheme == RepLevelScheme.NUM_ROSTERED:
-            #TODO Implement this
-            i=1
+            self.get_pitcher_par_calc(df)
         else:
             #TODO Implement this (static rep levels)
             i=1

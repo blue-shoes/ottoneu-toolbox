@@ -220,8 +220,7 @@ class BatPoint():
                 #FOM is how many bats with a non-negative max PAR
                 num_bats = len(df.loc[df['Max PAR'] >= 0])
         elif self.rep_level_scheme == RepLevelScheme.NUM_ROSTERED:
-            #TODO: Fill this out
-            i=1
+            df['Max PAR'] = df.apply(self.calc_max_par, axis=1)
         else:
             #Static replacement levels
             #TODO: Fill this out
