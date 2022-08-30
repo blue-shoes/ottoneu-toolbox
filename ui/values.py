@@ -265,10 +265,16 @@ class ValuesCalculation(BaseUi):
             ttk.Label(outf, textvariable=rep_lvl).grid(row=row, column=2)
             row += 1
         
-        ttk.Label(outf, text="Total Games Rostered:").grid(row=row, column=0)
+        ttk.Label(outf, text="Total Batters Rostered:").grid(row=row, column=0)
         self.total_bat_rostered_sv = StringVar()
         self.total_bat_rostered_sv.set("--")
         ttk.Label(outf, textvariable=self.total_bat_rostered_sv).grid(row=row, column=1)
+        row += 1
+        
+        ttk.Label(outf, text="Total Games Rostered:").grid(row=row, column=0)
+        self.total_games_rostered_sv = StringVar()
+        self.total_games_rostered_sv.set("--")
+        ttk.Label(outf, textvariable=self.total_games_rostered_sv).grid(row=row, column=1)
         row += 1
         
         ttk.Label(outf, text="Position", font='bold').grid(row=row, column=0)
@@ -290,18 +296,27 @@ class ValuesCalculation(BaseUi):
             ttk.Label(outf, textvariable=rep_lvl).grid(row=row, column=2)
             
         row += 1
-        ttk.Label(outf, text="Total IP Rostered:").grid(row=row, column=0)
+        
+        ttk.Label(outf, text="Total Pitchers Rostered:").grid(row=row, column=0)
         self.total_pitch_rostered_sv = StringVar()
         self.total_pitch_rostered_sv.set("--")
         ttk.Label(outf, textvariable=self.total_pitch_rostered_sv).grid(row=row, column=1)
+        row += 1
+        
+        ttk.Label(outf, text="Total IP Rostered:").grid(row=row, column=0)
+        self.total_ip_rostered_sv = StringVar()
+        self.total_ip_rostered_sv.set("--")
+        ttk.Label(outf, textvariable=self.total_ip_rostered_sv).grid(row=row, column=1)
         row += 1
 
     def update_calc_output_frame(self):
         self.output_title.set("Value Calculation Results")
         self.dollars_per_fom_val.set('$' + "{:.3f}".format(self.value_calc.get_output(CalculationDataType.DOLLARS_PER_FOM)))
         self.total_fom_sv.set("{:.0f}".format(self.value_calc.get_output(CalculationDataType.TOTAL_FOM_ABOVE_REPLACEMENT)))
-        self.total_bat_rostered_sv.set("{:.0f}".format(self.value_calc.get_output(CalculationDataType.TOTAL_GAMES_PLAYED)))
-        self.total_pitch_rostered_sv.set("{:.0f}".format(self.value_calc.get_output(CalculationDataType.TOTAL_INNINGS_PITCHED)))
+        self.total_bat_rostered_sv.set(self.value_calc.get_output(CalculationDataType.TOTAL_HITTERS_ROSTERED))
+        self.total_pitch_rostered_sv.set(self.value_calc.get_output(CalculationDataType.TOTAL_PITCHERS_ROSTERED))
+        self.total_games_rostered_sv.set("{:.0f}".format(self.value_calc.get_output(CalculationDataType.TOTAL_GAMES_PLAYED)))
+        self.total_ip_rostered_sv.set("{:.0f}".format(self.value_calc.get_output(CalculationDataType.TOTAL_INNINGS_PITCHED)))
         hitter_rb = RankingBasis.enum_to_display_dict()[self.value_calc.get_input(CalculationDataType.HITTER_RANKING_BASIS)]
         self.bat_rep_level_lbl.set(f"Rep. Level ({hitter_rb})")
         pitcher_rb = RankingBasis.enum_to_display_dict()[self.value_calc.get_input(CalculationDataType.PITCHER_RANKING_BASIS)]

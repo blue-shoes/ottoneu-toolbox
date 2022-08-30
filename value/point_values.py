@@ -204,6 +204,9 @@ class PointValues():
         #I had to put the 1 in the args because otherwise it treats "SP" like two arguments "S" and "P" for some reason
         total_usable_par = rosterable_pos['Max PAR'].sum() + rosterable_pitch.apply(pitch_points.usable_par_calc, args=('SP',1), axis=1).sum() + rosterable_pitch.apply(pitch_points.usable_par_calc, args=('RP',1), axis=1).sum()
         total_players = len(rosterable_pos) + len(rosterable_pitch)
+        if self.value_calc is not None:
+            self.value_calc.set_output(CalculationDataType.TOTAL_HITTERS_ROSTERED, len(rosterable_pos))
+            self.value_calc.set_output(CalculationDataType.TOTAL_PITCHERS_ROSTERED, len(rosterable_pitch))
 
         dollars = 400*num_teams
         dollars -= non_prod_salary
