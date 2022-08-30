@@ -109,6 +109,8 @@ class PointValues():
             sabr = False
             non_prod_salary = 48
             surplus_pos = {}
+            min_sp_ip = 70
+            min_rp_ip = 30
         else:
             projs = projection_services.convert_to_df(self.value_calc.projection)
             self.pos_proj = projs[0]
@@ -129,6 +131,8 @@ class PointValues():
             elif rep_level_scheme == RepLevelScheme.FILL_GAMES:
                 surplus_pos = calculation_services.get_num_rostered_rep_levels(self.value_calc)
             logging.debug(f'rep_level_scheme = {rep_level_scheme.value}')
+            min_sp_ip = self.value_calc.get_input(CalculationDataType.SP_IP_TO_RANK)
+            min_rp_ip = self.value_calc.get_input(CalculationDataType.RP_IP_TO_RANK)
         
         self.update_progress(progress, 'Calculating Batters', 10)
         pos_points = value.bat_points.BatPoint(
@@ -153,7 +157,9 @@ class PointValues():
             rep_level_scheme=rep_level_scheme,
             num_teams=num_teams,
             rank_basis=pitcher_rank_basis,
-            SABR=sabr
+            SABR=sabr,
+            min_sp_ip=min_sp_ip,
+            min_rp_ip=min_rp_ip
             )
         if self.value_calc is not None:
             if rep_nums is not None:
@@ -162,6 +168,7 @@ class PointValues():
                 pitch_points.replacement_levels = rep_levels
             if surplus_pos is not None:
                 pitch_points.surplus_pos = surplus_pos
+            
         real_pitchers = pitch_points.calc_par(self.pitch_proj)
 
         if self.value_calc is None:

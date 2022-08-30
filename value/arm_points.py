@@ -15,7 +15,7 @@ class ArmPoint():
     default_surplus_pos = {"SP": 0, "RP": 0}
 
     def __init__(self, intermediate_calc=False, replacement_pos=default_replacement_positions, replacement_levels=default_replacement_levels, target_arm=196, SABR=False, rp_limit=999, 
-        rep_level_scheme=RepLevelScheme.FILL_GAMES, rp_ip_per_team=300, num_teams=12, rank_basis=RankingBasis.PIP, surplus_pos=default_surplus_pos):
+        rep_level_scheme=RepLevelScheme.FILL_GAMES, rp_ip_per_team=300, num_teams=12, rank_basis=RankingBasis.PIP, surplus_pos=default_surplus_pos, min_sp_ip=70, min_rp_ip=30):
         self.intermediate_calculations = intermediate_calc
         self.replacement_positions = deepcopy(replacement_pos)
         self.replacement_levels = deepcopy(replacement_levels)
@@ -27,6 +27,8 @@ class ArmPoint():
         self.num_teams = num_teams
         self.target_innings = 1500.0 * num_teams
         self.surplus_pos = deepcopy(surplus_pos)
+        self.min_sp_ip = min_sp_ip
+        self.min_rp_ip = min_rp_ip
         #TODO implemetn P/G rank basis for H2H
         self.rank_basis = rank_basis
         if intermediate_calc:
@@ -201,13 +203,13 @@ class ArmPoint():
     def not_a_belly_itcher_filter(self, row):
         #Filter pitchers from the data set who don't reach requisite innings. These thresholds are arbitrary.
         if row['Position(s)'] == 'SP':
-            return row['IP'] >= 70
+            return row['IP'] >= self.min_sp_ip
         if row['Position(s)'] == 'RP':
-            return row['IP'] >= 30
+            return row['IP'] >= self.min_rp_ip
         if row['G'] == 0: return False
         #Got to here, this is a SP/RP with > 0 G. Ration their innings threshold based on their projected GS/G ratio
         start_ratio = row['GS'] / row['G']
-        return row['IP'] > 40.0*start_ratio + 30.0
+        return row['IP'] > (self.min_sp_ip - self.min_rp_ip)*start_ratio + self.min_rp_ip
 
     def rp_ip_func(self, row):
         #Avoid divide by zero error
