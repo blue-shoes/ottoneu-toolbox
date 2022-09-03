@@ -79,83 +79,87 @@ class ArmPoint():
         return row['No SVH Points'] / row['IP']
 
     def get_pitcher_par(self, df):
-        num_arms = 0
-        total_ip = 0
-        self.get_pitcher_par_calc(df)
-
-        rosterable = df.loc[df['PAR'] >= 0]
-        #I had to put the 1 in the args because otherwise it treats "SP" like two arugments "S" and "P" for some reason
-        sp_ip = rosterable.apply(self.usable_ip_calc, args=("SP", 1), axis=1).sum()
-        rp_ip = rosterable.apply(self.usable_ip_calc, args=("RP", 1), axis=1).sum()
-        total_ip = sp_ip + rp_ip
-
-        if self.rep_level_scheme == RepLevelScheme.FILL_GAMES:
-            while sp_ip < self.num_teams * (1500-self.rp_ip_per_team):
-                self.replacement_positions['SP'] = self.replacement_positions['SP'] + 1
-                self.get_pitcher_par_calc(df)
-                rosterable = df.loc[df['PAR'] >= 0]
-                #I had to put the 1 in the args because otherwise it treats "SP" like two arugments "S" and "P" for some reason
-                sp_ip = rosterable.apply(self.usable_ip_calc, args=("SP", 1), axis=1).sum()
-            while rp_ip < self.num_teams * self.rp_ip_per_team:
-                self.replacement_positions['RP'] = self.replacement_positions['RP'] + 1
-                self.get_pitcher_par_calc(df)
-                rosterable = df.loc[df['PAR'] >= 0]
-                #I had to put the 1 in the args because otherwise it treats "RP" like two arugments "R" and "P" for some reason
-                rp_ip = rosterable.apply(self.usable_ip_calc, args=("RP", 1), axis=1).sum()
-            self.replacement_positions['SP'] = self.replacement_positions['SP'] + self.surplus_pos['SP']
-            self.replacement_positions['RP'] = self.replacement_positions['RP'] + self.surplus_pos['RP']
-            self.get_pitcher_par_calc(df)
-
-        elif self.rep_level_scheme == RepLevelScheme.TOTAL_ROSTERED:
-            while num_arms != self.target_pitch or (abs(total_ip-self.target_innings) > 100 and self.replacement_positions['RP'] != self.rp_limit):
-                #Going to do optional capping of relievers. It can get a bit out of control otherwise
-                if num_arms < self.target_pitch and self.replacement_positions['RP'] == self.rp_limit:
-                    self.replacement_positions['SP'] = self.replacement_positions['SP'] + 1
-                elif num_arms == self.target_pitch:
-                    #We have the right number of arms, but not in the inning threshold
-                    if total_ip < self.target_innings:
-                        #Too many relievers
-                        self.replacement_positions['SP'] = self.replacement_positions['SP'] + 1
-                        self.replacement_positions['RP'] = self.replacement_positions['RP'] - 1
-                    else:
-                        #Too many starters
-                        self.replacement_positions['SP'] = self.replacement_positions['SP'] - 1
-                        self.replacement_positions['RP'] = self.replacement_positions['RP'] + 1
-                elif num_arms < self.target_pitch:
-                    if self.target_pitch-num_arms == 1 and self.target_innings - total_ip > 200:
-                        #Add starter, a reliever isn't going to get it done, so don't bother
-                        #I got caught in a loop without this
-                        self.replacement_positions['SP'] = self.replacement_positions['SP'] + 1
-                    #Not enough pitchers. Preferentially add highest replacement level
-                    elif self.replacement_levels['SP'] > self.replacement_levels['RP']:
-                        #Probably not, but just in case
-                        self.replacement_positions['SP'] = self.replacement_positions['SP'] + 1
-                    else:
-                        self.replacement_positions['RP'] = self.replacement_positions['RP'] + 1
-                else:
-                    if self.target_pitch-num_arms == -1 and self.target_innings - total_ip > 50:
-                        #Remove a reliever. We're already short on innings, so removing a starter isn't going to get it done, so don't bother
-                        #I got caught in a loop without this
-                        self.replacement_positions['RP'] = self.replacement_positions['RP'] - 1
-                    #Too many pitchers. Preferentially remove lowest replacement level
-                    elif self.replacement_levels['SP'] < self.replacement_levels['RP']:
-                        self.replacement_positions['SP'] = self.replacement_positions['SP'] - 1
-                    else:
-                        #Probably not, but just in case
-                        self.replacement_positions['RP'] = self.replacement_positions['RP'] - 1
-                self.get_pitcher_par_calc(df)
-                #FOM is how many arms with a non-negative PAR...
-                rosterable = df.loc[df['PAR'] >= 0]
-                num_arms = len(rosterable)
-                #...and how many total innings are pitched
-                #I had to put the 1 in the args because otherwise it treats "SP" like two arugments "S" and "P" for some reason
-                total_ip = rosterable.apply(self.usable_ip_calc, args=("SP", 1), axis=1).sum()
-                total_ip += rosterable.apply(self.usable_ip_calc, args=("RP", 1), axis=1).sum()
-        elif self.rep_level_scheme == RepLevelScheme.NUM_ROSTERED:
-            self.get_pitcher_par_calc(df)
+        
+        if self.rep_level_scheme == RepLevelScheme.STATIC_REP_LEVEL:
+            self.get_par(df)
+            self.set_number_rostered(df)
         else:
-            #TODO Implement this (static rep levels)
-            i=1
+            num_arms = 0
+            total_ip = 0
+            self.get_pitcher_par_calc(df)
+
+            rosterable = df.loc[df['PAR'] >= 0]
+            #I had to put the 1 in the args because otherwise it treats "SP" like two arugments "S" and "P" for some reason
+            sp_ip = rosterable.apply(self.usable_ip_calc, args=("SP", 1), axis=1).sum()
+            rp_ip = rosterable.apply(self.usable_ip_calc, args=("RP", 1), axis=1).sum()
+            total_ip = sp_ip + rp_ip
+
+            if self.rep_level_scheme == RepLevelScheme.FILL_GAMES:
+                while sp_ip < self.num_teams * (1500-self.rp_ip_per_team):
+                    self.replacement_positions['SP'] = self.replacement_positions['SP'] + 1
+                    self.get_pitcher_par_calc(df)
+                    rosterable = df.loc[df['PAR'] >= 0]
+                    #I had to put the 1 in the args because otherwise it treats "SP" like two arugments "S" and "P" for some reason
+                    sp_ip = rosterable.apply(self.usable_ip_calc, args=("SP", 1), axis=1).sum()
+                while rp_ip < self.num_teams * self.rp_ip_per_team:
+                    self.replacement_positions['RP'] = self.replacement_positions['RP'] + 1
+                    self.get_pitcher_par_calc(df)
+                    rosterable = df.loc[df['PAR'] >= 0]
+                    #I had to put the 1 in the args because otherwise it treats "RP" like two arugments "R" and "P" for some reason
+                    rp_ip = rosterable.apply(self.usable_ip_calc, args=("RP", 1), axis=1).sum()
+                self.replacement_positions['SP'] = self.replacement_positions['SP'] + self.surplus_pos['SP']
+                self.replacement_positions['RP'] = self.replacement_positions['RP'] + self.surplus_pos['RP']
+                self.get_pitcher_par_calc(df)
+
+            elif self.rep_level_scheme == RepLevelScheme.TOTAL_ROSTERED:
+                while num_arms != self.target_pitch or (abs(total_ip-self.target_innings) > 100 and self.replacement_positions['RP'] != self.rp_limit):
+                    #Going to do optional capping of relievers. It can get a bit out of control otherwise
+                    if num_arms < self.target_pitch and self.replacement_positions['RP'] == self.rp_limit:
+                        self.replacement_positions['SP'] = self.replacement_positions['SP'] + 1
+                    elif num_arms == self.target_pitch:
+                        #We have the right number of arms, but not in the inning threshold
+                        if total_ip < self.target_innings:
+                            #Too many relievers
+                            self.replacement_positions['SP'] = self.replacement_positions['SP'] + 1
+                            self.replacement_positions['RP'] = self.replacement_positions['RP'] - 1
+                        else:
+                            #Too many starters
+                            self.replacement_positions['SP'] = self.replacement_positions['SP'] - 1
+                            self.replacement_positions['RP'] = self.replacement_positions['RP'] + 1
+                    elif num_arms < self.target_pitch:
+                        if self.target_pitch-num_arms == 1 and self.target_innings - total_ip > 200:
+                            #Add starter, a reliever isn't going to get it done, so don't bother
+                            #I got caught in a loop without this
+                            self.replacement_positions['SP'] = self.replacement_positions['SP'] + 1
+                        #Not enough pitchers. Preferentially add highest replacement level
+                        elif self.replacement_levels['SP'] > self.replacement_levels['RP']:
+                            #Probably not, but just in case
+                            self.replacement_positions['SP'] = self.replacement_positions['SP'] + 1
+                        else:
+                            self.replacement_positions['RP'] = self.replacement_positions['RP'] + 1
+                    else:
+                        if self.target_pitch-num_arms == -1 and self.target_innings - total_ip > 50:
+                            #Remove a reliever. We're already short on innings, so removing a starter isn't going to get it done, so don't bother
+                            #I got caught in a loop without this
+                            self.replacement_positions['RP'] = self.replacement_positions['RP'] - 1
+                        #Too many pitchers. Preferentially remove lowest replacement level
+                        elif self.replacement_levels['SP'] < self.replacement_levels['RP']:
+                            self.replacement_positions['SP'] = self.replacement_positions['SP'] - 1
+                        else:
+                            #Probably not, but just in case
+                            self.replacement_positions['RP'] = self.replacement_positions['RP'] - 1
+                    self.get_pitcher_par_calc(df)
+                    #FOM is how many arms with a non-negative PAR...
+                    rosterable = df.loc[df['PAR'] >= 0]
+                    num_arms = len(rosterable)
+                    #...and how many total innings are pitched
+                    #I had to put the 1 in the args because otherwise it treats "SP" like two arugments "S" and "P" for some reason
+                    total_ip = rosterable.apply(self.usable_ip_calc, args=("SP", 1), axis=1).sum()
+                    total_ip += rosterable.apply(self.usable_ip_calc, args=("RP", 1), axis=1).sum()
+            elif self.rep_level_scheme == RepLevelScheme.NUM_ROSTERED:
+                self.get_pitcher_par_calc(df)
+            else:
+                raise Exception("Unusable Replacement Level Scheme")
         
         if(self.intermediate_calculations):
             filepath = os.path.join(self.intermed_subdirpath, f"pit_rost.csv")
@@ -174,12 +178,26 @@ class ArmPoint():
     def get_pitcher_par_calc(self, df):
         sp_rep_level = self.get_pitcher_rep_level(df, 'SP')
         self.replacement_levels['SP'] = sp_rep_level
-        df['PAR SP'] = df.apply(self.calc_pitch_par_role, args=('SP', sp_rep_level), axis=1)
         rp_rep_level = self.get_pitcher_rep_level(df, 'RP')
         self.replacement_levels['RP'] = rp_rep_level
-        df['PAR RP'] = df.apply(self.calc_pitch_par_role, args=('RP', rp_rep_level), axis=1)
+        self.get_par(df)
 
+    def get_par(self, df):
+        df['PAR SP'] = df.apply(self.calc_pitch_par_role, args=('SP', self.replacement_levels['SP']), axis=1)
+        df['PAR RP'] = df.apply(self.calc_pitch_par_role, args=('RP', self.replacement_levels['RP']), axis=1)
         df['PAR'] = df.apply(self.sum_role_par, axis=1)
+    
+    def set_number_rostered(self, df):
+        sp_count = 0
+        rp_count = 0
+        for idx, row in df.iterrows():
+            if row['PAR'] > 0:
+                if 'SP' in row['Position(s)']:
+                    sp_count += 1
+                if 'RP' in row['Position(s)']:
+                    rp_count += 1
+        self.replacement_positions['SP'] = sp_count
+        self.replacement_positions['RP'] = rp_count
 
     def calc_pitch_par_role(self, row, role, rep_level):
         if row['G'] == 0:
