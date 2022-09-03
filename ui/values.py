@@ -466,7 +466,7 @@ class ValuesCalculation(BaseUi):
                     bad_rep_level.append(key)
         else:
             for key, value in self.rep_level_dict.items():
-                if not value.get().isnumeric() or float(value.get()) > 10.0:
+                if float(value.get()) > 10.0:
                     bad_rep_level.append(key)
         
         if len(bad_rep_level) > 0:
