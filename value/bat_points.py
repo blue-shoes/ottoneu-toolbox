@@ -234,7 +234,7 @@ class BatPoint():
     def get_position_par_calc(self, df, pos):
         rep_level = self.get_position_rep_level(df, pos)
         self.replacement_levels[pos] = rep_level
-        self.get_par_from_rep_level(self, df, pos)
+        self.get_par_from_rep_level(df, pos)
 
     def calc_bat_par(self, row, rep_level, pos):
         if pos in row['Position(s)'] or pos == 'Util' or (pos == 'MI' and ('SS' in row['Position(s)'] or '2B' in row['Position(s)'])):
