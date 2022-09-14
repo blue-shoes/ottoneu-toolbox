@@ -201,9 +201,11 @@ class PointValues():
         rosterable_pos = pos_min_pa.loc[pos_min_pa['Max PAR'] >= 0]
         rosterable_pitch = real_pitchers.loc[real_pitchers['PAR'] >= 0]
 
-        total_par = rosterable_pos['Max PAR'].sum() + rosterable_pitch['PAR'].sum()
+        bat_par = rosterable_pos['Max PAR'].sum()
+        total_par = bat_par + rosterable_pitch['PAR'].sum()
         #I had to put the 1 in the args because otherwise it treats "SP" like two arguments "S" and "P" for some reason
-        total_usable_par = rosterable_pos['Max PAR'].sum() + rosterable_pitch.apply(pitch_points.usable_par_calc, args=('SP',1), axis=1).sum() + rosterable_pitch.apply(pitch_points.usable_par_calc, args=('RP',1), axis=1).sum()
+        arm_par = rosterable_pitch.apply(pitch_points.usable_par_calc, args=('SP',1), axis=1).sum() + rosterable_pitch.apply(pitch_points.usable_par_calc, args=('RP',1), axis=1).sum()
+        total_usable_par = bat_par + arm_par
         total_players = len(rosterable_pos) + len(rosterable_pitch)
         if self.value_calc is not None:
             self.value_calc.set_output(CalculationDataType.TOTAL_HITTERS_ROSTERED, len(rosterable_pos))
@@ -225,6 +227,17 @@ class PointValues():
             self.value_calc.set_output(CalculationDataType.TOTAL_FOM_ABOVE_REPLACEMENT, total_usable_par)
             self.value_calc.set_output(CalculationDataType.DOLLARS_PER_FOM, self.dol_per_par)
 
+        if self.value_calc is not None and self.value_calc.get_input(CalculationDataType.HITTER_SPLIT) is not None:
+            bat_dollars = dollars * self.value_calc.get_input(CalculationDataType.HITTER_SPLIT) / 100
+            arm_dollars = dollars - bat_dollars
+            self.bat_dol_per_par = bat_dollars / bat_par
+            self.arm_dol_per_par = arm_dollars / arm_par
+            self.value_calc.set_output(CalculationDataType.HITTER_DOLLAR_PER_FOM, self.bat_dol_per_par)
+            self.value_calc.set_output(CalculationDataType.PITCHER_DOLLAR_PER_FOM, self.arm_dol_per_par)
+        else:
+            self.bat_dol_per_par = 0
+            self.arm_dol_per_par = 0
+
         if self.value_calc is not None:
             self.value_calc.values= [] 
 
@@ -236,7 +249,10 @@ class PointValues():
                     pos_value = pd.DataFrame(pos_min_pa)
                 else:
                     pos_value = pd.DataFrame(pos_min_pa.loc[pos_min_pa['Position(s)'].str.contains(pos)])
-                pos_value['Value'] = pos_value[f'{pos}_PAR'].apply(lambda x: x*self.dol_per_par + 1.0 if x >= 0 else 0)
+                if self.bat_dol_per_par > 0:
+                    pos_value['Value'] = pos_value[f'{pos}_PAR'].apply(lambda x: x*self.bat_dol_per_par + 1.0 if x >= 0 else 0)
+                else:
+                    pos_value['Value'] = pos_value[f'{pos}_PAR'].apply(lambda x: x*self.dol_per_par + 1.0 if x >= 0 else 0)
                 pos_value.sort_values(by=['Value','P/G'], inplace=True, ascending=[False,False])
                 pos_value['Value'] = pos_value['Value'].apply(lambda x : "${:.0f}".format(x))
                 if self.value_calc is None:
@@ -245,14 +261,19 @@ class PointValues():
                 else:
                     for index, row in pos_value.iterrows():
                         self.value_calc.set_player_value(index, pos, row['Value'])
-
-        pos_min_pa['Value'] = pos_min_pa['Max PAR'].apply(lambda x: x*self.dol_per_par + 1.0 if x >= 0 else 0)
+        if self.bat_dol_per_par > 0:
+            pos_min_pa['Value'] = pos_min_pa['Max PAR'].apply(lambda x: x*self.bat_dol_per_par + 1.0 if x >= 0 else 0)
+        else:
+            pos_min_pa['Value'] = pos_min_pa['Max PAR'].apply(lambda x: x*self.dol_per_par + 1.0 if x >= 0 else 0)
         pos_min_pa.sort_values('Max PAR', inplace=True)
 
         if rank_pos:
             for pos in self.pitch_pos:
                 pos_value = pd.DataFrame(real_pitchers.loc[real_pitchers['Position(s)'].str.contains(pos)])
-                pos_value['Value'] = pos_value[f'PAR {pos}'].apply(lambda x: x*self.dol_per_par + 1.0 if x >= 0 else 0)
+                if self.arm_dol_per_par > 0:
+                    pos_value['Value'] = pos_value[f'PAR {pos}'].apply(lambda x: x*self.arm_dol_per_par + 1.0 if x >= 0 else 0)
+                else:
+                    pos_value['Value'] = pos_value[f'PAR {pos}'].apply(lambda x: x*self.dol_per_par + 1.0 if x >= 0 else 0)
                 pos_value.sort_values(by=['Value','P/IP'], inplace=True, ascending=[False,False])
                 pos_value['Value'] = pos_value['Value'].apply(lambda x : "${:.0f}".format(x))
                 
@@ -262,8 +283,10 @@ class PointValues():
                 else:
                     for index, row in pos_value.iterrows():
                         self.value_calc.set_player_value(index, pos, row['Value'])
-
-        real_pitchers['Value'] = real_pitchers['PAR'].apply(lambda x: x*self.dol_per_par + 1.0 if x >= 0 else 0)
+        if self.arm_dol_per_par > 0:
+            real_pitchers['Value'] = real_pitchers['PAR'].apply(lambda x: x*self.arm_dol_per_par + 1.0 if x >= 0 else 0)
+        else:
+            real_pitchers['Value'] = real_pitchers['PAR'].apply(lambda x: x*self.dol_per_par + 1.0 if x >= 0 else 0)
         real_pitchers.sort_values('PAR', inplace=True)
 
         if self.intermediate_calculations:
