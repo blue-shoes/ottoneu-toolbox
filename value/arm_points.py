@@ -14,6 +14,7 @@ class ArmPoint():
     default_replacement_levels = {}
     default_surplus_pos = {"SP": 0, "RP": 0}
     weeks = 26
+    max_rost_num = {}
 
     def __init__(self, intermediate_calc=False, replacement_pos=default_replacement_positions, replacement_levels=default_replacement_levels, target_arm=196, SABR=False, rp_limit=999, 
         rep_level_scheme=RepLevelScheme.FILL_GAMES, rp_ip_per_team=300, num_teams=12, rank_basis=RankingBasis.PIP, surplus_pos=default_surplus_pos, min_sp_ip=70, min_rp_ip=30,
@@ -112,56 +113,65 @@ class ArmPoint():
 
             if self.rep_level_scheme == RepLevelScheme.FILL_GAMES:
                 if self.rank_basis == RankingBasis.PIP:
-                    while sp_ip < self.num_teams * (1500-self.rp_ip_per_team):
+                    while sp_ip < self.num_teams * (1500-self.rp_ip_per_team) and self.replacement_positions['SP'] < self.max_rost_num['SP']:
                         self.replacement_positions['SP'] = self.replacement_positions['SP'] + 1
                         self.get_pitcher_par_calc(df)
                         rosterable = df.loc[df['PAR'] >= 0]
                         #I had to put the 1 in the args because otherwise it treats "SP" like two arguments "S" and "P" for some reason
                         sp_ip = rosterable.apply(self.usable_ip_calc, args=("SP", 1), axis=1).sum()
-                    while rp_ip < self.num_teams * self.rp_ip_per_team:
+                    while rp_ip < self.num_teams * self.rp_ip_per_team and self.replacement_positions['RP'] < self.max_rost_num['RP']:
                         self.replacement_positions['RP'] = self.replacement_positions['RP'] + 1
                         self.get_pitcher_par_calc(df)
                         rosterable = df.loc[df['PAR'] >= 0]
                         #I had to put the 1 in the args because otherwise it treats "RP" like two arguments "R" and "P" for some reason
                         rp_ip = rosterable.apply(self.usable_ip_calc, args=("RP", 1), axis=1).sum()
                 elif self.rank_basis == RankingBasis.PPG:
-                    while sp_g < self.num_teams * self.gs_per_week * self.weeks:
+                    while sp_g < self.num_teams * self.gs_per_week * self.weeks and self.replacement_positions['SP'] < self.max_rost_num['SP']:
                         self.replacement_positions['SP'] = self.replacement_positions['SP'] + 1
                         self.get_pitcher_par_calc(df)
                         rosterable = df.loc[df['PAR'] >= 0]
                         sp_g = rosterable.apply(self.usable_gs_calc, axis=1).sum()
-                    while rp_g < self.num_teams * self.est_rp_g_per_week * self.weeks:
+                    while rp_g < self.num_teams * self.est_rp_g_per_week * self.weeks and self.replacement_positions['RP'] < self.max_rost_num['RP']:
                         self.replacement_positions['RP'] = self.replacement_positions['RP'] + 1
                         self.get_pitcher_par_calc(df)
                         rosterable = df.loc[df['PAR'] >= 0]
                         rp_g = rosterable.apply(self.usable_rp_g_calc, axis=1).sum()
-                self.replacement_positions['SP'] = self.replacement_positions['SP'] + self.surplus_pos['SP']
-                self.replacement_positions['RP'] = self.replacement_positions['RP'] + self.surplus_pos['RP']
+                print(self.replacement_positions)
+                print(self.max_rost_num)
+                self.replacement_positions['SP'] = min(self.replacement_positions['SP'] + self.surplus_pos['SP'], self.max_rost_num['SP'])
+                self.replacement_positions['RP'] = min(self.replacement_positions['RP'] + self.surplus_pos['RP'], self.max_rost_num['RP'])
+                print(self.replacement_positions)
                 self.get_pitcher_par_calc(df)
 
             elif self.rep_level_scheme == RepLevelScheme.TOTAL_ROSTERED:
                 if self.rank_basis == RankingBasis.PIP:
-                    while num_arms != self.target_pitch or (abs(total_ip-self.target_innings) > 100 and self.replacement_positions['RP'] != self.rp_limit):
+                    while (num_arms != self.target_pitch or (abs(total_ip-self.target_innings) > 100 and self.replacement_positions['RP'] != self.rp_limit)) and (self.replacement_positions['SP'] < self.max_rost_num['SP'] and self.replacement_positions['RP'] < self.max_rost_num['RP']):
                         #Going to do optional capping of relievers. It can get a bit out of control otherwise
-                        if num_arms < self.target_pitch and self.replacement_positions['RP'] == self.rp_limit:
+                        if num_arms < self.target_pitch and (self.replacement_positions['RP'] == self.rp_limit or self.replacement_positions['RP'] < self.max_rost_num['RP']):
                             self.replacement_positions['SP'] = self.replacement_positions['SP'] + 1
                         elif num_arms == self.target_pitch:
                             #We have the right number of arms, but not in the inning threshold
                             if total_ip < self.target_innings:
                                 #Too many relievers
+                                if self.replacement_positions['SP'] == self.max_rost_num['SP']:
+                                    #Don't have any more starters, this is optimal
+                                    break
                                 self.replacement_positions['SP'] = self.replacement_positions['SP'] + 1
                                 self.replacement_positions['RP'] = self.replacement_positions['RP'] - 1
                             else:
                                 #Too many starters
+                                if self.replacement_positions['RP'] == self.max_rost_num['RP']:
+                                    #Don't have any more relievers, this is optimal
+                                    break
                                 self.replacement_positions['SP'] = self.replacement_positions['SP'] - 1
                                 self.replacement_positions['RP'] = self.replacement_positions['RP'] + 1
                         elif num_arms < self.target_pitch:
-                            if self.target_pitch-num_arms == 1 and self.target_innings - total_ip > 200:
+                            if self.target_pitch-num_arms == 1 and self.target_innings - total_ip > 200 and self.replacement_positions['SP'] < self.max_rost_num['SP']:
                                 #Add starter, a reliever isn't going to get it done, so don't bother
                                 #I got caught in a loop without this
                                 self.replacement_positions['SP'] = self.replacement_positions['SP'] + 1
                             #Not enough pitchers. Preferentially add highest replacement level
-                            elif self.replacement_levels['SP'] > self.replacement_levels['RP']:
+                            elif (self.replacement_levels['SP'] > self.replacement_levels['RP'] and self.replacement_positions['SP'] < self.max_rost_num['SP']) or self.replacement_positions['RP'] == self.max_rost_num['RP']:
                                 #Probably not, but just in case
                                 self.replacement_positions['SP'] = self.replacement_positions['SP'] + 1
                             else:
@@ -188,22 +198,28 @@ class ArmPoint():
                 elif self.rank_basis == RankingBasis.PPG:
                     #TODO: This method is not tested because it is currently inaccessible from the GUI
                     target_starts = self.num_teams * self.gs_per_week * self.weeks
-                    while num_arms != self.target_pitch or abs(sp_g-target_starts) > 10:
+                    while num_arms != self.target_pitch or abs(sp_g-target_starts) > 10 and (self.replacement_positions['SP'] < self.max_rost_num['SP'] and self.replacement_positions['RP'] < self.max_rost_num['RP']):
                         #Going to do optional capping of relievers. It can get a bit out of control otherwise
-                        if num_arms < self.target_pitch and self.replacement_positions['RP'] == self.rp_limit:
+                        if num_arms < self.target_pitch and self.replacement_positions['RP'] == self.rp_limit and self.replacement_positions['SP'] < self.max_rost_num['SP']:
                             self.replacement_positions['SP'] = self.replacement_positions['SP'] + 1
                         elif num_arms == self.target_pitch:
                             #We have the right number of arms, but not in the inning threshold
                             if sp_g < target_starts:
                                 #Too many relievers
+                                if self.replacement_positions['SP'] == self.max_rost_num['SP']:
+                                    #Don't have any more SP, this is optimal
+                                    break
                                 self.replacement_positions['SP'] = self.replacement_positions['SP'] + 1
                                 self.replacement_positions['RP'] = self.replacement_positions['RP'] - 1
                             else:
                                 #Too many starters
+                                if self.replacement_positions['RP'] == self.max_rost_num['RP']:
+                                    #Don't have any more RP, this is optimal
+                                    break
                                 self.replacement_positions['SP'] = self.replacement_positions['SP'] - 1
                                 self.replacement_positions['RP'] = self.replacement_positions['RP'] + 1
                         elif num_arms < self.target_pitch:
-                            if target_starts - sp_g > 10:
+                            if (target_starts - sp_g > 10 and self.replacement_positions['SP'] < self.max_rost_num['SP']) or self.replacement_positions['RP'] == self.max_rost_num['RP']:
                                 #Add starter
                                 self.replacement_positions['SP'] = self.replacement_positions['SP'] + 1
                             else:
@@ -297,8 +313,8 @@ class ArmPoint():
         elif self.rank_basis == RankingBasis.PPG:
             sort_col = f"PPG {pos}"
         pitch_df = pitch_df.sort_values(sort_col, ascending=False)
-        #Get the nth value (here the # of players rostered at the position) from the sorted data
-        return pitch_df.iloc[self.replacement_positions[pos]][sort_col]
+        #Get the nth value (here the # of players rostered at the position - 1 for 0 index) from the sorted data
+        return pitch_df.iloc[self.replacement_positions[pos] - 1][sort_col]
 
     def not_a_belly_itcher_filter(self, row):
         #Filter pitchers from the data set who don't reach requisite innings. These thresholds are arbitrary.
@@ -419,7 +435,8 @@ class ArmPoint():
             df['SP Multiplier'] = 1
             df['RP Multiplier'] = 1
         
-        df.to_csv("data_dirs\\intermediate\\values.csv", encoding='utf-8-sig')
+        self.max_rost_num['SP'] = len(df.loc[df['IP SP'] > 0])
+        self.max_rost_num['RP'] = len(df.loc[df['IP RP'] > 0])
 
     def calc_par(self, df):
         

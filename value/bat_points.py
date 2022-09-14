@@ -15,7 +15,7 @@ class BatPoint():
     default_replacement_positions = {"C":24,"1B":12,"2B":18,"3B":12,"SS":18,"OF":60,"Util":150}
     default_surplus_pos = {"C":0,"1B":0,"2B":0,"3B":0,"SS":0,"OF":0,"Util":0}
     default_replacement_levels = {}
-    
+    max_rost_num = {}
 
     def __init__(self, intermediate_calc=False, rank_basis=RankingBasis.PPG, replacement_pos=default_replacement_positions, replacement_levels=default_replacement_levels, target_bat=244, 
     rep_level_scheme=RepLevelScheme.FILL_GAMES, max_pos_value=True, num_teams=12, surplus_pos=default_surplus_pos):
@@ -57,9 +57,11 @@ class BatPoint():
             df[g_col] = 0
             if pos == 'Util':
                 df[col] = df[self.rank_basis].rank(ascending=False)
+                self.max_rost_num['Util'] = len(df)
             else:
                 df[col] = df.loc[df['Position(s)'].str.contains(pos)][self.rank_basis].rank(ascending=False)
                 df[col].fillna(-999, inplace=True)
+                self.max_rost_num[pos] = len(df.loc[df['Position(s)'].str.contains(pos)])
         col = "Rank MI Rate"
         df[col] = df.loc[df['Position(s)'].str.contains("2B|SS", case=False, regex=True)][self.rank_basis].rank(ascending=False)
         df[col].fillna(-999, inplace=True)
@@ -104,29 +106,32 @@ class BatPoint():
 
     def are_games_filled(self, num_teams=12):
         filled_games = True
-        if self.total_games['C'] < num_teams * 162:
+        if self.total_games['C'] < num_teams * 162 and self.max_rost_num['C'] > self.replacement_positions['C']:
             self.games_filled['C'] = False
             filled_games = False
         else:
             self.games_filled['C'] = True
-        if self.total_games['1B'] < num_teams * 162:
+        if self.total_games['1B'] < num_teams * 162 and self.max_rost_num['1B'] > self.replacement_positions['1B']:
             self.games_filled['1B'] = False
             filled_games = False
         else:
             self.games_filled['1B'] = True
-        if self.total_games['3B'] < num_teams * 162:
+        if self.total_games['3B'] < num_teams * 162 and self.max_rost_num['3B'] > self.replacement_positions['3B']:
             self.games_filled['3B'] = False
             filled_games = False
         else:
             self.games_filled['3B'] = True
         if self.total_games['SS'] + self.total_games['2B'] < 3*num_teams * 162:
-            self.games_filled['SS'] = False
-            self.games_filled['2B'] = False
-            filled_games = False
+            if self.max_rost_num['SS'] > self.replacement_positions['SS']:
+                self.games_filled['SS'] = False
+            if self.max_rost_num['2B'] > self.replacement_positions['2B']:
+                self.games_filled['2B'] = False
+            if not self.games_filled['SS'] or not self.games_filled['2B']:
+                filled_games = False
         else:
             self.games_filled['SS'] = True
             self.games_filled['2B'] = True
-        if self.total_games['OF'] < num_teams * 162 * 5:
+        if self.total_games['OF'] < num_teams * 162 * 5 and self.max_rost_num['OF'] > self.replacement_positions['OF']:
             self.games_filled['OF'] = False
             filled_games = False
         else:
@@ -141,7 +146,7 @@ class BatPoint():
     
     def are_util_games_filled(self, num_teams=12):
         #judgement call that you aren't using C to fill Util
-        return self.total_games['1B'] - 162*num_teams +  self.total_games['3B'] - 162*num_teams + (self.total_games['2B'] + self.total_games['SS'] - 3*162*num_teams) + self.total_games['OF']-5*162*num_teams + self.total_games['Util'] >= num_teams*162
+        return self.total_games['1B'] - 162*num_teams +  self.total_games['3B'] - 162*num_teams + (self.total_games['2B'] + self.total_games['SS'] - 3*162*num_teams) + self.total_games['OF']-5*162*num_teams + self.total_games['Util'] >= num_teams*162 and self.max_rost_num['Util'] > self.replacement_positions['Util']
 
     def get_position_par(self, df):
 
@@ -161,6 +166,8 @@ class BatPoint():
             df['Max PAR'] = df.apply(self.calc_max_par, axis=1)
         else:
             for pos in self.bat_pos:
+                if self.replacement_positions[pos] > self.max_rost_num[pos]:
+                    self.replacement_positions[pos] = self.max_rost_num[pos]
                 self.get_position_par_calc(df, pos)
 
             if self.rep_level_scheme == RepLevelScheme.FILL_GAMES:
@@ -189,11 +196,12 @@ class BatPoint():
                     self.calc_total_games(df)
                 #Augment the replacement levels by the input surpluses to get the final numbers
                 for pos in self.replacement_positions:
-                    self.replacement_positions[pos] = self.replacement_positions[pos] + self.surplus_pos[pos]
+                    self.replacement_positions[pos] = min(self.replacement_positions[pos] + self.surplus_pos[pos], self.max_rost_num[pos])
                     self.get_position_par_calc(df, pos)
                 df['Max PAR'] = df.apply(self.calc_max_par, axis=1)
             elif self.rep_level_scheme == RepLevelScheme.TOTAL_ROSTERED:
-                while num_bats != self.target_bat:
+                maxed_out = False
+                while num_bats != self.target_bat and not maxed_out:
                     if num_bats > self.target_bat:
                         #Too many players, find the current minimum replacement level and bump that replacement_position down by 1
                         min_rep_lvl = 999.9
@@ -211,16 +219,20 @@ class BatPoint():
                         for pos, rep_lvl in self.replacement_levels.items():
                             if pos == 'Util' or pos == 'C': continue
                             if rep_lvl > max_rep_lvl:
+                                if self.replacement_positions[pos] == self.max_rost_num[pos]: continue
                                 #These two conditionals are arbitrarily determined by me at the time, but they seem to do a good job reigning in 1B and OF
                                 #to reasonable levels. No one is going to roster a 1B that hits like a replacement level SS, for example
                                 if pos == '1B' and self.replacement_positions['1B'] > 1.5*self.replacement_positions['SS']: continue
                                 if pos == 'OF' and self.replacement_positions['OF'] > 3*self.replacement_positions['SS']: continue
                                 max_rep_lvl = rep_lvl
                                 max_pos = pos
-                        self.replacement_positions[max_pos] = self.replacement_positions[max_pos] + 1
-                        #Recalcluate PAR for the position given the new replacement level
-                        self.get_position_par_calc(df, max_pos)
-                        self.get_position_par_calc(df, 'Util')
+                        if max_rep_lvl == 0.0:
+                            maxed_out = True
+                        else:
+                            self.replacement_positions[max_pos] = self.replacement_positions[max_pos] + 1
+                            #Recalcluate PAR for the position given the new replacement level
+                            self.get_position_par_calc(df, max_pos)
+                            self.get_position_par_calc(df, 'Util')
                     #Set maximum PAR value for each player to determine how many are rosterable
                     df['Max PAR'] = df.apply(self.calc_max_par, axis=1)
                     #FOM is how many bats with a non-negative max PAR
@@ -263,7 +275,7 @@ class BatPoint():
         index = 0
         while True:
             rate = pos_df.iloc[index][self.rank_basis]
-            if rate < self.replacement_levels[pos]:
+            if rate < self.replacement_levels[pos] and (index+1) < self.max_rost_num[pos]:
                 break
             index += 1
         #Set number rostered at position to index + 1 (for zero index)
@@ -281,8 +293,8 @@ class BatPoint():
             #Filter DataFrame to just the position of interest
             pos_df = df.loc[df['Position(s)'].str.contains(pos)]
             pos_df = pos_df.sort_values(self.rank_basis, ascending=False)
-            #Get the nth value (here the # of players rostered at the position) from the sorted data + 1 for the zero index
-            return pos_df.iloc[self.replacement_positions[pos]+1][self.rank_basis]
+            #Get the nth value (here the # of players rostered at the position) from the sorted data - 1 for the zero index
+            return pos_df.iloc[self.replacement_positions[pos]-1][self.rank_basis]
         else:
             #Util replacement level is equal to the highest replacement level at any position
             pos_df = df
