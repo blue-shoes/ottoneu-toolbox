@@ -470,6 +470,8 @@ class ValuesCalculation(BaseUi):
         else:
             for key, value in self.rep_level_dict.items():
                 if float(value.get()) > 10.0:
+                    if self.pitcher_basis.get() == RankingBasis.PPG and key == 'SP' and float(value.get()) < 40.0:
+                        continue
                     bad_rep_level.append(key)
         
         if len(bad_rep_level) > 0:
