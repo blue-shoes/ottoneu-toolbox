@@ -6,7 +6,7 @@ from tkinter import messagebox as mb
 from ui.table import Table
 from ui.base import BaseUi
 from domain.domain import CalculationInput, ValueData, ValueCalculation, ScoringFormat
-from domain.enum import CalculationDataType, RankingBasis, RepLevelScheme, StatType, Position
+from domain.enum import CalculationDataType as CDT, RankingBasis, RepLevelScheme, StatType, Position
 from services import projection_services, calculation_services
 from ui.dialog import proj_download, selection_projection, progress
 
@@ -312,26 +312,26 @@ class ValuesCalculation(BaseUi):
     def update_calc_output_frame(self):
         self.output_title.set("Value Calculation Results")
         if self.manual_split.get():
-            self.dollars_per_fom_val.set('$' + "{:.3f}".format(self.value_calc.get_output(CalculationDataType.HITTER_DOLLAR_PER_FOM)) + '(Bat), $' + "{:.3f}".format(self.value_calc.get_output(CalculationDataType.PITCHER_DOLLAR_PER_FOM)) + '(Arm)')
+            self.dollars_per_fom_val.set('$' + "{:.3f}".format(self.value_calc.get_output(CDT.HITTER_DOLLAR_PER_FOM)) + '(Bat), $' + "{:.3f}".format(self.value_calc.get_output(CDT.PITCHER_DOLLAR_PER_FOM)) + '(Arm)')
         else:
-            self.dollars_per_fom_val.set('$' + "{:.3f}".format(self.value_calc.get_output(CalculationDataType.DOLLARS_PER_FOM)))
-        self.total_fom_sv.set("{:.0f}".format(self.value_calc.get_output(CalculationDataType.TOTAL_FOM_ABOVE_REPLACEMENT)))
-        self.total_bat_rostered_sv.set(self.value_calc.get_output(CalculationDataType.TOTAL_HITTERS_ROSTERED))
-        self.total_pitch_rostered_sv.set(self.value_calc.get_output(CalculationDataType.TOTAL_PITCHERS_ROSTERED))
-        self.total_games_rostered_sv.set("{:.0f}".format(self.value_calc.get_output(CalculationDataType.TOTAL_GAMES_PLAYED)))
-        self.total_ip_rostered_sv.set("{:.0f}".format(self.value_calc.get_output(CalculationDataType.TOTAL_INNINGS_PITCHED)))
-        hitter_rb = RankingBasis.enum_to_display_dict()[self.value_calc.get_input(CalculationDataType.HITTER_RANKING_BASIS)]
+            self.dollars_per_fom_val.set('$' + "{:.3f}".format(self.value_calc.get_output(CDT.DOLLARS_PER_FOM)))
+        self.total_fom_sv.set("{:.0f}".format(self.value_calc.get_output(CDT.TOTAL_FOM_ABOVE_REPLACEMENT)))
+        self.total_bat_rostered_sv.set(self.value_calc.get_output(CDT.TOTAL_HITTERS_ROSTERED))
+        self.total_pitch_rostered_sv.set(self.value_calc.get_output(CDT.TOTAL_PITCHERS_ROSTERED))
+        self.total_games_rostered_sv.set("{:.0f}".format(self.value_calc.get_output(CDT.TOTAL_GAMES_PLAYED)))
+        self.total_ip_rostered_sv.set("{:.0f}".format(self.value_calc.get_output(CDT.TOTAL_INNINGS_PITCHED)))
+        hitter_rb = RankingBasis.enum_to_display_dict()[self.value_calc.get_input(CDT.HITTER_RANKING_BASIS)]
         self.bat_rep_level_lbl.set(f"Rep. Level ({hitter_rb})")
-        pitcher_rb = RankingBasis.enum_to_display_dict()[self.value_calc.get_input(CalculationDataType.PITCHER_RANKING_BASIS)]
+        pitcher_rb = RankingBasis.enum_to_display_dict()[self.value_calc.get_input(CDT.PITCHER_RANKING_BASIS)]
         self.pitch_rep_level_lbl.set(f"Rep. Level ({pitcher_rb})")
 
         for pos in Position.get_discrete_offensive_pos():
-            self.pos_rostered_sv[pos].set(self.value_calc.get_output(CalculationDataType.pos_to_num_rostered()[pos]))
-            self.pos_rep_lvl_sv[pos].set("{:.2f}".format(self.value_calc.get_output(CalculationDataType.pos_to_rep_level()[pos])))
+            self.pos_rostered_sv[pos].set(self.value_calc.get_output(CDT.pos_to_num_rostered()[pos]))
+            self.pos_rep_lvl_sv[pos].set("{:.2f}".format(self.value_calc.get_output(CDT.pos_to_rep_level()[pos])))
         
         for pos in Position.get_discrete_pitching_pos():
-            self.pos_rostered_sv[pos].set(self.value_calc.get_output(CalculationDataType.pos_to_num_rostered()[pos]))
-            self.pos_rep_lvl_sv[pos].set("{:.2f}".format(self.value_calc.get_output(CalculationDataType.pos_to_rep_level()[pos])))
+            self.pos_rostered_sv[pos].set(self.value_calc.get_output(CDT.pos_to_num_rostered()[pos]))
+            self.pos_rep_lvl_sv[pos].set("{:.2f}".format(self.value_calc.get_output(CDT.pos_to_rep_level()[pos])))
 
     def toggle_manual_split(self):
         if self.manual_split.get():
@@ -415,36 +415,36 @@ class ValuesCalculation(BaseUi):
         self.value_calc.projection = self.projection
         self.value_calc.format = ScoringFormat.name_to_enum_map()[self.game_type.get()]
         self.value_calc.inputs = []
-        self.value_calc.set_input(CalculationDataType.NUM_TEAMS, float(self.num_teams_str.get()))
+        self.value_calc.set_input(CDT.NUM_TEAMS, float(self.num_teams_str.get()))
         if self.manual_split.get():
-            self.value_calc.set_input(CalculationDataType.HITTER_SPLIT, float(self.hitter_allocation.get()))
-        self.value_calc.set_input(CalculationDataType.NON_PRODUCTIVE_DOLLARS, int(self.non_prod_dollars_str.get()))
-        self.value_calc.set_input(CalculationDataType.HITTER_RANKING_BASIS, RankingBasis.display_to_enum_map()[self.hitter_basis.get()])
-        self.value_calc.set_input(CalculationDataType.PA_TO_RANK, float(self.min_pa.get()))
-        self.value_calc.set_input(CalculationDataType.PITCHER_RANKING_BASIS, RankingBasis.display_to_enum_map()[self.pitcher_basis.get()])
-        self.value_calc.set_input(CalculationDataType.SP_IP_TO_RANK, float(self.min_sp_ip.get()))
-        self.value_calc.set_input(CalculationDataType.RP_IP_TO_RANK, float(self.min_rp_ip.get()))
-        self.value_calc.set_input(CalculationDataType.REP_LEVEL_SCHEME, float(self.rep_level_scheme.get()))
+            self.value_calc.set_input(CDT.HITTER_SPLIT, float(self.hitter_allocation.get()))
+        self.value_calc.set_input(CDT.NON_PRODUCTIVE_DOLLARS, int(self.non_prod_dollars_str.get()))
+        self.value_calc.set_input(CDT.HITTER_RANKING_BASIS, RankingBasis.display_to_enum_map()[self.hitter_basis.get()])
+        self.value_calc.set_input(CDT.PA_TO_RANK, float(self.min_pa.get()))
+        self.value_calc.set_input(CDT.PITCHER_RANKING_BASIS, RankingBasis.display_to_enum_map()[self.pitcher_basis.get()])
+        self.value_calc.set_input(CDT.SP_IP_TO_RANK, float(self.min_sp_ip.get()))
+        self.value_calc.set_input(CDT.RP_IP_TO_RANK, float(self.min_rp_ip.get()))
+        self.value_calc.set_input(CDT.REP_LEVEL_SCHEME, float(self.rep_level_scheme.get()))
         if self.rep_level_scheme.get() == RepLevelScheme.STATIC_REP_LEVEL.value:
-            self.value_calc.set_input(CalculationDataType.REP_LEVEL_C, float(self.rep_level_dict['C'].get()))
-            self.value_calc.set_input(CalculationDataType.REP_LEVEL_1B, float(self.rep_level_dict['1B'].get()))
-            self.value_calc.set_input(CalculationDataType.REP_LEVEL_2B, float(self.rep_level_dict['2B'].get()))
-            self.value_calc.set_input(CalculationDataType.REP_LEVEL_SS, float(self.rep_level_dict['SS'].get()))
-            self.value_calc.set_input(CalculationDataType.REP_LEVEL_3B, float(self.rep_level_dict['3B'].get()))
-            self.value_calc.set_input(CalculationDataType.REP_LEVEL_OF, float(self.rep_level_dict['OF'].get()))
-            self.value_calc.set_input(CalculationDataType.REP_LEVEL_UTIL, float(self.rep_level_dict['Util'].get()))
-            self.value_calc.set_input(CalculationDataType.REP_LEVEL_SP, float(self.rep_level_dict['SP'].get()))
-            self.value_calc.set_input(CalculationDataType.REP_LEVEL_RP, float(self.rep_level_dict['RP'].get()))
+            self.value_calc.set_input(CDT.REP_LEVEL_C, float(self.rep_level_dict['C'].get()))
+            self.value_calc.set_input(CDT.REP_LEVEL_1B, float(self.rep_level_dict['1B'].get()))
+            self.value_calc.set_input(CDT.REP_LEVEL_2B, float(self.rep_level_dict['2B'].get()))
+            self.value_calc.set_input(CDT.REP_LEVEL_SS, float(self.rep_level_dict['SS'].get()))
+            self.value_calc.set_input(CDT.REP_LEVEL_3B, float(self.rep_level_dict['3B'].get()))
+            self.value_calc.set_input(CDT.REP_LEVEL_OF, float(self.rep_level_dict['OF'].get()))
+            self.value_calc.set_input(CDT.REP_LEVEL_UTIL, float(self.rep_level_dict['Util'].get()))
+            self.value_calc.set_input(CDT.REP_LEVEL_SP, float(self.rep_level_dict['SP'].get()))
+            self.value_calc.set_input(CDT.REP_LEVEL_RP, float(self.rep_level_dict['RP'].get()))
         else:
-            self.value_calc.set_input(CalculationDataType.ROSTERED_C, int(self.rep_level_dict['C'].get()))
-            self.value_calc.set_input(CalculationDataType.ROSTERED_1B, int(self.rep_level_dict['1B'].get()))
-            self.value_calc.set_input(CalculationDataType.ROSTERED_2B, int(self.rep_level_dict['2B'].get()))
-            self.value_calc.set_input(CalculationDataType.ROSTERED_SS, int(self.rep_level_dict['SS'].get()))
-            self.value_calc.set_input(CalculationDataType.ROSTERED_3B, int(self.rep_level_dict['3B'].get()))
-            self.value_calc.set_input(CalculationDataType.ROSTERED_OF, int(self.rep_level_dict['OF'].get()))
-            self.value_calc.set_input(CalculationDataType.ROSTERED_UTIL, int(self.rep_level_dict['Util'].get()))
-            self.value_calc.set_input(CalculationDataType.ROSTERED_SP, int(self.rep_level_dict['SP'].get()))
-            self.value_calc.set_input(CalculationDataType.ROSTERED_RP, int(self.rep_level_dict['RP'].get()))
+            self.value_calc.set_input(CDT.ROSTERED_C, int(self.rep_level_dict['C'].get()))
+            self.value_calc.set_input(CDT.ROSTERED_1B, int(self.rep_level_dict['1B'].get()))
+            self.value_calc.set_input(CDT.ROSTERED_2B, int(self.rep_level_dict['2B'].get()))
+            self.value_calc.set_input(CDT.ROSTERED_SS, int(self.rep_level_dict['SS'].get()))
+            self.value_calc.set_input(CDT.ROSTERED_3B, int(self.rep_level_dict['3B'].get()))
+            self.value_calc.set_input(CDT.ROSTERED_OF, int(self.rep_level_dict['OF'].get()))
+            self.value_calc.set_input(CDT.ROSTERED_UTIL, int(self.rep_level_dict['Util'].get()))
+            self.value_calc.set_input(CDT.ROSTERED_SP, int(self.rep_level_dict['SP'].get()))
+            self.value_calc.set_input(CDT.ROSTERED_RP, int(self.rep_level_dict['RP'].get()))
         
         logging.debug("About to perform point_calc")
         calculation_services.perform_point_calculation(self.value_calc, progress.ProgressDialog(self.main_win, title='Performing Calculation'))
