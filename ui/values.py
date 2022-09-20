@@ -8,7 +8,8 @@ from ui.base import BaseUi
 from domain.domain import CalculationInput, ValueData, ValueCalculation, ScoringFormat
 from domain.enum import CalculationDataType as CDT, RankingBasis, RepLevelScheme, StatType, Position
 from services import projection_services, calculation_services
-from ui.dialog import proj_download, selection_projection, progress
+from ui.dialog import proj_download, selection_projection, progress, name_desc
+from datetime import datetime
 
 class ValuesCalculation(BaseUi):
     def __init__(self, preferences):
@@ -309,6 +310,14 @@ class ValuesCalculation(BaseUi):
         ttk.Label(outf, textvariable=self.total_ip_rostered_sv).grid(row=row, column=1)
         row += 1
 
+        self.save_btn = sb = ttk.Button(outf, text="Save Values", command=self.save_values)
+        sb.grid(row=row, column=0)
+        sb['state'] = DISABLED
+
+        self.export_btn = eb = ttk.Button(outf, text="Export Values", command=self.export_values)
+        eb.grid(row=row, column=1)
+        eb['state'] = DISABLED
+
     def update_calc_output_frame(self):
         self.output_title.set("Value Calculation Results")
         if self.manual_split.get():
@@ -332,6 +341,23 @@ class ValuesCalculation(BaseUi):
         for pos in Position.get_discrete_pitching_pos():
             self.pos_rostered_sv[pos].set(self.value_calc.get_output(CDT.pos_to_num_rostered()[pos]))
             self.pos_rep_lvl_sv[pos].set("{:.2f}".format(self.value_calc.get_output(CDT.pos_to_rep_level()[pos])))
+        
+        self.save_btn['state'] = ACTIVE
+        self.export_btn['state'] = ACTIVE
+    
+    def save_values(self):
+        dialog = name_desc.Dialog(self.main_win, 'Save Values')
+        #print("dialog.state = " + dialog.state)
+        if dialog.status == mb.OK:
+            self.value_calc.index = None
+            self.value_calc.name = dialog.name_tv.get()
+            self.value_calc.description = dialog.desc_tv.get()
+            self.value_calc.timestamp = datetime.now()
+            calculation_services.save_calculation(self.value_calc)
+    
+    def export_values(self):
+        #TODO Implement export
+        i = 1
 
     def toggle_manual_split(self):
         if self.manual_split.get():

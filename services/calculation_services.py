@@ -42,14 +42,8 @@ def get_rep_levels(value_calc):
 
 def save_calculation(value_calc):
     with Session() as session:
-        seen_players = {}
-        for pv in value_calc.values:
-            if pv.player_id in seen_players:
-                player = seen_players[pv.player_id]
-            else:
-                player = player_services.get_player(pv.player_id)
-            pv.player = player
         session.add(value_calc)
+        session.commit()
 
 def get_points(player_proj, pos, sabr=False):
     if pos in Position.get_offensive_pos():

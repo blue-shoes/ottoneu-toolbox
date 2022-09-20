@@ -255,9 +255,9 @@ class PointValues():
                 else:
                     pos_value['Value'] = pos_value[f'{pos}_PAR'].apply(lambda x: x*self.dol_per_par + 1.0 if x >= 0 else 0)
                 pos_value.sort_values(by=['Value','P/G'], inplace=True, ascending=[False,False])
-                pos_value['Value'] = pos_value['Value'].apply(lambda x : "${:.0f}".format(x))
+                pos_value['Dol_Value'] = pos_value['Value'].apply(lambda x : "${:.0f}".format(x))
                 if self.value_calc is None:
-                    pos_value = pos_value[['OttoneuID', 'Value', 'Name','Team','Position(s)','Points',f'{pos}_PAR','P/G']]
+                    pos_value = pos_value[['OttoneuID', 'Dol_Value', 'Name','Team','Position(s)','Points',f'{pos}_PAR','P/G']]
                     pos_value.to_csv(f"C:\\Users\\adam.scharf\\Documents\\Personal\\FFB\\Staging\\{pos}_values.csv", encoding='utf-8-sig')
                 else:
                     for index, row in pos_value.iterrows():
@@ -276,10 +276,10 @@ class PointValues():
                 else:
                     pos_value['Value'] = pos_value[f'PAR {pos}'].apply(lambda x: x*self.dol_per_par + 1.0 if x >= 0 else 0)
                 pos_value.sort_values(by=['Value','P/IP'], inplace=True, ascending=[False,False])
-                pos_value['Value'] = pos_value['Value'].apply(lambda x : "${:.0f}".format(x))
+                pos_value['Dol_Value'] = pos_value['Value'].apply(lambda x : "${:.0f}".format(x))
                 
                 if self.value_calc is None:
-                    pos_value = pos_value[['OttoneuID', 'Value', 'Name','Team','Position(s)','Points',f'PAR {pos}','P/IP']]
+                    pos_value = pos_value[['OttoneuID', 'Dol_Value', 'Name','Team','Position(s)','Points',f'PAR {pos}','P/IP']]
                     pos_value.to_csv(f"C:\\Users\\adam.scharf\\Documents\\Personal\\FFB\\Staging\\{pos}_values.csv", encoding='utf-8-sig')
                 else:
                     for index, row in pos_value.iterrows():
@@ -297,7 +297,7 @@ class PointValues():
             real_pitchers.to_csv(filepath, encoding='utf-8-sig')
         
         if self.value_calc is None:
-            pos_results = pos_min_pa[['OttoneuID', 'Value', 'Name','Team','Position(s)','Points','Max PAR','P/G']]
+            pos_results = pos_min_pa[['OttoneuID', 'Dol_Value', 'Name','Team','Position(s)','Points','Max PAR','P/G']]
             pos_results.rename(columns={'Max PAR':'PAR'}, inplace=True)
         else:
             pos_min_pa.rename(columns={'Max PAR':'PAR'}, inplace=True)
@@ -305,7 +305,7 @@ class PointValues():
                 self.value_calc.set_player_value(index, Position.OFFENSE, row['Value'])
 
         if self.value_calc is None:
-            pitch_results = real_pitchers[['OttoneuID', 'Value', 'Name','Team','Position(s)','Points','PAR','P/IP']]
+            pitch_results = real_pitchers[['OttoneuID', 'Dol_Value', 'Name','Team','Position(s)','Points','PAR','P/IP']]
         else:
             pitch_results = real_pitchers
             for index, row in pitch_results.iterrows():
@@ -335,12 +335,12 @@ class PointValues():
             pitch_results = pitch_results.drop(index=index)
 
         results = results.append(pitch_results)
-        results['Value'] = results['Value'].apply(lambda x : "${:.0f}".format(x))
+        results['Dol_Value'] = results['Value'].apply(lambda x : "${:.0f}".format(x))
         
         #filepath = os.path.join(self.intermed_subdirpath, f"results.csv")
         #results.to_csv(filepath, encoding='utf-8-sig')
         if self.value_calc is None:
-            results = results[['OttoneuID', 'Value', 'Name','Team','Position(s)','Points','PAR','P/G','P/IP']]
+            results = results[['OttoneuID', 'Dol_Value', 'Name','Team','Position(s)','Points','PAR','P/G','P/IP']]
             results.sort_values('PAR', inplace=True, ascending=False)
             return results
         else:
