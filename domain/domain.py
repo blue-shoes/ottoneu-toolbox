@@ -2,7 +2,7 @@ from sqlalchemy import Column, ForeignKey, Index
 from sqlalchemy import Integer, String, Boolean, Float, Date, Enum
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
-from domain.enum import CalculationDataType, ProjectionType, ScoringFormat, StatType, Position
+from domain.enum import CalculationDataType, ProjectionType, RankingBasis, ScoringFormat, StatType, Position
 
 Base = declarative_base()
 
@@ -99,11 +99,14 @@ class ValueCalculation(Base):
     index = Column(Integer, primary_key=True)
     name = Column(String)
     description = Column(String)
+    timestamp = Column(Date, nullable=False)
 
     projection_id = Column(Integer, ForeignKey("projection.index"))
     projection = relationship("Projection", back_populates="calculations")
     # Corresponds to ScoringFormat enum
     format = Column(Enum(ScoringFormat))
+    hitter_basis = Column(Enum(RankingBasis))
+    pitcher_basis = Column(Enum(RankingBasis))
 
     inputs = relationship("CalculationInput", back_populates="calculation", cascade="all, delete")
     values = relationship("PlayerValue", back_populates="calculation", cascade="all, delete")

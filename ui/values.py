@@ -320,9 +320,9 @@ class ValuesCalculation(BaseUi):
         self.total_pitch_rostered_sv.set(self.value_calc.get_output(CDT.TOTAL_PITCHERS_ROSTERED))
         self.total_games_rostered_sv.set("{:.0f}".format(self.value_calc.get_output(CDT.TOTAL_GAMES_PLAYED)))
         self.total_ip_rostered_sv.set("{:.0f}".format(self.value_calc.get_output(CDT.TOTAL_INNINGS_PITCHED)))
-        hitter_rb = RankingBasis.enum_to_display_dict()[self.value_calc.get_input(CDT.HITTER_RANKING_BASIS)]
+        hitter_rb = RankingBasis.enum_to_display_dict()[self.value_calc.hitter_basis]
         self.bat_rep_level_lbl.set(f"Rep. Level ({hitter_rb})")
-        pitcher_rb = RankingBasis.enum_to_display_dict()[self.value_calc.get_input(CDT.PITCHER_RANKING_BASIS)]
+        pitcher_rb = RankingBasis.enum_to_display_dict()[self.value_calc.pitcher_basis]
         self.pitch_rep_level_lbl.set(f"Rep. Level ({pitcher_rb})")
 
         for pos in Position.get_discrete_offensive_pos():
@@ -419,9 +419,9 @@ class ValuesCalculation(BaseUi):
         if self.manual_split.get():
             self.value_calc.set_input(CDT.HITTER_SPLIT, float(self.hitter_allocation.get()))
         self.value_calc.set_input(CDT.NON_PRODUCTIVE_DOLLARS, int(self.non_prod_dollars_str.get()))
-        self.value_calc.set_input(CDT.HITTER_RANKING_BASIS, RankingBasis.display_to_enum_map()[self.hitter_basis.get()])
+        self.value_calc.hitter_basis = RankingBasis.display_to_enum_map()[self.hitter_basis.get()]
         self.value_calc.set_input(CDT.PA_TO_RANK, float(self.min_pa.get()))
-        self.value_calc.set_input(CDT.PITCHER_RANKING_BASIS, RankingBasis.display_to_enum_map()[self.pitcher_basis.get()])
+        self.value_calc.pitcher_basis = RankingBasis.display_to_enum_map()[self.pitcher_basis.get()]
         self.value_calc.set_input(CDT.SP_IP_TO_RANK, float(self.min_sp_ip.get()))
         self.value_calc.set_input(CDT.RP_IP_TO_RANK, float(self.min_rp_ip.get()))
         self.value_calc.set_input(CDT.REP_LEVEL_SCHEME, float(self.rep_level_scheme.get()))
