@@ -261,7 +261,7 @@ class PointValues():
                     pos_value.to_csv(f"C:\\Users\\adam.scharf\\Documents\\Personal\\FFB\\Staging\\{pos}_values.csv", encoding='utf-8-sig')
                 else:
                     for index, row in pos_value.iterrows():
-                        self.value_calc.set_player_value(index, pos, row['Value'])
+                        self.value_calc.set_player_value(index, Position._value2member_map_[pos], row['Value'])
         if self.bat_dol_per_par > 0:
             pos_min_pa['Value'] = pos_min_pa['Max PAR'].apply(lambda x: x*self.bat_dol_per_par + 1.0 if x >= 0 else 0)
         else:
@@ -283,7 +283,7 @@ class PointValues():
                     pos_value.to_csv(f"C:\\Users\\adam.scharf\\Documents\\Personal\\FFB\\Staging\\{pos}_values.csv", encoding='utf-8-sig')
                 else:
                     for index, row in pos_value.iterrows():
-                        self.value_calc.set_player_value(index, pos, row['Value'])
+                        self.value_calc.set_player_value(index, Position._value2member_map_[pos], row['Value'])
         if self.arm_dol_per_par > 0:
             real_pitchers['Value'] = real_pitchers['PAR'].apply(lambda x: x*self.arm_dol_per_par + 1.0 if x >= 0 else 0)
         else:
