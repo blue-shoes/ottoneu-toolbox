@@ -108,7 +108,8 @@ class Dialog(tk.Toplevel):
 
         file = fd.askopenfilename(
             title=title,
-            initialdir=init_dir)
+            initialdir=init_dir,
+            filetypes=filetypes)
 
         #TODO: perform file validation here
 
