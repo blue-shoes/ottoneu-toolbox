@@ -206,9 +206,7 @@ def get_projection(proj_id, player_data=True):
     with Session() as session:
         if player_data:
             proj = (session.query(Projection)
-                .options(joinedload(Projection.player_projections)
-                .options(joinedload(PlayerProjection.projection_data))
-                .options(joinedload(PlayerProjection.player)))
+                .options(joinedload(Projection.player_projections))
                 .filter_by(index = proj_id).first()
             )
         else:

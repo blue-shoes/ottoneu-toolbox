@@ -216,12 +216,12 @@ class PlayerProjection(Base):
     index = Column(Integer, primary_key=True)
 
     player_id = Column(Integer, ForeignKey("player.index"))
-    player = relationship("Player", back_populates="projections")
+    player = relationship("Player", back_populates="projections", lazy="joined")
 
     projection_id = Column(Integer, ForeignKey("projection.index"))
     projection = relationship("Projection", back_populates="player_projections")
 
-    projection_data = relationship("ProjectionData", back_populates="player_projection", cascade="all, delete")
+    projection_data = relationship("ProjectionData", back_populates="player_projection", cascade="all, delete", lazy="joined")
 
     pitcher = Column(Boolean)
 
