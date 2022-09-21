@@ -1,7 +1,12 @@
+from datetime import datetime
+from pandas import DataFrame
+from sqlalchemy.orm import joinedload, load_only
+from sqlalchemy.dialects import sqlite
 from dao.session import Session
+from domain.domain import PlayerValue, ValueCalculation, Projection, PlayerProjection, Player
 from domain.enum import Position, CalculationDataType, StatType
 from value.point_values import PointValues
-from services import player_services
+from services import player_services, projection_services
 
 def perform_point_calculation(value_calc, pd = None):
     if pd is not None:
@@ -44,6 +49,25 @@ def save_calculation(value_calc):
     with Session() as session:
         session.add(value_calc)
         session.commit()
+        saved = load_calculation(value_calc.index)
+    return saved
+
+def load_calculation(calc_index):
+    with Session() as session:
+        #query = (session.query(ValueCalculation)
+        #        .filter_by(index = calc_index))
+        #print(query)
+        value_calc = (session.query(ValueCalculation)
+                .filter_by(index = calc_index)
+                #.options(joinedload(ValueCalculation.values))
+                .first()
+        )
+        #This is hacky, but it loads these fields so much faster than trying to do the .options(joinedload()) operations. Makes no sense
+        for pv in value_calc.values:
+            break
+        for pp in value_calc.projection.player_projections:
+            break
+    return value_calc
 
 def get_points(player_proj, pos, sabr=False):
     if pos in Position.get_offensive_pos():
@@ -59,3 +83,24 @@ def get_points(player_proj, pos, sabr=False):
             return 7.4*player_proj.get_stat(StatType.IP) + 2.0*player_proj.get_stat(StatType.SO) - 2.6*player_proj.get_stat(StatType.H_ALLOWED) \
                 - 3.0*player_proj.get_stat(StatType.BB_ALLOWED) - 3.0*player_proj.get_stat(StatType.HBP_ALLOWED) - 12.3*player_proj.get_stat(StatType.HR_ALLOWED) \
                 + 5.0*player_proj.get_stat(StatType.SV) + 4.0*player_proj.get_stat(StatType.HLD)
+
+def get_dataframe_with_values(value_calc, pos):
+    assert isinstance(value_calc, ValueCalculation)
+    if pos == Position.OVERALL:
+        rows = []
+        for pv in value_calc.get_position_values(pos):
+            row = []
+            row.append(pv.player.ottoneu_id)
+            row.append(pv.player.name)
+            row.append(pv.player.team)
+            row.append(pv.player.position)
+            row.append("${:.1f}".format(pv.value))
+            rows.append(row)
+        df = DataFrame(rows)
+        header = ['otto', 'Name', 'Team', 'Pos', '$']
+        df.columns = header
+        df.set_index('otto', inplace=True)
+        return df
+    else:
+        proj_df = projection_services.convert_to_df(value_calc.projection)
+        i=2

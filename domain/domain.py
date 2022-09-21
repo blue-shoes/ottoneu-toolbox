@@ -85,7 +85,7 @@ class PlayerValue(Base):
     index = Column(Integer, primary_key=True)
 
     player_id = Column(Integer, ForeignKey("player.index"))
-    player = relationship("Player", back_populates="values")
+    player = relationship("Player", back_populates="values", lazy="joined")
 
     position = Column(Enum(Position))
 
@@ -108,9 +108,9 @@ class ValueCalculation(Base):
     hitter_basis = Column(Enum(RankingBasis))
     pitcher_basis = Column(Enum(RankingBasis))
 
-    inputs = relationship("CalculationInput", back_populates="calculation", cascade="all, delete")
+    inputs = relationship("CalculationInput", back_populates="calculation", cascade="all, delete", lazy='joined')
     values = relationship("PlayerValue", back_populates="calculation", cascade="all, delete")
-    data = relationship("ValueData", back_populates="calculation", cascade="all, delete")
+    data = relationship("ValueData", back_populates="calculation", cascade="all, delete", lazy='joined')
 
     def set_input(self, data_type, value):
         for inp in self.inputs:
@@ -167,6 +167,13 @@ class ValueCalculation(Base):
             for pv in self.values:
                 if pv.player_id == player_id and pv.position == pos:
                     return pv
+    
+    def get_position_values(self, pos):
+        values = []
+        for pv in self.values:
+            if pv.position == pos:
+                values.append(pv)
+        return values
 
 
 class CalculationInput(Base):

@@ -1,15 +1,23 @@
+from datetime import datetime
 import logging
+import pathlib
+from re import I
 import tkinter as tk     
 from tkinter import *              
 from tkinter import ttk 
+from tkinter import filedialog as fd
 from tkinter import messagebox as mb
+from pathlib import Path
+import os
+import os.path
+
 from ui.table import Table
 from ui.base import BaseUi
-from domain.domain import CalculationInput, ValueData, ValueCalculation, ScoringFormat
+from domain.domain import ValueCalculation, ScoringFormat
 from domain.enum import CalculationDataType as CDT, RankingBasis, RepLevelScheme, StatType, Position
 from services import projection_services, calculation_services
 from ui.dialog import proj_download, selection_projection, progress, name_desc
-from datetime import datetime
+
 
 class ValuesCalculation(BaseUi):
     def __init__(self, preferences):
@@ -349,15 +357,41 @@ class ValuesCalculation(BaseUi):
         dialog = name_desc.Dialog(self.main_win, 'Save Values')
         #print("dialog.state = " + dialog.state)
         if dialog.status == mb.OK:
+            pd = progress.ProgressDialog(self.main_win, title='Saving Calculation')
+            pd.increment_completion_percent(5)
             self.value_calc.index = None
             self.value_calc.name = dialog.name_tv.get()
             self.value_calc.description = dialog.desc_tv.get()
             self.value_calc.timestamp = datetime.now()
-            calculation_services.save_calculation(self.value_calc)
+            self.value_calc = calculation_services.save_calculation(self.value_calc)
+            self.projection = self.value_calc.projection
+            #calculation_services.save_calculation(self.value_calc)
+            pd.set_completion_percent(100)
+            pd.destroy()
     
     def export_values(self):
-        #TODO Implement export
-        i = 1
+        filetypes = (
+            ('csv files', '*.csv'),
+            ('Excel Workbook', '*.xlsx'),
+            ('All files', '*.*')
+        )
+
+        file = fd.asksaveasfilename(
+            title='Save As...',
+            initialdir=Path.home(),
+            filetypes=filetypes
+            )
+
+        if file is None:
+            return
+
+        if pathlib.Path(file).suffix == '.xlsx':
+            #Output full value set to Excel sheet
+            i = 1
+        else:
+            #Output just overall values in csv format
+            df = calculation_services.get_dataframe_with_values(self.value_calc, Position.OVERALL)
+            df.to_csv(file, encoding='utf-8-sig')
 
     def toggle_manual_split(self):
         if self.manual_split.get():
