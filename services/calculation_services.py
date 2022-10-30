@@ -84,7 +84,10 @@ def get_points(player_proj, pos, sabr=False):
                 - 3.0*player_proj.get_stat(StatType.BB_ALLOWED) - 3.0*player_proj.get_stat(StatType.HBP_ALLOWED) - 12.3*player_proj.get_stat(StatType.HR_ALLOWED) \
                 + 5.0*player_proj.get_stat(StatType.SV) + 4.0*player_proj.get_stat(StatType.HLD)
 
-def get_dataframe_with_values(value_calc, pos):
+def get_dataframe_with_values(value_calc : ValueCalculation, pos):
+    for pv in value_calc.values:
+        if pv.player is None:
+            pv.player = value_calc.projection.get_player_projection(pv.player_id).player
     assert isinstance(value_calc, ValueCalculation)
     if pos == Position.OVERALL:
         rows = []
