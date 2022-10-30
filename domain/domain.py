@@ -218,6 +218,12 @@ class Projection(Base):
     player_projections = relationship("PlayerProjection", back_populates="projection", cascade="all, delete")
     calculations = relationship("ValueCalculation", back_populates="projection", cascade="all, delete")
 
+    def get_player_projection(self, player_id):
+        for pp in self.player_projections:
+            if pp.player_id == player_id:
+                return pp
+        return None
+        
 class PlayerProjection(Base):
     __tablename__ = "player_projection"
     index = Column(Integer, primary_key=True)
