@@ -84,20 +84,22 @@ def get_points(player_proj, pos, sabr=False):
                 - 3.0*player_proj.get_stat(StatType.BB_ALLOWED) - 3.0*player_proj.get_stat(StatType.HBP_ALLOWED) - 12.3*player_proj.get_stat(StatType.HR_ALLOWED) \
                 + 5.0*player_proj.get_stat(StatType.SV) + 4.0*player_proj.get_stat(StatType.HLD)
 
-def get_dataframe_with_values(value_calc : ValueCalculation, pos):
-    for pv in value_calc.values:
-        if pv.player is None:
-            pv.player = value_calc.projection.get_player_projection(pv.player_id).player
+def get_dataframe_with_values(value_calc : ValueCalculation, pos, text_values=True):
     assert isinstance(value_calc, ValueCalculation)
     if pos == Position.OVERALL:
         rows = []
         for pv in value_calc.get_position_values(pos):
+            if pv.player is None:
+                pv.player = value_calc.projection.get_player_projection(pv.player_id).player
             row = []
             row.append(pv.player.ottoneu_id)
             row.append(pv.player.name)
             row.append(pv.player.team)
             row.append(pv.player.position)
-            row.append("${:.1f}".format(pv.value))
+            if text_values:
+                row.append("${:.1f}".format(pv.value))
+            else:
+                row.append(pv.value)
             rows.append(row)
         df = DataFrame(rows)
         header = ['otto', 'Name', 'Team', 'Pos', '$']
@@ -105,5 +107,29 @@ def get_dataframe_with_values(value_calc : ValueCalculation, pos):
         df.set_index('otto', inplace=True)
         return df
     else:
-        proj_df = projection_services.convert_to_df(value_calc.projection)
-        i=2
+        proj_dfs = projection_services.convert_to_df(value_calc.projection)
+        if pos in Position.get_offensive_pos():
+            proj = proj_dfs[0]
+        else:
+            proj = proj_dfs[1]
+        rows = []
+        for pv in value_calc.get_position_values(pos):
+            player = player_services.get_player(pv.player_id)
+            row = []
+            row.append(player.ottoneu_id)
+            row.append(pv.value)
+            df_row = proj.loc[pv.player_id]
+            for col in proj.columns:
+                if col == 'ID':
+                    continue
+                row.append(df_row[col])
+            rows.append(row)
+        df = DataFrame(rows)
+        header = ['Ottoneu Id', 'Value']
+        for col in proj.columns:
+            if col == 'ID':
+                continue
+            header.append(col)
+        df.columns = header
+        df.set_index('Ottoneu Id', inplace=True)
+        return df

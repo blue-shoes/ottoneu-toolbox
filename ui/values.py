@@ -10,6 +10,7 @@ from tkinter import messagebox as mb
 from pathlib import Path
 import os
 import os.path
+import pandas as pd
 
 from ui.table import Table
 from ui.base import BaseUi
@@ -387,7 +388,16 @@ class ValuesCalculation(BaseUi):
 
         if pathlib.Path(file).suffix == '.xlsx':
             #Output full value set to Excel sheet
-            i = 1
+            with pd.ExcelWriter(file, engine='xlsxwriter') as writer:
+                dol_fmt = writer.book.add_format({'num_format': '$##0.0'})
+                for pos in Position.get_display_order():
+                    df = calculation_services.get_dataframe_with_values(self.value_calc, pos, text_values=False)
+                    df.to_excel(writer, sheet_name=pos.value)
+                    if pos == Position.OVERALL:
+                        
+                        writer.sheets[pos.value].set_column(4, 4, None, dol_fmt)
+                    else:
+                        writer.sheets[pos.value].set_column(1, 1, None, dol_fmt)
         else:
             #Output just overall values in csv format
             df = calculation_services.get_dataframe_with_values(self.value_calc, Position.OVERALL)

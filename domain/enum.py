@@ -398,6 +398,21 @@ class Position(Enum):
     OVERALL = 'Overall'
 
     @classmethod
+    def get_display_order(self):
+        return [self.OVERALL,
+            self.OFFENSE,
+            self.PITCHER,
+            self.POS_C,
+            self.POS_1B,
+            self.POS_2B,
+            self.POS_3B,
+            self.POS_SS,
+            self.POS_OF,
+            self.POS_UTIL,
+            self.POS_SP,
+            self.POS_RP]
+
+    @classmethod
     def get_offensive_pos(self):
         return [self.POS_C, 
             self.POS_1B,
