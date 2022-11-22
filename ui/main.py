@@ -10,6 +10,7 @@ from tkinter import messagebox as mb
 from ui import draft_tool, values
 from ui.base import BaseUi
 from ui.dialog.progress import ProgressDialog
+import datetime
 
 class OttoneuToolBox(BaseUi):
     def __init__(self):
@@ -72,7 +73,11 @@ class OttoneuToolBox(BaseUi):
             progress_dialog.set_task_title("Populating Player Database")
             salary_services.update_salary_info()
             progress_dialog.increment_completion_percent(33)
-        #TODO: Automatic updates based on user prefs
+        refresh = salary_services.get_last_refresh()
+        if (datetime.datetime.now().date() - refresh.last_refresh).days > 30:
+            progress_dialog.set_task_title("Updating Player Database")
+            salary_services.update_salary_info()
+            progress_dialog.increment_completion_percent(33)
 
         progress_dialog.set_completion_percent(100)
         #TODO: Destroying this pushes the whole window to the background for some reason

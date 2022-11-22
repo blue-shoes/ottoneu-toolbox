@@ -1,13 +1,16 @@
+from sqlalchemy import desc
 from dao.session import Session
 from scrape.scrape_ottoneu import Scrape_Ottoneu
 from domain.domain import Player, Salary_Info, Salary_Refresh
+from domain.enum import ScoringFormat
 from decimal import Decimal
 from re import sub
 from services import player_services
 from datetime import datetime
 
-def update_salary_info(format):
-        salary_df = Scrape_Ottoneu.get_avg_salary_ds(game_type = format)
+def update_salary_info(format=ScoringFormat.ALL):
+        scraper = Scrape_Ottoneu()
+        salary_df = scraper.get_avg_salary_ds(game_type = format)
         refresh = Salary_Refresh(format=format,last_refresh=datetime.now())
         with Session() as session:
 
@@ -15,7 +18,7 @@ def update_salary_info(format):
                 player = session.query(Player).filter(Player.ottoneu_id == idx).first()
                 if player is None:
                     #Player does not exist in universe, need to add
-                    player = player_services.create_player(idx, u_player)
+                    player = player_services.create_player(u_player, ottoneu_id=idx)
                     session.add(player)
                 else:
                     #Update player in case attributes have changed
@@ -62,3 +65,7 @@ def update_salary(salary_info, row):
     salary_info.med_salary = Decimal(sub(r'[^\d.]', '', row['Median Salary']))
     salary_info.min_salary = Decimal(sub(r'[^\d.]', '', row['Min Salary']))
     salary_info.roster_percentage = row['Roster %']
+
+def get_last_refresh() -> Salary_Refresh:
+    with Session() as session:
+        return session.query(Salary_Refresh).order_by(desc('last_refresh')).first()

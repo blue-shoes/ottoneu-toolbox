@@ -150,7 +150,7 @@ class ValuesCalculation(BaseUi):
         self.arm_table.grid(row=0,column=0)
         self.arm_table.add_scrollbar()
 
-    def update_game_type(self):
+    def update_game_type(self, event):
         i = 1
         #TODO: Update input fields for unique game types
 
