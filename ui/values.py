@@ -120,11 +120,13 @@ class ValuesCalculation(BaseUi):
 
         ttk.Button(inpf, text="Calculate", command=self.calculate_values).grid(row=24, column=0)
 
+        inpf.update()
+
     def create_proj_val_frame(self):
         self.proj_val_frame = pvf = ttk.Frame(self.main_win)
         pvf.grid(column=1,row=0,padx=5, sticky=tk.N, pady=17)
 
-        self.tab_control = ttk.Notebook(pvf, width=570, height=300)
+        self.tab_control = ttk.Notebook(pvf, width=570, height=self.input_frame.winfo_height())
         self.tab_control.grid(row=0, column=0)
 
         bat_frame = ttk.Frame(self.tab_control)
