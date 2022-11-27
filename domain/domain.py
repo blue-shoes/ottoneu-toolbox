@@ -168,7 +168,7 @@ class ValueCalculation(Base):
                 if pv.player_id == player_id and pv.position == pos:
                     return pv
     
-    def get_position_values(self, pos):
+    def get_position_values(self, pos) -> list[PlayerValue]:
         values = []
         for pv in self.values:
             if pv.position == pos:
