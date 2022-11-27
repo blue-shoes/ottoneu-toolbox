@@ -561,6 +561,10 @@ class ValuesCalculation(BaseUi):
             mb.showerror("Input Error(s)", f'Errors in inputs. Please correct: \n\t-{delim.join(errors)}')
 
         return len(errors) != 0
+    
+    def exit_tasks(self):
+        print('This is inherited')
+        return True
 
 def main(preferences):
     try:

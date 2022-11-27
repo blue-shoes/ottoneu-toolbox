@@ -17,10 +17,19 @@ class BaseUi():
         self.menubar = mb = tk.Menu(self.main_win)
         self.main_menu = mm = tk.Menu(mb, tearoff=0)
         mm.add_command(label="Preferences", command=self.open_preferences)
-
+        mm.add_separator()
+        mm.add_command(label="Exit", command=self.exit)
         mb.add_cascade(label="Menu", menu=mm)
         self.main_win.config(menu=mb)
     
+    def exit(self):
+        if(self.exit_tasks()):
+            self.main_win.destroy()
+
+    def exit_tasks(self):
+        #To be implemented in child classes
+        return True
+
     def open_preferences(self):
         preferences.Dialog(self.preferences)
     
