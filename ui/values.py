@@ -153,8 +153,12 @@ class ValuesCalculation(BaseUi):
         self.arm_table.add_scrollbar()
 
     def update_game_type(self, event):
-        i = 1
-        #TODO: Update input fields for unique game types
+        pd = progress.ProgressDialog(self.main_win, title='Updating Game Type')
+        pd.increment_completion_percent(33)
+        self.populate_projections()
+        #TODO: other actions
+        pd.set_completion_percent(100)
+        pd.destroy()
 
     def select_projection(self):
         count = projection_services.get_projection_count()
@@ -193,24 +197,25 @@ class ValuesCalculation(BaseUi):
         val.append(pp.player.name)
         val.append(pp.player.team)
         val.append(pp.player.position)
-        if len(self.value_calc.values) > 0:
-            points = calculation_services.get_points(pp, pos)
-            if pos in Position.get_offensive_pos():
-                games = pp.get_stat(StatType.G_HIT)
-                if games is None or games == 0:
-                    val.append("0.00")
-                else:
-                    val.append("{:.2f}".format(points / games))
+        #if len(self.value_calc.values) > 0:
+        #TODO Need to fix this for sabr calcs
+        points = calculation_services.get_points(pp, pos, sabr=(self.game_type.get() == ScoringFormat.enum_to_full_name_map()[ScoringFormat.SABR_POINTS]))
+        if pos in Position.get_offensive_pos():
+            games = pp.get_stat(StatType.G_HIT)
+            if games is None or games == 0:
+                val.append("0.00")
             else:
-                ip = pp.get_stat(StatType.IP)
-                if ip is None or ip == 0:
-                    val.append("0.00")
-                else:
-                    val.append("{:.2f}".format(points/ip))
-            val.append("{:.1f}".format(points))
+                val.append("{:.2f}".format(points / games))
         else:
-            val.append('-')
-            val.append('-')
+            ip = pp.get_stat(StatType.IP)
+            if ip is None or ip == 0:
+                val.append("0.00")
+            else:
+                val.append("{:.2f}".format(points/ip))
+        val.append("{:.1f}".format(points))
+        #else:
+        #    val.append('-')
+        #    val.append('-')
         for col in cols:
             if col in enum_dict:
                 stat = pp.get_stat(enum_dict[col])
