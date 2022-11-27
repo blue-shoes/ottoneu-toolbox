@@ -1,5 +1,6 @@
 from time import sleep
 from selenium import webdriver
+from selenium.webdriver.common.by import By
 from webdriver_manager.chrome import ChromeDriverManager
 import shutil
 import pandas as pd
@@ -22,12 +23,12 @@ class Scrape_Base(object):
 
     def close(self):
         if self.driver != None:
-            self.driver.close()
+            self.driver.quit()
 
     def getDataset(self, page, element_id, filepath):
         #Click the passed element id to download the csv file
         self.driver.get(page)
-        csvJs = self.driver.find_element_by_id(element_id)
+        csvJs = self.driver.find_element(By.ID, element_id)
         csvJs.click()
         self.download_wait()
         return self.getDatasetFromDownloads(filepath)

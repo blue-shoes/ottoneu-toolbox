@@ -4,6 +4,7 @@ data_dirs/*
 intermediate/*
 output/*
 logs/*
+db/*
 dist/logs*
 dist/otto_draft_tool/*
 build/*

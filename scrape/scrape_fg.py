@@ -4,6 +4,7 @@ from os import path
 import pandas as pd
 from scrape import scrape_base
 import requests
+from selenium.webdriver.common.by import By
 
 class Scrape_Fg(scrape_base.Scrape_Base):
 
@@ -70,9 +71,9 @@ class Scrape_Fg(scrape_base.Scrape_Base):
         cparser.read('conf/fangraphs-config.txt')
         uname = cparser.get('fangraphs-config', 'username')
         pword = cparser.get('fangraphs-config', 'password')
-        self.driver.find_element_by_id("user_login").send_keys(uname)
-        self.driver.find_element_by_id("user_pass").send_keys(pword)
-        self.driver.find_element_by_id("wp-submit").click()
+        self.driver.find_element(By.ID, "user_login").send_keys(uname)
+        self.driver.find_element(By.ID, "user_pass").send_keys(pword)
+        self.driver.find_element(By.ID, "wp-submit").click()
 
     def setupDriver(self):
         driver = super().setupDriver()
