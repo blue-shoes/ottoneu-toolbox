@@ -13,17 +13,16 @@ import os.path
 import pandas as pd
 
 from ui.table import Table
-from ui.base import BaseUi
 from domain.domain import ValueCalculation, ScoringFormat
 from domain.enum import CalculationDataType as CDT, RankingBasis, RepLevelScheme, StatType, Position
 from services import projection_services, calculation_services
 from ui.dialog import proj_download, selection_projection, progress, name_desc
 
 
-class ValuesCalculation(BaseUi):
-    def __init__(self, preferences):
-        super().__init__(preferences=preferences)
-        
+class ValuesCalculation(tk.Frame):
+    def __init__(self, parent, controller):
+        tk.Frame.__init__(self, parent)
+        self.controller = controller
         self.value_calc = ValueCalculation()
         self.rep_level_dict = {}
 
@@ -33,7 +32,7 @@ class ValuesCalculation(BaseUi):
 
     def create_input_frame(self):
 
-        self.input_frame = inpf = ttk.Frame(self.main_win)
+        self.input_frame = inpf = ttk.Frame(self)
         inpf.grid(column=0,row=0, padx=5, sticky=tk.N, pady=17)
 
         validation = inpf.register(self.int_validation)
@@ -123,7 +122,7 @@ class ValuesCalculation(BaseUi):
         inpf.update()
 
     def create_proj_val_frame(self):
-        self.proj_val_frame = pvf = ttk.Frame(self.main_win)
+        self.proj_val_frame = pvf = ttk.Frame(self)
         pvf.grid(column=1,row=0,padx=5, sticky=tk.N, pady=17)
 
         self.tab_control = ttk.Notebook(pvf, width=570, height=self.input_frame.winfo_height())
@@ -153,7 +152,7 @@ class ValuesCalculation(BaseUi):
         self.arm_table.add_scrollbar()
 
     def update_game_type(self, event):
-        pd = progress.ProgressDialog(self.main_win, title='Updating Game Type')
+        pd = progress.ProgressDialog(self, title='Updating Game Type')
         pd.increment_completion_percent(33)
         self.populate_projections()
         #TODO: other actions
@@ -163,12 +162,12 @@ class ValuesCalculation(BaseUi):
     def select_projection(self):
         count = projection_services.get_projection_count()
         if count == 0:
-            dialog = proj_download.Dialog(self.main_win)
+            dialog = proj_download.Dialog(self)
             self.projection = dialog.projection
         else:
-            dialog = selection_projection.Dialog(self.main_win)
+            dialog = selection_projection.Dialog(self)
         if dialog.projection is not None:
-            pd = progress.ProgressDialog(self.main_win, title='Loading Projection')
+            pd = progress.ProgressDialog(self, title='Loading Projection')
             pd.increment_completion_percent(15)
             self.projection = projection_services.get_projection(dialog.projection.index)
             pd.set_completion_percent(100)
@@ -239,7 +238,7 @@ class ValuesCalculation(BaseUi):
                 self.arm_table.insert('', tk.END, text=str(pp.index), values=val)
     
     def create_output_frame(self):
-        self.output_frame = outf = ttk.Frame(self.main_win)
+        self.output_frame = outf = ttk.Frame(self)
         outf.grid(column=2,row=0, padx=5, sticky=tk.N, pady=17)
 
         self.output_title = StringVar()
@@ -362,10 +361,10 @@ class ValuesCalculation(BaseUi):
         self.export_btn['state'] = ACTIVE
     
     def save_values(self):
-        dialog = name_desc.Dialog(self.main_win, 'Save Values')
+        dialog = name_desc.Dialog(self, 'Save Values')
         #print("dialog.state = " + dialog.state)
         if dialog.status == mb.OK:
-            pd = progress.ProgressDialog(self.main_win, title='Saving Calculation')
+            pd = progress.ProgressDialog(self, title='Saving Calculation')
             pd.increment_completion_percent(5)
             self.value_calc.index = None
             self.value_calc.name = dialog.name_tv.get()
@@ -524,7 +523,7 @@ class ValuesCalculation(BaseUi):
             self.value_calc.set_input(CDT.ROSTERED_RP, int(self.rep_level_dict['RP'].get()))
         
         logging.debug("About to perform point_calc")
-        calculation_services.perform_point_calculation(self.value_calc, progress.ProgressDialog(self.main_win, title='Performing Calculation'))
+        calculation_services.perform_point_calculation(self.value_calc, progress.ProgressDialog(self, title='Performing Calculation'))
         logging.debug("Performed calc")
         self.populate_projections()
         self.update_calc_output_frame()

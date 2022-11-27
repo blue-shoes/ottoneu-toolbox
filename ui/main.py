@@ -1,73 +1,58 @@
-
-import os
-from services import player_services, salary_services
-import logging
-import tkinter as tk     
-from tkinter import *              
+import tkinter as tk  
 from tkinter import ttk 
-from tkinter import filedialog as fd
-from tkinter import messagebox as mb
-from ui import draft_tool, values
-from ui.base import BaseUi
+from ui.dialog import preferences
+from ui.values import ValuesCalculation
+from ui.start import Start
+from ui.draft_tool import DraftTool
+import logging
+import os
 from ui.dialog.progress import ProgressDialog
 import datetime
+from services import player_services, salary_services
+   
+__version__ = '0.9.0'
 
-class OttoneuToolBox(BaseUi):
-    def __init__(self):
-        super().__init__(preferences={})  
+class Main(tk.Tk):
+
+    def __init__(self, *args, **kwargs):
+        tk.Tk.__init__(self, *args, **kwargs)
+        self.title(f"Ottoneu Tool Box v{__version__}") 
+        self.preferences = preferences
+        
         self.setup_logging()
         logging.info('Starting session')
 
         self.startup_tasks()
 
-        self.create_main_win()
+        self.create_menu()
 
-    def create_main_win(self):
-        main_frame = ttk.Frame(self.main_win)
-        main_lbl = ttk.Label(main_frame, text = "Select a module", font='bold')
-        main_lbl.grid(column=0,row=0, pady=5, columnspan=2)
+        # the container is where we'll stack a bunch of frames
+        # on top of each other, then the one we want visible
+        # will be raised above the others
+        self.container = tk.Frame(self)
+        self.container.pack(side="top", fill="both", expand=True)
+        self.container.grid_rowconfigure(0, weight=1)
+        self.container.grid_columnconfigure(0, weight=1)
 
-        ttk.Button(main_frame, text='Create Player Values', command=self.create_player_values_click).grid(column=0,row=1)
-        ttk.Button(main_frame, text='Run Draft Tracker', command=self.run_draft_tracker).grid(column=1,row=1)
-        ttk.Button(main_frame, text='League Analysis', command=self.open_league_analysis).grid(column=0,row=2)
-        ttk.Button(main_frame, text='Exit', command=self.exit).grid(column=1,row=2)
-
-        main_frame.pack()
+        self.frames = {}
+        self.create_frame(Start)
+        self.create_frame(ValuesCalculation)
 
         logging.debug('Starting main window')
-        self.main_win.mainloop()
-
-    def create_player_values_click(self):
-        # TODO: Move to Create Player Values Module
-        self.main_win.destroy()
-        values.main(self.preferences)
-        #self.create_main_win()
-
-    def run_draft_tracker(self):
-        self.main_win.destroy()
-        draft_tool.main()
-        #self.create_main_win()
-
-    def open_league_analysis(self):
-        # TODO: Move to league analysis
-        self.main_win.destroy()
-        a = 1
-        #self.create_main_win()
+        self.show_start_page()
     
-    def exit(self):
-        self.main_win.destroy()
+    def create_frame(self, frame : tk.Frame):
+        page_name = frame.__name__
+        frame = frame(parent=self.container, controller=self)
+        self.frames[page_name] = frame
 
-    def setup_logging(self, config=None):
-        if config != None and 'log_level' in config:
-            level = logging.getLevelName(config['log_level'].upper())
-        else:
-            level = logging.INFO
-        if not os.path.exists('.\\logs'):
-            os.mkdir('.\\logs')
-        logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s %(message)s', level=level, filename='.\\logs\\toolbox.log')
-    
+        # put all of the pages in the same location;
+        # the one on the top of the stacking order
+        # will be the one that is visible.
+        frame.grid(row=0, column=0, sticky="nsew")
+
     def startup_tasks(self):
-        progress_dialog = ProgressDialog(self.main_win, "Startup Tasks")
+        progress_dialog = ProgressDialog(self, "Startup Tasks")
         #Check that database has players in it, and populate if it doesn't
         if not player_services.is_populated():
             progress_dialog.set_task_title("Populating Player Database")
@@ -83,13 +68,71 @@ class OttoneuToolBox(BaseUi):
         #TODO: Destroying this pushes the whole window to the background for some reason
         #progress_dialog.destroy()
     
+    def create_menu(self):
+        self.menubar = mb = tk.Menu(self)
+        self.main_menu = mm = tk.Menu(mb, tearoff=0)
+        mm.add_command(label="Preferences", command=self.open_preferences)
+        mm.add_separator()
+        mm.add_command(label="Exit", command=self.exit)
+        mb.add_cascade(label="Menu", menu=mm)
+        self.config(menu=mb)
+    
+    def exit(self):
+        if(self.current_frame.exit_tasks()):
+            self.destroy()
 
-def main():
-    try:
-        program = OttoneuToolBox()
-    except Exception as e:
-        logging.exception("Error encountered")
-        mb.showerror("Error", f'Fatal program error. See ./logs/toolbox.log')
+    def exit_tasks(self):
+        #To be implemented in child classes
+        return True
 
-if __name__ == '__main__':
-    main()
+    def open_preferences(self):
+        preferences.Dialog(self.preferences)
+    
+    def setup_logging(self, config=None):
+        if config != None and 'log_level' in config:
+            level = logging.getLevelName(config['log_level'].upper())
+        else:
+            level = logging.INFO
+        if not os.path.exists('.\\logs'):
+            os.mkdir('.\\logs')
+        logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s %(message)s', level=level, filename='.\\logs\\toolbox.log')
+    
+    def show_frame(self, page_name):
+        '''Show a frame for the given page name'''
+        frame = self.frames[page_name]
+        frame.tkraise()
+    
+    def show_start_page(self):
+        self.show_frame(Start.__name__)
+
+    def show_player_values(self):
+        # TODO: Move to Create Player Values Module
+        self.show_frame(ValuesCalculation.__name__)
+
+    def show_draft_tracker(self):
+        self.show_frame(DraftTool.__name__)
+
+    def show_league_analysis(self):
+        # TODO: Move to league analysis
+        a = 1
+    
+    def exit(self):
+        self.destroy()    
+
+    def initialize_treeview_style(self):
+        #Fix for Tkinter version issue found here: https://stackoverflow.com/a/67141755
+        s = ttk.Style()
+
+        #from os import name as OS_Name
+        if self.getvar('tk_patchLevel')=='8.6.9': #and OS_Name=='nt':
+            def fixed_map(option):
+                # Fix for setting text colour for Tkinter 8.6.9
+                # From: https://core.tcl.tk/tk/info/509cafafae
+                #
+                # Returns the style map for 'option' with any styles starting with
+                # ('!disabled', '!selected', ...) filtered out.
+                #
+                # style.map() returns an empty list for missing options, so this
+                # should be future-safe.
+                return [elm for elm in s.map('Treeview', query_opt=option) if elm[:2] != ('!disabled', '!selected')]
+            s.map('Treeview', foreground=fixed_map('foreground'), background=fixed_map('background'))
