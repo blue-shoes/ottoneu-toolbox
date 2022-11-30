@@ -67,6 +67,7 @@ def load_calculation(calc_index):
             break
         for pp in value_calc.projection.player_projections:
             break
+    value_calc.init_value_dict()
     return value_calc
 
 def get_points(player_proj, pos, sabr=False):

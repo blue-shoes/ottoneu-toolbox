@@ -112,6 +112,16 @@ class ValueCalculation(Base):
     values = relationship("PlayerValue", back_populates="calculation", cascade="all, delete")
     data = relationship("ValueData", back_populates="calculation", cascade="all, delete", lazy='joined')
 
+    value_dict = {}
+
+    def init_value_dict(self):
+        for pv in self.values:
+            if pv.player_id not in self.value_dict:
+                player_dict = {}
+                self.value_dict[pv.player_id] = player_dict
+            player_dict = self.value_dict[pv.player_id]
+            player_dict[pv.position] = pv
+
     def set_input(self, data_type, value):
         for inp in self.inputs:
             if inp.data_type == data_type:
@@ -154,19 +164,23 @@ class ValueCalculation(Base):
         pv.position = pos
         pv.value = value
         self.values.append(pv)
+
+        if player_id not in self.value_dict:
+            player_dict = {}
+            self.value_dict[player_id] = player_dict
+        player_dict = self.value_dict[player_id]
+        player_dict[pos] = pv
     
     def get_player_value(self, player_id, pos=None):
+        if player_id not in self.value_dict:
+            if pos is None:
+                return {}
+            return None
         if pos is None:
             #Get all positions
-            vals = []
-            for pv in self.values:
-                if pv.player_id == player_id:
-                    vals.append(pv)
-                return vals
+            return self.value_dict[player_id]
         else:
-            for pv in self.values:
-                if pv.player_id == player_id and pv.position == pos:
-                    return pv
+            return self.value_dict[player_id][pos]
     
     def get_position_values(self, pos) -> list[PlayerValue]:
         values = []

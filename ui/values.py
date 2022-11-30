@@ -25,6 +25,7 @@ class ValuesCalculation(tk.Frame):
         self.controller = controller
         self.value_calc = ValueCalculation()
         self.rep_level_dict = {}
+        self.tables = {}
 
         self.create_input_frame()
         self.create_proj_val_frame()
@@ -142,11 +143,13 @@ class ValuesCalculation(tk.Frame):
         col_align['Name'] = W
 
         self.bat_table = Table(bat_frame, self.player_columns + self.hitting_columns, column_alignments=col_align, sortable_columns=self.player_columns + self.hitting_columns)
+        self.tables[Position.OFFENSE] = self.bat_table
         self.bat_table.set_refresh_method(self.refresh_hitters)
         self.bat_table.grid(row=0, column=0)
         self.bat_table.add_scrollbar()
 
         self.arm_table = Table(arm_frame, self.player_columns + self.pitching_columns, column_alignments=col_align, sortable_columns=self.player_columns + self.pitching_columns)
+        self.tables[Position.PITCHER] = self.arm_table
         self.arm_table.set_refresh_method(self.refresh_pitchers)
         self.arm_table.grid(row=0,column=0)
         self.arm_table.add_scrollbar()
@@ -206,8 +209,6 @@ class ValuesCalculation(tk.Frame):
         val.append(pp.player.name)
         val.append(pp.player.team)
         val.append(pp.player.position)
-        #if len(self.value_calc.values) > 0:
-        #TODO Need to fix this for sabr calcs
         points = calculation_services.get_points(pp, pos, sabr=(self.game_type.get() == ScoringFormat.enum_to_full_name_map()[ScoringFormat.SABR_POINTS]))
         if pos in Position.get_offensive_pos():
             games = pp.get_stat(StatType.G_HIT)
@@ -222,9 +223,6 @@ class ValuesCalculation(tk.Frame):
             else:
                 val.append("{:.2f}".format(points/ip))
         val.append("{:.1f}".format(points))
-        #else:
-        #    val.append('-')
-        #    val.append('-')
         for col in cols:
             if col in enum_dict:
                 stat = pp.get_stat(enum_dict[col])
@@ -239,13 +237,13 @@ class ValuesCalculation(tk.Frame):
         for pp in self.projection.player_projections:
             if pp.get_stat(StatType.AB) is not None:
                 val = self.get_player_row(pp, StatType.hit_to_enum_dict(), self.hitting_columns, Position.OFFENSE)
-                self.bat_table.insert('', tk.END, text=str(pp.index), values=val)
+                self.bat_table.insert('', tk.END, text=str(pp.player_id), values=val)
     
     def refresh_pitchers(self):
         for pp in self.projection.player_projections:
             if pp.get_stat(StatType.IP) is not None:
                 val = self.get_player_row(pp, StatType.pitch_to_enum_dict(), self.pitching_columns, Position.PITCHER)
-                self.arm_table.insert('', tk.END, text=str(pp.index), values=val)
+                self.arm_table.insert('', tk.END, text=str(pp.player_id), values=val)
     
     def create_output_frame(self):
         self.output_frame = outf = ttk.Frame(self)
@@ -535,9 +533,18 @@ class ValuesCalculation(tk.Frame):
         logging.debug("About to perform point_calc")
         calculation_services.perform_point_calculation(self.value_calc, progress.ProgressDialog(self, title='Performing Calculation'))
         logging.debug("Performed calc")
-        self.populate_projections()
+        self.update_values()
+        #self.populate_projections()
         self.update_calc_output_frame()
 
+    def update_values(self):
+        for pos, table in self.tables.items():
+            for index in table.get_children():
+                pv = self.value_calc.get_player_value(int(table.item(index)['text']), pos)
+                if pv is None:
+                    table.set(index, 0, "$0.0")
+                else:
+                    table.set(index, 0, "${:.1f}".format(pv.value))
     
     def int_validation(self, input):
         if input.isdigit():
