@@ -154,7 +154,7 @@ class ValuesCalculation(tk.Frame):
     def update_game_type(self, event):
         pd = progress.ProgressDialog(self, title='Updating Game Type')
         pd.increment_completion_percent(33)
-        self.populate_projections()
+        self.populate_projections(pd)
         #TODO: other actions
         pd.set_completion_percent(100)
         pd.destroy()
@@ -179,9 +179,19 @@ class ValuesCalculation(tk.Frame):
 
         self.populate_projections()
     
-    def populate_projections(self):
+    def populate_projections(self, pd=None):
+        fresh_pd = False
+        if pd is None:
+            fresh_pd = True
+            pd = progress.ProgressDialog(self, title='Refreshing Table')
+            pd.set_completion_percent(25)
         self.bat_table.refresh()
+        pd.increment_completion_percent(25)
         self.arm_table.refresh()
+        pd.increment_completion_percent(25)
+        if fresh_pd:
+            pd.set_completion_percent(100)
+            pd.destroy()
     
     def get_player_row(self, pp, enum_dict, cols, pos):
         val = []
