@@ -28,6 +28,21 @@ class Player(Base):
             return self.fg_major_id
         else:
             return self.fg_minor_id
+    
+    def pos_eligible(self, pos: Position):
+        if pos == Position.OVERALL:
+            return True
+        elif pos == Position.OFFENSE or pos == Position.POS_UTIL:
+            for p in Position.get_discrete_offensive_pos():
+                if p.value in self.position:
+                    return True
+            return False
+        elif pos == Position.PITCHER:
+            for p in Position.get_discrete_pitching_pos():
+                if p.value in self.position:
+                    return True
+            return False
+        return pos.value in self.position
 
 class League(Base):
     __tablename__ = "league"
