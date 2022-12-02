@@ -144,15 +144,24 @@ class ValuesCalculation(tk.Frame):
 
         self.bat_table = Table(bat_frame, self.player_columns + self.hitting_columns, column_alignments=col_align, sortable_columns=self.player_columns + self.hitting_columns)
         self.tables[Position.OFFENSE] = self.bat_table
-        self.bat_table.set_refresh_method(self.refresh_hitters)
+        self.bat_table.set_refresh_method(lambda: self.refresh_hitters(Position.OFFENSE))
         self.bat_table.grid(row=0, column=0)
         self.bat_table.add_scrollbar()
 
         self.arm_table = Table(arm_frame, self.player_columns + self.pitching_columns, column_alignments=col_align, sortable_columns=self.player_columns + self.pitching_columns)
         self.tables[Position.PITCHER] = self.arm_table
-        self.arm_table.set_refresh_method(self.refresh_pitchers)
+        self.arm_table.set_refresh_method(lambda: self.refresh_pitchers(Position.PITCHER))
         self.arm_table.grid(row=0,column=0)
         self.arm_table.add_scrollbar()
+
+        for pos in Position.get_discrete_offensive_pos():
+            frame = ttk.Frame(self.tab_control)
+            self.tab_control.add(frame, text=pos.value)
+            pt = Table(frame, self.player_columns + self.hitting_columns, column_alignments=col_align, sortable_columns=self.player_columns + self.hitting_columns)
+            self.tables[pos] = pt
+            pt.set_refresh_method(lambda _pos=pos: self.refresh_hitters(_pos))
+            pt.grid(row=0, column=0)
+            pt.add_scrollbar()
 
     def update_game_type(self, event):
         pd = progress.ProgressDialog(self, title='Updating Game Type')
@@ -188,10 +197,14 @@ class ValuesCalculation(tk.Frame):
             fresh_pd = True
             pd = progress.ProgressDialog(self, title='Refreshing Table')
             pd.set_completion_percent(25)
-        self.bat_table.refresh()
-        pd.increment_completion_percent(25)
-        self.arm_table.refresh()
-        pd.increment_completion_percent(25)
+        delta = 75 / len(self.tables)
+        for table in self.tables.values():
+            table.refresh()
+            pd.increment_completion_percent(delta)
+        #self.bat_table.refresh()
+        #pd.increment_completion_percent(25)
+        #self.arm_table.refresh()
+        #pd.increment_completion_percent(25)
         if fresh_pd:
             pd.set_completion_percent(100)
             pd.destroy()
@@ -233,17 +246,17 @@ class ValuesCalculation(tk.Frame):
                     val.append(fmt.format(stat))
         return val
 
-    def refresh_hitters(self):
+    def refresh_hitters(self, pos):
         for pp in self.projection.player_projections:
-            if pp.get_stat(StatType.AB) is not None:
-                val = self.get_player_row(pp, StatType.hit_to_enum_dict(), self.hitting_columns, Position.OFFENSE)
-                self.bat_table.insert('', tk.END, text=str(pp.player_id), values=val)
+            if pp.player.pos_eligible(pos) and pp.get_stat(StatType.AB) is not None:
+                val = self.get_player_row(pp, StatType.hit_to_enum_dict(), self.hitting_columns, pos)
+                self.tables[pos].insert('', tk.END, text=str(pp.player_id), values=val)
     
-    def refresh_pitchers(self):
+    def refresh_pitchers(self, pos):
         for pp in self.projection.player_projections:
-            if pp.get_stat(StatType.IP) is not None:
-                val = self.get_player_row(pp, StatType.pitch_to_enum_dict(), self.pitching_columns, Position.PITCHER)
-                self.arm_table.insert('', tk.END, text=str(pp.player_id), values=val)
+            if pp.player.pos_eligible(pos) and pp.get_stat(StatType.IP) is not None:
+                val = self.get_player_row(pp, StatType.pitch_to_enum_dict(), self.pitching_columns, pos)
+                self.tables[pos].insert('', tk.END, text=str(pp.player_id), values=val)
     
     def create_output_frame(self):
         self.output_frame = outf = ttk.Frame(self)
