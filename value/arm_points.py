@@ -291,7 +291,7 @@ class ArmPoint():
     def calc_pitch_par_role(self, row, role, rep_level):
         if row['G'] == 0:
             return -1
-        if row[f'IP {role}'] == 0: return 0
+        if row[f'IP {role}'] == 0: return -1
         if self.rank_basis == RankingBasis.PIP:
             rate = row[f'P/IP {role}'] - rep_level
             return rate * row[f'IP {role}']
