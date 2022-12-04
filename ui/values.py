@@ -141,14 +141,16 @@ class ValuesCalculation(tk.Frame):
         
         col_align = {}
         col_align['Name'] = W
+        col_width = {}
+        col_width['Name'] = 125
 
-        self.bat_table = Table(bat_frame, self.player_columns + self.hitting_columns, column_alignments=col_align, sortable_columns=self.player_columns + self.hitting_columns)
+        self.bat_table = Table(bat_frame, self.player_columns + self.hitting_columns, column_widths=col_width, column_alignments=col_align, sortable_columns=self.player_columns + self.hitting_columns)
         self.tables[Position.OFFENSE] = self.bat_table
         self.bat_table.set_refresh_method(lambda: self.refresh_hitters(Position.OFFENSE))
         self.bat_table.grid(row=0, column=0)
         self.bat_table.add_scrollbar()
 
-        self.arm_table = Table(arm_frame, self.player_columns + self.pitching_columns, column_alignments=col_align, sortable_columns=self.player_columns + self.pitching_columns)
+        self.arm_table = Table(arm_frame, self.player_columns + self.pitching_columns, column_widths=col_width, column_alignments=col_align, sortable_columns=self.player_columns + self.pitching_columns)
         self.tables[Position.PITCHER] = self.arm_table
         self.arm_table.set_refresh_method(lambda: self.refresh_pitchers(Position.PITCHER))
         self.arm_table.grid(row=0,column=0)
@@ -157,7 +159,7 @@ class ValuesCalculation(tk.Frame):
         for pos in Position.get_discrete_offensive_pos():
             frame = ttk.Frame(self.tab_control)
             self.tab_control.add(frame, text=pos.value)
-            pt = Table(frame, self.player_columns + self.hitting_columns, column_alignments=col_align, sortable_columns=self.player_columns + self.hitting_columns)
+            pt = Table(frame, self.player_columns + self.hitting_columns, column_widths=col_width, column_alignments=col_align, sortable_columns=self.player_columns + self.hitting_columns)
             self.tables[pos] = pt
             pt.set_refresh_method(lambda _pos=pos: self.refresh_hitters(_pos))
             pt.grid(row=0, column=0)
