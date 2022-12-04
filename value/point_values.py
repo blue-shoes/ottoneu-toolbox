@@ -116,7 +116,6 @@ class PointValues():
             projs = projection_services.convert_to_df(self.value_calc.projection)
             self.pos_proj = projs[0]
             self.pitch_proj = projs[1]
-            self.intermediate_calculations = False
             rep_level_scheme = RepLevelScheme._value2member_map_[int(self.value_calc.get_input(CalculationDataType.REP_LEVEL_SCHEME))]
             hitter_rank_basis = self.value_calc.hitter_basis
             pitcher_rank_basis = self.value_calc.pitcher_basis
@@ -311,7 +310,7 @@ class PointValues():
             for index, row in pitch_results.iterrows():
                 self.value_calc.set_player_value(index, Position.PITCHER, row['Value'])
 
-        if self.intermediate_calculations:
+        if self.intermediate_calculations and self.value_calc is None:
             filepath = os.path.join(self.intermed_subdirpath, f"pos_result.csv")
             pos_results.to_csv(filepath, encoding='utf-8-sig')
             filepath = os.path.join(self.intermed_subdirpath, f"pitch_result.csv")
