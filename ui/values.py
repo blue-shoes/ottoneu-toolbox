@@ -165,6 +165,15 @@ class ValuesCalculation(tk.Frame):
             pt.grid(row=0, column=0)
             pt.add_scrollbar()
 
+        for pos in Position.get_discrete_pitching_pos():
+            frame = ttk.Frame(self.tab_control)
+            self.tab_control.add(frame, text=pos.value)
+            pt = Table(frame, self.player_columns + self.pitching_columns, column_widths=col_width, column_alignments=col_align, sortable_columns=self.player_columns + self.pitching_columns)
+            self.tables[pos] = pt
+            pt.set_refresh_method(lambda _pos=pos: self.refresh_pitchers(_pos))
+            pt.grid(row=0, column=0)
+            pt.add_scrollbar()
+
     def update_game_type(self, event):
         pd = progress.ProgressDialog(self, title='Updating Game Type')
         pd.increment_completion_percent(33)
