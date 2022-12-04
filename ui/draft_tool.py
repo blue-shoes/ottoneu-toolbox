@@ -392,7 +392,8 @@ class DraftTool:
     def refresh_views(self, pos_keys=None):
         pos_df = self.values.loc[self.values['Salary'] == '$0']
         pos_val = pos_df.loc[~pos_df['Value'].str.contains("-")]
-        self.remaining_value = pos_val['Value'].apply(lambda x: int(x.split('$')[1])).sum()
+        additional_players = self.controller.league.num_teams * 40 - len(self.values.loc[self.values['Salary'] != '$0']) - len(pos_val)
+        self.remaining_value = pos_val['Value'].apply(lambda x: int(x.split('$')[1])).sum() + additional_players + (self.value_calc.get_input(CalculationDataType.NON_PRODUCTIVE_DOLLARS) - self.extra_cost)
         self.calc_inflation()
         self.refresh_overall_view()
         if pos_keys == None:
