@@ -47,6 +47,7 @@ class Player(Base):
 class League(Base):
     __tablename__ = "league"
     index = Column(Integer, primary_key=True)
+    ottoneu_id = Column(Integer, nullable=False)
     name = Column(String)
     # Corresponds to ScoringFormat enum
     format = Column(Enum(ScoringFormat), nullable=False)
