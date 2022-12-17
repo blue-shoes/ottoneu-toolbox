@@ -53,6 +53,7 @@ class League(Base):
     format = Column(Enum(ScoringFormat), nullable=False)
     num_teams = Column(Integer, nullable=False)
     last_refresh = Column(Date, nullable=False)
+    active = Column(Boolean, nullable = False)
 
     teams = relationship("Team", back_populates="league", cascade="all, delete")
 
