@@ -22,15 +22,15 @@ class Dialog(tk.Toplevel):
         width['Name'] = 175
 
         self.league_table = lt = Table(frm, cols, align, width, cols)
-        lt.grid(row=1, columnspan=2)
+        lt.grid(row=0, columnspan=3)
         lt.set_row_select_method(self.on_select)
         lt.set_refresh_method(self.populate_table)
 
         self.populate_table()
 
-        ttk.Button(frm, text="OK", command=self.set_projection).grid(row=3, column=0)
-        ttk.Button(frm, text="Cancel", command=self.cancel).grid(row=3, column=1)
-        ttk.Button(frm, text="Import New...", command=self.import_league).grid(row=3,column=2)
+        ttk.Button(frm, text="OK", command=self.set_projection).grid(row=1, column=0)
+        ttk.Button(frm, text="Cancel", command=self.cancel).grid(row=1, column=1)
+        ttk.Button(frm, text="Import New...", command=self.import_league).grid(row=1,column=2)
 
         frm.pack()
 
