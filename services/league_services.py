@@ -52,6 +52,12 @@ def refresh_league(league_idx, pd=None):
         pd.set_completion_percent(100)
     return lg
 
+def get_leagues(active):
+    with Session() as session:
+        if active:
+            return session.query(League).filter_by(League.active).order_by(League.ottoneu_id)
+        else:
+            return session.query(League).order_by(League.ottoneu_id)
 
 def get_league_ottoneu_id(league_idx):
     with Session() as session:
@@ -84,6 +90,7 @@ def create_league(league_ottoneu_id, pd=None):
     lg.num_teams = league_data['Num Teams']
     lg.format = ScoringFormat.name_to_enum_map()[league_data['Format']]
     lg.last_refresh = datetime.min
+    lg.active = True
 
     if pd is not None:
         pd.increment_completion_percent(15)
