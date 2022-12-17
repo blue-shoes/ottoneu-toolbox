@@ -1,8 +1,8 @@
 import tkinter as tk     
 from tkinter import *              
 from tkinter import ttk 
-from ui.dialog import proj_download
-from ui.table import Table, bool_to_table
+from ui.dialog import league_download
+from ui.table import Table
 
 from services import league_services
 
@@ -44,8 +44,8 @@ class Dialog(tk.Toplevel):
     
     def populate_table(self):
         for lg in self.league_list:
-            self.league_list.insert('', tk.END, text=str(lg.index), values=(lg.ottoneu_id, lg.name, lg.format, lg.num_teams))
-        self.league_list.treeview_sort_column(self.league_list.sort_col, self.league_list.reverse_sort)
+            self.league_table.insert('', tk.END, text=str(lg.index), values=(lg.ottoneu_id, lg.name, lg.format, lg.num_teams))
+        self.league_table.treeview_sort_column(self.league_table.sort_col, self.league_table.reverse_sort)
 
     def on_select(self, event):
         selection = event.widget.item(event.widget.selection()[0])["text"]
