@@ -15,6 +15,9 @@ import logging
 import math
 
 from scrape.scrape_ottoneu import Scrape_Ottoneu 
+from domain.enum import CalculationDataType
+from ui.table import Table
+from ui.dialog import progress
 
 from pathlib import Path
 import threading
@@ -32,20 +35,22 @@ class IdType(Enum):
     OTTONEU = 0
     FG = 1
 
-class DraftTool:
-    def __init__(self, run_event, demo_source=None):
-        self.setup_logging()
-        logging.info('Starting session')
-        self.demo_source = demo_source
-        self.run_event = run_event
+class DraftTool(tk.Frame):
+    def __init__(self, parent, controller):
+        tk.Frame.__init__(self, parent)
+        self.parent = parent
+        self.controller = controller
+        #self.demo_source = demo_source
+        #self.run_event = run_event
         self.queue = queue.Queue()
-        self.setup_win = tk.Tk() 
-        self.value_dir = tk.StringVar()
-        self.value_dir.set(Path.home())
+        self.value_calc = self.controller.value_calculation
+        #self.setup_win = tk.Tk() 
+        #self.value_dir = tk.StringVar()
+        #self.value_dir.set(Path.home())
         #self.value_dir.set('C:\\Users\\adam.scharf\\Documents\\Personal\\FFB\\Staging')
-        self.setup_win.title(f"Ottoneu Draft Tool v{__version__}") 
+        #self.setup_win.title(f"Ottoneu Draft Tool v{__version__}") 
         self.extra_cost = 0
-        self.lg_id = None
+        #self.controller.league.ottoneu_id = None
         self.sort_cols = {}
         self.show_drafted_players = tk.BooleanVar()
         self.show_drafted_players.set(False)
@@ -54,67 +59,13 @@ class DraftTool:
         self.targeted_players = pd.DataFrame()
         self.removed_players = []
 
-        setup_tab = ttk.Frame(self.setup_win)
-        
-        logging.debug('Creating setup tab')
-        self.create_setup_tab(setup_tab)
-
-        logging.debug('Starting setup window')
-        self.setup_win.mainloop()   
-
-        if self.lg_id == None:
-            return
-
-        logging.info(f'League id = {self.lg_id}; Values Directory: {self.value_dir.get()}')
-        try:
-            self.create_main()
-
-            logging.debug('Starting main loop')
-
-            self.main_win.mainloop()
-        except Exception as e:
-            logging.exception('Error running draft')
-            mb.showerror("Draft Error", f'Error running draft, see ./logs/draft.log')
-    
-    def setup_logging(self, config=None):
-        if config != None and 'log_level' in config:
-            level = logging.getLevelName(config['log_level'].upper())
-        else:
-            level = logging.INFO
-        if not os.path.exists('.\\logs'):
-            os.mkdir('.\\logs')
-        logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s %(message)s', level=level, filename='.\\logs\\draft.log')
-
-    def initialize_treeview_style(self):
-        #Fix for Tkinter version issue found here: https://stackoverflow.com/a/67141755
-        s = ttk.Style()
-
-        #from os import name as OS_Name
-        if self.main_win.getvar('tk_patchLevel')=='8.6.9': #and OS_Name=='nt':
-            def fixed_map(option):
-                # Fix for setting text colour for Tkinter 8.6.9
-                # From: https://core.tcl.tk/tk/info/509cafafae
-                #
-                # Returns the style map for 'option' with any styles starting with
-                # ('!disabled', '!selected', ...) filtered out.
-                #
-                # style.map() returns an empty list for missing options, so this
-                # should be future-safe.
-                return [elm for elm in s.map('Treeview', query_opt=option) if elm[:2] != ('!disabled', '!selected')]
-            s.map('Treeview', foreground=fixed_map('foreground'), background=fixed_map('background'))
+        self.create_main()
 
     def create_main(self):
-        
-        self.main_win = tk.Tk()
-
-        self.initialize_treeview_style()
-
-        self.main_win.title(f'Ottoneu Draft Tool v{__version__}')
-        main_frame = ttk.Frame(self.main_win)
-        lg_lbl = ttk.Label(main_frame, text = f"League {self.lg_id} Draft", font='bold')
+        lg_lbl = ttk.Label(self, text = f"League {self.controller.league.ottoneu_id} Draft", font='bold')
         lg_lbl.grid(column=0,row=0, pady=5, columnspan=2)
 
-        search_frame = ttk.Frame(main_frame)
+        search_frame = ttk.Frame(self)
         search_frame.grid(column=0,row=1, padx=5, sticky=tk.N, pady=17)
         ttk.Label(search_frame, text = 'Player Search: ', font='bold').grid(column=0,row=1,pady=5)
 
@@ -134,7 +85,7 @@ class DraftTool:
         self.inflation_lbl = ttk.Label(search_frame, textvariable=self.inflation_str_var)
         self.inflation_lbl.grid(column=0,row=4)
 
-        f = ttk.Frame(main_frame)
+        f = ttk.Frame(self)
         f.grid(column=1,row=1)
         
         ttk.Label(f, text = 'Search Results', font='bold').grid(column=0, row=0)
@@ -158,7 +109,7 @@ class DraftTool:
         sv.column("# 8",anchor=CENTER, stretch=NO, width=50)
         sv.column("# 9",anchor=CENTER, stretch=NO, width=50)
 
-        running_list_frame = ttk.Frame(main_frame)
+        running_list_frame = ttk.Frame(self)
         running_list_frame.grid(row=2, column=0, columnspan=2, pady=5)
 
         button_frame = ttk.Frame(running_list_frame)
@@ -182,32 +133,20 @@ class DraftTool:
         self.tab_control.add(overall_frame, text='Overall')
         cols = ('Name','Value','Inf. Cost','Pos','Team','Points','P/G','P/IP')
         sortable_cols = ('Value', 'Points', 'P/G', 'P/IP')
-        self.overall_view = ov = ttk.Treeview(overall_frame, columns=cols, show='headings')
+        widths = {}
+        widths['Name'] = 175
+        widths['Pos'] = 75
+        align = {}
+        align['Name'] = W
+        self.overall_view = ov = Table(overall_frame, cols,sortable_columns=sortable_cols, column_widths=widths)
         ov.grid(column=0)
-        ov.column("# 1",anchor=W, stretch=NO, width=175)
-        ov.column("# 2",anchor=CENTER, stretch=NO, width=50)
-        ov.column("# 3",anchor=CENTER, stretch=NO, width=50)
-        ov.column("# 4",anchor=CENTER, stretch=NO, width=75)
-        ov.column("# 5",anchor=CENTER, stretch=NO, width=50)
-        ov.column("# 6",anchor=CENTER, stretch=NO, width=50)
-        ov.column("# 7",anchor=CENTER, stretch=NO, width=50)
-        ov.column("# 8",anchor=CENTER, stretch=NO, width=50)
-        for col in cols:
-            if col in sortable_cols:
-                self.overall_view.heading(col, text=col, command=lambda _col=col: self.sort_treeview(self.overall_view, _col) )
-            else:
-                self.overall_view.heading(col, text=col)
-        self.overall_view.bind('<<TreeviewSelect>>', self.on_select)
-        ov.bind('<Button-3>', self.player_rclick)
-        self.overall_view.tag_configure('rostered', background='#A6A6A6')
-        self.overall_view.tag_configure('rostered', foreground='#5A5A5A')
+        ov.set_row_select_method(self.on_select)
+        ov.set_right_click_method(self.player_rclick)
+        ov.tag_configure('rostered', background='#A6A6A6')
+        ov.tag_configure('rostered', foreground='#5A5A5A')
         ov.tag_configure('removed', background='#FFCCCB')
-        self.overall_view.pack(side='left', fill='both', expand=1)
-        vsb = ttk.Scrollbar(ov, orient="vertical", command=self.overall_view.yview)
-        ov.configure(yscrollcommand=vsb.set)
-        vsb.pack(side='right', fill='y')
-        self.scroll_bars[ov] = vsb
-        self.sort_cols[self.overall_view] = None
+        ov.add_scrollbar()
+        ov.set_refresh_method(self.refresh_overall_view)
 
         for pos in self.pos_values:
             pos_frame = ttk.Frame(self.tab_control)
@@ -216,41 +155,24 @@ class DraftTool:
                 cols = ('Name','Value','Inf. Cost','Pos','Team','Points','P/G')
             else:
                 cols = ('Name','Value','Inf. Cost','Pos','Team','Points','P/IP')
-            self.pos_view[pos] = pv = ttk.Treeview(pos_frame, columns=cols, show='headings')
-            pv.column("# 1",anchor=W, stretch=NO, width=175)
-            pv.column("# 2",anchor=CENTER, stretch=NO, width=50)
-            pv.column("# 3",anchor=CENTER, stretch=NO, width=50)
-            pv.column("# 4",anchor=CENTER, stretch=NO, width=75)
-            pv.column("# 5",anchor=CENTER, stretch=NO, width=50)
-            pv.column("# 6",anchor=CENTER, stretch=NO, width=50)
-            pv.column("# 7",anchor=CENTER, stretch=NO, width=50)
-            for col in cols:
-                if col in sortable_cols:
-                    pv.heading(col, text=col, command=lambda _pv=pv, _col=col, _pos=pos: self.sort_treeview(_pv, _col, _pos))
-                else:
-                    pv.heading(col, text=col)
-            self.pos_view[pos].bind('<<TreeviewSelect>>', self.on_select)
-            self.pos_view[pos].bind('<Button-3>', self.player_rclick)
-            self.pos_view[pos].tag_configure('rostered', background='#A6A6A6', foreground='#5A5A5A')
+            self.pos_view[pos] = pv = Table(pos_frame, cols,sortable_columns=sortable_cols, column_widths=widths)
+            pv.set_row_select_method(self.on_select)
+            pv.set_right_click_method(self.player_rclick)
+            pv.tag_configure('rostered', background='#A6A6A6')
+            pv.tag_configure('rostered', foreground='#5A5A5A')
             pv.tag_configure('removed', background='#FFCCCB')
-            self.pos_view[pos].pack(side='left', fill='both', expand=1)
-            vsb = ttk.Scrollbar(pv, orient="vertical", command=self.pos_view[pos].yview)
-            pv.configure(yscrollcommand=vsb.set)
-            vsb.pack(side='right', fill='y')
-            self.scroll_bars[pv] = vsb
-            #vsb = ttk.Scrollbar(pos_frame, orient="vertical", command=self.pos_view[pos].yview)
-            #vsb.pack(side='right', fill='y')
-            self.sort_cols[pv] = None
+            pv.add_scrollbar()
+            pv.set_refresh_method(lambda _pos = pos: self.refresh_pos_table(_pos))
 
         self.refresh_views()
 
-        main_frame.pack()
+        self.pack()
 
     def player_rclick(self, event):
         iid = event.widget.identify_row(event.y)
         event.widget.selection_set(iid)
         playerid = event.widget.item(event.widget.selection()[0])["text"]
-        popup = tk.Menu(self.main_win, tearoff=0)
+        popup = tk.Menu(self.parent, tearoff=0)
         popup.add_command(label="Target Player", command=lambda: self.target_player(playerid))
         popup.add_separator()
         if playerid in self.removed_players:
@@ -302,8 +224,8 @@ class DraftTool:
         self.monitor_thread.start()
         self.monitor_status.set('Monitor enabled')
         self.monitor_status_lbl.config(fg='green')
-        self.main_win.update_idletasks()
-        self.main_win.after(1000, self.update_ui)
+        self.parent.update_idletasks()
+        self.parent.after(1000, self.update_ui)
 
     def update_ui(self):
         if not self.run_event.is_set and self.queue.empty():
@@ -312,14 +234,14 @@ class DraftTool:
             key, data = self.queue.get()
             logging.debug(f'Updating the following positions: {data}')
             self.refresh_views(data)
-        self.main_win.after(1000, self.update_ui)
+        self.parent.after(1000, self.update_ui)
     
     def stop_draft_monitor(self):
         logging.info('!!!Stopping Draft Monitor!!!')
         self.run_event.clear()
         self.monitor_status.set('Monitor stopped')
         self.monitor_status_lbl.config(fg='red')
-        self.main_win.update_idletasks()
+        self.parent.update_idletasks()
     
     def refresh_thread(self):
         last_time = datetime.now() - timedelta(minutes=30)
@@ -327,7 +249,7 @@ class DraftTool:
         #last_time = datetime.now() - timedelta(days=10)
         while(self.run_event.is_set()):
             if self.demo_source == None:
-                last_trans = Scrape_Ottoneu().scrape_recent_trans_api(self.lg_id)
+                last_trans = Scrape_Ottoneu().scrape_recent_trans_api(self.controller.league.ottoneu_id)
             else:
                 logging.debug("demo_source")
                 last_trans = pd.read_csv(self.demo_source)
@@ -527,6 +449,9 @@ class DraftTool:
         self.value_dir.set(dir)
         
     def initialize_draft(self):
+        pd = progress.ProgressDialog(self, title='Downloading latest Ottoverse data')
+
+    def initialize_draft_legacy(self):
         self.popup = tk.Toplevel()
         tk.Label(self.popup, text='Draft Initializing').grid(row=0,column=0)
         progress = 0
@@ -577,12 +502,12 @@ class DraftTool:
                 self.popup.destroy()
                 return
 
-            self.lg_id = self.league_num_entry.get()
-            self.progress_step.set(f'Getting League {self.lg_id} Rosters...')
+            self.controller.league.ottoneu_id = self.league_num_entry.get()
+            self.progress_step.set(f'Getting League {self.controller.league.ottoneu_id} Rosters...')
             progress += 30
             self.progress_var.set(progress)
             self.popup.update()
-            self.rosters = scraper.scrape_roster_export(self.lg_id)
+            self.rosters = scraper.scrape_roster_export(self.controller.league.ottoneu_id)
             #Below used for api testing
             #self.rosters = pd.read_csv('C:\\Users\\adam.scharf\\Documents\\Personal\\FFB\\Test\\rosters.csv')
             #self.rosters.set_index("ottoneu ID", inplace=True)
