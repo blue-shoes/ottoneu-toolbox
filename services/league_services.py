@@ -6,13 +6,21 @@ from sqlalchemy.orm import joinedload
 
 from datetime import datetime
 
-def refresh_league(league_idx):
+def refresh_league(league_idx, pd=None):
     lg = get_league(league_idx, rosters=False)
     scraper = Scrape_Ottoneu()
+    if pd is not None:
+        pd.set_task_title("Checking last transaction date...")
+        pd.increment_completion_percent(5)
     rec_tr = scraper.scrape_recent_trans_api(lg.ottoneu_id)
     most_recent = rec_tr.iloc[0]['Date']
     if most_recent > lg.last_refresh:
+        if pd is not None:
+            pd.set_task_title("Updating rosters...")
+            pd.increment_completion_percent(5)
         upd_rost = scraper.scrape_roster_export(lg.ottoneu_id)
+        if pd is not None:
+            pd.increment_completion_percent(30)
         with Session() as session:
             lg = (session.query(League)
                     .options(
@@ -40,6 +48,8 @@ def refresh_league(league_idx):
             lg = get_league(league_idx)
     else:
         lg = get_league(league_idx)
+    if pd is not None:
+        pd.set_completion_percent(100)
     return lg
 
 
@@ -61,7 +71,10 @@ def get_league(league_idx, rosters=True) -> League:
             league = (session.query(League).filter_by(index = league_idx).first())
     return league
 
-def create_league(league_ottoneu_id):
+def create_league(league_ottoneu_id, pd=None):
+    if pd is not None:
+        pd.set_task_title("Getting league info...")
+        pd.increment_completion_percent(10)
     scraper = Scrape_Ottoneu()
     #rosters = scraper.scrape_roster_export(league_ottoneu_id)
     league_data = scraper.scrape_league_info_page(league_ottoneu_id)
@@ -72,6 +85,9 @@ def create_league(league_ottoneu_id):
     lg.format = ScoringFormat.name_to_enum_map()[league_data['Format']]
     lg.last_refresh = datetime.min
 
+    if pd is not None:
+        pd.increment_completion_percent(15)
+
     fin = scraper.scrape_finances_page(league_ottoneu_id)
     for idx, row in fin.iterrows():
         team = Team()
@@ -80,9 +96,12 @@ def create_league(league_ottoneu_id):
         team.name = row['Name']
         lg.teams.append(team)
 
+    if pd is not None:
+        pd.increment_completion_percent(15)
+
     with Session() as session:
         session.add(lg)
         session.commit()
         lg_idx = lg.index 
-    return refresh_league(lg_idx)
+    return refresh_league(lg_idx, pd)
 
