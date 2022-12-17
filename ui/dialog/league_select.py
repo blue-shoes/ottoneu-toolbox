@@ -9,7 +9,7 @@ from services import league_services
 class Dialog(tk.Toplevel):
     def __init__(self, parent, active=True):
         super().__init__(parent)
-        self.projection = None
+        self.league = None
         self.title("Select a League")
         frm = tk.Frame(self, borderwidth=4)
 
@@ -28,7 +28,7 @@ class Dialog(tk.Toplevel):
 
         self.populate_table()
 
-        ttk.Button(frm, text="OK", command=self.set_projection).grid(row=1, column=0)
+        ttk.Button(frm, text="OK", command=self.set_league).grid(row=1, column=0)
         ttk.Button(frm, text="Cancel", command=self.cancel).grid(row=1, column=1)
         ttk.Button(frm, text="Import New...", command=self.import_league).grid(row=1,column=2)
 
@@ -38,7 +38,7 @@ class Dialog(tk.Toplevel):
     
     def import_league(self):
         dialog = league_download.Dialog(self.master)
-        if dialog.projection is not None:
+        if dialog.league is not None:
             self.league = dialog.league
             self.destroy()
     
@@ -55,8 +55,8 @@ class Dialog(tk.Toplevel):
                 break
 
     def cancel(self):
-        self.projection = None
+        self.league = None
         self.destroy()
     
-    def set_projection(self):
+    def set_league(self):
         self.destroy()
