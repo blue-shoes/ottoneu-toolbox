@@ -60,6 +60,12 @@ class DraftTool(tk.Frame):
         self.removed_players = []
 
         self.create_main()
+    
+    def on_show(self):
+        if self.controller.league is None:
+            self.controller.select_league()
+        if self.controller.value is None:
+            self.controller.select_value_set()
 
     def create_main(self):
         lg_lbl = ttk.Label(self, text = f"League {self.controller.league.ottoneu_id} Draft", font='bold')

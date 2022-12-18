@@ -106,6 +106,7 @@ class Main(tk.Tk):
     def show_frame(self, page_name):
         '''Show a frame for the given page name'''
         frame = self.frames[page_name]
+        frame.on_show()
         frame.tkraise()
     
     def show_start_page(self):
@@ -122,12 +123,12 @@ class Main(tk.Tk):
         a = 1
     
     def select_league(self):
-        dialog = league_select.Dialog()
+        dialog = league_select.Dialog(self)
         if dialog.league is not None:
             self.league = dialog.league
     
     def select_value_set(self):
-        dialog = value_select.Dialog()
+        dialog = value_select.Dialog(self)
         if dialog.value is not None:
             self.value = dialog.value
 

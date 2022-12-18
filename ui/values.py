@@ -23,13 +23,22 @@ class ValuesCalculation(tk.Frame):
     def __init__(self, parent, controller):
         tk.Frame.__init__(self, parent)
         self.controller = controller
-        self.value_calc = ValueCalculation()
+        self.value_calc = self.controller.value_calculation
         self.rep_level_dict = {}
         self.tables = {}
 
         self.create_input_frame()
         self.create_proj_val_frame()
         self.create_output_frame()
+    
+    def on_show(self):
+        if self.controller.value_calc is None:
+            self.controller.value_calc = ValueCalculation()
+        self.refresh_ui()
+
+    def refresh_ui(self):
+        #TODO: Implement this
+        i=0
 
     def create_input_frame(self):
 
