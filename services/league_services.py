@@ -33,14 +33,14 @@ def refresh_league(league_idx, pd=None):
             for team in lg.teams:
                 #Clear roster
                 team.roster_spots=[]
-                team_map[team.idx] = team
-            for idx, row in upd_rost:
+                team_map[team.index] = team
+            for idx, row in upd_rost.iterrows():
                 team = row['TeamID']
                 if team not in team_map:
                     # team not present, possibly on the restricted list
                     continue
                 rs = Roster_Spot()
-                rs.player = session.query(Player).filter_by(Player.ottoneu_id == idx).first()
+                rs.player = session.query(Player).filter_by(ottoneu_id = idx).first()
                 rs.salary = row['Salary'].split('$')[1]
                 team_map[team].roster_spots.append(rs)
             
@@ -55,7 +55,7 @@ def refresh_league(league_idx, pd=None):
 def get_leagues(active):
     with Session() as session:
         if active:
-            return session.query(League).filter_by(League.active).order_by(League.ottoneu_id)
+            return session.query(League).filter(active).order_by(League.ottoneu_id)
         else:
             return session.query(League).order_by(League.ottoneu_id)
 
