@@ -1,12 +1,13 @@
 import tkinter as tk  
 from tkinter import ttk 
 from ui.dialog import preferences
-from ui.values import ValuesCalculation
+from domain.domain import ValueCalculation, League
 from ui.start import Start
 from ui.draft_tool import DraftTool
+from ui.values import ValuesCalculation
 import logging
 import os
-from ui.dialog.progress import ProgressDialog
+from ui.dialog import progress, league_select, value_select
 import datetime
 from services import player_services, salary_services
    
@@ -25,6 +26,8 @@ class Main(tk.Tk):
         self.startup_tasks()
 
         self.create_menu()
+        self.value_calculation = None
+        self.league = None
 
         # the container is where we'll stack a bunch of frames
         # on top of each other, then the one we want visible
@@ -52,7 +55,7 @@ class Main(tk.Tk):
         frame.grid(row=0, column=0, sticky="nsew")
 
     def startup_tasks(self):
-        progress_dialog = ProgressDialog(self, "Startup Tasks")
+        progress_dialog = progress.ProgressDialog(self, "Startup Tasks")
         #Check that database has players in it, and populate if it doesn't
         if not player_services.is_populated():
             progress_dialog.set_task_title("Populating Player Database")
@@ -71,6 +74,9 @@ class Main(tk.Tk):
     def create_menu(self):
         self.menubar = mb = tk.Menu(self)
         self.main_menu = mm = tk.Menu(mb, tearoff=0)
+        mm.add_command(label="Select League", command=self.select_league)
+        mm.add_command(label="Load Player Values", command=self.select_value_set)
+        mm.add_separator()
         mm.add_command(label="Preferences", command=self.open_preferences)
         mm.add_separator()
         mm.add_command(label="Exit", command=self.exit)
@@ -106,16 +112,25 @@ class Main(tk.Tk):
         self.show_frame(Start.__name__)
 
     def show_player_values(self):
-        # TODO: Move to Create Player Values Module
         self.show_frame(ValuesCalculation.__name__)
 
     def show_draft_tracker(self):
         self.show_frame(DraftTool.__name__)
 
     def show_league_analysis(self):
-        # TODO: Move to league analysis
+        # TODO:Implement league analysis
         a = 1
     
+    def select_league(self):
+        dialog = league_select.Dialog()
+        if dialog.league is not None:
+            self.league = dialog.league
+    
+    def select_value_set(self):
+        dialog = value_select.Dialog()
+        if dialog.value is not None:
+            self.value = dialog.value
+
     def exit(self):
         self.destroy()    
 
