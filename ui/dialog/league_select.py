@@ -5,6 +5,7 @@ from ui.dialog import league_download
 from ui.table import Table
 
 from services import league_services
+from domain.enum import ScoringFormat
 
 class Dialog(tk.Toplevel):
     def __init__(self, parent, active=True):
@@ -44,7 +45,8 @@ class Dialog(tk.Toplevel):
     
     def populate_table(self):
         for lg in self.league_list:
-            self.league_table.insert('', tk.END, text=str(lg.index), values=(lg.ottoneu_id, lg.name, lg.format, lg.num_teams))
+            lgfmt = ScoringFormat.enum_to_short_name_map()[lg.format]
+            self.league_table.insert('', tk.END, text=str(lg.index), values=(lg.ottoneu_id, lg.name, lgfmt, lg.num_teams))
         self.league_table.treeview_sort_column(self.league_table.sort_col, self.league_table.reverse_sort)
 
     def on_select(self, event):
