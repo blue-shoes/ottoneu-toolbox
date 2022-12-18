@@ -1,7 +1,7 @@
 import tkinter as tk     
 from tkinter import *              
 from tkinter import ttk 
-from ui.dialog import value_import
+#from ui.dialog import value_import
 from ui.table import Table, bool_to_table
 from domain.enum import CalculationDataType
 from tkinter import messagebox as mb
