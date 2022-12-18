@@ -1,6 +1,6 @@
 import tkinter as tk  
 from tkinter import ttk 
-from ui.dialog import preferences
+from ui.dialog import preferences, progress
 from domain.domain import ValueCalculation, League
 from ui.start import Start
 from ui.draft_tool import DraftTool
@@ -9,7 +9,7 @@ import logging
 import os
 from ui.dialog import progress, league_select, value_select
 import datetime
-from services import player_services, salary_services
+from services import player_services, salary_services, league_services
    
 __version__ = '0.9.0'
 
@@ -62,7 +62,7 @@ class Main(tk.Tk):
             salary_services.update_salary_info()
             progress_dialog.increment_completion_percent(33)
         refresh = salary_services.get_last_refresh()
-        if (datetime.datetime.now().date() - refresh.last_refresh).days > 30:
+        if refresh is None or (datetime.datetime.now() - refresh.last_refresh).days > 30:
             progress_dialog.set_task_title("Updating Player Database")
             salary_services.update_salary_info()
             progress_dialog.increment_completion_percent(33)
@@ -125,7 +125,10 @@ class Main(tk.Tk):
     def select_league(self):
         dialog = league_select.Dialog(self)
         if dialog.league is not None:
-            self.league = dialog.league
+            pd = progress.ProgressDialog(self, title='Updating League')
+            self.league = league_services.refresh_league(dialog.league.index, pd=pd)
+            pd.set_completion_percent(100)
+            pd.destroy()
     
     def select_value_set(self):
         dialog = value_select.Dialog(self)

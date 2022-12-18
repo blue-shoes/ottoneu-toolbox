@@ -1,5 +1,5 @@
 from sqlalchemy import Column, ForeignKey, Index
-from sqlalchemy import Integer, String, Boolean, Float, Date, Enum
+from sqlalchemy import Integer, String, Boolean, Float, Date, Enum, TIMESTAMP
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 from domain.enum import CalculationDataType, ProjectionType, RankingBasis, ScoringFormat, StatType, Position
@@ -52,7 +52,7 @@ class League(Base):
     # Corresponds to ScoringFormat enum
     format = Column(Enum(ScoringFormat), nullable=False)
     num_teams = Column(Integer, nullable=False)
-    last_refresh = Column(Date, nullable=False)
+    last_refresh = Column(TIMESTAMP, nullable=False)
     active = Column(Boolean, nullable = False)
 
     teams = relationship("Team", back_populates="league", cascade="all, delete")
@@ -116,7 +116,7 @@ class ValueCalculation(Base):
     index = Column(Integer, primary_key=True)
     name = Column(String)
     description = Column(String)
-    timestamp = Column(Date, nullable=False)
+    timestamp = Column(TIMESTAMP, nullable=False)
 
     projection_id = Column(Integer, ForeignKey("projection.index"))
     projection = relationship("Projection", back_populates="calculations")
@@ -290,4 +290,4 @@ class Salary_Refresh(Base):
     # Class to track how recently the Ottoverse average values have been refrehsed
     __tablename__ = "salary_refresh"
     format = Column(Enum(ScoringFormat), primary_key=True)
-    last_refresh = Column(Date, nullable=False)
+    last_refresh = Column(TIMESTAMP, nullable=False)
