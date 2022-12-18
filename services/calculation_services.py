@@ -70,6 +70,12 @@ def load_calculation(calc_index):
     value_calc.init_value_dict()
     return value_calc
 
+def get_values_for_year(year):
+    if year is None:
+        year = projection_services.get_current_projection_year()
+    with Session() as session:
+        return session.query(ValueCalculation).options(joinedload(ValueCalculation.projection).filter(ValueCalculation.projection.season == year))
+
 def get_points(player_proj, pos, sabr=False):
     if pos in Position.get_offensive_pos():
         return -1.0*player_proj.get_stat(StatType.AB) + 5.6*player_proj.get_stat(StatType.H) + 2.9*player_proj.get_stat(StatType.DOUBLE) \
