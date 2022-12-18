@@ -44,6 +44,7 @@ def refresh_league(league_idx, pd=None):
                 rs.salary = row['Salary'].split('$')[1]
                 team_map[team].roster_spots.append(rs)
             
+            lg.last_refresh = datetime.now()
             session.commit()
             lg = get_league(league_idx)
     else:
