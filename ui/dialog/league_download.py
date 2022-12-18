@@ -10,7 +10,7 @@ import os.path
 class Dialog(tk.Toplevel):
     def __init__(self, parent):
         super().__init__(parent)
-        self.projection = None
+        self.league = None
         self.title("Import a League")
         frm = tk.Frame(self, borderwidth=4)
 
@@ -29,7 +29,7 @@ class Dialog(tk.Toplevel):
     def cancel(self):
         self.destroy()
     
-    def populate_projection(self):
+    def populate_league(self):
         pd = ProgressDialog(self.master, title='Getting League')
         self.league = league_services.create_league(self.league_num_entry.get(), pd)
         pd.set_completion_percent(100)
