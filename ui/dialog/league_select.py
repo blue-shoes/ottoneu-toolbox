@@ -1,6 +1,7 @@
 import tkinter as tk     
 from tkinter import *              
 from tkinter import ttk 
+from tkinter import messagebox as mb
 from ui.dialog import league_download
 from ui.table import Table
 
@@ -38,10 +39,13 @@ class Dialog(tk.Toplevel):
         self.wait_window()
     
     def import_league(self):
-        dialog = league_download.Dialog(self.master)
-        if dialog.league is not None:
-            self.league = dialog.league
+        try:
+            dialog = league_download.Dialog(self.master)
+            if dialog.league is not None:
+                self.league = dialog.league
             self.destroy()
+        except:
+            mb.showerror('Error downloading league, please try again')
     
     def populate_table(self):
         for lg in self.league_list:
