@@ -17,7 +17,7 @@ import math
 from scrape.scrape_ottoneu import Scrape_Ottoneu 
 from domain.enum import CalculationDataType
 from ui.table import Table
-from ui.dialog import progress
+from ui.dialog import progress, league_select
 
 from pathlib import Path
 import threading
