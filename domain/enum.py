@@ -118,6 +118,15 @@ class RepLevelScheme(Enum):
     FILL_GAMES = 2
     TOTAL_ROSTERED = 3
 
+    @classmethod
+    def num_to_enum_map(self):
+        return {
+            0: self.NUM_ROSTERED,
+            1: self.STATIC_REP_LEVEL,
+            2: self.FILL_GAMES,
+            3: self.TOTAL_ROSTERED
+        }
+
 class RankingBasis(Enum):
     PPG = 0
     PPPA = 1
