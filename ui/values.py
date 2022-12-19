@@ -121,13 +121,10 @@ class ValuesCalculation(tk.Frame):
                 self.rep_level_dict['RP'].set(int(self.value_calc.get_input(CDT.ROSTERED_RP)))
             self.update_calc_output_frame()
         pd.set_completion_percent(33)
-        self.bat_table.refresh()
-        pd.set_completion_percent(45)
-        self.arm_table.refresh()
-        pd.set_completion_percent(55)
-        for table in self.tables.values():
-            table.refresh()
-            pd.increment_completion_percent(5)
+        if len(self.tables) > 0:
+            for table in self.tables.values():
+                table.refresh()
+                pd.increment_completion_percent(5)
         pd.set_completion_percent(100)
         pd.destroy()
 
@@ -229,6 +226,9 @@ class ValuesCalculation(tk.Frame):
         self.tab_control = ttk.Notebook(pvf, width=570, height=self.input_frame.winfo_height())
         self.tab_control.grid(row=0, column=0)
 
+        overall_frame = ttk.Frame(self.tab_control)
+        self.tab_control.add(overall_frame, text='Overall')
+
         bat_frame = ttk.Frame(self.tab_control)
         self.tab_control.add(bat_frame, text='Hitters')
 
@@ -236,6 +236,7 @@ class ValuesCalculation(tk.Frame):
         self.tab_control.add(arm_frame, text='Pitchers')
 
         self.player_columns = ('Value', 'Name', 'Team', 'Pos')
+        self.overall_columns = ('P/G', 'P/IP', 'Points')
         self.hitting_columns = ('P/G', 'Points', 'G', 'PA', 'AB', 'H', '2B', '3B', 'HR', 'BB', 'HBP', 'SB','CS')
         self.pitching_columns = ('P/IP', 'Points', 'G', 'GS', 'IP', 'SO','H','BB','HBP','HR','SV','HLD')
         
@@ -243,6 +244,12 @@ class ValuesCalculation(tk.Frame):
         col_align['Name'] = W
         col_width = {}
         col_width['Name'] = 125
+
+        self.overall_table = ot = Table(overall_frame, self.player_columns + self.overall_columns, column_widths=col_width, column_alignments=col_align, sortable_columns=self.player_columns + self.overall_columns)
+        self.tables[Position.OVERALL] = ot
+        ot.set_refresh_method(self.refresh_overall)
+        ot.grid(row=0, column=0)
+        ot.add_scrollbar()
 
         self.bat_table = Table(bat_frame, self.player_columns + self.hitting_columns, column_widths=col_width, column_alignments=col_align, sortable_columns=self.player_columns + self.hitting_columns)
         self.tables[Position.OFFENSE] = self.bat_table
@@ -320,6 +327,35 @@ class ValuesCalculation(tk.Frame):
             pd.set_completion_percent(100)
             pd.destroy()
     
+    def get_overall_row(self, pp):
+        val = []
+        if len(self.value_calc.values) > 0:
+            pv = self.value_calc.get_player_value(pp.player.index, Position.OVERALL)
+            if pv is None:
+                val.append("$0.0")
+            else:
+                val.append("${:.1f}".format(pv.value))
+        else:
+            val.append('-')
+        val.append(pp.player.name)
+        val.append(pp.player.team)
+        val.append(pp.player.position)
+        o_points = calculation_services.get_points(pp, Position.OFFENSE, sabr=(self.game_type.get() == ScoringFormat.enum_to_full_name_map()[ScoringFormat.SABR_POINTS]))
+        games = pp.get_stat(StatType.G_HIT)
+        if games is None or games == 0:
+            val.append("0.00")
+        else:
+            val.append("{:.2f}".format(o_points / games))
+        
+        p_points = calculation_services.get_points(pp, Position.PITCHER, sabr=(self.game_type.get() == ScoringFormat.enum_to_full_name_map()[ScoringFormat.SABR_POINTS]))
+        ip = pp.get_stat(StatType.IP)
+        if ip is None or ip == 0:
+            val.append("0.00")
+        else:
+            val.append("{:.2f}".format(p_points/ip))
+        val.append("{:.1f}".format(p_points + o_points))
+        return val
+    
     def get_player_row(self, pp, enum_dict, cols, pos):
         val = []
         if len(self.value_calc.values) > 0:
@@ -356,6 +392,12 @@ class ValuesCalculation(tk.Frame):
                 else:
                     val.append(fmt.format(stat))
         return val
+    
+    def refresh_overall(self):
+        if self.projection is not None:
+            for pp in self.projection.player_projections:
+                val = self.get_overall_row(pp)
+                self.tables[Position.OVERALL].insert('', tk.END, text=str(pp.player_id), values=val)
 
     def refresh_hitters(self, pos):
         if self.projection is not None:
