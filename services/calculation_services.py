@@ -74,7 +74,7 @@ def get_values_for_year(year):
     if year is None:
         year = projection_services.get_current_projection_year()
     with Session() as session:
-        return session.query(ValueCalculation).options(joinedload(ValueCalculation.projection).filter(ValueCalculation.projection.season == year))
+        return session.query(ValueCalculation).join(ValueCalculation.projection).filter(Projection.season == year).all()
 
 def get_points(player_proj, pos, sabr=False):
     if pos in Position.get_offensive_pos():
