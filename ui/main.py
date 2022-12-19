@@ -131,9 +131,9 @@ class Main(tk.Tk):
             pd.destroy()
     
     def select_value_set(self):
-        dialog = value_select.Dialog(self)
+        dialog = value_select.Dialog(self.container, self)
         if dialog.value is not None:
-            self.value = dialog.value
+            self.value_calculation = dialog.value
 
     def exit(self):
         self.destroy()    
