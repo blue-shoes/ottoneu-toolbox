@@ -3,7 +3,8 @@ from tkinter import *
 from tkinter import ttk 
 #from ui.dialog import value_import
 from ui.table import Table, bool_to_table
-from domain.enum import CalculationDataType
+from ui.dialog import progress
+from domain.enum import CalculationDataType, ScoringFormat
 from tkinter import messagebox as mb
 
 from services import calculation_services
@@ -66,7 +67,7 @@ class Dialog(tk.Toplevel):
         selection = event.widget.item(event.widget.selection()[0])["text"]
         for value in self.value_list:
             if value.index == int(selection):
-                self.value = calculation_services.load_calculation(value.index)
+                self.value = value
                 break
 
     def cancel(self):
@@ -74,4 +75,9 @@ class Dialog(tk.Toplevel):
         self.destroy()
     
     def set_value(self):
+        pd = progress.ProgressDialog(self.master, title='Loading Values...')
+        pd.set_completion_percent(15)
+        self.value = calculation_services.load_calculation(self.value.index)
+        pd.set_completion_percent(100)
+        pd.destroy()
         self.destroy()
