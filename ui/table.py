@@ -83,6 +83,7 @@ class Table(ttk.Treeview):
     def refresh(self):
         self.delete(*self.get_children())
         self.refresh_method()
+        self.treeview_sort_column(self.sort_col, self.reverse_sort)
         if self.vsb is not None:
             self.vsb.pack()
         if self.hsb is not None:
