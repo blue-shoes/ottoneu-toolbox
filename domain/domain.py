@@ -116,7 +116,7 @@ class ValueCalculation(Base):
     index = Column(Integer, primary_key=True)
     name = Column(String)
     description = Column(String)
-    timestamp = Column(TIMESTAMP, nullable=False)
+    timestamp = Column(Date, nullable=False)
 
     projection_id = Column(Integer, ForeignKey("projection.index"))
     projection = relationship("Projection", back_populates="calculations")
