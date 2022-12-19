@@ -85,7 +85,7 @@ class Table(ttk.Treeview):
         self.refresh_method()
         if self.vsb is not None:
             self.vsb.pack()
-        if self. hsb is not None:
+        if self.hsb is not None:
             self.hsb.pack()
 
 def bool_to_table(val):
