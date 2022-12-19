@@ -99,15 +99,22 @@ def save_projection(projection, projs, progress=None):
             for idx, row in proj.iterrows():
                 if idx in seen_players:
                     player = seen_players[idx]
+                    player_proj = projection.get_player_projection(player.index)
+                    player_proj.pitcher = False
+                    player_proj.two_way = True
                 else:
                     player = player_services.get_player_by_fg_id(idx)
                     if player == None:
                         player = player_services.create_player(row, fg_id=idx)
                     seen_players[idx] = player
-                player_proj = PlayerProjection()
+                    player_proj = PlayerProjection()
+                    projection.player_projections.append(player_proj)
+                    player_proj.projection_data = []
+                    player_proj.pitcher = pitch
+                    player_proj.two_way = False
                 player_proj.player = player
-                player_proj.pitcher = pitch
-                player_proj.projection_data = []
+                
+                
                 for col in stat_cols:
                     if col not in ['Name','Team','-1','playerid']:
                         if pitch:
@@ -119,7 +126,7 @@ def save_projection(projection, projs, progress=None):
                             data.stat_type = stat_type
                             data.stat_value = row[col]
                             player_proj.projection_data.append(data)
-                projection.player_projections.append(player_proj)
+                
                 inc_count += 1
                 if inc_count == inc_div and progress is not None:
                     progress.increment_completion_percent(1)
@@ -230,7 +237,10 @@ def convert_to_df(proj):
     pos_rows = []
     pitch_rows = []
     for pp in proj.player_projections:
-        if pp.pitcher:
+        if pp.two_way:
+            pos_rows.append(db_rows_to_df(pp, pos_col))
+            pitch_rows.append(db_rows_to_df(pp, pitch_col))
+        elif pp.pitcher:
             pitch_rows.append(db_rows_to_df(pp, pitch_col))
         else:
             pos_rows.append(db_rows_to_df(pp, pos_col))

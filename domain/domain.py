@@ -251,7 +251,7 @@ class Projection(Base):
 
     def get_player_projection(self, player_id):
         for pp in self.player_projections:
-            if pp.player_id == player_id:
+            if pp.player_id == player_id or pp.player.index == player_id:
                 return pp
         return None
         
@@ -268,6 +268,7 @@ class PlayerProjection(Base):
     projection_data = relationship("ProjectionData", back_populates="player_projection", cascade="all, delete", lazy="joined")
 
     pitcher = Column(Boolean)
+    two_way = Column(Boolean)
 
     def get_stat(self, stat_type):
         for pd in self.projection_data:
