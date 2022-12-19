@@ -43,6 +43,7 @@ class Main(tk.Tk):
 
         logging.debug('Starting main window')
         self.show_start_page()
+        self.current_page = Start.__name__
     
     def create_frame(self, frame : tk.Frame):
         page_name = frame.__name__
@@ -108,6 +109,7 @@ class Main(tk.Tk):
         frame = self.frames[page_name]
         frame.on_show()
         frame.tkraise()
+        self.current_page = page_name
     
     def show_start_page(self):
         self.show_frame(Start.__name__)
@@ -134,6 +136,8 @@ class Main(tk.Tk):
         dialog = value_select.Dialog(self.container, self)
         if dialog.value is not None:
             self.value_calculation = dialog.value
+            if self.current_page == ValuesCalculation.__name__:
+                self.frames[ValuesCalculation.__name__].on_show()
 
     def exit(self):
         self.destroy()    
