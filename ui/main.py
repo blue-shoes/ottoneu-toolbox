@@ -107,9 +107,9 @@ class Main(tk.Tk):
     def show_frame(self, page_name):
         '''Show a frame for the given page name'''
         frame = self.frames[page_name]
-        frame.on_show()
-        frame.tkraise()
-        self.current_page = page_name
+        if frame.on_show():
+            frame.tkraise()
+            self.current_page = page_name
     
     def show_start_page(self):
         self.show_frame(Start.__name__)

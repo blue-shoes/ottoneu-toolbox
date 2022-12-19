@@ -38,6 +38,7 @@ class ValuesCalculation(tk.Frame):
         if self.controller.value_calculation is None:
             self.controller.value_calculation = ValueCalculation()
             self.value_calc = self.controller.value_calculation
+        return True
 
     def refresh_ui(self):
         pd = progress.ProgressDialog(self.parent, 'Updating Value Calculator Window...')

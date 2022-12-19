@@ -66,6 +66,11 @@ class DraftTool(tk.Frame):
             self.controller.select_league()
         if self.controller.value is None:
             self.controller.select_value_set()
+        if self.controller.league is None or self.controller.value is None:
+            return False
+        
+
+        return True
 
     def create_main(self):
         lg_lbl = ttk.Label(self, text = f"League {self.controller.league.ottoneu_id} Draft", font='bold')

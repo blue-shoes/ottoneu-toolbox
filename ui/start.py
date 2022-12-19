@@ -24,7 +24,7 @@ class Start(tk.Frame):
         self.pack()
     
     def on_show(self):
-        i=0
+        return True
 
     def create_player_values_click(self):
         # TODO: Move to Create Player Values Module
