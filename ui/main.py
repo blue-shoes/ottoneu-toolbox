@@ -9,6 +9,7 @@ import logging
 import os
 from ui.dialog import progress, league_select, value_select
 import datetime
+import threading
 from services import player_services, salary_services, league_services
    
 __version__ = '0.9.0'
@@ -28,6 +29,7 @@ class Main(tk.Tk):
         self.create_menu()
         self.value_calculation = None
         self.league = None
+        self.run_event = threading.Event()
 
         # the container is where we'll stack a bunch of frames
         # on top of each other, then the one we want visible
