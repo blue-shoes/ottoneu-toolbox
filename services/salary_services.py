@@ -11,9 +11,12 @@ from datetime import datetime
 def update_salary_info(format=ScoringFormat.ALL):
     scraper = Scrape_Ottoneu()
     salary_df = scraper.get_avg_salary_ds(game_type = format)
-    refresh = Salary_Refresh(format=format,last_refresh=datetime.now())
     with Session() as session:
-
+        refresh = session.query(Salary_Refresh).filter(Salary_Refresh.format == format).first()
+        if refresh is None:
+            refresh = Salary_Refresh(format=format,last_refresh=datetime.now())
+        else:
+            refresh.last_refresh = datetime.now()
         for idx, u_player in salary_df.iterrows():
             player = session.query(Player).filter(Player.ottoneu_id == idx).first()
             if player is None:
