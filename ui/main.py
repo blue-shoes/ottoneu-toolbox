@@ -42,6 +42,7 @@ class Main(tk.Tk):
         self.frames = {}
         self.create_frame(Start)
         self.create_frame(ValuesCalculation)
+        self.create_frame(DraftTool)
 
         logging.debug('Starting main window')
         self.show_start_page()
