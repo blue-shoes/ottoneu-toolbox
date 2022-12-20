@@ -50,6 +50,10 @@ def get_player_by_fg_id(player_id):
             player = session.query(Player).filter(Player.fg_minor_id == player_id).first()
     return player
 
+def get_player_by_ottoneu_id(ottoneu_id):
+    with Session() as session:
+        return session.query(Player).filter(Player.ottoneu_id == ottoneu_id).first()
+
 def is_populated():
     with Session() as session:
         count = session.query(Player).count()
