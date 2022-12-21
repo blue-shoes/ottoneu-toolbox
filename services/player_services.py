@@ -1,6 +1,6 @@
 from datetime import datetime
 from domain.domain import Player, Salary_Refresh
-from domain.enum import ScoringFormat
+from domain.enum import ScoringFormat, Position
 from scrape.scrape_ottoneu import Scrape_Ottoneu
 from dao.session import Session
 from services import salary_services
@@ -50,6 +50,10 @@ def get_player_by_fg_id(player_id):
             player = session.query(Player).filter(Player.fg_minor_id == player_id).first()
     return player
 
+def get_player_by_ottoneu_id(ottoneu_id):
+    with Session() as session:
+        return session.query(Player).filter(Player.ottoneu_id == ottoneu_id).first()
+
 def is_populated():
     with Session() as session:
         count = session.query(Player).count()
@@ -58,3 +62,29 @@ def is_populated():
 def get_player(player_id) -> Player:
     with Session() as session:
         return session.query(Player).filter(Player.index == player_id).first()
+
+def get_player_positions(player):
+    positions = []
+    player_pos = player.position.split("/")
+    offense = False
+    pitcher = False
+    mi = False
+    for pos in Position.get_offensive_pos():
+        if pos.value in player_pos:
+            if not offense:
+                positions.append(Position.OFFENSE)
+                positions.append(Position.POS_UTIL)
+                offense = True
+            if pos == Position.POS_UTIL:
+                continue
+            positions.append(pos)
+            if (pos == Position.POS_2B or pos == Position.POS_SS) and not mi:
+                positions.append(Position.POS_MI)
+                mi = True
+    for pos in Position.get_pitching_pos():
+        if pos.value in player_pos:
+            if not pitcher:
+                positions.append(Position.PITCHER)
+                pitcher = True
+            positions.append(pos)
+    return positions

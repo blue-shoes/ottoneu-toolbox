@@ -1,30 +1,35 @@
 import tkinter as tk  
 from tkinter import ttk 
-from ui.dialog import preferences
-from ui.values import ValuesCalculation
+from ui.dialog import preferences, progress
 from ui.start import Start
 from ui.draft_tool import DraftTool
+from ui.values import ValuesCalculation
 import logging
 import os
-from ui.dialog.progress import ProgressDialog
+from ui.dialog import progress, league_select, value_select
 import datetime
-from services import player_services, salary_services
+import threading
+from services import player_services, salary_services, league_services
    
 __version__ = '0.9.0'
 
 class Main(tk.Tk):
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, debug=False, demo_source=False, *args, **kwargs):
         tk.Tk.__init__(self, *args, **kwargs)
         self.title(f"Ottoneu Tool Box v{__version__}") 
-        self.preferences = preferences
-        
+        #self.preferences = preferences
+        self.debug = debug
+        self.demo_source = demo_source
         self.setup_logging()
         logging.info('Starting session')
 
         self.startup_tasks()
 
         self.create_menu()
+        self.value_calculation = None
+        self.league = None
+        self.run_event = threading.Event()
 
         # the container is where we'll stack a bunch of frames
         # on top of each other, then the one we want visible
@@ -37,9 +42,11 @@ class Main(tk.Tk):
         self.frames = {}
         self.create_frame(Start)
         self.create_frame(ValuesCalculation)
+        self.create_frame(DraftTool)
 
         logging.debug('Starting main window')
         self.show_start_page()
+        self.current_page = Start.__name__
     
     def create_frame(self, frame : tk.Frame):
         page_name = frame.__name__
@@ -52,14 +59,14 @@ class Main(tk.Tk):
         frame.grid(row=0, column=0, sticky="nsew")
 
     def startup_tasks(self):
-        progress_dialog = ProgressDialog(self, "Startup Tasks")
+        progress_dialog = progress.ProgressDialog(self, "Startup Tasks")
         #Check that database has players in it, and populate if it doesn't
         if not player_services.is_populated():
             progress_dialog.set_task_title("Populating Player Database")
             salary_services.update_salary_info()
             progress_dialog.increment_completion_percent(33)
         refresh = salary_services.get_last_refresh()
-        if (datetime.datetime.now().date() - refresh.last_refresh).days > 30:
+        if refresh is None or (datetime.datetime.now() - refresh.last_refresh).days > 30:
             progress_dialog.set_task_title("Updating Player Database")
             salary_services.update_salary_info()
             progress_dialog.increment_completion_percent(33)
@@ -71,6 +78,9 @@ class Main(tk.Tk):
     def create_menu(self):
         self.menubar = mb = tk.Menu(self)
         self.main_menu = mm = tk.Menu(mb, tearoff=0)
+        mm.add_command(label="Select League", command=self.select_league)
+        mm.add_command(label="Load Player Values", command=self.select_value_set)
+        mm.add_separator()
         mm.add_command(label="Preferences", command=self.open_preferences)
         mm.add_separator()
         mm.add_command(label="Exit", command=self.exit)
@@ -91,6 +101,8 @@ class Main(tk.Tk):
     def setup_logging(self, config=None):
         if config != None and 'log_level' in config:
             level = logging.getLevelName(config['log_level'].upper())
+        elif self.debug:
+            level = logging.DEBUG
         else:
             level = logging.INFO
         if not os.path.exists('.\\logs'):
@@ -100,22 +112,38 @@ class Main(tk.Tk):
     def show_frame(self, page_name):
         '''Show a frame for the given page name'''
         frame = self.frames[page_name]
-        frame.tkraise()
+        if frame.on_show():
+            frame.tkraise()
+            self.current_page = page_name
     
     def show_start_page(self):
         self.show_frame(Start.__name__)
 
     def show_player_values(self):
-        # TODO: Move to Create Player Values Module
         self.show_frame(ValuesCalculation.__name__)
 
     def show_draft_tracker(self):
         self.show_frame(DraftTool.__name__)
 
     def show_league_analysis(self):
-        # TODO: Move to league analysis
+        # TODO:Implement league analysis
         a = 1
     
+    def select_league(self):
+        dialog = league_select.Dialog(self)
+        if dialog.league is not None:
+            pd = progress.ProgressDialog(self, title='Updating League')
+            self.league = league_services.refresh_league(dialog.league.index, pd=pd)
+            pd.set_completion_percent(100)
+            pd.destroy()
+    
+    def select_value_set(self):
+        dialog = value_select.Dialog(self.container, self)
+        if dialog.value is not None:
+            self.value_calculation = dialog.value
+            if self.current_page == ValuesCalculation.__name__:
+                self.frames[ValuesCalculation.__name__].on_show()
+
     def exit(self):
         self.destroy()    
 

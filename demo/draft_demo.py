@@ -3,48 +3,55 @@ import pandas as pd
 from random import randint
 from time import sleep
 import datetime
+import threading
 
-def demo_draft(player_source='C:\\Users\\adam.scharf\\Documents\\Personal\\FFB\\Demo\\demo_results.csv', roster_source='C:\\Users\\adam.scharf\\Documents\\Personal\\FFB\\Staging\\rosters.csv',
-        output_path='C:\\Users\\adam.scharf\\Documents\\Personal\\FFB\\Demo\\recent_transactions.csv'):
+demo_trans= '.\\demo\\data\\output\\draft_list.csv'
+
+def demo_draft(league, run_event: threading.Event, player_source='.\\demo\\data\\input\\draft_list.csv'):
     results = pd.read_csv(player_source)
     results.set_index('PlayerID', inplace=True)
-    rosters = pd.read_csv(roster_source)
-    rosters.set_index('ottoneu ID', inplace=True)
-    results = results[~results.index.isin(rosters.index)]
+    rosters = get_rostered_ottoneu_ids(league)
+    results = results[~results.index.isin(rosters)]
     #debug
     #results.to_csv('C:\\Users\\adam.scharf\\Documents\\Personal\\FFB\\Demo\\valid_draft.csv',  encoding='utf-8-sig')
     index = 0
 
     df = pd.DataFrame()
 
+    rows = []
     while index < 5:
-        df = df.append(load_player_from_source(results, index, old=True), ignore_index=True)
+        rows.append(load_player_from_source(results, index, old=True))
         index += 1
-
-    df.to_csv(output_path, encoding='utf-8-sig')
+    
+    df = pd.DataFrame(rows)
+    df.set_index('Ottoneu ID', inplace=True)
+    df.to_csv(demo_trans, encoding='utf-8-sig')
 
     index = 0
     print('---BEGINNING DRAFT---')
-    while index < len(results):
+    while index < len(results) and run_event.is_set:
         sleep(randint(5,10))
         print('!!!Getting player!!!')
-        df = df.append(load_player_from_source(results, index), ignore_index=True)
-        recent = pd.DataFrame()
-        recent = recent.append(copy_to_recent_trans(df,-1), ignore_index=True)
-        recent = recent.append(copy_to_recent_trans(df,-2), ignore_index=True)
-        recent = recent.append(copy_to_recent_trans(df,-3), ignore_index=True)
-        recent = recent.append(copy_to_recent_trans(df,-4), ignore_index=True)
-        recent = recent.append(copy_to_recent_trans(df,-5), ignore_index=True)
+        df.loc[len(df)] = load_player_from_source(results, index)
+        #df = df.append(load_player_from_source(results, index), ignore_index=True)
+        rows = []
+        rows.append(copy_to_recent_trans(df,-1))
+        rows.append(copy_to_recent_trans(df,-2))
+        rows.append(copy_to_recent_trans(df,-3))
+        rows.append(copy_to_recent_trans(df,-4))
+        rows.append(copy_to_recent_trans(df,-5))
+
+        recent = pd.DataFrame(rows)
 
         recent.set_index('Ottoneu ID', inplace=True)
-        recent.to_csv(output_path, encoding='utf-8-sig')
+        recent.to_csv(demo_trans, encoding='utf-8-sig')
         index += 1
     print('---DRAFT COMPLETE---')
         
 def load_player_from_source(results, index, old=False):
     row = {}
     if old:
-        row['Ottoneu ID'] = index
+        row['Ottoneu ID'] = results.index[index]
         row['Date']= (datetime.datetime.now() - datetime.timedelta(minutes=10))
     else:
         print(results.iloc[index])
@@ -53,7 +60,10 @@ def load_player_from_source(results, index, old=False):
     row['Team ID'] = (results['TeamID'].iloc[index])
     
     row['Salary'] = (results['Price'].iloc[index])
-    row['Type'] = (results['Type'].iloc[index])
+    if row['Salary'] == '$0':
+        row['Type'] = 'CUT'
+    else:
+        row['Type'] = 'ADD'
     print(row)
     return row
 
@@ -65,6 +75,13 @@ def copy_to_recent_trans(loaded, index):
     row['Salary'] = loaded['Salary'].iloc[index]
     row['Type'] = loaded['Type'].iloc[index]
     return row
+
+def get_rostered_ottoneu_ids(league):
+    rostered = []
+    for team in league.teams:
+        for rs in team.roster_spots:
+            rostered.append(rs.player.ottoneu_id)
+    return rostered
 
 if __name__ == '__main__':
     demo_draft()

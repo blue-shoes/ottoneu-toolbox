@@ -22,14 +22,111 @@ from ui.dialog import proj_download, selection_projection, progress, name_desc
 class ValuesCalculation(tk.Frame):
     def __init__(self, parent, controller):
         tk.Frame.__init__(self, parent)
+        self.parent = parent
         self.controller = controller
-        self.value_calc = ValueCalculation()
+        self.value_calc = self.controller.value_calculation
         self.rep_level_dict = {}
         self.tables = {}
 
         self.create_input_frame()
         self.create_proj_val_frame()
         self.create_output_frame()
+    
+    def on_show(self):
+        self.value_calc = self.controller.value_calculation
+        self.refresh_ui()
+        if self.controller.value_calculation is None:
+            self.controller.value_calculation = ValueCalculation()
+            self.value_calc = self.controller.value_calculation
+        return True
+
+    def refresh_ui(self):
+        pd = progress.ProgressDialog(self.parent, 'Updating Value Calculator Window...')
+        pd.set_completion_percent(10)
+        if self.value_calc is None:
+            self.game_type.set(ScoringFormat.enum_to_full_name_map()[ScoringFormat.FG_POINTS])
+            self.sel_proj.set("None")
+            self.projection = None
+            self.num_teams_str.set("12")
+            self.manual_split.set(False)
+            self.hitter_allocation.set("60")
+            self.non_prod_dollars_str.set("48")
+            self.hitter_basis.set('P/G')
+            self.min_pa.set("150")
+            self.pitcher_basis.set('P/IP')
+            self.min_sp_ip.set("70")
+            self.min_rp_ip.set("30")
+            self.rep_level_scheme.set(RepLevelScheme.NUM_ROSTERED.value)
+            self.rep_level_dict["C"].set("24")
+            self.rep_level_dict["1B"].set("40")
+            self.rep_level_dict["2B"].set("38")
+            self.rep_level_dict["SS"].set("42")
+            self.rep_level_dict["3B"].set("24")
+            self.rep_level_dict["OF"].set("95")
+            self.rep_level_dict["Util"].set("200")
+            self.rep_level_dict["SP"].set("85")
+            self.rep_level_dict["RP"].set("70")
+            self.dollars_per_fom_val.set('$--')
+            self.total_fom_sv.set("--")
+            self.bat_rep_level_lbl.set("Rep. Level")
+            for pos in Position.get_discrete_offensive_pos():
+                self.pos_rostered_sv[pos].set('--')
+                self.pos_rep_lvl_sv[pos].set('--')
+            self.total_bat_rostered_sv.set('--')
+            self.total_games_rostered_sv.set('--')
+            self.pitch_rep_level_lbl.set("Rep. Level")
+            for pos in Position.get_discrete_pitching_pos():
+                self.pos_rostered_sv[pos].set('--')
+                self.pos_rep_lvl_sv[pos].set('--')
+            self.total_pitch_rostered_sv.set('--')
+            self.total_ip_rostered_sv.set('--')
+        else:
+            v = self.value_calc
+            self.game_type.set(ScoringFormat.enum_to_full_name_map()[v.format])
+            self.sel_proj.set(v.projection.name)
+            self.projection = v.projection
+            self.num_teams_str.set(int(v.get_input(CDT.NUM_TEAMS)))
+            if v.get_input(CDT.HITTER_SPLIT) is None:
+                self.manual_split.set(False)
+                self.hitter_allocation.set("60")
+            else:
+                self.manual_split.set(True)
+                self.hitter_allocation.set(int(v.get_input(CDT.HITTER_SPLIT)))
+            self.non_prod_dollars_str.set(int(v.get_input(CDT.NON_PRODUCTIVE_DOLLARS)))
+            self.hitter_basis.set(RankingBasis.enum_to_display_dict()[v.hitter_basis])
+            self.min_pa.set(int(v.get_input(CDT.PA_TO_RANK)))
+            self.pitcher_basis.set(RankingBasis.enum_to_display_dict()[v.pitcher_basis])
+            self.min_sp_ip.set(int(v.get_input(CDT.SP_IP_TO_RANK)))
+            self.min_rp_ip.set(int(v.get_input(CDT.RP_IP_TO_RANK)))
+            self.rep_level_scheme.set(int(v.get_input(CDT.REP_LEVEL_SCHEME)))
+            if self.rep_level_scheme.get() == RepLevelScheme.STATIC_REP_LEVEL.value:
+                self.rep_level_dict['C'].set(self.value_calc.get_input(CDT.REP_LEVEL_C))
+                self.rep_level_dict['1B'].set(self.value_calc.get_input(CDT.REP_LEVEL_1B))
+                self.rep_level_dict['2B'].set(self.value_calc.get_input(CDT.REP_LEVEL_2B))
+                self.rep_level_dict['3B'].set(self.value_calc.get_input(CDT.REP_LEVEL_3B))
+                self.rep_level_dict['SS'].set(self.value_calc.get_input(CDT.REP_LEVEL_SS))
+                self.rep_level_dict['OF'].set(self.value_calc.get_input(CDT.REP_LEVEL_OF))
+                self.rep_level_dict['Util'].set(self.value_calc.get_input(CDT.REP_LEVEL_UTIL))
+                self.rep_level_dict['SP'].set(self.value_calc.get_input(CDT.REP_LEVEL_SP))
+                self.rep_level_dict['RP'].set(self.value_calc.get_input(CDT.REP_LEVEL_RP))
+            else:
+                self.rep_level_dict['C'].set(int(self.value_calc.get_input(CDT.ROSTERED_C)))
+                self.rep_level_dict['1B'].set(int(self.value_calc.get_input(CDT.ROSTERED_1B)))
+                self.rep_level_dict['2B'].set(int(self.value_calc.get_input(CDT.ROSTERED_2B)))
+                self.rep_level_dict['3B'].set(int(self.value_calc.get_input(CDT.ROSTERED_3B)))
+                self.rep_level_dict['SS'].set(int(self.value_calc.get_input(CDT.ROSTERED_SS)))
+                self.rep_level_dict['OF'].set(int(self.value_calc.get_input(CDT.ROSTERED_OF)))
+                self.rep_level_dict['Util'].set(int(self.value_calc.get_input(CDT.ROSTERED_UTIL)))
+                self.rep_level_dict['SP'].set(int(self.value_calc.get_input(CDT.ROSTERED_SP)))
+                self.rep_level_dict['RP'].set(int(self.value_calc.get_input(CDT.ROSTERED_RP)))
+            self.update_calc_output_frame()
+        pd.set_completion_percent(33)
+        if len(self.tables) > 0:
+            for table in self.tables.values():
+                table.refresh()
+                pd.increment_completion_percent(5)
+        pd.set_completion_percent(100)
+        pd.destroy()
 
     def create_input_frame(self):
 
@@ -129,6 +226,9 @@ class ValuesCalculation(tk.Frame):
         self.tab_control = ttk.Notebook(pvf, width=570, height=self.input_frame.winfo_height())
         self.tab_control.grid(row=0, column=0)
 
+        overall_frame = ttk.Frame(self.tab_control)
+        self.tab_control.add(overall_frame, text='Overall')
+
         bat_frame = ttk.Frame(self.tab_control)
         self.tab_control.add(bat_frame, text='Hitters')
 
@@ -136,6 +236,7 @@ class ValuesCalculation(tk.Frame):
         self.tab_control.add(arm_frame, text='Pitchers')
 
         self.player_columns = ('Value', 'Name', 'Team', 'Pos')
+        self.overall_columns = ('P/G', 'P/IP', 'Points')
         self.hitting_columns = ('P/G', 'Points', 'G', 'PA', 'AB', 'H', '2B', '3B', 'HR', 'BB', 'HBP', 'SB','CS')
         self.pitching_columns = ('P/IP', 'Points', 'G', 'GS', 'IP', 'SO','H','BB','HBP','HR','SV','HLD')
         
@@ -143,6 +244,12 @@ class ValuesCalculation(tk.Frame):
         col_align['Name'] = W
         col_width = {}
         col_width['Name'] = 125
+
+        self.overall_table = ot = Table(overall_frame, self.player_columns + self.overall_columns, column_widths=col_width, column_alignments=col_align, sortable_columns=self.player_columns + self.overall_columns)
+        self.tables[Position.OVERALL] = ot
+        ot.set_refresh_method(self.refresh_overall)
+        ot.grid(row=0, column=0)
+        ot.add_scrollbar()
 
         self.bat_table = Table(bat_frame, self.player_columns + self.hitting_columns, column_widths=col_width, column_alignments=col_align, sortable_columns=self.player_columns + self.hitting_columns)
         self.tables[Position.OFFENSE] = self.bat_table
@@ -220,6 +327,35 @@ class ValuesCalculation(tk.Frame):
             pd.set_completion_percent(100)
             pd.destroy()
     
+    def get_overall_row(self, pp):
+        val = []
+        if len(self.value_calc.values) > 0:
+            pv = self.value_calc.get_player_value(pp.player.index, Position.OVERALL)
+            if pv is None:
+                val.append("$0.0")
+            else:
+                val.append("${:.1f}".format(pv.value))
+        else:
+            val.append('-')
+        val.append(pp.player.name)
+        val.append(pp.player.team)
+        val.append(pp.player.position)
+        o_points = calculation_services.get_points(pp, Position.OFFENSE, sabr=(self.game_type.get() == ScoringFormat.enum_to_full_name_map()[ScoringFormat.SABR_POINTS]))
+        games = pp.get_stat(StatType.G_HIT)
+        if games is None or games == 0:
+            val.append("0.00")
+        else:
+            val.append("{:.2f}".format(o_points / games))
+        
+        p_points = calculation_services.get_points(pp, Position.PITCHER, sabr=(self.game_type.get() == ScoringFormat.enum_to_full_name_map()[ScoringFormat.SABR_POINTS]))
+        ip = pp.get_stat(StatType.IP)
+        if ip is None or ip == 0:
+            val.append("0.00")
+        else:
+            val.append("{:.2f}".format(p_points/ip))
+        val.append("{:.1f}".format(p_points + o_points))
+        return val
+    
     def get_player_row(self, pp, enum_dict, cols, pos):
         val = []
         if len(self.value_calc.values) > 0:
@@ -256,18 +392,26 @@ class ValuesCalculation(tk.Frame):
                 else:
                     val.append(fmt.format(stat))
         return val
+    
+    def refresh_overall(self):
+        if self.projection is not None:
+            for pp in self.projection.player_projections:
+                val = self.get_overall_row(pp)
+                self.tables[Position.OVERALL].insert('', tk.END, text=str(pp.player_id), values=val)
 
     def refresh_hitters(self, pos):
-        for pp in self.projection.player_projections:
-            if pp.player.pos_eligible(pos) and pp.get_stat(StatType.AB) is not None:
-                val = self.get_player_row(pp, StatType.hit_to_enum_dict(), self.hitting_columns, pos)
-                self.tables[pos].insert('', tk.END, text=str(pp.player_id), values=val)
+        if self.projection is not None:
+            for pp in self.projection.player_projections:
+                if pp.player.pos_eligible(pos) and pp.get_stat(StatType.AB) is not None:
+                    val = self.get_player_row(pp, StatType.hit_to_enum_dict(), self.hitting_columns, pos)
+                    self.tables[pos].insert('', tk.END, text=str(pp.player_id), values=val)
     
     def refresh_pitchers(self, pos):
-        for pp in self.projection.player_projections:
-            if pp.player.pos_eligible(pos) and pp.get_stat(StatType.IP) is not None:
-                val = self.get_player_row(pp, StatType.pitch_to_enum_dict(), self.pitching_columns, pos)
-                self.tables[pos].insert('', tk.END, text=str(pp.player_id), values=val)
+        if self.projection is not None:
+            for pp in self.projection.player_projections:
+                if pp.player.pos_eligible(pos) and pp.get_stat(StatType.IP) is not None:
+                    val = self.get_player_row(pp, StatType.pitch_to_enum_dict(), self.pitching_columns, pos)
+                    self.tables[pos].insert('', tk.END, text=str(pp.player_id), values=val)
     
     def create_output_frame(self):
         self.output_frame = outf = ttk.Frame(self)
@@ -372,8 +516,8 @@ class ValuesCalculation(tk.Frame):
         else:
             self.dollars_per_fom_val.set('$' + "{:.3f}".format(self.value_calc.get_output(CDT.DOLLARS_PER_FOM)))
         self.total_fom_sv.set("{:.0f}".format(self.value_calc.get_output(CDT.TOTAL_FOM_ABOVE_REPLACEMENT)))
-        self.total_bat_rostered_sv.set(self.value_calc.get_output(CDT.TOTAL_HITTERS_ROSTERED))
-        self.total_pitch_rostered_sv.set(self.value_calc.get_output(CDT.TOTAL_PITCHERS_ROSTERED))
+        self.total_bat_rostered_sv.set(int(self.value_calc.get_output(CDT.TOTAL_HITTERS_ROSTERED)))
+        self.total_pitch_rostered_sv.set(int(self.value_calc.get_output(CDT.TOTAL_PITCHERS_ROSTERED)))
         self.total_games_rostered_sv.set("{:.0f}".format(self.value_calc.get_output(CDT.TOTAL_GAMES_PLAYED)))
         self.total_ip_rostered_sv.set("{:.0f}".format(self.value_calc.get_output(CDT.TOTAL_INNINGS_PITCHED)))
         hitter_rb = RankingBasis.enum_to_display_dict()[self.value_calc.hitter_basis]
@@ -382,11 +526,11 @@ class ValuesCalculation(tk.Frame):
         self.pitch_rep_level_lbl.set(f"Rep. Level ({pitcher_rb})")
 
         for pos in Position.get_discrete_offensive_pos():
-            self.pos_rostered_sv[pos].set(self.value_calc.get_output(CDT.pos_to_num_rostered()[pos]))
+            self.pos_rostered_sv[pos].set(int(self.value_calc.get_output(CDT.pos_to_num_rostered()[pos])))
             self.pos_rep_lvl_sv[pos].set("{:.2f}".format(self.value_calc.get_output(CDT.pos_to_rep_level()[pos])))
         
         for pos in Position.get_discrete_pitching_pos():
-            self.pos_rostered_sv[pos].set(self.value_calc.get_output(CDT.pos_to_num_rostered()[pos]))
+            self.pos_rostered_sv[pos].set(int(self.value_calc.get_output(CDT.pos_to_num_rostered()[pos])))
             self.pos_rep_lvl_sv[pos].set("{:.2f}".format(self.value_calc.get_output(CDT.pos_to_rep_level()[pos])))
         
         self.save_btn['state'] = ACTIVE

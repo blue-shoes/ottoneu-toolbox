@@ -45,3 +45,7 @@ class ProgressDialog(tk.Toplevel):
     def update_completion_percent(self):
         self.progress_var.set(self.progress)
         self.update()
+    
+    def complete(self):
+        self.progress_var.set(100)
+        self.destroy()

@@ -15,6 +15,11 @@ import logging
 import math
 
 from scrape.scrape_ottoneu import Scrape_Ottoneu 
+from domain.enum import CalculationDataType, Position, ScoringFormat, StatType
+from ui.table import Table
+from ui.dialog import progress, league_select
+from services import salary_services, league_services, calculation_services, player_services
+from demo import draft_demo
 
 from pathlib import Path
 import threading
@@ -23,29 +28,21 @@ from datetime import datetime, timedelta
 
 from enum import Enum
 
-bat_pos = ['C','1B','2B','3B','SS','MI','OF','Util']
-pitch_pos = ['SP','RP']
-
-__version__ = '0.8.2'
-
 class IdType(Enum):
     OTTONEU = 0
     FG = 1
 
-class DraftTool:
-    def __init__(self, run_event, demo_source=None):
-        self.setup_logging()
-        logging.info('Starting session')
-        self.demo_source = demo_source
-        self.run_event = run_event
+class DraftTool(tk.Frame):
+    def __init__(self, parent, controller):
+        tk.Frame.__init__(self, parent)
+        self.parent = parent
+        self.controller = controller
+        self.demo_source = controller.demo_source
+        self.demo_thread = None
+        self.run_event = controller.run_event
         self.queue = queue.Queue()
-        self.setup_win = tk.Tk() 
-        self.value_dir = tk.StringVar()
-        self.value_dir.set(Path.home())
-        #self.value_dir.set('C:\\Users\\adam.scharf\\Documents\\Personal\\FFB\\Staging')
-        self.setup_win.title(f"Ottoneu Draft Tool v{__version__}") 
+        #self.value_calc = self.controller.value_calculation
         self.extra_cost = 0
-        self.lg_id = None
         self.sort_cols = {}
         self.show_drafted_players = tk.BooleanVar()
         self.show_drafted_players.set(False)
@@ -53,74 +50,52 @@ class DraftTool:
         self.show_removed_players.set(False)
         self.targeted_players = pd.DataFrame()
         self.removed_players = []
+        self.salary_update = []
 
-        setup_tab = ttk.Frame(self.setup_win)
-        
-        logging.debug('Creating setup tab')
-        self.create_setup_tab(setup_tab)
-
-        logging.debug('Starting setup window')
-        self.setup_win.mainloop()   
-
-        if self.lg_id == None:
-            return
-
-        logging.info(f'League id = {self.lg_id}; Values Directory: {self.value_dir.get()}')
-        try:
-            self.create_main()
-
-            logging.debug('Starting main loop')
-
-            self.main_win.mainloop()
-        except Exception as e:
-            logging.exception('Error running draft')
-            mb.showerror("Draft Error", f'Error running draft, see ./logs/draft.log')
+        self.create_main()
     
-    def setup_logging(self, config=None):
-        if config != None and 'log_level' in config:
-            level = logging.getLevelName(config['log_level'].upper())
-        else:
-            level = logging.INFO
-        if not os.path.exists('.\\logs'):
-            os.mkdir('.\\logs')
-        logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s %(message)s', level=level, filename='.\\logs\\draft.log')
+    def on_show(self):
+        if self.controller.league is None:
+            self.controller.select_league()
+        if self.controller.value_calculation is None:
+            self.controller.select_value_set()
+        if self.controller.league is None or self.controller.value_calculation is None:
+            return False
+        self.league = self.controller.league
+        self.value_calculation = self.controller.value_calculation
+        self.league_text_var.set(f'League {self.controller.league.name} Draft')
 
-    def initialize_treeview_style(self):
-        #Fix for Tkinter version issue found here: https://stackoverflow.com/a/67141755
-        s = ttk.Style()
+        pd = progress.ProgressDialog(self, title='Downloading latest salary information...')
+        pd.increment_completion_percent(10)
+        if len(self.salary_update) == 0 and (datetime.now() - salary_services.get_last_refresh().last_refresh) > timedelta(days=1):
+            salary_services.update_salary_info()
+            pd.increment_completion_percent(50)
 
-        #from os import name as OS_Name
-        if self.main_win.getvar('tk_patchLevel')=='8.6.9': #and OS_Name=='nt':
-            def fixed_map(option):
-                # Fix for setting text colour for Tkinter 8.6.9
-                # From: https://core.tcl.tk/tk/info/509cafafae
-                #
-                # Returns the style map for 'option' with any styles starting with
-                # ('!disabled', '!selected', ...) filtered out.
-                #
-                # style.map() returns an empty list for missing options, so this
-                # should be future-safe.
-                return [elm for elm in s.map('Treeview', query_opt=option) if elm[:2] != ('!disabled', '!selected')]
-            s.map('Treeview', foreground=fixed_map('foreground'), background=fixed_map('background'))
+        #if self.league.format not in self.salary_update:
+            #TODO: Reimplement this with a time frame
+            #salary_services.update_salary_info(format=self.league.format)
+        pd.complete()
+
+        self.initialize_draft()
+
+        return True
 
     def create_main(self):
-        
-        self.main_win = tk.Tk()
+        self.league_text_var = StringVar()
+        if self.controller.league is None:
+            self.league_text_var.set("Draft")
+        else:
+            self.league_text_var.set(f'League {self.controller.league.name} Draft')
+        self.lg_lbl = ttk.Label(self, textvariable=self.league_text_var, font='bold')
+        self.lg_lbl.grid(column=0,row=0, pady=5, columnspan=2)
 
-        self.initialize_treeview_style()
-
-        self.main_win.title(f'Ottoneu Draft Tool v{__version__}')
-        main_frame = ttk.Frame(self.main_win)
-        lg_lbl = ttk.Label(main_frame, text = f"League {self.lg_id} Draft", font='bold')
-        lg_lbl.grid(column=0,row=0, pady=5, columnspan=2)
-
-        search_frame = ttk.Frame(main_frame)
+        search_frame = ttk.Frame(self)
         search_frame.grid(column=0,row=1, padx=5, sticky=tk.N, pady=17)
         ttk.Label(search_frame, text = 'Player Search: ', font='bold').grid(column=0,row=1,pady=5)
 
-        self.search_string = sv = tk.StringVar()
-        sv.trace("w", lambda name, index, mode, sv=sv: self.update_player_search())
-        ttk.Entry(search_frame, textvariable=sv).grid(column=1,row=1)
+        self.search_string = ss = tk.StringVar()
+        ss.trace("w", lambda name, index, mode, sv=ss: self.refresh_search())
+        ttk.Entry(search_frame, textvariable=ss).grid(column=1,row=1)
 
         self.start_monitor = ttk.Button(search_frame, text='Start Draft Monitor', command=self.start_draft_monitor).grid(column=0,row=2)
         self.monitor_status = tk.StringVar()
@@ -134,31 +109,26 @@ class DraftTool:
         self.inflation_lbl = ttk.Label(search_frame, textvariable=self.inflation_str_var)
         self.inflation_lbl.grid(column=0,row=4)
 
-        f = ttk.Frame(main_frame)
+        f = ttk.Frame(self)
         f.grid(column=1,row=1)
         
         ttk.Label(f, text = 'Search Results', font='bold').grid(column=0, row=0)
 
         cols = ('Name','Value','Salary','Inf. Cost','Pos','Team','Points','P/G','P/IP')
-        self.search_view = sv = ttk.Treeview(f, columns=cols, show='headings')    
-        for col in cols:
-            self.search_view.heading(col, text=col) 
+        widths = {}
+        widths['Name'] = 175
+        widths['Pos'] = 75
+        align = {}
+        align['Name'] = W
+        self.search_view = sv = Table(f, columns=cols, column_alignments=align, column_widths=widths)    
         self.search_view.grid(column=0,row=1, padx=5)   
-        self.search_view.bind('<<TreeviewSelect>>', self.on_select)
-        sv.bind('<Button-3>', self.player_rclick)
+        sv.set_row_select_method(self.on_select)
+        sv.set_right_click_method(self.player_rclick)
         self.search_view.tag_configure('rostered', background='#A6A6A6')
         self.search_view.tag_configure('rostered', foreground='#5A5A5A')
-        sv.column("# 1",anchor=W, stretch=NO, width=175)
-        sv.column("# 2",anchor=CENTER, stretch=NO, width=50)
-        sv.column("# 3",anchor=CENTER, stretch=NO, width=50)
-        sv.column("# 4",anchor=CENTER, stretch=NO, width=50)
-        sv.column("# 5",anchor=CENTER, stretch=NO, width=75)
-        sv.column("# 6",anchor=CENTER, stretch=NO, width=50)
-        sv.column("# 7",anchor=CENTER, stretch=NO, width=50)
-        sv.column("# 8",anchor=CENTER, stretch=NO, width=50)
-        sv.column("# 9",anchor=CENTER, stretch=NO, width=50)
+        sv.set_refresh_method(self.update_player_search)
 
-        running_list_frame = ttk.Frame(main_frame)
+        running_list_frame = ttk.Frame(self)
         running_list_frame.grid(row=2, column=0, columnspan=2, pady=5)
 
         button_frame = ttk.Frame(running_list_frame)
@@ -182,75 +152,43 @@ class DraftTool:
         self.tab_control.add(overall_frame, text='Overall')
         cols = ('Name','Value','Inf. Cost','Pos','Team','Points','P/G','P/IP')
         sortable_cols = ('Value', 'Points', 'P/G', 'P/IP')
-        self.overall_view = ov = ttk.Treeview(overall_frame, columns=cols, show='headings')
+        widths = {}
+        widths['Name'] = 175
+        widths['Pos'] = 75
+        align = {}
+        align['Name'] = W
+        self.overall_view = ov = Table(overall_frame, cols,sortable_columns=sortable_cols, column_widths=widths)
         ov.grid(column=0)
-        ov.column("# 1",anchor=W, stretch=NO, width=175)
-        ov.column("# 2",anchor=CENTER, stretch=NO, width=50)
-        ov.column("# 3",anchor=CENTER, stretch=NO, width=50)
-        ov.column("# 4",anchor=CENTER, stretch=NO, width=75)
-        ov.column("# 5",anchor=CENTER, stretch=NO, width=50)
-        ov.column("# 6",anchor=CENTER, stretch=NO, width=50)
-        ov.column("# 7",anchor=CENTER, stretch=NO, width=50)
-        ov.column("# 8",anchor=CENTER, stretch=NO, width=50)
-        for col in cols:
-            if col in sortable_cols:
-                self.overall_view.heading(col, text=col, command=lambda _col=col: self.sort_treeview(self.overall_view, _col) )
-            else:
-                self.overall_view.heading(col, text=col)
-        self.overall_view.bind('<<TreeviewSelect>>', self.on_select)
-        ov.bind('<Button-3>', self.player_rclick)
-        self.overall_view.tag_configure('rostered', background='#A6A6A6')
-        self.overall_view.tag_configure('rostered', foreground='#5A5A5A')
+        ov.set_row_select_method(self.on_select)
+        ov.set_right_click_method(self.player_rclick)
+        ov.tag_configure('rostered', background='#A6A6A6')
+        ov.tag_configure('rostered', foreground='#5A5A5A')
         ov.tag_configure('removed', background='#FFCCCB')
-        self.overall_view.pack(side='left', fill='both', expand=1)
-        vsb = ttk.Scrollbar(ov, orient="vertical", command=self.overall_view.yview)
-        ov.configure(yscrollcommand=vsb.set)
-        vsb.pack(side='right', fill='y')
-        self.scroll_bars[ov] = vsb
-        self.sort_cols[self.overall_view] = None
+        ov.add_scrollbar()
+        ov.set_refresh_method(self.refresh_overall_view)
 
-        for pos in self.pos_values:
+        for pos in (Position.get_offensive_pos() + Position.get_pitching_pos()):
             pos_frame = ttk.Frame(self.tab_control)
-            self.tab_control.add(pos_frame, text=pos) 
-            if pos in bat_pos:
+            self.tab_control.add(pos_frame, text=pos.value) 
+            if pos in Position.get_offensive_pos():
                 cols = ('Name','Value','Inf. Cost','Pos','Team','Points','P/G')
             else:
                 cols = ('Name','Value','Inf. Cost','Pos','Team','Points','P/IP')
-            self.pos_view[pos] = pv = ttk.Treeview(pos_frame, columns=cols, show='headings')
-            pv.column("# 1",anchor=W, stretch=NO, width=175)
-            pv.column("# 2",anchor=CENTER, stretch=NO, width=50)
-            pv.column("# 3",anchor=CENTER, stretch=NO, width=50)
-            pv.column("# 4",anchor=CENTER, stretch=NO, width=75)
-            pv.column("# 5",anchor=CENTER, stretch=NO, width=50)
-            pv.column("# 6",anchor=CENTER, stretch=NO, width=50)
-            pv.column("# 7",anchor=CENTER, stretch=NO, width=50)
-            for col in cols:
-                if col in sortable_cols:
-                    pv.heading(col, text=col, command=lambda _pv=pv, _col=col, _pos=pos: self.sort_treeview(_pv, _col, _pos))
-                else:
-                    pv.heading(col, text=col)
-            self.pos_view[pos].bind('<<TreeviewSelect>>', self.on_select)
-            self.pos_view[pos].bind('<Button-3>', self.player_rclick)
-            self.pos_view[pos].tag_configure('rostered', background='#A6A6A6', foreground='#5A5A5A')
+            self.pos_view[pos] = pv = Table(pos_frame, cols,sortable_columns=sortable_cols, column_widths=widths)
+            pv.grid(column=0)
+            pv.set_row_select_method(self.on_select)
+            pv.set_right_click_method(self.player_rclick)
+            pv.tag_configure('rostered', background='#A6A6A6')
+            pv.tag_configure('rostered', foreground='#5A5A5A')
             pv.tag_configure('removed', background='#FFCCCB')
-            self.pos_view[pos].pack(side='left', fill='both', expand=1)
-            vsb = ttk.Scrollbar(pv, orient="vertical", command=self.pos_view[pos].yview)
-            pv.configure(yscrollcommand=vsb.set)
-            vsb.pack(side='right', fill='y')
-            self.scroll_bars[pv] = vsb
-            #vsb = ttk.Scrollbar(pos_frame, orient="vertical", command=self.pos_view[pos].yview)
-            #vsb.pack(side='right', fill='y')
-            self.sort_cols[pv] = None
-
-        self.refresh_views()
-
-        main_frame.pack()
+            pv.set_refresh_method(lambda _pos = pos: self.refresh_pos_table(_pos))
+            pv.add_scrollbar()
 
     def player_rclick(self, event):
         iid = event.widget.identify_row(event.y)
         event.widget.selection_set(iid)
         playerid = event.widget.item(event.widget.selection()[0])["text"]
-        popup = tk.Menu(self.main_win, tearoff=0)
+        popup = tk.Menu(self.parent, tearoff=0)
         popup.add_command(label="Target Player", command=lambda: self.target_player(playerid))
         popup.add_separator()
         if playerid in self.removed_players:
@@ -274,7 +212,7 @@ class DraftTool:
         self.refresh_views()
 
     def toggle_drafted(self):
-        self.show_drafted_players.set(not self.show_drafted_players.get())
+        #self.show_drafted_players.set(not self.show_drafted_players.get())
         self.refresh_views()
     
     def toggle_removed(self):
@@ -299,11 +237,18 @@ class DraftTool:
         logging.info('---Starting Draft Monitor---')
         self.run_event.set()
         self.monitor_thread = threading.Thread(target = self.refresh_thread)
+        self.monitor_thread.daemon = True
         self.monitor_thread.start()
         self.monitor_status.set('Monitor enabled')
         self.monitor_status_lbl.config(fg='green')
-        self.main_win.update_idletasks()
-        self.main_win.after(1000, self.update_ui)
+        self.parent.update_idletasks()
+        self.parent.after(1000, self.update_ui)
+
+        if self.demo_source:
+            self.demo_thread = threading.Thread(target=draft_demo.demo_draft, args=(self.league, self.run_event))
+            self.demo_thread.daemon = True
+            self.demo_thread.start()
+
 
     def update_ui(self):
         if not self.run_event.is_set and self.queue.empty():
@@ -312,25 +257,34 @@ class DraftTool:
             key, data = self.queue.get()
             logging.debug(f'Updating the following positions: {data}')
             self.refresh_views(data)
-        self.main_win.after(1000, self.update_ui)
+        self.parent.after(1000, self.update_ui)
     
     def stop_draft_monitor(self):
         logging.info('!!!Stopping Draft Monitor!!!')
         self.run_event.clear()
         self.monitor_status.set('Monitor stopped')
         self.monitor_status_lbl.config(fg='red')
-        self.main_win.update_idletasks()
+        self.parent.update_idletasks()
     
+    def add_trans_to_rosters(self, last_trans, index, player):
+        row=last_trans.iloc[index]
+        if row['Salary'] == '$0':
+            # Cut
+            self.rosters.drop(player.index)
+        else:
+            self.rosters.loc[player.index] = [row['Team ID'],row['Ottoneu ID'],int(row['Salary'].split('$')[1])]
+
     def refresh_thread(self):
         last_time = datetime.now() - timedelta(minutes=30)
         #Below line for testing against api outside of draft
-        #last_time = datetime.now() - timedelta(days=10)
+        if self.demo_source:
+            last_time = datetime.now() - timedelta(days=10)
         while(self.run_event.is_set()):
-            if self.demo_source == None:
-                last_trans = Scrape_Ottoneu().scrape_recent_trans_api(self.lg_id)
+            if not self.demo_source:
+                last_trans = Scrape_Ottoneu().scrape_recent_trans_api(self.controller.league.ottoneu_id)
             else:
                 logging.debug("demo_source")
-                last_trans = pd.read_csv(self.demo_source)
+                last_trans = pd.read_csv(draft_demo.demo_trans)
                 last_trans['Date'] = last_trans['Date'].apply(lambda x: datetime.strptime(x, '%Y-%m-%d %H:%M:%S.%f'))
             most_recent = last_trans.iloc[0]['Date']
             if most_recent > last_time:
@@ -339,38 +293,29 @@ class DraftTool:
                 while index >= 0:
                     if last_trans.iloc[index]['Date'] > last_time:
                         otto_id = last_trans.iloc[index]['Ottoneu ID']
-                        if self.id_type == IdType.FG:
-                            if self.positions.loc[otto_id]['FG MajorLeagueID'] == '':
-                                playerid = self.positions.loc[otto_id]['FG MinorLeagueID']
-                            else:
-                                playerid = self.positions.loc[otto_id]['FG MajorLeagueID']
-                        else:
-                            playerid = otto_id
-                        if not otto_id in self.positions.index:
-                            logging.info(f'Otto id {otto_id} not in self.positions.index')
+                        player = player_services.get_player_by_ottoneu_id(int(otto_id))
+                        if player is None:
+                            logging.info(f'Otto id {otto_id} not in database')
                             self.extra_cost += int(last_trans.iloc[index]['Salary'].split('$')[1])
-                        else:
-                            self.positions.at[otto_id, "Int Salary"] = int(last_trans.iloc[index]['Salary'].split('$')[1])
-                        if not playerid in self.values.index:
-                            logging.info(f'id {playerid} not in values')
                             index -= 1
                             continue
-                        pos = self.values.loc[playerid, 'Position(s)'].split("/")
-                        if '2B' in pos or 'SS' in pos:
-                            pos.append('MI')
-                        if not ('SP' in pos or 'RP' in pos) and not 'Util' in pos:
-                            pos.append('Util')
+                        else:
+                            self.add_trans_to_rosters(last_trans, index, player)
+                        if not player.index in self.values.index:
+                            logging.info(f'id {player.index} not in values')
+                            index -= 1
+                            continue
+                        pos = player_services.get_player_positions(player)
                         update_pos = np.append(update_pos, pos)
                         if last_trans.iloc[index]['Type'].upper() == 'ADD':
-                            self.values.at[playerid, 'Salary'] = last_trans.iloc[index]['Salary']
-                            self.values.at[playerid, 'Int Salary'] = int(last_trans.iloc[index]['Salary'].split('$')[1])
+                            salary = int(last_trans.iloc[index]['Salary'].split('$')[1])
+                            self.values.at[player.index, 'Salary'] = salary
                             for p in pos:                                    
-                                self.pos_values[p].at[playerid, 'Salary'] = last_trans.iloc[index]['Salary']
+                                self.pos_values[p].at[player.index, 'Salary'] = salary
                         elif last_trans.iloc[index]['Type'].upper() == 'CUT':
-                            self.values.at[playerid, 'Salary'] = "$0"
-                            self.values.at[playerid, 'Int Salary'] = 0
+                            self.values.at[player.index, 'Salary'] = 0
                             for p in pos:
-                                self.pos_values[p].at[playerid, 'Salary'] = "$0"
+                                self.pos_values[p].at[player.index, 'Salary'] = 0
                     index -= 1
                 last_time = most_recent
                 self.queue.put(('pos', list(set(update_pos))))
@@ -390,42 +335,42 @@ class DraftTool:
             return df.sort_values(by=['P/IP'], ascending=[False])
 
     def refresh_views(self, pos_keys=None):
-        pos_df = self.values.loc[self.values['Salary'] == '$0']
-        pos_val = pos_df.loc[~pos_df['Value'].str.contains("-")]
-        self.remaining_value = pos_val['Value'].apply(lambda x: int(x.split('$')[1])).sum()
+        pos_df = self.values.loc[self.values['Salary'] == 0]
+        pos_val = pos_df.loc[~(pos_df['Value'] < 0)]
+        additional_players = self.controller.league.num_teams * 40 - len(self.values.loc[self.values['Salary'] != 0]) - len(pos_val)
+        self.remaining_value = pos_val['Value'].sum() + additional_players + (int(self.value_calculation.get_input(CalculationDataType.NON_PRODUCTIVE_DOLLARS)) - self.extra_cost)
         self.calc_inflation()
-        self.refresh_overall_view()
+        self.overall_view.refresh()
         if pos_keys == None:
-            for pos in self.pos_values:
-                self.refresh_pos_table(pos)
+            for pos in (Position.get_offensive_pos() + Position.get_pitching_pos()):
+                self.pos_view[pos].refresh()
         else:
             for pos in pos_keys:
-                logging.debug(f'updating {pos}')
-                self.refresh_pos_table(pos)
+                logging.debug(f'updating {pos.value}')
+                self.pos_view[pos].refresh()
         
-        self.update_player_search()
+        self.refresh_search()
     
     def refresh_overall_view(self):
-        self.overall_view.delete(*self.overall_view.get_children())
         if self.show_drafted_players.get() == 1:
             pos_df = self.values
         else:
-            pos_df = self.values.loc[self.values['Salary'] == '$0']
-        if self.sort_cols[self.overall_view] != None:
-            pos_df = self.sort_df_by(pos_df, self.sort_cols[self.overall_view])
+            pos_df = self.values.loc[self.values['Salary'] == 0]
+        #if self.sort_cols[self.overall_view] != None:
+        #    pos_df = self.sort_df_by(pos_df, self.sort_cols[self.overall_view])
         for i in range(len(pos_df)):
             id = pos_df.index[i]
             if id in self.removed_players and self.show_removed_players.get() != 1:
                 continue
             name = pos_df.iat[i, 2]
-            value = pos_df.iat[i, 1]
-            inf_cost = '$' + "{:.0f}".format(int(value.split('$')[1]) * self.inflation)
+            value = '$' + "{:.0f}".format(pos_df.iat[i, 1])
+            inf_cost = '$' + "{:.0f}".format(pos_df.iat[i, 1] * self.inflation)
             position = pos_df.iat[i, 4]
             team = pos_df.iat[i, 3]
             pts = "{:.1f}".format(pos_df.iat[i, 5])
             ppg = "{:.2f}".format(pos_df.iat[i, 7])
             pip = "{:.2f}".format(pos_df.iat[i, 8])
-            salary = pos_df.iat[i, 10]
+            salary = f'${int(pos_df.iat[i, 10])}'
             if salary == '$0':
                 if id in self.removed_players:
                     self.overall_view.insert('', tk.END, text=id, values=(name, value, inf_cost, position, team, pts, ppg, pip), tags=('removed',))
@@ -433,28 +378,24 @@ class DraftTool:
                     self.overall_view.insert('', tk.END, text=id, values=(name, value, inf_cost, position, team, pts, ppg, pip))
             else:
                 self.overall_view.insert('', tk.END, text=id, values=(name, value, inf_cost, position, team, pts, ppg, pip), tags=('rostered',))
-        self.scroll_bars[self.overall_view].pack()
 
     def refresh_pos_table(self, pos):
-        self.pos_view[pos].delete(*self.pos_view[pos].get_children())
         if self.show_drafted_players.get() == 1:
             pos_df = self.pos_values[pos]
         else:
-            pos_df = self.pos_values[pos].loc[self.pos_values[pos]['Salary'] == '$0']
-        if self.sort_cols[self.pos_view[pos]] != None:
-            pos_df = self.sort_df_by(pos_df, self.sort_cols[self.pos_view[pos]])
+            pos_df = self.pos_values[pos].loc[self.pos_values[pos]['Salary'] == 0]
         for i in range(len(pos_df)):
             id = pos_df.index[i]
             if id in self.removed_players and self.show_removed_players.get() != 1:
                 continue
             name = pos_df.iat[i, 2]
-            value = pos_df.iat[i, 1]
-            inf_cost = '$' + "{:.0f}".format(int(value.split('$')[1]) * self.inflation)
+            value = '$' + "{:.0f}".format(pos_df.iat[i, 1])
+            inf_cost = '$' + "{:.0f}".format(pos_df.iat[i, 1] * self.inflation)
             position = pos_df.iat[i, 4]
             team = pos_df.iat[i, 3]
             pts = "{:.1f}".format(pos_df.iat[i, 5])
             rate = "{:.2f}".format(pos_df.iat[i, 7])
-            salary = pos_df.iat[i, 8]
+            salary = f'${int(pos_df.iat[i, 8])}'
             if salary == '$0':
                 if id in self.removed_players:
                     self.pos_view[pos].insert('', tk.END, text=id, values=(name, value, inf_cost, position, team, pts, rate), tags=('removed',))
@@ -462,7 +403,9 @@ class DraftTool:
                     self.pos_view[pos].insert('', tk.END, text=id, values=(name, value, inf_cost, position, team, pts, rate))
             else:
                 self.pos_view[pos].insert('', tk.END, text=id, values=(name, value, inf_cost, position, team, pts, rate), tags=('rostered',))
-        self.scroll_bars[self.pos_view[pos]].pack()
+
+    def refresh_search(self):
+        self.search_view.refresh()
 
     def update_player_search(self):
         text = self.search_string.get().upper()
@@ -470,20 +413,18 @@ class DraftTool:
             df = pd.DataFrame() 
         else:
             df = self.values.loc[self.values['Search_Name'].str.contains(text, case=False, regex=True)]
-        #from https://stackoverflow.com/a/27068344
-        self.search_view.delete(*self.search_view.get_children())
         for i in range(len(df)):
             id = df.index[i]
             name = df.iat[i, 2]
-            value = df.iat[i, 1]
-            inf_cost = '$' + "{:.0f}".format(int(value.split('$')[1]) * self.inflation)
-            salary = df.iat[i,10]
+            value = f'${int(df.iat[i, 1])}'
+            inf_cost = '$' + "{:.0f}".format(value * self.inflation)
+            salary = f'${int(df.iat[i,10])}'
             pos = df.iat[i, 4]
             team = df.iat[i, 3]
             pts = "{:.1f}".format(df.iat[i, 5])
             ppg = "{:.2f}".format(df.iat[i, 7])
             pip = "{:.2f}".format(df.iat[i, 8])
-            if salary != '$0':
+            if salary != "$0":
                 self.search_view.insert('', tk.END, text=id, tags=('rostered',), values=(name, value, salary, inf_cost,pos, team, pts, ppg, pip))
             else:
                 self.search_view.insert('', tk.END, text=id, values=(name, value, salary, inf_cost,pos, team, pts, ppg, pip))
@@ -525,7 +466,133 @@ class DraftTool:
 
         self.value_dir.set(dir)
         
-    def initialize_draft(self):
+    def initialize_draft(self):  
+        self.create_roster_df()      
+        self.create_overall_df_from_vc()
+        self.pos_values = {}
+        for pos in Position.get_offensive_pos():
+            self.pos_values[pos] = self.create_offensive_df(pos)
+        for pos in Position.get_pitching_pos():
+            self.pos_values[pos] = self.create_pitching_df(pos)
+
+        self.update_rostered_players()
+        self.refresh_views()
+    
+    def create_roster_df(self):
+        rows = self.get_roster_rows()
+        self.rosters = pd.DataFrame(rows)
+        self.rosters.columns = ['index', 'TeamID', 'ottoneu ID', 'Salary']
+        self.rosters.set_index('index', inplace=True)
+    
+    def get_roster_rows(self):
+        rows = []
+        for team in self.league.teams:
+            for rs in team.roster_spots:
+                row = []
+                row.append(rs.player.index)
+                row.append(team.index)
+                row.append(rs.player.ottoneu_id)
+                row.append(rs.salary)
+                rows.append(row)
+        return rows
+    
+    def create_overall_df_from_vc(self):
+        rows = self.get_overall_value_rows()
+        self.values = pd.DataFrame(rows)
+        self.values.columns = ['Index', 'OttoneuID', 'Value', 'Name', 'Team', 'Position(s)', 'Points', 'PAR', 'P/G', 'P/IP', 'Search_Name']
+        self.values.set_index('Index', inplace=True)
+    
+    def create_offensive_df(self, pos):
+        rows = self.get_offensive_rows(pos)
+        pos_val = pd.DataFrame(rows)
+        pos_val.columns = ['Index', 'OttoneuID', 'Value', 'Name', 'Team', 'Position(s)', 'Points', 'PAR', 'P/G']
+        pos_val.set_index('Index', inplace=True)
+        return pos_val
+    
+    def create_pitching_df(self, pos):
+        rows = self.get_pitching_rows(pos)
+        pos_val = pd.DataFrame(rows)
+        pos_val.columns = ['Index', 'OttoneuID', 'Value', 'Name', 'Team', 'Position(s)', 'Points', 'PAR', 'P/IP']
+        pos_val.set_index('Index', inplace=True)
+        return pos_val
+    
+    def get_overall_value_rows(self):
+        rows = []
+        for pv in self.value_calculation.get_position_values(Position.OVERALL):
+            row = []
+            row.append(pv.player.index)
+            row.append(pv.player.ottoneu_id)
+            row.append(pv.value)
+            row.append(pv.player.name)
+            row.append(pv.player.team)
+            row.append(pv.player.position)
+            pp = self.value_calculation.projection.get_player_projection(pv.player.index)
+            o_points = calculation_services.get_points(pp, Position.OFFENSE,self.league.format == ScoringFormat.SABR_POINTS)
+            p_points = calculation_services.get_points(pp, Position.PITCHER,self.league.format == ScoringFormat.SABR_POINTS)
+            row.append(o_points + p_points)
+            # Currently have a 'PAR' column that might be defunct
+            row.append("0")
+            games = pp.get_stat(StatType.G_HIT)
+            if games is None or games == 0:
+                row.append(0)
+            else:
+                row.append(o_points / games)
+            ip = pp.get_stat(StatType.IP)
+            if ip is None or ip == 0:
+                row.append(0)
+            else:
+                row.append(p_points/ip)
+            row.append(util.string_util.normalize(pv.player.name))
+            rows.append(row)
+        return rows
+
+    def get_offensive_rows(self, pos):
+        rows = []
+        for pv in self.value_calculation.get_position_values(pos):
+            row = []
+            row.append(pv.player.index)
+            row.append(pv.player.ottoneu_id)
+            row.append(pv.value)
+            row.append(pv.player.name)
+            row.append(pv.player.team)
+            row.append(pv.player.position)
+            pp = self.value_calculation.projection.get_player_projection(pv.player.index)
+            o_points = calculation_services.get_points(pp, Position.OFFENSE,self.league.format == ScoringFormat.SABR_POINTS)
+            row.append(o_points)
+            # Currently have a 'PAR' column that might be defunct
+            row.append("0")
+            games = pp.get_stat(StatType.G_HIT)
+            if games is None or games == 0:
+                row.append(0)
+            else:
+                row.append(o_points / games)
+            rows.append(row)
+        return rows
+    
+    def get_pitching_rows(self, pos):
+        rows = []
+        for pv in self.value_calculation.get_position_values(pos):
+            row = []
+            row.append(pv.player.index)
+            row.append(pv.player.ottoneu_id)
+            row.append(pv.value)
+            row.append(pv.player.name)
+            row.append(pv.player.team)
+            row.append(pv.player.position)
+            pp = self.value_calculation.projection.get_player_projection(pv.player.index)
+            p_points = calculation_services.get_points(pp, Position.PITCHER,self.league.format == ScoringFormat.SABR_POINTS)
+            row.append(p_points)
+            # Currently have a 'PAR' column that might be defunct
+            row.append("0")
+            ip = pp.get_stat(StatType.IP)
+            if ip is None or ip == 0:
+                row.append(0)
+            else:
+                row.append(p_points/ip)
+            rows.append(row)
+        return rows
+
+    def initialize_draft_legacy(self):
         self.popup = tk.Toplevel()
         tk.Label(self.popup, text='Draft Initializing').grid(row=0,column=0)
         progress = 0
@@ -576,12 +643,12 @@ class DraftTool:
                 self.popup.destroy()
                 return
 
-            self.lg_id = self.league_num_entry.get()
-            self.progress_step.set(f'Getting League {self.lg_id} Rosters...')
+            self.controller.league.ottoneu_id = self.league_num_entry.get()
+            self.progress_step.set(f'Getting League {self.controller.league.ottoneu_id} Rosters...')
             progress += 30
             self.progress_var.set(progress)
             self.popup.update()
-            self.rosters = scraper.scrape_roster_export(self.lg_id)
+            self.rosters = scraper.scrape_roster_export(self.controller.league.ottoneu_id)
             #Below used for api testing
             #self.rosters = pd.read_csv('C:\\Users\\adam.scharf\\Documents\\Personal\\FFB\\Test\\rosters.csv')
             #self.rosters.set_index("ottoneu ID", inplace=True)
@@ -594,9 +661,9 @@ class DraftTool:
             self.update_rostered_players()
             if 'Blank col 0' in self.values.columns:
                 self.values.sort_values(by=['Blank col 0'], ascending=[False], inplace=True)
-                for pos in bat_pos:
+                for pos in Position.get_offensive_pos():
                     self.pos_values[pos].sort_values(by=['P/G'], ascending=[False], inplace=True)
-                for pos in pitch_pos:
+                for pos in Position.get_pitching_pos():
                     self.pos_values[pos].sort_values(by=['P/IP'], ascending=[False], inplace=True)
             
             self.progress_step.set('Initialization Complete')
@@ -610,25 +677,16 @@ class DraftTool:
             return
     
     def calc_inflation(self):
-        self.remaining_dollars = 12*400 - (self.positions['Int Salary'].sum() + self.extra_cost)
+        self.remaining_dollars = 12*400 - (self.rosters['Salary'].sum() + self.extra_cost)
         self.inflation = self.remaining_dollars / self.remaining_value
         self.inflation_str_var.set(f'Inflation: {"{:.1f}".format((self.inflation - 1.0)*100)}%')
 
     def update_rostered_players(self):
-        if self.id_type == IdType.FG:
-            self.values = self.values.merge(self.rosters[['Salary']], how='left', left_on='OttoneuID', right_index=True, sort=False).fillna('$0')
-        else:
-            self.values = self.values.merge(self.rosters[['Salary']], how='left', left_index=True, right_index=True, sort=False).fillna('$0')
-        self.values['Int Salary'] = self.values['Salary'].apply(self.load_roster_salaries)
-        self.positions = self.positions.merge(self.rosters[['Salary']], how='left', left_index=True, right_index=True, sort=False).fillna('$0')
-        self.positions['Int Salary'] = self.positions['Salary'].apply(self.load_roster_salaries)
+        self.values = self.values.merge(self.rosters[['Salary']], how='left', left_index=True, right_index=True, sort=False).fillna(0)
         for pos in self.pos_values:
-            if self.id_type == IdType.FG:
-                self.pos_values[pos] = self.pos_values[pos].merge(self.rosters[['Salary']], how='left', left_on='OttoneuID', right_index=True, sort=False).fillna('$0')
-            else:
-                self.pos_values[pos] = self.pos_values[pos].merge(self.rosters[['Salary']], how='left', left_index=True, right_index=True, sort=False).fillna('$0')
+            self.pos_values[pos] = self.pos_values[pos].merge(self.rosters[['Salary']], how='left', left_index=True, right_index=True, sort=False).fillna(0)
             #set index to str because if you managed to get them all as ints, you will not match up on the back side
-            self.pos_values[pos].index = self.pos_values[pos].index.astype(str, copy = False)
+            #self.pos_values[pos].index = self.pos_values[pos].index.astype(str, copy = False)
 
     def load_roster_salaries(self, salary_col):
         split = salary_col.split('$')
@@ -685,7 +743,7 @@ class DraftTool:
 
         #TODO: data validation here
         self.pos_values = {}
-        for pos in bat_pos:
+        for pos in Position.get_offensive_pos():
             pos_path = os.path.join(self.value_dir.get(), f'{pos}_values.csv')
             if os.path.exists(pos_path):
                 self.pos_values[pos] = pd.read_csv(pos_path, index_col=0)
@@ -711,7 +769,7 @@ class DraftTool:
                 else:
                     self.pos_values[pos] = self.values.loc[self.values['Position(s)'].str.contains(pos)].sort_values(by=['P/G'], ascending=[False])
                 self.pos_values[pos] = self.pos_values[pos].drop('P/IP', axis=1)
-        for pos in pitch_pos:
+        for pos in Position.get_pitching_pos():
             pos_path = os.path.join(self.value_dir.get(), f'{pos}_values.csv')
             if os.path.exists(pos_path):
                 self.pos_values[pos] = pd.read_csv(pos_path, index_col=0)

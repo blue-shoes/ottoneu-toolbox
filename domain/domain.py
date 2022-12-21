@@ -1,5 +1,5 @@
 from sqlalchemy import Column, ForeignKey, Index
-from sqlalchemy import Integer, String, Boolean, Float, Date, Enum
+from sqlalchemy import Integer, String, Boolean, Float, Date, Enum, TIMESTAMP
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 from domain.enum import CalculationDataType, ProjectionType, RankingBasis, ScoringFormat, StatType, Position
@@ -47,11 +47,13 @@ class Player(Base):
 class League(Base):
     __tablename__ = "league"
     index = Column(Integer, primary_key=True)
+    ottoneu_id = Column(Integer, nullable=False)
     name = Column(String)
     # Corresponds to ScoringFormat enum
     format = Column(Enum(ScoringFormat), nullable=False)
     num_teams = Column(Integer, nullable=False)
-    last_refresh = Column(Date, nullable=False)
+    last_refresh = Column(TIMESTAMP, nullable=False)
+    active = Column(Boolean, nullable = False)
 
     teams = relationship("Team", back_populates="league", cascade="all, delete")
 
@@ -249,7 +251,7 @@ class Projection(Base):
 
     def get_player_projection(self, player_id):
         for pp in self.player_projections:
-            if pp.player_id == player_id:
+            if pp.player_id == player_id or pp.player.index == player_id:
                 return pp
         return None
         
@@ -266,6 +268,7 @@ class PlayerProjection(Base):
     projection_data = relationship("ProjectionData", back_populates="player_projection", cascade="all, delete", lazy="joined")
 
     pitcher = Column(Boolean)
+    two_way = Column(Boolean)
 
     def get_stat(self, stat_type):
         for pd in self.projection_data:
@@ -288,4 +291,4 @@ class Salary_Refresh(Base):
     # Class to track how recently the Ottoverse average values have been refrehsed
     __tablename__ = "salary_refresh"
     format = Column(Enum(ScoringFormat), primary_key=True)
-    last_refresh = Column(Date, nullable=False)
+    last_refresh = Column(TIMESTAMP, nullable=False)

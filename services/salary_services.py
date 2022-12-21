@@ -9,38 +9,43 @@ from services import player_services
 from datetime import datetime
 
 def update_salary_info(format=ScoringFormat.ALL):
-        scraper = Scrape_Ottoneu()
-        salary_df = scraper.get_avg_salary_ds(game_type = format)
-        refresh = Salary_Refresh(format=format,last_refresh=datetime.now())
-        with Session() as session:
+    scraper = Scrape_Ottoneu()
+    salary_df = scraper.get_avg_salary_ds(game_type = format)
+    with Session() as session:
+        refresh = session.query(Salary_Refresh).filter(Salary_Refresh.format == format).first()
+        if refresh is None:
+            refresh = Salary_Refresh(format=format,last_refresh=datetime.now())
+        else:
+            refresh.last_refresh = datetime.now()
+        for idx, u_player in salary_df.iterrows():
+            player = session.query(Player).filter(Player.ottoneu_id == idx).first()
+            if player is None:
+                #Player does not exist in universe, need to add
+                player = player_services.create_player(u_player, ottoneu_id=idx)
+                session.add(player)
+            else:
+                #Update player in case attributes have changed
+                player_services.update_player(player, u_player)
 
-            for idx, u_player in salary_df.iterrows():
-                player = session.query(Player).filter(Player.ottoneu_id == idx).first()
-                if player is None:
-                    #Player does not exist in universe, need to add
-                    player = player_services.create_player(u_player, ottoneu_id=idx)
-                    session.add(player)
-                else:
-                    #Update player in case attributes have changed
-                    player_services.update_player(player, u_player)
-
-            current_players = session.query(Player).join(Salary_Info).all()
-            for c_player in current_players:
+        current_players = session.query(Player).join(Salary_Info).all()
+        for c_player in current_players:
+            si = get_format_salary_info(c_player, format)
+            if not c_player.ottoneu_id in salary_df.index:
+                # Not rostered in format, set all to 0
                 si = get_format_salary_info(c_player, format)
-                if not c_player.ottoneu_id in salary_df.index:
-                    # Not rostered in format, set all to 0
-                    si = get_format_salary_info(c_player, format)
-                    si.avg_salary = 0.0
-                    si.med_salary = 0.0
-                    si.min_salary = 0.0
-                    si.max_salary = 0.0
-                    si.last_10 = 0.0
-                    si.roster_percentage = 0.0
-                else:
-                    u_player = salary_df.loc(c_player.ottoneu_id)
-                    update_salary(si, u_player)
-            session.add(refresh)
-            session.commit()
+                si.avg_salary = 0.0
+                si.med_salary = 0.0
+                si.min_salary = 0.0
+                si.max_salary = 0.0
+                si.last_10 = 0.0
+                si.roster_percentage = 0.0
+            else:
+                u_player = salary_df.loc(c_player.ottoneu_id)
+                update_salary(si, u_player)
+        session.add(refresh)
+        session.commit()
+    #TODO: Might want this to automatically update loaded value calc/rosters
+
 
 def get_format_salary_info(player, format):
     for si in player.salary_info:
@@ -69,3 +74,11 @@ def update_salary(salary_info, row):
 def get_last_refresh() -> Salary_Refresh:
     with Session() as session:
         return session.query(Salary_Refresh).order_by(desc('last_refresh')).first()
+
+def get_salary_info_for_player_ids(ids, format=ScoringFormat.ALL):
+    with Session() as session:
+        salaries = session.query(Salary_Info).filter_by(Salary_Info.ottoneu_id.in__(ids), Salary_Info.format == format).all()
+    salary_map = {}
+    for salary in salary_map:
+        salary_map[salary.player.index] = salary
+    return salary_map

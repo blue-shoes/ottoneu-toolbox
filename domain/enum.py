@@ -118,6 +118,15 @@ class RepLevelScheme(Enum):
     FILL_GAMES = 2
     TOTAL_ROSTERED = 3
 
+    @classmethod
+    def num_to_enum_map(self):
+        return {
+            0: self.NUM_ROSTERED,
+            1: self.STATIC_REP_LEVEL,
+            2: self.FILL_GAMES,
+            3: self.TOTAL_ROSTERED
+        }
+
 class RankingBasis(Enum):
     PPG = 0
     PPPA = 1
@@ -405,8 +414,8 @@ class Position(Enum):
             self.POS_C,
             self.POS_1B,
             self.POS_2B,
-            self.POS_3B,
             self.POS_SS,
+            self.POS_3B,
             self.POS_OF,
             self.POS_UTIL,
             self.POS_SP,
@@ -414,31 +423,31 @@ class Position(Enum):
 
     @classmethod
     def get_offensive_pos(self):
-        return [self.POS_C, 
+        return [self.OFFENSE,
+            self.POS_C, 
             self.POS_1B,
             self.POS_2B,
-            self.POS_3B,
             self.POS_SS,
-            self.POS_OF,
             self.POS_MI,
-            self.POS_UTIL,
-            self.OFFENSE]
+            self.POS_OF,
+            self.POS_3B,
+            self.POS_UTIL]
     
     @classmethod
     def get_discrete_offensive_pos(self):
         return [self.POS_C, 
             self.POS_1B,
             self.POS_2B,
-            self.POS_3B,
             self.POS_SS,
+            self.POS_3B,
             self.POS_OF,
             self.POS_UTIL]
     
     @classmethod
     def get_pitching_pos(self):
-        return [self.POS_SP,
-            self.POS_RP,
-            self.PITCHER]
+        return [self.PITCHER,
+            self.POS_SP,
+            self.POS_RP]
 
     @classmethod
     def get_discrete_pitching_pos(self):

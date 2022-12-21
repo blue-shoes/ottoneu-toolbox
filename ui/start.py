@@ -22,6 +22,9 @@ class Start(tk.Frame):
         ttk.Button(self, text='Exit', command=self.exit).grid(column=1,row=2)
 
         self.pack()
+    
+    def on_show(self):
+        return True
 
     def create_player_values_click(self):
         # TODO: Move to Create Player Values Module
