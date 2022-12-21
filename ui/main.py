@@ -16,11 +16,11 @@ __version__ = '0.9.0'
 
 class Main(tk.Tk):
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, debug=False, *args, **kwargs):
         tk.Tk.__init__(self, *args, **kwargs)
         self.title(f"Ottoneu Tool Box v{__version__}") 
         self.preferences = preferences
-        
+        self.debug = debug
         self.setup_logging()
         logging.info('Starting session')
 
@@ -101,6 +101,8 @@ class Main(tk.Tk):
     def setup_logging(self, config=None):
         if config != None and 'log_level' in config:
             level = logging.getLevelName(config['log_level'].upper())
+        elif self.debug:
+            level = logging.DEBUG
         else:
             level = logging.INFO
         if not os.path.exists('.\\logs'):

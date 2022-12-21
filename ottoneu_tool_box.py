@@ -1,7 +1,18 @@
 from ui import main
+import sys, getopt
 
 if __name__ == "__main__":
-    app = main.Main()
+    args = sys.argv[1:]
+    try:
+        opts, args = getopt.getopt(args, 'd')
+    except getopt.GetoptError:
+        print('Opt error, exiting')
+        exit(1)
+    debug = False
+    for opt, arg in opts:
+        if opt == '-d':
+            debug = True
+    app = main.Main(debug = debug)
     try:
         app.mainloop()
     except Exception:
