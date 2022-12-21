@@ -93,9 +93,9 @@ class DraftTool(tk.Frame):
         search_frame.grid(column=0,row=1, padx=5, sticky=tk.N, pady=17)
         ttk.Label(search_frame, text = 'Player Search: ', font='bold').grid(column=0,row=1,pady=5)
 
-        self.search_string = sv = tk.StringVar()
-        sv.trace("w", lambda name, index, mode, sv=sv: self.update_player_search())
-        ttk.Entry(search_frame, textvariable=sv).grid(column=1,row=1)
+        self.search_string = ss = tk.StringVar()
+        ss.trace("w", lambda name, index, mode, sv=ss: self.refresh_search())
+        ttk.Entry(search_frame, textvariable=ss).grid(column=1,row=1)
 
         self.start_monitor = ttk.Button(search_frame, text='Start Draft Monitor', command=self.start_draft_monitor).grid(column=0,row=2)
         self.monitor_status = tk.StringVar()
@@ -115,23 +115,18 @@ class DraftTool(tk.Frame):
         ttk.Label(f, text = 'Search Results', font='bold').grid(column=0, row=0)
 
         cols = ('Name','Value','Salary','Inf. Cost','Pos','Team','Points','P/G','P/IP')
-        self.search_view = sv = ttk.Treeview(f, columns=cols, show='headings')    
-        for col in cols:
-            self.search_view.heading(col, text=col) 
+        widths = {}
+        widths['Name'] = 175
+        widths['Pos'] = 75
+        align = {}
+        align['Name'] = W
+        self.search_view = sv = Table(f, columns=cols, column_alignments=align, column_widths=widths)    
         self.search_view.grid(column=0,row=1, padx=5)   
-        self.search_view.bind('<<TreeviewSelect>>', self.on_select)
-        sv.bind('<Button-3>', self.player_rclick)
+        sv.set_row_select_method(self.on_select)
+        sv.set_right_click_method(self.player_rclick)
         self.search_view.tag_configure('rostered', background='#A6A6A6')
         self.search_view.tag_configure('rostered', foreground='#5A5A5A')
-        sv.column("# 1",anchor=W, stretch=NO, width=175)
-        sv.column("# 2",anchor=CENTER, stretch=NO, width=50)
-        sv.column("# 3",anchor=CENTER, stretch=NO, width=50)
-        sv.column("# 4",anchor=CENTER, stretch=NO, width=50)
-        sv.column("# 5",anchor=CENTER, stretch=NO, width=75)
-        sv.column("# 6",anchor=CENTER, stretch=NO, width=50)
-        sv.column("# 7",anchor=CENTER, stretch=NO, width=50)
-        sv.column("# 8",anchor=CENTER, stretch=NO, width=50)
-        sv.column("# 9",anchor=CENTER, stretch=NO, width=50)
+        sv.set_refresh_method(self.update_player_search)
 
         running_list_frame = ttk.Frame(self)
         running_list_frame.grid(row=2, column=0, columnspan=2, pady=5)
@@ -351,7 +346,7 @@ class DraftTool(tk.Frame):
                 logging.debug(f'updating {pos.value}')
                 self.pos_view[pos].refresh()
         
-        self.update_player_search()
+        self.refresh_search()
     
     def refresh_overall_view(self):
         if self.show_drafted_players.get() == 1:
@@ -409,6 +404,9 @@ class DraftTool(tk.Frame):
                     self.pos_view[pos].insert('', tk.END, text=id, values=(name, value, inf_cost, position, team, pts, rate))
             else:
                 self.pos_view[pos].insert('', tk.END, text=id, values=(name, value, inf_cost, position, team, pts, rate), tags=('rostered',))
+
+    def refresh_search(self):
+        self.search_view.refresh()
 
     def update_player_search(self):
         text = self.search_string.get().upper()
