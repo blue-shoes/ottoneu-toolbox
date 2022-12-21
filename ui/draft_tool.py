@@ -284,6 +284,9 @@ class DraftTool(tk.Frame):
                 last_trans = Scrape_Ottoneu().scrape_recent_trans_api(self.controller.league.ottoneu_id)
             else:
                 logging.debug("demo_source")
+                if not os.path.exists(draft_demo.demo_trans):
+                    sleep(45)
+                    continue
                 last_trans = pd.read_csv(draft_demo.demo_trans)
                 last_trans['Date'] = last_trans['Date'].apply(lambda x: datetime.strptime(x, '%Y-%m-%d %H:%M:%S.%f'))
             most_recent = last_trans.iloc[0]['Date']
@@ -417,7 +420,7 @@ class DraftTool(tk.Frame):
             id = df.index[i]
             name = df.iat[i, 2]
             value = f'${int(df.iat[i, 1])}'
-            inf_cost = '$' + "{:.0f}".format(value * self.inflation)
+            inf_cost = '$' + "{:.0f}".format(df.iat[i, 1] * self.inflation)
             salary = f'${int(df.iat[i,10])}'
             pos = df.iat[i, 4]
             team = df.iat[i, 3]
