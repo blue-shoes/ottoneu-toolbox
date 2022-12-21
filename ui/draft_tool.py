@@ -277,9 +277,10 @@ class DraftTool(tk.Frame):
     def refresh_thread(self):
         last_time = datetime.now() - timedelta(minutes=30)
         #Below line for testing against api outside of draft
-        #last_time = datetime.now() - timedelta(days=10)
+        if self.demo_source:
+            last_time = datetime.now() - timedelta(days=10)
         while(self.run_event.is_set()):
-            if self.demo_source:
+            if not self.demo_source:
                 last_trans = Scrape_Ottoneu().scrape_recent_trans_api(self.controller.league.ottoneu_id)
             else:
                 logging.debug("demo_source")
