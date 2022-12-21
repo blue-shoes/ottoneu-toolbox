@@ -19,6 +19,7 @@ from domain.enum import CalculationDataType, Position, ScoringFormat, StatType
 from ui.table import Table
 from ui.dialog import progress, league_select
 from services import salary_services, league_services, calculation_services, player_services
+from demo import draft_demo
 
 from pathlib import Path
 import threading
@@ -36,8 +37,9 @@ class DraftTool(tk.Frame):
         tk.Frame.__init__(self, parent)
         self.parent = parent
         self.controller = controller
-        #self.demo_source = demo_source
-        self.run_event = self.controller.run_event
+        self.demo_source = controller.demo_source
+        self.demo_thread = None
+        self.run_event = controller.run_event
         self.queue = queue.Queue()
         #self.value_calc = self.controller.value_calculation
         self.extra_cost = 0
@@ -246,6 +248,12 @@ class DraftTool(tk.Frame):
         self.parent.update_idletasks()
         self.parent.after(1000, self.update_ui)
 
+        if self.demo_source:
+            self.demo_thread = threading.Thread(target=draft_demo.demo_draft, args=(self.league, self.run_event))
+            self.demo_thread.daemon = True
+            self.demo_thread.start()
+
+
     def update_ui(self):
         if not self.run_event.is_set and self.queue.empty():
             return
@@ -275,11 +283,11 @@ class DraftTool(tk.Frame):
         #Below line for testing against api outside of draft
         #last_time = datetime.now() - timedelta(days=10)
         while(self.run_event.is_set()):
-            if self.demo_source == None:
+            if self.demo_source:
                 last_trans = Scrape_Ottoneu().scrape_recent_trans_api(self.controller.league.ottoneu_id)
             else:
                 logging.debug("demo_source")
-                last_trans = pd.read_csv(self.demo_source)
+                last_trans = pd.read_csv(draft_demo.demo_trans)
                 last_trans['Date'] = last_trans['Date'].apply(lambda x: datetime.strptime(x, '%Y-%m-%d %H:%M:%S.%f'))
             most_recent = last_trans.iloc[0]['Date']
             if most_recent > last_time:

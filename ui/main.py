@@ -1,7 +1,6 @@
 import tkinter as tk  
 from tkinter import ttk 
 from ui.dialog import preferences, progress
-from domain.domain import ValueCalculation, League
 from ui.start import Start
 from ui.draft_tool import DraftTool
 from ui.values import ValuesCalculation
@@ -16,11 +15,12 @@ __version__ = '0.9.0'
 
 class Main(tk.Tk):
 
-    def __init__(self, debug=False, *args, **kwargs):
+    def __init__(self, debug=False, demo_source=False, *args, **kwargs):
         tk.Tk.__init__(self, *args, **kwargs)
         self.title(f"Ottoneu Tool Box v{__version__}") 
-        self.preferences = preferences
+        #self.preferences = preferences
         self.debug = debug
+        self.demo_source = demo_source
         self.setup_logging()
         logging.info('Starting session')
 
