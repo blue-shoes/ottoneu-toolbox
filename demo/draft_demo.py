@@ -29,7 +29,7 @@ def demo_draft(league, run_event: threading.Event, player_source='.\\demo\\data\
 
     index = 0
     print('---BEGINNING DRAFT---')
-    while index < len(results) and run_event.is_set:
+    while index < len(results) and run_event.is_set():
         sleep(randint(5,10))
         print('!!!Getting player!!!')
         df.loc[len(df)] = load_player_from_source(results, index)
@@ -69,7 +69,7 @@ def load_player_from_source(results, index, old=False):
 
 def copy_to_recent_trans(loaded, index):
     row = {}
-    row['Ottoneu ID'] = loaded['Ottoneu ID'].iloc[index]
+    row['Ottoneu ID'] = loaded.index[index]
     row['Team ID'] = (loaded['Team ID'].iloc[index])
     row['Date']= loaded['Date'].iloc[index]
     row['Salary'] = loaded['Salary'].iloc[index]
