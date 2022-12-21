@@ -18,10 +18,13 @@ def demo_draft(league, run_event: threading.Event, player_source='.\\demo\\data\
 
     df = pd.DataFrame()
 
+    rows = []
     while index < 5:
-        df = df.append(load_player_from_source(results, index, old=True), ignore_index=True)
+        rows.append(load_player_from_source(results, index, old=True))
         index += 1
-
+    
+    df = pd.DataFrame(rows)
+    df.set_index('Ottoneu ID', inplace=True)
     df.to_csv(demo_trans, encoding='utf-8-sig')
 
     index = 0
@@ -29,13 +32,16 @@ def demo_draft(league, run_event: threading.Event, player_source='.\\demo\\data\
     while index < len(results) and run_event.is_set:
         sleep(randint(5,10))
         print('!!!Getting player!!!')
-        df = df.append(load_player_from_source(results, index), ignore_index=True)
-        recent = pd.DataFrame()
-        recent = recent.append(copy_to_recent_trans(df,-1), ignore_index=True)
-        recent = recent.append(copy_to_recent_trans(df,-2), ignore_index=True)
-        recent = recent.append(copy_to_recent_trans(df,-3), ignore_index=True)
-        recent = recent.append(copy_to_recent_trans(df,-4), ignore_index=True)
-        recent = recent.append(copy_to_recent_trans(df,-5), ignore_index=True)
+        df.loc[len(df)] = load_player_from_source(results, index)
+        #df = df.append(load_player_from_source(results, index), ignore_index=True)
+        rows = []
+        rows.append(copy_to_recent_trans(df,-1))
+        rows.append(copy_to_recent_trans(df,-2))
+        rows.append(copy_to_recent_trans(df,-3))
+        rows.append(copy_to_recent_trans(df,-4))
+        rows.append(copy_to_recent_trans(df,-5))
+
+        recent = pd.DataFrame(rows)
 
         recent.set_index('Ottoneu ID', inplace=True)
         recent.to_csv(demo_trans, encoding='utf-8-sig')
@@ -45,7 +51,7 @@ def demo_draft(league, run_event: threading.Event, player_source='.\\demo\\data\
 def load_player_from_source(results, index, old=False):
     row = {}
     if old:
-        row['Ottoneu ID'] = index
+        row['Ottoneu ID'] = results.index[index]
         row['Date']= (datetime.datetime.now() - datetime.timedelta(minutes=10))
     else:
         print(results.iloc[index])
@@ -55,9 +61,9 @@ def load_player_from_source(results, index, old=False):
     
     row['Salary'] = (results['Price'].iloc[index])
     if row['Salary'] == '$0':
-        row['Type'] = 'Cut'
+        row['Type'] = 'CUT'
     else:
-        row['Type'] = 'Add'
+        row['Type'] = 'ADD'
     print(row)
     return row
 
