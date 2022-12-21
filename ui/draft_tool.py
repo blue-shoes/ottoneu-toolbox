@@ -293,7 +293,7 @@ class DraftTool(tk.Frame):
                 while index >= 0:
                     if last_trans.iloc[index]['Date'] > last_time:
                         otto_id = last_trans.iloc[index]['Ottoneu ID']
-                        player = player_services.get_player_by_ottoneu_id(otto_id)
+                        player = player_services.get_player_by_ottoneu_id(int(otto_id))
                         if player is None:
                             logging.info(f'Otto id {otto_id} not in database')
                             self.extra_cost += int(last_trans.iloc[index]['Salary'].split('$')[1])
@@ -305,12 +305,13 @@ class DraftTool(tk.Frame):
                             logging.info(f'id {player.index} not in values')
                             index -= 1
                             continue
-                        pos = player.services.get_player_positions(player)
+                        pos = player_services.get_player_positions(player)
                         update_pos = np.append(update_pos, pos)
                         if last_trans.iloc[index]['Type'].upper() == 'ADD':
-                            self.values.at[player.index, 'Salary'] = last_trans.iloc[index]['Salary']
+                            salary = int(last_trans.iloc[index]['Salary'].split('$')[1])
+                            self.values.at[player.index, 'Salary'] = salary
                             for p in pos:                                    
-                                self.pos_values[p].at[player.index, 'Salary'] = last_trans.iloc[index]['Salary']
+                                self.pos_values[p].at[player.index, 'Salary'] = salary
                         elif last_trans.iloc[index]['Type'].upper() == 'CUT':
                             self.values.at[player.index, 'Salary'] = 0
                             for p in pos:
@@ -379,14 +380,10 @@ class DraftTool(tk.Frame):
                 self.overall_view.insert('', tk.END, text=id, values=(name, value, inf_cost, position, team, pts, ppg, pip), tags=('rostered',))
 
     def refresh_pos_table(self, pos):
-        print(f'refreshing table for {pos}')
         if self.show_drafted_players.get() == 1:
             pos_df = self.pos_values[pos]
         else:
             pos_df = self.pos_values[pos].loc[self.pos_values[pos]['Salary'] == 0]
-        #if self.sort_cols[self.pos_view[pos]] != None:
-        print(pos_df.head())
-        #    pos_df = self.sort_df_by(pos_df, self.sort_cols[self.pos_view[pos]])
         for i in range(len(pos_df)):
             id = pos_df.index[i]
             if id in self.removed_players and self.show_removed_players.get() != 1:
@@ -419,9 +416,9 @@ class DraftTool(tk.Frame):
         for i in range(len(df)):
             id = df.index[i]
             name = df.iat[i, 2]
-            value = df.iat[i, 1]
+            value = f'${int(df.iat[i, 1])}'
             inf_cost = '$' + "{:.0f}".format(value * self.inflation)
-            salary = f'${df.iat[i,10]}'
+            salary = f'${int(df.iat[i,10])}'
             pos = df.iat[i, 4]
             team = df.iat[i, 3]
             pts = "{:.1f}".format(df.iat[i, 5])
@@ -470,26 +467,16 @@ class DraftTool(tk.Frame):
         self.value_dir.set(dir)
         
     def initialize_draft(self):  
-        print('init draft')
         self.create_roster_df()      
-        print('created roster df')
         self.create_overall_df_from_vc()
-        print(self.values.head())
         self.pos_values = {}
         for pos in Position.get_offensive_pos():
             self.pos_values[pos] = self.create_offensive_df(pos)
-            print(f'created {pos} df')
         for pos in Position.get_pitching_pos():
             self.pos_values[pos] = self.create_pitching_df(pos)
-            print(f'created {pos} df')
-
-        print(self.pos_values[Position.OFFENSE].head())
-        print(self.pos_values[Position.PITCHER].head())
 
         self.update_rostered_players()
-        print('updated rostered players')
         self.refresh_views()
-        print('views refreshed')
     
     def create_roster_df(self):
         rows = self.get_roster_rows()
