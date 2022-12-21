@@ -237,6 +237,7 @@ class DraftTool(tk.Frame):
         logging.info('---Starting Draft Monitor---')
         self.run_event.set()
         self.monitor_thread = threading.Thread(target = self.refresh_thread)
+        self.monitor_thread.daemon = True
         self.monitor_thread.start()
         self.monitor_status.set('Monitor enabled')
         self.monitor_status_lbl.config(fg='green')
