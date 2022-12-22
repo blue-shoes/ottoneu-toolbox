@@ -51,16 +51,21 @@ class DraftTool(tk.Frame):
         self.targeted_players = pd.DataFrame()
         self.removed_players = []
         self.salary_update = []
+        self.league = None
+        self.value_calculation = None
 
         self.create_main()
     
     def on_show(self):
         if self.controller.league is None:
             self.controller.select_league()
-        if self.controller.value_calculation is None:
+        if self.controller.value_calculation is None or len(self.controller.value_calculation.values) == 0:
             self.controller.select_value_set()
         if self.controller.league is None or self.controller.value_calculation is None:
             return False
+        
+        same_values = self.value_calculation == self.controller.value_calculation
+
         self.league = self.controller.league
         self.value_calculation = self.controller.value_calculation
         self.league_text_var.set(f'League {self.controller.league.name} Draft')
@@ -76,7 +81,7 @@ class DraftTool(tk.Frame):
             #salary_services.update_salary_info(format=self.league.format)
         pd.complete()
 
-        self.initialize_draft()
+        self.initialize_draft(same_values)
 
         #Clean up previous demo run
         if os.path.exists(draft_demo.demo_trans):
@@ -476,22 +481,34 @@ class DraftTool(tk.Frame):
 
         self.value_dir.set(dir)
         
-    def initialize_draft(self):  
+    def initialize_draft(self, same_values=False):  
+        restart = False
+        if self.run_event.is_set():
+            self.stop_draft_monitor()
         pd = progress.ProgressDialog(self.parent, 'Initializing Draft Session')
         pd.set_task_title('Loading Rosters...')
         pd.set_completion_percent(5)
         self.create_roster_df()    
         pd.set_task_title('Loading Values...')
         pd.increment_completion_percent(10)  
-        self.create_overall_df_from_vc()
-        pd.increment_completion_percent(10)
-        self.pos_values = {}
-        for pos in Position.get_offensive_pos():
-            self.pos_values[pos] = self.create_offensive_df(pos)
-            pd.increment_completion_percent(5)
-        for pos in Position.get_pitching_pos():
-            self.pos_values[pos] = self.create_pitching_df(pos)
-            pd.increment_completion_percent(5)
+        if not same_values:
+            self.create_overall_df_from_vc()
+            pd.increment_completion_percent(10)
+            self.pos_values = {}
+            for pos in Position.get_offensive_pos():
+                self.pos_values[pos] = self.create_offensive_df(pos)
+                pd.increment_completion_percent(5)
+            for pos in Position.get_pitching_pos():
+                self.pos_values[pos] = self.create_pitching_df(pos)
+                pd.increment_completion_percent(5)
+        else:
+            self.values.drop('Salary', axis=1, inplace=True)
+            for pos in Position.get_offensive_pos():
+                self.pos_values[pos].drop('Salary', axis=1, inplace=True)
+                pd.increment_completion_percent(5)
+            for pos in Position.get_pitching_pos():
+                self.pos_values[pos].drop('Salary', axis=1, inplace=True)
+                pd.increment_completion_percent(5)
 
         pd.set_task_title('Updating available players...')
         self.update_rostered_players()
@@ -499,6 +516,8 @@ class DraftTool(tk.Frame):
         pd.set_task_title('Refreshing views...')
         self.refresh_views()
         pd.complete()
+        if restart:
+            self.start_draft_monitor()
     
     def create_roster_df(self):
         rows = self.get_roster_rows()
@@ -816,6 +835,17 @@ class DraftTool(tk.Frame):
         self.values['Search_Name'] = self.values['Name'].apply(lambda x: util.string_util.normalize(x))
 
         return True
+    
+    def league_change(self):
+        if self.controller.league is not None and self.league != self.controller.league:
+            self.league = self.controller.league
+            self.league_text_var.set(f'League {self.controller.league.name} Draft')
+            self.initialize_draft(same_values=True)
+    
+    def value_change(self):
+        if self.controller.value_calculation is not None and self.value_calculation != self.controller.value_calculation:
+            self.value_calculation = self.controller.value_calculation
+            self.initialize_draft()
 
 def main():
     try:
