@@ -7,11 +7,10 @@ from tkinter import messagebox as mb
 from numpy import sort
 
 class Table(ttk.Treeview):
-    def __init__(self, parent, columns, column_alignments=None, column_widths=None, sortable_columns=None, hscroll=True):
+    def __init__(self, parent, columns, column_alignments=None, column_widths=None, sortable_columns=None, reverse_col_sort=None, hscroll=True, init_sort_col=None):
         super().__init__(parent, columns=columns, show='headings')
-        self.sort_col = columns[0]
         self.hscroll = hscroll
-        self.reverse_sort = False
+        self.reverse_sort = {}
         self.vsb = None
         self.hsb = None
         col_num = 1
@@ -28,12 +27,25 @@ class Table(ttk.Treeview):
             if sortable_columns != None:
                 if col in sortable_columns:
                     # From https://stackoverflow.com/a/30724912
-                    self.heading(col, text=col, command=lambda _col=col: self.treeview_sort_column(_col, False) )
+                    self.heading(col, text=col, command=lambda _col=col: self.treeview_sort_column(_col) )
+                    self.reverse_sort[col] = True
                 else:
                     self.heading(col, text=col)
+                    self.reverse_sort[col] = True
             else:
                 self.heading(col, text=col)
             col_num += 1
+        if reverse_col_sort is not None:
+            for col in reverse_col_sort:
+                self.reverse_sort[col] = False
+        if sortable_columns != None:
+            if init_sort_col is None:
+                self.sort_col = sortable_columns[0]
+            else:
+                self.sort_col = init_sort_col
+            self.reverse_sort[self.sort_col] = not self.reverse_sort[self.sort_col]
+        else:
+            self.sort_col = None
         #self.add_scrollbar()
 
     
@@ -57,33 +69,27 @@ class Table(ttk.Treeview):
     def set_row_select_method(self, select_method):
         self.bind('<<TreeviewSelect>>', select_method)
     
-    def sort(self, col):
-        #TODO: Make sort go ascending and descending
-        if self.sort_col == col:
-            self.sort_col = None
-        else:
-            self.sort_col = sort
-        self.refresh()
-    
-    def treeview_sort_column(self, col, reverse):
+    def treeview_sort_column(self, col, reverse=None):
         self.sort_col = col
-        self.reverse_sort = reverse
+        if reverse is not None:
+            self.reverse_sort[col] = reverse
+            
         # From https://stackoverflow.com/a/1967793
         l = [(self.set(k, col), k) for k in self.get_children('')]
-        l.sort(reverse=reverse, key=lambda x: sort_cmp(x))
+        l.sort(reverse=self.reverse_sort[col], key=lambda x: sort_cmp(x))
 
         # rearrange items in sorted positions
         for index, (val, k) in enumerate(l):
             self.move(k, '', index)
 
         # reverse sort next time
-        self.heading(col, command=lambda: \
-                self.treeview_sort_column(col, not reverse))
+        self.reverse_sort[col] = not self.reverse_sort[col]
     
     def refresh(self):
         self.delete(*self.get_children())
         self.refresh_method()
-        self.treeview_sort_column(self.sort_col, self.reverse_sort)
+        if self.sort_col is not None:
+            self.treeview_sort_column(self.sort_col, not self.reverse_sort[self.sort_col])
         if self.vsb is not None:
             self.vsb.pack()
         if self.hsb is not None:
