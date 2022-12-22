@@ -78,6 +78,10 @@ class DraftTool(tk.Frame):
 
         self.initialize_draft()
 
+        #Clean up previous demo run
+        if os.path.exists(draft_demo.demo_trans):
+            os.remove(draft_demo.demo_trans)
+
         return True
 
     def create_main(self):
@@ -276,16 +280,18 @@ class DraftTool(tk.Frame):
 
     def refresh_thread(self):
         last_time = datetime.now() - timedelta(minutes=30)
-        #Below line for testing against api outside of draft
+        delay = 45
         if self.demo_source:
             last_time = datetime.now() - timedelta(days=10)
+            #speed up loop refresh for demo
+            delay = 10
         while(self.run_event.is_set()):
             if not self.demo_source:
                 last_trans = Scrape_Ottoneu().scrape_recent_trans_api(self.controller.league.ottoneu_id)
             else:
                 logging.debug("demo_source")
                 if not os.path.exists(draft_demo.demo_trans):
-                    sleep(45)
+                    sleep(11)
                     continue
                 last_trans = pd.read_csv(draft_demo.demo_trans)
                 last_trans['Date'] = last_trans['Date'].apply(lambda x: datetime.strptime(x, '%Y-%m-%d %H:%M:%S.%f'))
@@ -322,7 +328,7 @@ class DraftTool(tk.Frame):
                     index -= 1
                 last_time = most_recent
                 self.queue.put(('pos', list(set(update_pos))))
-            sleep(45)
+            sleep(delay)
 
     def sort_df_by(self, df, col):
         if col == 'Value':

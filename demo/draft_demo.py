@@ -4,6 +4,7 @@ from random import randint
 from time import sleep
 import datetime
 import threading
+import os
 
 demo_trans= '.\\demo\\data\\output\\draft_list.csv'
 
@@ -32,7 +33,7 @@ def demo_draft(league, run_event: threading.Event, player_source='.\\demo\\data\
     while index < len(results) and run_event.is_set():
         sleep(randint(5,10))
         print('!!!Getting player!!!')
-        df.loc[len(df)] = load_player_from_source(results, index)
+        df.loc[results.index[index]] = load_player_from_source(results, index)
         #df = df.append(load_player_from_source(results, index), ignore_index=True)
         rows = []
         rows.append(copy_to_recent_trans(df,-1))
@@ -47,6 +48,8 @@ def demo_draft(league, run_event: threading.Event, player_source='.\\demo\\data\
         recent.to_csv(demo_trans, encoding='utf-8-sig')
         index += 1
     print('---DRAFT COMPLETE---')
+    if os.path.exists(demo_trans):
+            os.remove(demo_trans)
         
 def load_player_from_source(results, index, old=False):
     row = {}
@@ -54,7 +57,6 @@ def load_player_from_source(results, index, old=False):
         row['Ottoneu ID'] = results.index[index]
         row['Date']= (datetime.datetime.now() - datetime.timedelta(minutes=10))
     else:
-        print(results.iloc[index])
         row['Ottoneu ID'] = results.index[index]
         row['Date']= datetime.datetime.now()
     row['Team ID'] = (results['TeamID'].iloc[index])
@@ -64,7 +66,6 @@ def load_player_from_source(results, index, old=False):
         row['Type'] = 'CUT'
     else:
         row['Type'] = 'ADD'
-    print(row)
     return row
 
 def copy_to_recent_trans(loaded, index):
