@@ -143,7 +143,7 @@ class DraftTool(tk.Frame):
         button_frame = ttk.Frame(running_list_frame)
         button_frame.grid(row=0, column=1, sticky=tk.N, pady=15)
 
-        show_drafted_btn = ttk.Checkbutton(button_frame, text="Show drafted players?", variable=self.show_drafted_players, command=self.toggle_drafted)
+        show_drafted_btn = ttk.Checkbutton(button_frame, text="Show rostered players?", variable=self.show_drafted_players, command=self.toggle_drafted)
         show_drafted_btn.grid(row=0, column=1, sticky=tk.NW, pady=5)
         show_drafted_btn.state(['!alternate'])
 
