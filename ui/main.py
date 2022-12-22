@@ -10,6 +10,7 @@ from ui.dialog import progress, league_select, value_select
 import datetime
 import threading
 from services import player_services, salary_services, league_services
+from tkinter import messagebox as mb
    
 __version__ = '0.9.0'
 
@@ -132,7 +133,7 @@ class Main(tk.Tk):
 
     def show_league_analysis(self):
         # TODO:Implement league analysis
-        a = 1
+        mb.showwarning("League analysis not currently supported")
     
     def select_league(self):
         dialog = league_select.Dialog(self)
