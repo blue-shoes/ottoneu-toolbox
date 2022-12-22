@@ -45,6 +45,8 @@ class Dialog(tk.Toplevel):
 
         frm.pack()
 
+        self.protocol("WM_DELETE_WINDOW", self.cancel)
+
         self.wait_window()
     
     def import_values(self):

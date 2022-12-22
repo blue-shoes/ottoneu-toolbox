@@ -24,9 +24,12 @@ class Dialog(tk.Toplevel):
 
         frm.pack()
 
+        self.protocol("WM_DELETE_WINDOW", self.cancel)
+
         self.wait_window()
     
     def cancel(self):
+        self.league = None
         self.destroy()
     
     def populate_league(self):
