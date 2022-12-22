@@ -48,6 +48,7 @@ class Main(tk.Tk):
         logging.debug('Starting main window')
         self.show_start_page()
         self.current_page = Start.__name__
+        self.lift()
     
     def create_frame(self, frame : tk.Frame):
         page_name = frame.__name__
@@ -60,7 +61,8 @@ class Main(tk.Tk):
         frame.grid(row=0, column=0, sticky="nsew")
 
     def startup_tasks(self):
-        progress_dialog = progress.ProgressDialog(self, "Startup Tasks")
+        tmpFrame = tk.Frame(self)
+        progress_dialog = progress.ProgressDialog(tmpFrame, "Startup Tasks")
         #Check that database has players in it, and populate if it doesn't
         if not player_services.is_populated():
             progress_dialog.set_task_title("Populating Player Database")
@@ -72,9 +74,7 @@ class Main(tk.Tk):
             salary_services.update_salary_info()
             progress_dialog.increment_completion_percent(33)
 
-        progress_dialog.set_completion_percent(100)
-        #TODO: Destroying this pushes the whole window to the background for some reason
-        #progress_dialog.destroy()
+        progress_dialog.complete()
     
     def create_menu(self):
         self.menubar = mb = tk.Menu(self)
