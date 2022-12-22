@@ -78,6 +78,11 @@ class Main(tk.Tk):
     def create_menu(self):
         self.menubar = mb = tk.Menu(self)
         self.main_menu = mm = tk.Menu(mb, tearoff=0)
+        self.view_menu = vm = tk.Menu(mm, tearoff=0)
+        vm.add_command(label="Value Calculator", command=self.show_player_values)
+        vm.add_command(label="Draft Tool", command=self.show_draft_tracker)
+        mm.add_cascade(label="Open Window...", menu=vm)
+        mm.add_separator()
         mm.add_command(label="Select League", command=self.select_league)
         mm.add_command(label="Load Player Values", command=self.select_value_set)
         mm.add_separator()
