@@ -155,13 +155,14 @@ class DraftTool(tk.Frame):
         overall_frame = ttk.Frame(self.tab_control)
         self.tab_control.add(overall_frame, text='Overall')
         cols = ('Name','Value','Inf. Cost','Pos','Team','Points','P/G','P/IP')
-        sortable_cols = ('Value', 'Points', 'P/G', 'P/IP')
+        sortable_cols = ('Name', 'Value', 'Inf. Cost', 'Points', 'P/G', 'P/IP')
+        rev_sort_cols = ('Value', 'Inf. Cost', 'Points', 'P/G', 'P/IP')
         widths = {}
         widths['Name'] = 175
         widths['Pos'] = 75
         align = {}
         align['Name'] = W
-        self.overall_view = ov = Table(overall_frame, cols,sortable_columns=sortable_cols, column_widths=widths)
+        self.overall_view = ov = Table(overall_frame, cols,sortable_columns=sortable_cols, column_widths=widths, init_sort_col='Value')
         ov.grid(column=0)
         ov.set_row_select_method(self.on_select)
         ov.set_right_click_method(self.player_rclick)
@@ -178,7 +179,7 @@ class DraftTool(tk.Frame):
                 cols = ('Name','Value','Inf. Cost','Pos','Team','Points','P/G')
             else:
                 cols = ('Name','Value','Inf. Cost','Pos','Team','Points','P/IP')
-            self.pos_view[pos] = pv = Table(pos_frame, cols,sortable_columns=sortable_cols, column_widths=widths)
+            self.pos_view[pos] = pv = Table(pos_frame, cols,sortable_columns=sortable_cols, column_widths=widths, init_sort_col='Value')
             pv.grid(column=0)
             pv.set_row_select_method(self.on_select)
             pv.set_right_click_method(self.player_rclick)

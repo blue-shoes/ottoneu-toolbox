@@ -61,7 +61,6 @@ class Dialog(tk.Toplevel):
     def populate_table(self):
         for value in self.value_list:
             self.value_table.insert('', tk.END, text=str(value.index), values=(value.name, ScoringFormat.enum_to_short_name_map()[value.format], int(value.get_input(CalculationDataType.NUM_TEAMS)), value.description))
-        self.value_table.treeview_sort_column(self.value_table.sort_col, self.value_table.reverse_sort)
 
     def on_select(self, event):
         selection = event.widget.item(event.widget.selection()[0])["text"]

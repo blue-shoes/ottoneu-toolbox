@@ -51,7 +51,6 @@ class Dialog(tk.Toplevel):
         for lg in self.league_list:
             lgfmt = ScoringFormat.enum_to_short_name_map()[lg.format]
             self.league_table.insert('', tk.END, text=str(lg.index), values=(lg.ottoneu_id, lg.name, lgfmt, lg.num_teams))
-        self.league_table.treeview_sort_column(self.league_table.sort_col, self.league_table.reverse_sort)
 
     def on_select(self, event):
         selection = event.widget.item(event.widget.selection()[0])["text"]

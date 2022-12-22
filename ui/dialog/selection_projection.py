@@ -62,7 +62,6 @@ class Dialog(tk.Toplevel):
     def populate_table(self):
         for proj in self.proj_list:
             self.proj_table.insert('', tk.END, text=str(proj.index), values=(proj.name, proj.type, proj.detail, proj.timestamp, bool_to_table(proj.ros), bool_to_table(proj.dc_pt)))
-        self.proj_table.treeview_sort_column(self.proj_table.sort_col, self.proj_table.reverse_sort)
 
     def on_select(self, event):
         selection = event.widget.item(event.widget.selection()[0])["text"]
