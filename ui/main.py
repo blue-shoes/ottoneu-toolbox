@@ -141,6 +141,8 @@ class Main(tk.Tk):
             self.league = league_services.refresh_league(dialog.league.index, pd=pd)
             pd.set_completion_percent(100)
             pd.destroy()
+            if self.current_page == DraftTool.__name__:
+                self.frames[DraftTool.__name__].league_change()
     
     def select_value_set(self):
         dialog = value_select.Dialog(self.container, self)
@@ -148,6 +150,8 @@ class Main(tk.Tk):
             self.value_calculation = dialog.value
             if self.current_page == ValuesCalculation.__name__:
                 self.frames[ValuesCalculation.__name__].on_show()
+            elif self.current_page == DraftTool.__name__:
+                self.frames[DraftTool.__name__].value_change()
 
     def exit(self):
         self.destroy()    
