@@ -477,16 +477,28 @@ class DraftTool(tk.Frame):
         self.value_dir.set(dir)
         
     def initialize_draft(self):  
-        self.create_roster_df()      
+        pd = progress.ProgressDialog(self.parent, 'Initializing Draft Session')
+        pd.set_task_title('Loading Rosters...')
+        pd.set_completion_percent(5)
+        self.create_roster_df()    
+        pd.set_task_title('Loading Values...')
+        pd.increment_completion_percent(10)  
         self.create_overall_df_from_vc()
+        pd.increment_completion_percent(10)
         self.pos_values = {}
         for pos in Position.get_offensive_pos():
             self.pos_values[pos] = self.create_offensive_df(pos)
+            pd.increment_completion_percent(5)
         for pos in Position.get_pitching_pos():
             self.pos_values[pos] = self.create_pitching_df(pos)
+            pd.increment_completion_percent(5)
 
+        pd.set_task_title('Updating available players...')
         self.update_rostered_players()
+        pd.increment_completion_percent(5)
+        pd.set_task_title('Refreshing views...')
         self.refresh_views()
+        pd.complete()
     
     def create_roster_df(self):
         rows = self.get_roster_rows()
