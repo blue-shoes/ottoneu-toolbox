@@ -92,21 +92,29 @@ class Dialog(tk.Toplevel):
             child.configure(state='active')
     
     def select_hitter_proj_file(self):
-        self.hitter_proj_file.set(self.select_projection_file('Choose a hitter projection file'))
+        self.hitter_proj_file.set(self.select_projection_file(True))
     
     def select_pitcher_proj_file(self):
         self.pitcher_proj_file.set(self.select_projection_file('Choose a pitcher projection file'))
 
-    def select_projection_file(self, title):
+    def select_projection_file(self, batting):
         filetypes = (
             ('csv files', '*.csv'),
             ('All files', '*.*')
         )
 
-        if os.path.isfile(self.hitter_proj_file):
-            init_dir = os.path.dirname(self.hitter_proj_file.get())
+        if batting:
+            title = 'Choose a hitter projection file'
+            if os.path.isfile(self.hitter_proj_file.get()):
+                init_dir = os.path.dirname(self.hitter_proj_file.get())
+            else:
+                init_dir = self.hitter_proj_file.get()
         else:
-            init_dir = self.hitter_proj_file.get()
+            title = 'Choose a pitcher projection file'
+            if os.path.isfile(self.pitcher_proj_file.get()):
+                init_dir = os.path.dirname(self.pitcher_proj_file.get())
+            else:
+                init_dir = self.pitcher_proj_file.get()
 
         file = fd.askopenfilename(
             title=title,
@@ -114,6 +122,8 @@ class Dialog(tk.Toplevel):
             filetypes=filetypes)
 
         #TODO: perform file validation here
+
+        self.lift()
 
         return file
     
@@ -130,7 +140,7 @@ class Dialog(tk.Toplevel):
         else:
             #Upload proj from files
             #TODO: need user entry of name/desc and indicate it's RoS
-            self.projection = projection_services.create_projection_from_upload(self.hitter_proj_file, self.pitcher_proj_file, name="User Custom", year=year, progress=pd)
+            self.projection = projection_services.create_projection_from_upload(self.hitter_proj_file.get(), self.pitcher_proj_file.get(), name="User Custom", year=year, progress=pd)
         pd.set_completion_percent(100)
         pd.destroy()
         self.destroy()
