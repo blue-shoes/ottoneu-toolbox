@@ -1,6 +1,7 @@
 import tkinter as tk     
 from tkinter import *              
 from tkinter import ttk 
+from tkinter import messagebox as mb
 
 class Dialog(tk.Toplevel):
     def __init__(self, parent, title):
@@ -27,13 +28,18 @@ class Dialog(tk.Toplevel):
     def show_step(self, step):
 
         if self.current_step is not None:
-            # remove current step
             current_step = self.steps[self.current_step]
+            if not current_step.validate():
+                 mb.showwarning('Input Error', current_step.validate_msg)
+                 return
+
+            # remove current step
             current_step.pack_forget()
 
         self.current_step = step
 
         new_step = self.steps[step]
+        
         new_step.pack(fill="both", expand=True)
 
         self.cancel_button.pack(side="left")
@@ -66,4 +72,7 @@ class Dialog(tk.Toplevel):
         self.destroy()
     
     def finish(self):
+        if not self.steps[self.current_step].validate():
+            mb.showwarning('Input Error', self.steps[self.current_step].validate_msg)
+            return
         self.destroy()
