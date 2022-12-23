@@ -114,7 +114,6 @@ def save_projection(projection, projs, progress=None):
                     player_proj.two_way = False
                 player_proj.player = player
                 
-                
                 for col in stat_cols:
                     if col not in ['Name','Team','-1','playerid']:
                         if pitch:
@@ -157,12 +156,20 @@ def create_projection_from_upload(pos_file, pitch_file, name, desc='', ros=False
     if progress is not None:
         progress.set_task_title('Loading projections...')
     pos_df = pd.read_csv(pos_file)
+    for col in pos_df.columns:
+        if 'ID' in col.upper():
+            pos_df.set_index(col, inplace=True)
+            break
     pitch_df = pd.read_csv(pitch_file)
+    for col in pitch_df.columns:
+        if 'ID' in col.upper():
+            pitch_df.set_index(col, inplace=True)
+            break
     # TODO: Need to confirm data matches expected format/headers/index
     if progress is not None:
         progress.increment_completion_percent(50)
         progress.set_task_title('Saving projections to database...')
-    return save_projection(projection, [pos_df, pitch_df])
+    return save_projection(projection, [pos_df, pitch_df], progress)
 
 def create_projection_from_download(type, ros=False, dc_pt=False, year=None, progress=None):
     projection = Projection()
