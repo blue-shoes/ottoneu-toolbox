@@ -18,3 +18,12 @@ def normalize(value):
     normalize = str.maketrans(normalMap)
     val = value.translate(normalize)
     return val.upper()
+
+def parse_dollar(value):
+    if '$' in value:
+        vals = value.split['$']
+        if len(vals[0]) > 0 and '-' in vals[0]:
+            return -float(vals[1])
+        else:
+            return float(vals[1])
+    return float(value)
