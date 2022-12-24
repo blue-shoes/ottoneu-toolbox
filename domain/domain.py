@@ -288,7 +288,7 @@ class ProjectionData(Base):
     stat_value = Column(Float, nullable=False)
 
 class Salary_Refresh(Base):
-    # Class to track how recently the Ottoverse average values have been refrehsed
+    # Class to track how recently the Ottoverse average values have been refreshed
     __tablename__ = "salary_refresh"
     format = Column(Enum(ScoringFormat), primary_key=True)
     last_refresh = Column(TIMESTAMP, nullable=False)
