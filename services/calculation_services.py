@@ -276,4 +276,6 @@ def init_outputs_from_upload(vc: ValueCalculation, df : DataFrame, game_type, re
             raise Exception('Unimplemented pitcher ranking basis')
     vc.set_output(CDT.PITCHER_DOLLAR_PER_FOM, (top_10_pitch_value-10)/top_10_pitch_par)
 
-        
+def save_calculation_from_file(vc : ValueCalculation, df : DataFrame, pd=None):
+    #TODO: Proper implementation of this
+    return vc
