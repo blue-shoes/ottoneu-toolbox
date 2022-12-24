@@ -218,7 +218,16 @@ def init_outputs_from_upload(vc: ValueCalculation, df : DataFrame, game_type, re
                 vc.set_output(CDT.pos_to_rep_level().get(pos), points/player_proj.get_stat(StatType.G_PIT))
             else:
                 raise Exception('Unimplemented pitcher ranking basis')
-        
+    #Util rep level is either the highest offensive position level, or the Util value, whichever is lower
+    max_lvl = 0
+    for pos in Position.get_discrete_offensive_pos():
+        if pos == Position.POS_UTIL:
+            continue
+        rl = vc.get_output(CDT.pos_to_rep_level().get(pos))
+        if rl > max_lvl:
+            max_lvl = rl
+    if max_lvl < vc.get_output(CDT.pos_to_rep_level().get(Position.POS_UTIL, default=999)):
+        vc.set_output(CDT.pos_to_rep_level().get(Position.POS_UTIL))
     top_10_hit_par = 0
     for idx in top_10_hit:
         pp = vc.projection.get_player_projection(idx)
