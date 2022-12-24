@@ -27,19 +27,21 @@ class Dialog(tk.Toplevel):
 
     def show_step(self, step):
 
+        new_step = self.steps[step]
+
         if self.current_step is not None:
             current_step = self.steps[self.current_step]
             if not current_step.validate():
                  mb.showwarning('Input Error', current_step.validate_msg)
                  return
-
+            if not new_step.on_show():
+                mb.showwarning('Error loading page')
+                return
+            
             # remove current step
             current_step.pack_forget()
 
         self.current_step = step
-
-        new_step = self.steps[step]
-        
         new_step.pack(fill="both", expand=True)
 
         self.cancel_button.pack(side="left")
