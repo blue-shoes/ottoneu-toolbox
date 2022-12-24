@@ -63,7 +63,7 @@ def get_player(player_id) -> Player:
     with Session() as session:
         return session.query(Player).filter(Player.index == player_id).first()
 
-def get_player_positions(player):
+def get_player_positions(player, discrete=False):
     positions = []
     player_pos = player.position.split("/")
     offense = False
@@ -71,19 +71,19 @@ def get_player_positions(player):
     mi = False
     for pos in Position.get_offensive_pos():
         if pos.value in player_pos:
-            if not offense:
+            if not offense and not discrete:
                 positions.append(Position.OFFENSE)
                 positions.append(Position.POS_UTIL)
                 offense = True
-            if pos == Position.POS_UTIL:
+            if pos == Position.POS_UTIL and not discrete:
                 continue
             positions.append(pos)
-            if (pos == Position.POS_2B or pos == Position.POS_SS) and not mi:
+            if (pos == Position.POS_2B or pos == Position.POS_SS) and not mi and not discrete:
                 positions.append(Position.POS_MI)
                 mi = True
     for pos in Position.get_pitching_pos():
         if pos.value in player_pos:
-            if not pitcher:
+            if not pitcher and not discrete:
                 positions.append(Position.PITCHER)
                 pitcher = True
             positions.append(pos)
