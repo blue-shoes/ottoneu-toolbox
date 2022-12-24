@@ -7,6 +7,7 @@ from domain.domain import PlayerValue, ValueCalculation, Projection, PlayerProje
 from domain.enum import Position, CalculationDataType as CDT, StatType, ScoringFormat, RankingBasis
 from value.point_values import PointValues
 from services import player_services, projection_services
+from util import string_util
 
 def perform_point_calculation(value_calc, pd = None):
     if pd is not None:
@@ -129,3 +130,141 @@ def get_dataframe_with_values(value_calc : ValueCalculation, pos, text_values=Tr
         df.columns = header
         df.set_index('Ottoneu Id', inplace=True)
         return df
+
+def init_outputs_from_upload(vc: ValueCalculation, df : DataFrame, game_type, rep_level_cost=1, id_type='Ottoneu', pd=None):
+    if pd is not None:
+        pd.set_task_title("Determining replacement levels...")
+        pd.increment_completion_percent(33)
+    sorted = df.sort_values(by='Values', ascending=False)
+    min_indices = {}
+    top_10_hit = []
+    top_10_pitch = []
+    top_10_hit_value = 0
+    top_10_pitch_value = 0
+    pos_count = {}
+    total_value = 0
+    total_count = 0
+    total_hit_count = 0
+    total_pitch_count = 0
+    hit_value = 0
+    for index, row in sorted.iterrows():
+        value = string_util.parse_dollar(row['Values'])
+        if value > rep_level_cost:
+            break
+        total_value += value
+        total_count += 1
+        if id_type == 'Ottoneu':
+            player = player_services.get_player_by_ottoneu_id(int(index))
+        elif id_type == "FanGraphs":
+            player = player_services.get_player_by_fg_id(index)
+        else:
+            raise Exception('Invalid id type entered')
+        hit = False
+        pitch = False
+        positions = player_services.get_player_positions(player, discrete=True)
+        for pos in positions:
+            if pos in Position.get_discrete_offensive_pos():
+                hit = True
+            if pos in Position.get_discrete_pitching_pos():
+                pitch = True
+            min_indices[pos] = player.index
+            if pos in pos_count:
+                pos_count[pos] = pos_count[pos] + 1
+            else:
+                pos_count[pos] = 1
+        if hit and pitch:
+            #Two way is hard...we'll split the value in half. It's close enough
+            hit_value += value/2
+            total_hit_count += 1
+        elif hit:
+            hit_value += value
+            total_hit_count += 1
+            if total_hit_count <= 10:
+                top_10_hit_value += value
+                top_10_hit.append(player.index)
+        else:
+            total_pitch_count += 1
+            if total_pitch_count <= 10:
+                top_10_pitch_value += value
+                top_10_pitch.append(player.index)
+    
+    vc.set_input(CDT.NON_PRODUCTIVE_DOLLARS, (400*vc.get_input(CDT.NUM_TEAMS) - (total_value + 40*vc.get_input(CDT.NUM_TEAMS)-total_count)))
+    hit_surplus = hit_value - total_count
+    hit_split = int(hit_surplus/(total_value - total_count)*100)
+    vc.set_input(CDT.HITTER_SPLIT, hit_split)
+    for pos in pos_count:
+        vc.set_output(CDT.pos_to_num_rostered().get(pos), pos_count[pos])
+    for pos in min_indices:
+        player_proj = vc.projection.get_player_projection(min_indices[pos])
+        if game_type == ScoringFormat.FG_POINTS or game_type == ScoringFormat.H2H_FG_POINTS:
+            points = get_points(player_proj, pos, False)
+        elif game_type == ScoringFormat.SABR_POINTS or game_type == ScoringFormat.H2H_SABR_POINTS:
+            points = get_points(player_proj, pos, True)
+        else:
+            raise Exception('Unimplemented game type')
+        if pos in Position.get_offensive_pos():
+            basis = vc.get_input(CDT.HITTER_RANKING_BASIS)
+            if basis == RankingBasis.PPG:
+                vc.set_output(CDT.pos_to_rep_level().get(pos), points/player_proj.get_stat(StatType.G_HIT))
+            elif basis == RankingBasis.PPPA:
+                vc.set_output(CDT.pos_to_rep_level().get(pos), points/player_proj.get_stat(StatType.PA))
+            else:
+                raise Exception('Unimplemented hitter ranking basis')
+        else:
+            basis = vc.get_input(CDT.PITCHER_RANKING_BASIS)
+            if basis == RankingBasis.PIP:
+                vc.set_output(CDT.pos_to_rep_level().get(pos), points/player_proj.get_stat(StatType.IP))
+            elif basis == RankingBasis.PPG:
+                vc.set_output(CDT.pos_to_rep_level().get(pos), points/player_proj.get_stat(StatType.G_PIT))
+            else:
+                raise Exception('Unimplemented pitcher ranking basis')
+        
+    top_10_hit_par = 0
+    for idx in top_10_hit:
+        pp = vc.projection.get_player_projection(idx)
+        if game_type == ScoringFormat.FG_POINTS or game_type == ScoringFormat.H2H_FG_POINTS:
+            points = get_points(player_proj, pos, False)
+        elif game_type == ScoringFormat.SABR_POINTS or game_type == ScoringFormat.H2H_SABR_POINTS:
+            points = get_points(player_proj, pos, True)
+        else:
+            raise Exception('Unimplemented game type')
+        positions = player_services.get_player_positions(idx)
+        rep_lvl = 999
+        for pos in positions:
+            test_rep = vc.get_output(CDT.pos_to_rep_level(pos))
+            if test_rep < rep_lvl:
+                rep_lvl = test_rep
+        basis = vc.get_input(CDT.HITTER_RANKING_BASIS)
+        if basis == RankingBasis.PPG:
+            top_10_hit_par += (points - test_rep * pp.get_stat(StatType.G_HIT))
+        elif basis == RankingBasis.PPPA:
+            top_10_hit_par += (points - test_rep * pp.get_stat(StatType.PA))
+        else:
+            raise Exception('Unimplemented hitter ranking basis')
+    vc.set_output(CDT.HITTER_DOLLAR_PER_FOM, (top_10_hit_value-10)/top_10_hit_par)
+
+    top_10_pitch_par = 0
+    for idx in top_10_pitch:
+        pp = vc.projection.get_player_projection(idx)
+        if game_type == ScoringFormat.FG_POINTS or game_type == ScoringFormat.H2H_FG_POINTS:
+            points = get_points(player_proj, pos, False)
+        elif game_type == ScoringFormat.SABR_POINTS or game_type == ScoringFormat.H2H_SABR_POINTS:
+            points = get_points(player_proj, pos, True)
+        else:
+            raise Exception('Unimplemented game type')
+        positions = player_services.get_player_positions(idx)
+        rep_lvl = 999
+        for pos in positions:
+            test_rep = vc.get_output(CDT.pos_to_rep_level(pos))
+            if test_rep < rep_lvl:
+                rep_lvl = test_rep
+        basis = vc.get_input(CDT.PITCHER_RANKING_BASIS)
+        if basis == RankingBasis.PIP:
+            top_10_pitch_par += (points - test_rep * pp.get_stat(StatType.IP))
+        elif basis == RankingBasis.PPG:
+            top_10_pitch_par += (points - test_rep * pp.get_stat(StatType.G_PIT))
+        else:
+            raise Exception('Unimplemented pitcher ranking basis')
+    vc.set_output(CDT.PITCHER_DOLLAR_PER_FOM, (top_10_pitch_value-10)/top_10_pitch_par)
+
+        
