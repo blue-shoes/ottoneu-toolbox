@@ -3,7 +3,7 @@ from tkinter import *
 from tkinter import ttk 
 from tkinter import filedialog as fd
 from domain.domain import ValueCalculation
-from domain.enum import ScoringFormat, RankingBasis
+from domain.enum import ScoringFormat, RankingBasis, CalculationDataType as CDT
 from ui.dialog import progress
 from ui.dialog.wizard import wizard
 from services import calculation_services
@@ -60,15 +60,23 @@ class Step1(tk.Frame):
         file_btn.configure(state='disable')
         self.value_file.set(Path.home())
 
-        ttk.Label(self, text="Selected Projections:").grid(column=0,row=4, pady=5)
+        id_map = ['Ottoneu', 'FanGraphs']
+        ttk.Label(self, text="Player Id Type:").grid(column=0,row=4,pady=5)
+        self.id_type = StringVar()
+        self.id_type.set('Ottoneu')
+        id_combo = ttk.Combobox(self, textvariable=self.game_type)
+        id_combo['values'] = id_map
+        id_combo.grid(column=1,row=4,pady=5)
+
+        ttk.Label(self, text="Selected Projections:").grid(column=0,row=5, pady=5)
         self.sel_proj = tk.StringVar()
         self.sel_proj.set("None")
         self.projection = None
-        ttk.Label(self, textvariable=self.sel_proj).grid(column=1,row=4)
+        ttk.Label(self, textvariable=self.sel_proj).grid(column=1,row=5)
         ttk.Button(self, text="Select...", command=self.select_projection).grid(column=2,row=4)
 
         gt_map = ScoringFormat.enum_to_full_name_map()
-        ttk.Label(self, text="Game Type:").grid(column=0,row=5,pady=5)
+        ttk.Label(self, text="Game Type:").grid(column=0,row=6,pady=5)
         self.game_type = StringVar()
         self.game_type.set(gt_map[ScoringFormat.FG_POINTS])
         gt_combo = ttk.Combobox(self, textvariable=self.game_type)
@@ -76,28 +84,35 @@ class Step1(tk.Frame):
         # TODO: Don't hardcode game types, include other types
 
         gt_combo['values'] = (gt_map[ScoringFormat.FG_POINTS], gt_map[ScoringFormat.SABR_POINTS])
-        gt_combo.grid(column=1,row=5,pady=5)
+        gt_combo.grid(column=1,row=6,pady=5)
 
-        ttk.Label(self, text="Number of Teams:").grid(column=0, row=6,pady=5)
+        ttk.Label(self, text="Number of Teams:").grid(column=0, row=7,pady=5)
         self.num_teams_str = StringVar()
         self.num_teams_str.set("12")
         team_entry = ttk.Entry(self, textvariable=self.num_teams_str)
-        team_entry.grid(column=1,row=6,pady=5)
+        team_entry.grid(column=1,row=7,pady=5)
         team_entry.config(validate="key", validatecommand=(validation, '%P'))
 
-        ttk.Label(self, text="Hitter Value Basis:").grid(column=0,row=7,pady=5)
+        ttk.Label(self, text="Hitter Value Basis:").grid(column=0,row=8,pady=5)
         self.hitter_basis = StringVar()
         self.hitter_basis.set('P/G')
         self.hitter_basis_cb = hbcb = ttk.Combobox(self, textvariable=self.hitter_basis)
         hbcb['values'] = ('P/G','P/PA')
-        hbcb.grid(column=1,row=7,pady=5)
+        hbcb.grid(column=1,row=8,pady=5)
 
         ttk.Label(self, text="Pitcher Value Basis:").grid(column=0,row=9,pady=5)
         self.pitcher_basis = StringVar()
         self.pitcher_basis.set('P/IP')
         self.pitcher_basis_cb = pbcb = ttk.Combobox(self, textvariable=self.pitcher_basis)
         pbcb['values'] = ('P/IP','P/G')
-        pbcb.grid(column=1,row=8,pady=5)
+        pbcb.grid(column=1,row=9,pady=5)
+
+        ttk.Label(self, text="Replacement Level Value ($): ").grid(column=0, row=10,pady=5)
+        self.rep_level_value_str = StringVar()
+        self.rep_level_value_str.set("1")
+        rep_level_entry = ttk.Entry(self, textvariable=self.rep_level_value_str)
+        rep_level_entry.grid(column=1,row=10,pady=5)
+        rep_level_entry.config(validate="key", validatecommand=(validation, '%P'))
 
     def select_value_file(self):
         filetypes = (
@@ -120,6 +135,9 @@ class Step1(tk.Frame):
 
         return file
     
+    def on_show(self):
+        return True
+    
     def validate(self):
         self.validate_msg = ''
 
@@ -137,7 +155,28 @@ class Step1(tk.Frame):
         if value_col is None:
             self.validate_msg += 'Value column must be labeled \"Value\", \"Price\", or \"$\"\n'
 
+        if len(self.validate_msg) > 0:
+            return False
+
+        df.set_index(id_col, inplace=True)
+        df.rename(columns={value_col : 'Values'}, inplace=True)
+        
+        self.init_value_calc(df)
+
         return len(self.validate_msg) == 0
+    
+    def init_value_calc(self):
+        vc = self.parent.value
+        vc.name = self.name_tv.get()
+        vc.description = self.desc_tv.get()
+        vc.projection = self.projection
+        vc.format = ScoringFormat.name_to_enum_map()[self.game_type.get()]
+        vc.inputs = []
+        vc.set_input(CDT.NUM_TEAMS, float(self.num_teams_str.get()))
+        vc.hitter_basis = RankingBasis.display_to_enum_map()[self.hitter_basis.get()]
+        vc.pitcher_basis = RankingBasis.display_to_enum_map()[self.pitcher_basis.get()]
+
+        vc = calculation_services.init_outputs_from_upload(vc, pd.read_csv(self.value_file.get()), int(self.rep_level_value_str.get()), self.id_type.get())
     
     def int_validation(self, input):
         if input.isdigit():
