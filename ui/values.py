@@ -100,25 +100,11 @@ class ValuesCalculation(tk.Frame):
             self.min_rp_ip.set(int(v.get_input(CDT.RP_IP_TO_RANK)))
             self.rep_level_scheme.set(int(v.get_input(CDT.REP_LEVEL_SCHEME)))
             if self.rep_level_scheme.get() == RepLevelScheme.STATIC_REP_LEVEL.value:
-                self.rep_level_dict['C'].set(self.value_calc.get_input(CDT.REP_LEVEL_C))
-                self.rep_level_dict['1B'].set(self.value_calc.get_input(CDT.REP_LEVEL_1B))
-                self.rep_level_dict['2B'].set(self.value_calc.get_input(CDT.REP_LEVEL_2B))
-                self.rep_level_dict['3B'].set(self.value_calc.get_input(CDT.REP_LEVEL_3B))
-                self.rep_level_dict['SS'].set(self.value_calc.get_input(CDT.REP_LEVEL_SS))
-                self.rep_level_dict['OF'].set(self.value_calc.get_input(CDT.REP_LEVEL_OF))
-                self.rep_level_dict['Util'].set(self.value_calc.get_input(CDT.REP_LEVEL_UTIL))
-                self.rep_level_dict['SP'].set(self.value_calc.get_input(CDT.REP_LEVEL_SP))
-                self.rep_level_dict['RP'].set(self.value_calc.get_input(CDT.REP_LEVEL_RP))
+                for pos in Position.get_discrete_offensive_pos() + Position.get_discrete_pitching_pos():
+                    self.rep_level_dict[pos.value].set(self.value_calc.get_input(CDT.pos_to_rep_level().get(pos)))
             else:
-                self.rep_level_dict['C'].set(int(self.value_calc.get_input(CDT.ROSTERED_C)))
-                self.rep_level_dict['1B'].set(int(self.value_calc.get_input(CDT.ROSTERED_1B)))
-                self.rep_level_dict['2B'].set(int(self.value_calc.get_input(CDT.ROSTERED_2B)))
-                self.rep_level_dict['3B'].set(int(self.value_calc.get_input(CDT.ROSTERED_3B)))
-                self.rep_level_dict['SS'].set(int(self.value_calc.get_input(CDT.ROSTERED_SS)))
-                self.rep_level_dict['OF'].set(int(self.value_calc.get_input(CDT.ROSTERED_OF)))
-                self.rep_level_dict['Util'].set(int(self.value_calc.get_input(CDT.ROSTERED_UTIL)))
-                self.rep_level_dict['SP'].set(int(self.value_calc.get_input(CDT.ROSTERED_SP)))
-                self.rep_level_dict['RP'].set(int(self.value_calc.get_input(CDT.ROSTERED_RP)))
+                for pos in Position.get_discrete_offensive_pos() + Position.get_discrete_pitching_pos():
+                    self.rep_level_dict[pos.value].set(self.value_calc.get_input(CDT.pos_to_num_rostered().get(pos)))
             self.update_calc_output_frame()
         pd.set_completion_percent(33)
         if len(self.tables) > 0:
@@ -678,25 +664,11 @@ class ValuesCalculation(tk.Frame):
         self.value_calc.set_input(CDT.RP_IP_TO_RANK, float(self.min_rp_ip.get()))
         self.value_calc.set_input(CDT.REP_LEVEL_SCHEME, float(self.rep_level_scheme.get()))
         if self.rep_level_scheme.get() == RepLevelScheme.STATIC_REP_LEVEL.value:
-            self.value_calc.set_input(CDT.REP_LEVEL_C, float(self.rep_level_dict['C'].get()))
-            self.value_calc.set_input(CDT.REP_LEVEL_1B, float(self.rep_level_dict['1B'].get()))
-            self.value_calc.set_input(CDT.REP_LEVEL_2B, float(self.rep_level_dict['2B'].get()))
-            self.value_calc.set_input(CDT.REP_LEVEL_SS, float(self.rep_level_dict['SS'].get()))
-            self.value_calc.set_input(CDT.REP_LEVEL_3B, float(self.rep_level_dict['3B'].get()))
-            self.value_calc.set_input(CDT.REP_LEVEL_OF, float(self.rep_level_dict['OF'].get()))
-            self.value_calc.set_input(CDT.REP_LEVEL_UTIL, float(self.rep_level_dict['Util'].get()))
-            self.value_calc.set_input(CDT.REP_LEVEL_SP, float(self.rep_level_dict['SP'].get()))
-            self.value_calc.set_input(CDT.REP_LEVEL_RP, float(self.rep_level_dict['RP'].get()))
+            for pos in Position.get_discrete_offensive_pos() + Position.get_discrete_pitching_pos():
+                self.value_calc.set_input(CDT.pos_to_rep_level().get(pos), float(self.rep_level_dict[pos.value].get()))
         else:
-            self.value_calc.set_input(CDT.ROSTERED_C, int(self.rep_level_dict['C'].get()))
-            self.value_calc.set_input(CDT.ROSTERED_1B, int(self.rep_level_dict['1B'].get()))
-            self.value_calc.set_input(CDT.ROSTERED_2B, int(self.rep_level_dict['2B'].get()))
-            self.value_calc.set_input(CDT.ROSTERED_SS, int(self.rep_level_dict['SS'].get()))
-            self.value_calc.set_input(CDT.ROSTERED_3B, int(self.rep_level_dict['3B'].get()))
-            self.value_calc.set_input(CDT.ROSTERED_OF, int(self.rep_level_dict['OF'].get()))
-            self.value_calc.set_input(CDT.ROSTERED_UTIL, int(self.rep_level_dict['Util'].get()))
-            self.value_calc.set_input(CDT.ROSTERED_SP, int(self.rep_level_dict['SP'].get()))
-            self.value_calc.set_input(CDT.ROSTERED_RP, int(self.rep_level_dict['RP'].get()))
+            for pos in Position.get_discrete_offensive_pos() + Position.get_discrete_pitching_pos():
+                self.value_calc.set_input(CDT.pos_to_num_rostered().get(pos), float(self.rep_level_dict[pos.value].get()))
         
         logging.debug("About to perform point_calc")
         calculation_services.perform_point_calculation(self.value_calc, progress.ProgressDialog(self, title='Performing Calculation'))
