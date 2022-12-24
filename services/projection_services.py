@@ -225,6 +225,7 @@ def get_projection(proj_id, player_data=True):
             )
         else:
             proj = session.query(Projection).filter(Projection.index == proj_id).first()
+    proj.init_proj_dict()
     return proj     
 
 def convert_to_df(proj):

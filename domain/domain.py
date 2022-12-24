@@ -249,10 +249,19 @@ class Projection(Base):
     player_projections = relationship("PlayerProjection", back_populates="projection", cascade="all, delete")
     calculations = relationship("ValueCalculation", back_populates="projection", cascade="all, delete")
 
-    def get_player_projection(self, player_id):
+    proj_dict = {}
+
+    def init_proj_dict(self):
         for pp in self.player_projections:
-            if pp.player_id == player_id or pp.player.index == player_id:
-                return pp
+            self.proj_dict[pp.player.index] = pp
+
+    def get_player_projection(self, player_id):
+        if len(self.proj_dict) == 0:
+            for pp in self.player_projections:
+                if pp.player_id == player_id or pp.player.index == player_id:
+                    return pp
+        else:
+            return self.proj_dict.get(player_id)
         return None
         
 class PlayerProjection(Base):
