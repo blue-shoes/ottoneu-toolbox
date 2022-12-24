@@ -3,17 +3,15 @@ from tkinter import *
 from tkinter import ttk 
 from tkinter import messagebox as mb
 
-class Dialog(tk.Toplevel):
-    def __init__(self, parent, title):
-        super().__init__(parent)
-        self.title(title)
-        frm = tk.Frame(self, borderwidth=4)
+class Wizard(tk.Frame):
+    def __init__(self, parent):
+        super().__init__(parent, borderwidth=4)
         
         self.current_step = None
         self.steps=[]
 
-        self.button_frame = tk.Frame(frm, bd=1, relief="raised")
-        self.content_frame = tk.Frame(frm)
+        self.button_frame = tk.Frame(self)
+        self.content_frame = tk.Frame(self)
 
         self.back_button = tk.Button(self.button_frame, text="<< Back", command=self.back)
         self.next_button = tk.Button(self.button_frame, text="Next >>", command=self.next)
@@ -22,8 +20,6 @@ class Dialog(tk.Toplevel):
 
         self.button_frame.pack(side="bottom", fill="x")
         self.content_frame.pack(side="top", fill="both", expand=True)
-
-        self.show_step(0)
 
     def show_step(self, step):
 
