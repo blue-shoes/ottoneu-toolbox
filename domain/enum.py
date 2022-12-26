@@ -361,6 +361,10 @@ class ScoringFormat(Enum):
     H2H_SABR_POINTS = 6
 
     @classmethod
+    def is_points_type(self, format):
+        return format in [self.FG_POINTS, self.H2H_FG_POINTS, self.SABR_POINTS, self.H2H_SABR_POINTS]
+
+    @classmethod
     def name_to_enum_map(self):
         return {'All' : self.ALL,
                         'Ottoneu Classic (4x4)': self.CLASSIC_4X4, 
