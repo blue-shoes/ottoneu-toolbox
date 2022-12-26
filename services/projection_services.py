@@ -223,9 +223,10 @@ def get_projection(proj_id, player_data=True):
                 .options(joinedload(Projection.player_projections))
                 .filter_by(index = proj_id).first()
             )
+            proj.init_proj_dict()
         else:
             proj = session.query(Projection).filter(Projection.index == proj_id).first()
-    proj.init_proj_dict()
+    
     return proj     
 
 def convert_to_df(proj):
