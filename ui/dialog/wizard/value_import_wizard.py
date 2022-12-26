@@ -163,24 +163,10 @@ class Step1(tk.Frame):
         self.validate_msg = ''
 
         self.df = df = pd.read_csv(self.value_file.get())
-        id_col = None
-        value_col = None
-        for col in df.columns:
-            if 'ID' in col.upper():
-                id_col = col
-            if 'VAL' in col.upper() or 'PRICE' in col.upper() or '$' in col:
-                value_col = col
-        
-        if id_col is None:
-            self.validate_msg += 'No column with header containing \"ID\"\n'
-        if value_col is None:
-            self.validate_msg += 'Value column must be labeled \"Value\", \"Price\", or \"$\"\n'
+        self.validate_msg = calculation_services.normalize_value_upload(df)
 
         if len(self.validate_msg) > 0:
             return False
-
-        df.set_index(id_col, inplace=True)
-        df.rename(columns={value_col : 'Values'}, inplace=True)
         
         self.init_value_calc()
 
@@ -199,8 +185,6 @@ class Step1(tk.Frame):
         vc.set_input(CDT.NUM_TEAMS, float(self.num_teams_str.get()))
         vc.hitter_basis = RankingBasis.display_to_enum_map().get(self.hitter_basis.get())
         vc.pitcher_basis = RankingBasis.display_to_enum_map().get(self.pitcher_basis.get())
-        print(f'h_basis = {self.hitter_basis.get()} or {vc.hitter_basis}')
-        print(self.df.head())
         vc = calculation_services.init_outputs_from_upload(vc, self.df, ScoringFormat.name_to_enum_map()[self.game_type.get()], int(self.rep_level_value_str.get()), self.id_type.get(), prog)
         prog.complete()
 
