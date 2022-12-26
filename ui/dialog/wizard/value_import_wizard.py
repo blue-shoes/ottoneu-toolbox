@@ -17,6 +17,7 @@ class Dialog(tk.Toplevel):
     def __init__(self, parent):
         super().__init__(parent)
         self.title('Import Player Values from File')
+        self.value = None
 
         self.wizard = Wizard(self)
 
@@ -29,6 +30,7 @@ class Dialog(tk.Toplevel):
 class Wizard(wizard.Wizard):
     def __init__(self, parent):
         super().__init__(parent)
+        self.parent = parent
         self.step1 = Step1(self)
         self.step2 = Step2(self)
         self.steps.append(self.step1)
@@ -39,7 +41,7 @@ class Wizard(wizard.Wizard):
     
     def cancel(self):
         self.value = None
-        self.destroy()
+        super().cancel()
     
     def finish(self):
         pd = progress.ProgressDialog(self.master, title='Saving Values...')
@@ -50,6 +52,7 @@ class Wizard(wizard.Wizard):
         pd.set_completion_percent(80)
         self.value = calculation_services.load_calculation(self.value.index)
         pd.complete()
+        super().finish()
 
 class Step1(tk.Frame):
     def __init__(self, parent):

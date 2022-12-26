@@ -6,6 +6,7 @@ from tkinter import messagebox as mb
 class Wizard(tk.Frame):
     def __init__(self, parent):
         super().__init__(parent, borderwidth=4)
+        self.parent = parent
         
         self.current_step = None
         self.steps=[]
@@ -67,10 +68,10 @@ class Wizard(tk.Frame):
         self.show_step(self.current_step - 1)
     
     def cancel(self):
-        self.destroy()
+        self.parent.destroy()
     
     def finish(self):
         if not self.steps[self.current_step].validate():
             mb.showwarning('Input Error', self.steps[self.current_step].validate_msg)
             return
-        self.destroy()
+        self.parent.destroy()
