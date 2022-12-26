@@ -210,30 +210,16 @@ class Step2(tk.Frame):
     def __init__(self, parent):
         super().__init__(parent)
         self.parent = parent
-        header = tk.Label(self, text="Confirm Value Set", bd=2, relief="groove")
+        header = tk.Label(self, text="Confirm Value Set")
         header.grid(row=0, column=0, columnspan=3)
 
-        validation = self.register(int_validation)
-
-        self.output_title = StringVar()
-        self.output_title.set('Loaded Player Value Set')
-        ttk.Label(self, textvariable=self.output_title).grid(row=0, column=0)
-
-        self.dollars_per_fom_lbl = StringVar()
-        self.dollars_per_fom_lbl.set('Calculated $/PAR')
-        ttk.Label(self, textvariable=self.dollars_per_fom_lbl).grid(row=1, column=0)
-
-        self.dollars_per_fom_val = StringVar()
-        self.dollars_per_fom_val.set('$--')
-        ttk.Label(self, textvariable=self.dollars_per_fom_val).grid(row=1,column=1)
-
-        ttk.Label(self, text="Position", font='bold').grid(row=2, column=0)
-        ttk.Label(self, text="# Rostered", font='bold').grid(row=2, column=1)
+        ttk.Label(self, text="Position", font='bold').grid(row=1, column=0)
+        ttk.Label(self, text="# Rostered", font='bold').grid(row=1, column=1)
         self.bat_rep_level_lbl = StringVar()
         self.bat_rep_level_lbl.set("Rep. Level")
-        ttk.Label(self, textvariable=self.bat_rep_level_lbl, font='bold').grid(row=2, column=2)
+        ttk.Label(self, textvariable=self.bat_rep_level_lbl, font='bold').grid(row=1, column=2)
 
-        row = 3
+        row = 2
         self.pos_rostered_sv = {}
         self.pos_rep_lvl_sv = {}
         for pos in Position.get_discrete_offensive_pos():
@@ -241,12 +227,22 @@ class Step2(tk.Frame):
             pos_rep = StringVar()
             pos_rep.set("--")
             self.pos_rostered_sv[pos] = pos_rep
-            ttk.Entry(self, textvariable=pos_rep).grid(row=row, column=1)
+            ttk.Label(self, textvariable=pos_rep).grid(row=row, column=1)
             rep_lvl = StringVar()
             rep_lvl.set("--")
             self.pos_rep_lvl_sv[pos] = rep_lvl
-            ttk.Label(self, textvariable=rep_lvl).grid(row=row, column=2)
+            ttk.Entry(self, textvariable=rep_lvl).grid(row=row, column=2)
             row += 1
+        
+        self.hit_dollars_per_fom_lbl = StringVar()
+        self.hit_dollars_per_fom_lbl.set('Calculated $/PAR')
+        ttk.Label(self, textvariable=self.hit_dollars_per_fom_lbl).grid(row=row, column=0)
+
+        self.hit_dollars_per_fom_val = StringVar()
+        self.hit_dollars_per_fom_val.set('$--')
+        ttk.Entry(self, textvariable=self.hit_dollars_per_fom_val).grid(row=row,column=1)
+
+        row += 1
         
         ttk.Label(self, text="Position", font='bold').grid(row=row, column=0)
         ttk.Label(self, text="# Rostered", font='bold').grid(row=row, column=1)
@@ -254,21 +250,33 @@ class Step2(tk.Frame):
         self.pitch_rep_level_lbl.set("Rep. Level")
         ttk.Label(self, textvariable=self.pitch_rep_level_lbl, font='bold').grid(row=row, column=2)
 
+        row += 1
+
         for pos in Position.get_discrete_pitching_pos():
-            row += 1
+
             ttk.Label(self, text=pos.value).grid(row=row, column=0)
             pos_rep = StringVar()
             pos_rep.set("--")
             self.pos_rostered_sv[pos] = pos_rep
-            ttk.Entry(self, textvariable=pos_rep).grid(row=row, column=1)
+            ttk.Label(self, textvariable=pos_rep).grid(row=row, column=1)
             rep_lvl = StringVar()
             rep_lvl.set("--")
             self.pos_rep_lvl_sv[pos] = rep_lvl
-            ttk.Label(self, textvariable=rep_lvl).grid(row=row, column=2)
+            ttk.Entry(self, textvariable=rep_lvl).grid(row=row, column=2)
+            row += 1
+        
+        self.pitch_dollars_per_fom_lbl = StringVar()
+        self.pitch_dollars_per_fom_lbl.set('Calculated $/PAR')
+        ttk.Label(self, textvariable=self.pitch_dollars_per_fom_lbl).grid(row=row, column=0)
+
+        self.pitch_dollars_per_fom_val = StringVar()
+        self.pitch_dollars_per_fom_val.set('$--')
+        ttk.Entry(self, textvariable=self.pitch_dollars_per_fom_val).grid(row=row,column=1)
 
     def on_show(self):
         vc = self.parent.value
-        self.dollars_per_fom_val.set('$' + "{:.3f}".format(vc.get_output(CDT.HITTER_DOLLAR_PER_FOM)) + '(Bat), $' + "{:.3f}".format(vc.get_output(CDT.PITCHER_DOLLAR_PER_FOM)) + '(Arm)')
+        self.hit_dollars_per_fom_val.set("{:.3f}".format(vc.get_output(CDT.HITTER_DOLLAR_PER_FOM)))
+        self.pitch_dollars_per_fom_val.set("{:.3f}".format(vc.get_output(CDT.PITCHER_DOLLAR_PER_FOM)))
         hitter_rb = RankingBasis.enum_to_display_dict()[vc.hitter_basis]
         self.bat_rep_level_lbl.set(f"Rep. Level ({hitter_rb})")
         pitcher_rb = RankingBasis.enum_to_display_dict()[vc.pitcher_basis]
