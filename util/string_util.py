@@ -20,6 +20,8 @@ def normalize(value):
     return val.upper()
 
 def parse_dollar(value):
+    if isinstance(value, float) or isinstance(value, int):
+        return value
     if '$' in value:
         vals = value.split['$']
         if len(vals[0]) > 0 and '-' in vals[0]:
