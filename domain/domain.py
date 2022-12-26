@@ -149,11 +149,11 @@ class ValueCalculation(Base):
         ci.value = value
         self.inputs.append(ci)
 
-    def get_input(self, data_type):
+    def get_input(self, data_type, default=None):
         for inp in self.inputs:
             if inp.data_type == data_type:
                 return inp.value
-        return None
+        return default
     
     def set_output(self, data_type, value):
         for data in self.data:
@@ -165,11 +165,11 @@ class ValueCalculation(Base):
         vd.value = value
         self.data.append(vd)
 
-    def get_output(self, data_type):
+    def get_output(self, data_type, default=None):
         for data in self.data:
             if data.data_type == data_type:
                 return data.value
-        return None
+        return default
     
     def set_player_value(self, player_id, pos, value):
         for pv in self.values:
