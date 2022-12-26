@@ -1,11 +1,10 @@
 import tkinter as tk     
 from tkinter import *              
 from tkinter import ttk 
-#from ui.dialog import value_import
-from ui.table import Table, bool_to_table
+from ui.dialog.wizard import value_import_wizard
+from ui.table import Table
 from ui.dialog import progress
 from domain.enum import CalculationDataType, ScoringFormat
-from tkinter import messagebox as mb
 
 from services import calculation_services
 
@@ -50,11 +49,10 @@ class Dialog(tk.Toplevel):
         self.wait_window()
     
     def import_values(self):
-        #dialog = value_import.Dialog(self.master)
-        #if dialog.value is not None:
-        #    self.value = dialog.value
-        #    self.destroy()
-        mb.showwarning("Import values not currently supported")
+        dialog = value_import_wizard.Dialog(self.master)
+        if dialog.value is not None:
+            self.value = dialog.value
+            self.destroy()
     
     def open_create_values(self):
         self.page_controller.show_player_values()
