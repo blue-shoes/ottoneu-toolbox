@@ -8,6 +8,7 @@ from domain.enum import Position, CalculationDataType as CDT, StatType, ScoringF
 from value.point_values import PointValues
 from services import player_services, projection_services
 from util import string_util
+import math
 
 def perform_point_calculation(value_calc, pd = None):
     if pd is not None:
@@ -130,6 +131,119 @@ def get_dataframe_with_values(value_calc : ValueCalculation, pos, text_values=Tr
         df.columns = header
         df.set_index('Ottoneu Id', inplace=True)
         return df
+
+def normalize_value_upload(df : DataFrame):
+    id_col = None
+    value_col = None
+    hit_rate_col = None
+    pitch_rate_col = None
+    points_col = None
+    hit_pt_col = None
+    pitch_pt_col = None
+    col_map = {}
+    for col in df.columns:
+        if 'ID' in col.upper():
+            id_col = col
+        if 'VAL' in col.upper() or 'PRICE' in col.upper() or '$' in col:
+            value_col = col
+            col_map[value_col] = "Values"
+        if 'PTSPG' in col.upper() or 'P/G' in col.upper() or 'PTSPPA' in col.upper() or 'P/PA' in col.upper():
+            hit_rate_col = col
+            col_map[hit_rate_col] = 'Hit_Rate'
+        elif 'PTSPG' in col.upper() or 'P/G' in col.upper() or 'PTSPIP' in col.upper() or 'P/IP' in col.upper():
+            pitch_rate_col = col
+            col_map[pitch_rate_col] = 'Pitch_Rate'
+        elif 'PTS' in col.upper() or 'POINTS' in col.upper():
+            points_col = col
+            col_map[points_col] = 'Points'
+        if 'G' == col.upper() or 'GAME' in col.upper() or 'PA' == col.upper():
+            hit_pt_col = col
+            col_map[hit_pt_col] = 'H_PT'
+        if 'IP' == col.upper() or 'GS' == col.upper():
+            pitch_pt_col = col
+            col_map[pitch_pt_col] = 'P_PT'
+    
+    validate_msg = ''
+    if id_col is None:
+        validate_msg += 'No column with header containing \"ID\"\n'
+    else:
+        df.set_index(id_col, inplace=True)
+    if value_col is None:
+        validate_msg += 'Value column must be labeled \"Value\", \"Price\", or \"$\"\n'
+
+    df.rename(columns=col_map, inplace=True)
+    if hit_rate_col is not None:
+        df['Hit_Rate'] = df['Hit_Rate'].apply(convert_vals)
+    if pitch_rate_col is not None:
+        df['Pitch_Rate'] = df['Pitch_Rate'].apply(convert_vals)
+    if hit_pt_col is not None:
+        df['H_PT'] = df['H_PT'].apply(convert_vals)
+    if pitch_pt_col is not None:
+        df['P_PT'] = df['P_PT'].apply(convert_vals)
+
+    if not None in [hit_rate_col, points_col] or not None in [points_col, hit_pt_col]:
+        fill_df_hit_columns(df)
+
+    if not None in [pitch_rate_col, points_col] or not None in [points_col, pitch_pt_col]:
+        fill_df_pitch_columns(df)
+    
+    if 'Points' not in df and not None in [hit_rate_col, hit_pt_col] and not None in [pitch_rate_col, pitch_pt_col]:
+        df['Points'] = df.apply(calc_points, axis=0)
+
+    return validate_msg
+
+def fill_df_hit_columns(df:DataFrame):
+    if 'Hit_Rate' not in df.columns:
+        df['Hit_Rate'] = df.apply(calc_hit_rate, axis=1)
+    elif 'H_PT' not in df.columns:
+        df['H_PT'] = df.apply(calc_hit_pt, axis=1)
+
+def calc_points(row):
+    return row['H_PT'] * row['Hit_Rate'] + row['P_PT'] * row['Pitch_Rate']
+
+def calc_hit_rate(row):
+    pt = row['H_PT']
+    if pt == 0:
+        return 0
+    return row['Points']/pt
+
+def calc_hit_pt(row):
+    rate = row['Hit_Rate']
+    if rate == 0:
+        return 0
+    return row['Points'] / rate
+
+def fill_df_pitch_columns(df:DataFrame):
+    if 'Pitch_Rate' not in df.columns:
+        df['Pitch_Rate'] = df.apply(calc_pitch_rate, axis=1)
+    elif 'P_PT' not in df.columns:
+        df['P_PT'] = df.apply(calc_pitch_pt, axis=1)
+
+def calc_pitch_rate(row):
+    pt = row['P_PT']
+    if pt == 0:
+        return 0
+    return row['Points']/pt
+
+def calc_pitch_pt(row):
+    rate = row['Pitch_Rate']
+    if rate == 0:
+        return 0
+    return row['Points'] / rate
+
+def convert_vals(value):
+    if value == 'NA' or value == '--' or math.isnan(value):
+        return float(0)
+    elif type(value) == float:
+        return value
+    else:
+        return float(value)
+
+def has_required_data_for_rl(df:DataFrame, game_type:ScoringFormat):
+    if ScoringFormat.is_points_type(game_type):
+        return set(['Points','H_PT','P_PT']).issubset(df.columns)
+    else:
+        raise Exception(f'ScoringFormat {game_type} not currently implemented')
 
 def init_outputs_from_upload(vc: ValueCalculation, df : DataFrame, game_type, rep_level_cost=1, id_type='Ottoneu', pd=None):
     if pd is not None:
