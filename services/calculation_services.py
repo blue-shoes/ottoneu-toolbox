@@ -136,20 +136,15 @@ def init_outputs_from_upload(vc: ValueCalculation, df : DataFrame, game_type, re
         pd.set_task_title("Determining replacement levels...")
         pd.increment_completion_percent(33)
     sorted = df.sort_values(by='Values', ascending=False)
-    min_indices = {}
-    top_10_hit = []
-    top_10_pitch = []
-    top_10_hit_value = 0
-    top_10_pitch_value = 0
+    sample_players = {}
     pos_count = {}
     total_value = 0
     total_count = 0
     total_hit_count = 0
-    total_pitch_count = 0
     hit_value = 0
     for index, row in sorted.iterrows():
         value = string_util.parse_dollar(row['Values'])
-        if value > rep_level_cost:
+        if value < rep_level_cost:
             break
         total_value += value
         total_count += 1
@@ -159,122 +154,102 @@ def init_outputs_from_upload(vc: ValueCalculation, df : DataFrame, game_type, re
             player = player_services.get_player_by_fg_id(index)
         else:
             raise Exception('Invalid id type entered')
+        if player is None:
+            #Player not in ottoverse, won't have a projection
+            continue
         hit = False
         pitch = False
         positions = player_services.get_player_positions(player, discrete=True)
+        if len(positions) == 1 and player.index in vc.projection.proj_dict:
+            sample_list = sample_players.get(positions[0])
+            if sample_list is None:
+                sample_list = []
+                sample_players[positions[0]] = sample_list
+            sample_list.append((value, player.index))
         for pos in positions:
             if pos in Position.get_discrete_offensive_pos():
                 hit = True
             if pos in Position.get_discrete_pitching_pos():
                 pitch = True
-            min_indices[pos] = player.index
             if pos in pos_count:
                 pos_count[pos] = pos_count[pos] + 1
             else:
                 pos_count[pos] = 1
         if hit and pitch:
-            #Two way is hard...we'll split the value in half. It's close enough
+            #Two way is hard...we'll split the value in half. It's close enough. It's just fro split anyways
             hit_value += value/2
             total_hit_count += 1
         elif hit:
             hit_value += value
             total_hit_count += 1
-            if total_hit_count <= 10:
-                top_10_hit_value += value
-                top_10_hit.append(player.index)
-        else:
-            total_pitch_count += 1
-            if total_pitch_count <= 10:
-                top_10_pitch_value += value
-                top_10_pitch.append(player.index)
     
     vc.set_input(CDT.NON_PRODUCTIVE_DOLLARS, (400*vc.get_input(CDT.NUM_TEAMS) - (total_value + 40*vc.get_input(CDT.NUM_TEAMS)-total_count)))
-    hit_surplus = hit_value - total_count
+    hit_surplus = hit_value - total_hit_count
     hit_split = int(hit_surplus/(total_value - total_count)*100)
     vc.set_input(CDT.HITTER_SPLIT, hit_split)
     for pos in pos_count:
         vc.set_output(CDT.pos_to_num_rostered().get(pos), pos_count[pos])
-    for pos in min_indices:
-        player_proj = vc.projection.get_player_projection(min_indices[pos])
-        if game_type == ScoringFormat.FG_POINTS or game_type == ScoringFormat.H2H_FG_POINTS:
-            points = get_points(player_proj, pos, False)
-        elif game_type == ScoringFormat.SABR_POINTS or game_type == ScoringFormat.H2H_SABR_POINTS:
-            points = get_points(player_proj, pos, True)
-        else:
-            raise Exception('Unimplemented game type')
+    hit_dol_per_fom = -999
+    pitch_dol_per_fom = -999
+    for pos in sample_players:
+        sample_list = sample_players.get(pos)
+        if len(sample_list) < 4:
+            vc.set_output(CDT.pos_to_rep_level().get(pos), -999)
+            continue
+        prices = [sample_list[0][0], sample_list[-1][0], sample_list[1][0], sample_list[-2][0]]
+        p_idx = [sample_list[0][1], sample_list[-1][1], sample_list[1][1], sample_list[-2][1]]
+        pps = []
+        for idx in p_idx:
+            pps.append(vc.projection.get_player_projection(idx))
         if pos in Position.get_offensive_pos():
-            basis = vc.get_input(CDT.HITTER_RANKING_BASIS)
-            if basis == RankingBasis.PPG:
-                vc.set_output(CDT.pos_to_rep_level().get(pos), points/player_proj.get_stat(StatType.G_HIT))
-            elif basis == RankingBasis.PPPA:
-                vc.set_output(CDT.pos_to_rep_level().get(pos), points/player_proj.get_stat(StatType.PA))
-            else:
-                raise Exception('Unimplemented hitter ranking basis')
+            rl, d = calc_rep_levels_from_values(prices, pps, pos, game_type, vc.hitter_basis)
+            vc.set_output(CDT.pos_to_rep_level().get(pos), rl)
+            if hit_dol_per_fom < 0:
+                hit_dol_per_fom = d
         else:
-            basis = vc.get_input(CDT.PITCHER_RANKING_BASIS)
-            if basis == RankingBasis.PIP:
-                vc.set_output(CDT.pos_to_rep_level().get(pos), points/player_proj.get_stat(StatType.IP))
-            elif basis == RankingBasis.PPG:
-                vc.set_output(CDT.pos_to_rep_level().get(pos), points/player_proj.get_stat(StatType.G_PIT))
-            else:
-                raise Exception('Unimplemented pitcher ranking basis')
+            rl, d = calc_rep_levels_from_values(prices, pps, pos, game_type, vc.pitcher_basis)
+            vc.set_output(CDT.pos_to_rep_level().get(pos), rl)
+            if pitch_dol_per_fom < 0:
+                pitch_dol_per_fom = d
+
     #Util rep level is either the highest offensive position level, or the Util value, whichever is lower
     max_lvl = 0
     for pos in Position.get_discrete_offensive_pos():
         if pos == Position.POS_UTIL:
             continue
-        rl = vc.get_output(CDT.pos_to_rep_level().get(pos))
+        rl = vc.get_output(CDT.pos_to_rep_level().get(pos), 0)
         if rl > max_lvl:
             max_lvl = rl
-    if max_lvl < vc.get_output(CDT.pos_to_rep_level().get(Position.POS_UTIL, default=999)):
-        vc.set_output(CDT.pos_to_rep_level().get(Position.POS_UTIL))
-    top_10_hit_par = 0
-    for idx in top_10_hit:
-        pp = vc.projection.get_player_projection(idx)
-        if game_type == ScoringFormat.FG_POINTS or game_type == ScoringFormat.H2H_FG_POINTS:
-            points = get_points(player_proj, pos, False)
-        elif game_type == ScoringFormat.SABR_POINTS or game_type == ScoringFormat.H2H_SABR_POINTS:
-            points = get_points(player_proj, pos, True)
-        else:
-            raise Exception('Unimplemented game type')
-        positions = player_services.get_player_positions(idx)
-        rep_lvl = 999
-        for pos in positions:
-            test_rep = vc.get_output(CDT.pos_to_rep_level(pos))
-            if test_rep < rep_lvl:
-                rep_lvl = test_rep
-        basis = vc.get_input(CDT.HITTER_RANKING_BASIS)
-        if basis == RankingBasis.PPG:
-            top_10_hit_par += (points - test_rep * pp.get_stat(StatType.G_HIT))
-        elif basis == RankingBasis.PPPA:
-            top_10_hit_par += (points - test_rep * pp.get_stat(StatType.PA))
-        else:
-            raise Exception('Unimplemented hitter ranking basis')
-    vc.set_output(CDT.HITTER_DOLLAR_PER_FOM, (top_10_hit_value-10)/top_10_hit_par)
+    if max_lvl < vc.get_output(CDT.pos_to_rep_level().get(Position.POS_UTIL), 999):
+        vc.set_output(CDT.pos_to_rep_level().get(Position.POS_UTIL), max_lvl)
+    
+    vc.set_output(CDT.HITTER_DOLLAR_PER_FOM, hit_dol_per_fom)
+    vc.set_output(CDT.PITCHER_DOLLAR_PER_FOM, pitch_dol_per_fom)
 
-    top_10_pitch_par = 0
-    for idx in top_10_pitch:
-        pp = vc.projection.get_player_projection(idx)
-        if game_type == ScoringFormat.FG_POINTS or game_type == ScoringFormat.H2H_FG_POINTS:
-            points = get_points(player_proj, pos, False)
-        elif game_type == ScoringFormat.SABR_POINTS or game_type == ScoringFormat.H2H_SABR_POINTS:
-            points = get_points(player_proj, pos, True)
+def calc_rep_levels_from_values(vals, pps, pos, format, basis):
+    if len(vals) < 4 or len(pps) < 4:
+        raise Exception('calc_rep_levels_from_values requires input lists of at least four entries')
+    sabr = (format == ScoringFormat.SABR_POINTS or format == ScoringFormat.H2H_SABR_POINTS)
+    points = []
+    pt = []
+    for pp in pps:
+        points.append(get_points(pp, pos, sabr))
+        if basis == RankingBasis.PPG:
+            if pos in Position.get_offensive_pos():
+                pt.append(pp.get_stat(StatType.G_HIT))
+            else:
+                pt.append(pp.get_stat(StatType.G_PIT)) 
+        elif basis == RankingBasis.PPPA:
+            pt.append(pp.get_stat(StatType.PA))
+        elif basis == RankingBasis.PIP:
+            pt.append(pp.get_stat(StatType.IP))
         else:
-            raise Exception('Unimplemented game type')
-        positions = player_services.get_player_positions(idx)
-        rep_lvl = 999
-        for pos in positions:
-            test_rep = vc.get_output(CDT.pos_to_rep_level(pos))
-            if test_rep < rep_lvl:
-                rep_lvl = test_rep
-        basis = vc.get_input(CDT.PITCHER_RANKING_BASIS)
-        if basis == RankingBasis.PIP:
-            top_10_pitch_par += (points - test_rep * pp.get_stat(StatType.IP))
-        elif basis == RankingBasis.PPG:
-            top_10_pitch_par += (points - test_rep * pp.get_stat(StatType.G_PIT))
-        else:
-            raise Exception('Unimplemented pitcher ranking basis')
-    vc.set_output(CDT.PITCHER_DOLLAR_PER_FOM, (top_10_pitch_value-10)/top_10_pitch_par)
+            raise Exception(f'Unimplemented basis type {basis}')
+    numer = (vals[0] - vals[1])*(points[2]-points[3])-(vals[2]-vals[3])*(points[0] - points[1])
+    denom = (vals[0] - vals[1])*(pt[2] - pt[3]) - (vals[2] - vals[3])*(pt[0] - pt[1])
+    rl = numer / denom
+    d_per_fom = (vals[0] - vals[1])/((points[0] - rl)*pt[0]-(points[1] - rl)*pt[1])
+    return rl, d_per_fom
 
 def save_calculation_from_file(vc : ValueCalculation, df : DataFrame, pd=None):
     #TODO: Proper implementation of this
