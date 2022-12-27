@@ -94,17 +94,17 @@ class ValuesCalculation(tk.Frame):
                 self.hitter_allocation.set(int(v.get_input(CDT.HITTER_SPLIT)))
             self.non_prod_dollars_str.set(int(v.get_input(CDT.NON_PRODUCTIVE_DOLLARS)))
             self.hitter_basis.set(RankingBasis.enum_to_display_dict()[v.hitter_basis])
-            self.min_pa.set(int(v.get_input(CDT.PA_TO_RANK)))
+            self.safe_set_input_value(CDT.PA_TO_RANK, self.min_pa, True)
             self.pitcher_basis.set(RankingBasis.enum_to_display_dict()[v.pitcher_basis])
-            self.min_sp_ip.set(int(v.get_input(CDT.SP_IP_TO_RANK)))
-            self.min_rp_ip.set(int(v.get_input(CDT.RP_IP_TO_RANK)))
-            self.rep_level_scheme.set(int(v.get_input(CDT.REP_LEVEL_SCHEME)))
+            self.safe_set_input_value(CDT.SP_IP_TO_RANK, self.min_sp_ip, True)
+            self.safe_set_input_value(CDT.RP_IP_TO_RANK, self.min_rp_ip, True)
+            self.safe_set_input_value(CDT.REP_LEVEL_SCHEME, self.rep_level_scheme, True, RepLevelScheme.STATIC_REP_LEVEL.value)
             if self.rep_level_scheme.get() == RepLevelScheme.STATIC_REP_LEVEL.value:
                 for pos in Position.get_discrete_offensive_pos() + Position.get_discrete_pitching_pos():
-                    self.rep_level_dict[pos.value].set(self.value_calc.get_input(CDT.pos_to_rep_level().get(pos)))
+                    self.safe_set_input_value(CDT.pos_to_rep_level().get(pos), self.rep_level_dict[pos.value])
             else:
                 for pos in Position.get_discrete_offensive_pos() + Position.get_discrete_pitching_pos():
-                    self.rep_level_dict[pos.value].set(self.value_calc.get_input(CDT.pos_to_num_rostered().get(pos)))
+                    self.safe_set_input_value(CDT.pos_to_num_rostered().get(pos), self.rep_level_dict[pos.value], True)
             self.update_calc_output_frame()
         pd.set_completion_percent(33)
         if len(self.tables) > 0:
@@ -113,6 +113,23 @@ class ValuesCalculation(tk.Frame):
                 pd.increment_completion_percent(5)
         pd.set_completion_percent(100)
         pd.destroy()
+
+    def safe_set_input_value(self, data_type, string_var, integer=False, default='--', format='{:.3f}'):
+        val = self.value_calc.get_input(data_type)
+        self.safe_set_value(val, string_var, integer, default, format)
+    
+    def safe_set_output_value(self, data_type, string_var, integer=False, default='--', format='{:.3f}'):
+        val = self.value_calc.get_output(data_type)
+        self.safe_set_value(val, string_var, integer, default, format)
+        
+    
+    def safe_set_value(self, val, string_var, integer=False, default='--', format='{:.3f}'):
+        if val is None:
+            string_var.set(default)
+        elif integer:
+            string_var.set(int(val))
+        else:
+            string_var.set(format.format(val))
 
     def create_input_frame(self):
 
@@ -501,23 +518,20 @@ class ValuesCalculation(tk.Frame):
             self.dollars_per_fom_val.set('$' + "{:.3f}".format(self.value_calc.get_output(CDT.HITTER_DOLLAR_PER_FOM)) + '(Bat), $' + "{:.3f}".format(self.value_calc.get_output(CDT.PITCHER_DOLLAR_PER_FOM)) + '(Arm)')
         else:
             self.dollars_per_fom_val.set('$' + "{:.3f}".format(self.value_calc.get_output(CDT.DOLLARS_PER_FOM)))
-        self.total_fom_sv.set("{:.0f}".format(self.value_calc.get_output(CDT.TOTAL_FOM_ABOVE_REPLACEMENT)))
-        self.total_bat_rostered_sv.set(int(self.value_calc.get_output(CDT.TOTAL_HITTERS_ROSTERED)))
-        self.total_pitch_rostered_sv.set(int(self.value_calc.get_output(CDT.TOTAL_PITCHERS_ROSTERED)))
-        self.total_games_rostered_sv.set("{:.0f}".format(self.value_calc.get_output(CDT.TOTAL_GAMES_PLAYED)))
-        self.total_ip_rostered_sv.set("{:.0f}".format(self.value_calc.get_output(CDT.TOTAL_INNINGS_PITCHED)))
+        
+        self.safe_set_output_value(CDT.TOTAL_FOM_ABOVE_REPLACEMENT, self.total_fom_sv, format="{:.0f}")
+        self.safe_set_output_value(CDT.TOTAL_HITTERS_ROSTERED, self.total_bat_rostered_sv, integer=True)
+        self.safe_set_output_value(CDT.TOTAL_PITCHERS_ROSTERED, self.total_pitch_rostered_sv, integer=True)
+        self.safe_set_output_value(CDT.TOTAL_GAMES_PLAYED, self.total_games_rostered_sv, format="{:.0f}")
+        self.safe_set_output_value(CDT.TOTAL_INNINGS_PITCHED, self.total_ip_rostered_sv, format="{:.0f}")
         hitter_rb = RankingBasis.enum_to_display_dict()[self.value_calc.hitter_basis]
         self.bat_rep_level_lbl.set(f"Rep. Level ({hitter_rb})")
         pitcher_rb = RankingBasis.enum_to_display_dict()[self.value_calc.pitcher_basis]
         self.pitch_rep_level_lbl.set(f"Rep. Level ({pitcher_rb})")
 
-        for pos in Position.get_discrete_offensive_pos():
-            self.pos_rostered_sv[pos].set(int(self.value_calc.get_output(CDT.pos_to_num_rostered()[pos])))
-            self.pos_rep_lvl_sv[pos].set("{:.2f}".format(self.value_calc.get_output(CDT.pos_to_rep_level()[pos])))
-        
-        for pos in Position.get_discrete_pitching_pos():
-            self.pos_rostered_sv[pos].set(int(self.value_calc.get_output(CDT.pos_to_num_rostered()[pos])))
-            self.pos_rep_lvl_sv[pos].set("{:.2f}".format(self.value_calc.get_output(CDT.pos_to_rep_level()[pos])))
+        for pos in Position.get_discrete_offensive_pos() + Position.get_discrete_pitching_pos():
+            self.safe_set_output_value(CDT.pos_to_num_rostered()[pos], self.pos_rostered_sv[pos], integer=True, default='--')
+            self.safe_set_output_value(CDT.pos_to_rep_level()[pos], self.pos_rep_lvl_sv[pos], format="{:.2f}")
         
         self.save_btn['state'] = ACTIVE
         self.export_btn['state'] = ACTIVE
