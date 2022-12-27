@@ -270,8 +270,9 @@ def init_outputs_from_upload(vc: ValueCalculation, df : DataFrame, game_type, re
         else:
             raise Exception('Invalid id type entered')
         if player is None:
-            #Player not in ottoverse, won't have a projection
+            #Player not in Ottoneu ToolBox Database, won't have a projection
             continue
+        df['OTB_Idx'] = player.index
         hit = False
         pitch = False
         positions = player_services.get_player_positions(player, discrete=True)
