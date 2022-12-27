@@ -3,7 +3,7 @@ from tkinter import *
 from tkinter import ttk 
 from tkinter import filedialog as fd
 from domain.domain import ValueCalculation
-from domain.enum import ScoringFormat, RankingBasis, CalculationDataType as CDT, Position
+from domain.enum import ScoringFormat, RankingBasis, CalculationDataType as CDT, Position, RepLevelScheme
 from ui.dialog import progress, selection_projection, proj_download
 from ui.dialog.wizard import wizard
 from services import calculation_services, projection_services
@@ -47,6 +47,7 @@ class Wizard(wizard.Wizard):
     def finish(self):
         self.validate_msg = None
         for pos in Position.get_discrete_offensive_pos() + Position.get_discrete_pitching_pos():
+            self.value.set_input(CDT.pos_to_rep_level()[pos], float(self.step2.pos_rep_lvl_sv[pos].get()))
             self.value.set_output(CDT.pos_to_rep_level()[pos], float(self.step2.pos_rep_lvl_sv[pos].get()))
         
         self.value.set_output(CDT.HITTER_DOLLAR_PER_FOM, float(self.step2.hit_dollars_per_fom_val.get()))
@@ -55,6 +56,7 @@ class Wizard(wizard.Wizard):
         self.value.index = None
         self.value.name = self.step1.name_tv.get()
         self.value.description = self.step1.desc_tv.get()
+        self.value.set_input(CDT.REP_LEVEL_SCHEME, float(RepLevelScheme.STATIC_REP_LEVEL.value))
         pd = progress.ProgressDialog(self.master, title='Saving Values...')
         pd.set_task_title('Uploading')
         pd.set_completion_percent(15)
