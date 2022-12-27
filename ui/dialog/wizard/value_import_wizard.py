@@ -8,6 +8,7 @@ from ui.dialog import progress, selection_projection, proj_download
 from ui.dialog.wizard import wizard
 from services import calculation_services, projection_services
 import pandas as pd
+import datetime
 
 from pathlib import Path
 import os
@@ -44,6 +45,16 @@ class Wizard(wizard.Wizard):
         super().cancel()
     
     def finish(self):
+        self.validate_msg = None
+        for pos in Position.get_discrete_offensive_pos() + Position.get_discrete_pitching_pos():
+            self.value.set_output(CDT.pos_to_rep_level()[pos], float(self.step2.pos_rep_lvl_sv[pos].get()))
+        
+        self.value.set_output(CDT.HITTER_DOLLAR_PER_FOM, float(self.step2.hit_dollars_per_fom_val.get()))
+        self.value.set_output(CDT.PITCHER_DOLLAR_PER_FOM, float(self.step2.pitch_dollars_per_fom_val.get()))
+        self.value.timestamp = datetime.datetime.now()
+        self.value.index = None
+        self.value.name = self.step1.name_tv.get()
+        self.value.description = self.step1.desc_tv.get()
         pd = progress.ProgressDialog(self.master, title='Saving Values...')
         pd.set_task_title('Uploading')
         pd.set_completion_percent(15)
@@ -175,8 +186,6 @@ class Step1(tk.Frame):
     def init_value_calc(self):
         prog = progress.ProgressDialog(self.parent, 'Initializing Value Set')
         vc = self.parent.value
-        vc.name = self.name_tv.get()
-        vc.description = self.desc_tv.get()
         prog.set_task_title('Getting projections...')
         prog.set_completion_percent(15)
         vc.projection = projection_services.get_projection(self.projection.index, player_data=True)
@@ -301,7 +310,7 @@ class Step2(tk.Frame):
         return True
     
     def validate(self):
-        self.validate_msg = None
+        vc = self.parent.value
 
         return True
 
