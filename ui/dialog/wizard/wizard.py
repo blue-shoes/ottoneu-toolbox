@@ -71,7 +71,7 @@ class Wizard(tk.Frame):
         self.parent.destroy()
     
     def finish(self):
-        if not self.steps[self.current_step].validate():
-            mb.showwarning('Input Error', self.steps[self.current_step].validate_msg)
+        if self.validate_msg:
+            mb.showwarning('Input Error', self.validate_msg)
             return
         self.parent.destroy()
