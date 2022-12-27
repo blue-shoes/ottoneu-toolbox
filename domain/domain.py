@@ -98,7 +98,7 @@ class Salary_Info(Base):
     roster_percentage = Column("Roster %",Float)
 
 class PlayerValue(Base):
-    __tablename__ = "point_value"
+    __tablename__ = "player_value"
     index = Column(Integer, primary_key=True)
 
     player_id = Column(Integer, ForeignKey("player.index"))
