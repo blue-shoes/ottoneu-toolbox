@@ -43,6 +43,18 @@ class Player(Base):
                     return True
             return False
         return pos.value in self.position
+    
+    def is_two_way(self):
+        hit = False
+        pitch = False
+        for pos in Position.get_discrete_offensive_pos():
+            if pos.value in self.position:
+                hit = True
+                continue
+        for pos in Position.get_discrete_pitching_pos():
+            if pos.value in self.position:
+                pitch = True
+        return hit and pitch
 
 class League(Base):
     __tablename__ = "league"
