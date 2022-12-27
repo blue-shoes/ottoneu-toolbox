@@ -26,6 +26,8 @@ class Dialog(tk.Toplevel):
 
         self.protocol("WM_DELETE_WINDOW", self.wizard.cancel)
 
+        self.value = None
+
         self.wait_window()
 
 class Wizard(wizard.Wizard):
@@ -63,7 +65,7 @@ class Wizard(wizard.Wizard):
         self.value = calculation_services.save_calculation_from_file(self.value, self.step1.df, pd)
         pd.set_task_title("Updating")
         pd.set_completion_percent(80)
-        self.value = calculation_services.load_calculation(self.value.index)
+        self.parent.value = calculation_services.load_calculation(self.value.index)
         pd.complete()
         super().finish()
 
