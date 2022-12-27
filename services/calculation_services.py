@@ -9,6 +9,7 @@ from value.point_values import PointValues
 from services import player_services, projection_services
 from util import string_util
 import math
+import logging
 
 def perform_point_calculation(value_calc, pd = None):
     if pd is not None:
@@ -271,8 +272,9 @@ def init_outputs_from_upload(vc: ValueCalculation, df : DataFrame, game_type, re
             raise Exception('Invalid id type entered')
         if player is None:
             #Player not in Ottoneu ToolBox Database, won't have a projection
+            df.at[index, 'OTB_Idx'] = -1
             continue
-        df['OTB_Idx'] = player.index
+        df.at[index, 'OTB_Idx'] = int(player.index)
         hit = False
         pitch = False
         positions = player_services.get_player_positions(player, discrete=True)
@@ -404,6 +406,7 @@ def save_calculation_from_file(vc : ValueCalculation, df : DataFrame, pd=None):
             count = 0
         player = player_services.get_player(idx)
         if player is None:
+            logging.debug(f'player with idx {idx} is not available')
             continue
         vc.set_player_value(idx, Position.OVERALL, row['Values'])
         if proj_derive:
@@ -438,7 +441,6 @@ def save_calculation_from_file(vc : ValueCalculation, df : DataFrame, pd=None):
             if pos in Position.get_offensive_pos():
                 if not hit:
                     vc.set_player_value(idx, Position.OFFENSE, row['Values'])
-                    print(f'h_points = {h_points}; rep_lvl = {vc.get_output(CDT.REP_LEVEL_UTIL)}; h_pt = {h_pt}; $/fom = {vc.get_output(CDT.HITTER_DOLLAR_PER_FOM)}')
                     u_val = (h_points - vc.get_output(CDT.REP_LEVEL_UTIL) * h_pt) * vc.get_output(CDT.HITTER_DOLLAR_PER_FOM)
                     vc.set_player_value(idx, Position.POS_UTIL, u_val)
                     hit = True
