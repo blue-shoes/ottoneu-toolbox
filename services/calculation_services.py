@@ -390,5 +390,82 @@ def calc_rep_levels_from_values(vals, points, pt):
     return rl, d_per_fom
 
 def save_calculation_from_file(vc : ValueCalculation, df : DataFrame, pd=None):
-    #TODO: Proper implementation of this
+    df.set_index('OTB_Idx', inplace=True)
+    pd.set_task_title('Creating position values...')
+    remaining = (80 - pd.progress)
+    tick = int(len(df)/remaining - 1)
+    count = 0
+    vc.values = []
+    proj_derive = not has_required_data_for_rl(df, vc.format)
+    for idx, row in df.iterrows():
+        count += 1
+        if count == tick:
+            pd.increment_completion_percent(1)
+            count = 0
+        player = player_services.get_player(idx)
+        if player is None:
+            continue
+        vc.set_player_value(idx, Position.OVERALL, row['Values'])
+        if proj_derive:
+            pp = vc.projection.get_player_projection(idx)
+            if pp is None:
+                #Can't do any more. They simply won't show up in position-specific tables
+                continue
+            sabr = vc.format in (ScoringFormat.SABR_POINTS, ScoringFormat.H2H_SABR_POINTS)
+            h_points = get_points(pp, Position.OFFENSE, sabr)
+            if vc.hitter_basis == RankingBasis.PPG:
+                h_pt = pp.get_stat(StatType.G_HIT)
+            elif vc.hitter_basis == RankingBasis.PPPA:
+                h_pt = pp.get_stat(StatType.PA)
+            else:
+                raise Exception(f'Unhandled hitting basis {vc.hitter_basis}')
+            p_points = get_points(pp, Position.PITCHER, sabr)
+            if vc.pitcher_basis == RankingBasis.PIP:
+                p_pt = pp.get_stat(StatType.IP)
+            elif vc.pitcher_basis == RankingBasis.PPG:
+                p_pt = pp.get_stat(StatType.G_PIT)
+            else:
+                raise Exception(f'Unhandled pitching basis {vc.pitcher_basis}')
+        else:
+            h_points = row['Points']
+            p_points = row['Points']
+            h_pt = row['H_PT']
+            p_pt = row['P_PT']
+        hit = False
+        pitch = False
+        #if 
+        for pos in player_services.get_player_positions(player, discrete=True):
+            if pos in Position.get_offensive_pos():
+                if not hit:
+                    vc.set_player_value(idx, Position.OFFENSE, row['Values'])
+                    print(f'h_points = {h_points}; rep_lvl = {vc.get_output(CDT.REP_LEVEL_UTIL)}; h_pt = {h_pt}; $/fom = {vc.get_output(CDT.HITTER_DOLLAR_PER_FOM)}')
+                    u_val = (h_points - vc.get_output(CDT.REP_LEVEL_UTIL) * h_pt) * vc.get_output(CDT.HITTER_DOLLAR_PER_FOM)
+                    vc.set_player_value(idx, Position.POS_UTIL, u_val)
+                    hit = True
+                if pos == Position.POS_MI:
+                    rl = min(vc.get_output(CDT.REP_LEVEL_2B), vc.get_output(CDT.REP_LEVEL_SS))
+                elif pos == Position.POS_UTIL:
+                    continue
+                else:
+                    rl = vc.get_output(CDT.pos_to_rep_level().get(pos))
+                val = (h_points - rl * h_pt) * vc.get_output(CDT.HITTER_DOLLAR_PER_FOM)
+                vc.set_player_value(idx, pos, val)
+
+            if pos in Position.get_pitching_pos():
+                if not pitch:
+                    vc.set_player_value(idx, Position.PITCHER, row['Values'])
+                    pitch = True
+                #This is a difficult nut to crack. Ideally we would reverse engineer a SP and RP rate, but that
+                #is likely imposible to do without having save/hold information. For now, to make sure we don't miss anyone,
+                #put them in the db positions and if able check projections to see if they do any starting or relieving
+                if idx in vc.projection.proj_dict:
+                    pp = vc.projection.get_player_projection(idx)
+                    if pp.get_stat(StatType.GS_PIT) > 0 or pos == Position.POS_SP:
+                        vc.set_player_value(idx, Position.POS_SP, row['Values'])
+                    if pp.get_stat(StatType.G_PIT) > pp.get_stat(StatType.GS_PIT) or pos == Position.POS_RP:
+                        vc.set_player_value(idx, Position.POS_RP, row['Values'])
+                else:
+                    vc.set_player_value(idx, pos, row['Values'])
+
+    save_calculation(vc)
     return vc
