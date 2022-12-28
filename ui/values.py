@@ -27,6 +27,7 @@ class ValuesCalculation(tk.Frame):
         self.value_calc = self.controller.value_calculation
         self.rep_level_dict = {}
         self.tables = {}
+        self.input_svs = []
 
         self.create_input_frame()
         self.create_proj_val_frame()
@@ -162,6 +163,7 @@ class ValuesCalculation(tk.Frame):
         team_entry = ttk.Entry(inpf, textvariable=self.num_teams_str)
         team_entry.grid(column=1,row=3,pady=5)
         team_entry.config(validate="key", validatecommand=(validation, '%P'))
+        self.input_svs.append(self.num_teams_str)
 
         ttk.Label(inpf, text="Manually assign hitter/pitcher split?").grid(column=0, row=4,pady=5)
         self.manual_split = BooleanVar()
@@ -176,6 +178,7 @@ class ValuesCalculation(tk.Frame):
         self.hitter_aloc_entry = ttk.Entry(inpf, textvariable=self.hitter_allocation)
         self.hitter_aloc_entry.grid(column=1,row=5,pady=5)
         self.hitter_aloc_entry.configure(state='disable')
+        self.input_svs.append(self.hitter_allocation)
 
         ttk.Label(inpf, text="Non-productive salaries (e.g. prospects):").grid(column=0, row=6,pady=5)
         self.non_prod_dollars_str = StringVar()
@@ -183,6 +186,7 @@ class ValuesCalculation(tk.Frame):
         non_prod = ttk.Entry(inpf, textvariable=self.non_prod_dollars_str)
         non_prod.grid(column=1,row=6,pady=5)
         non_prod.config(validate="key", validatecommand=(validation, '%P'))
+        self.input_svs.append(self.non_prod_dollars_str)
 
         ttk.Label(inpf, text="Hitter Value Basis:").grid(column=0,row=7,pady=5)
         self.hitter_basis = StringVar()
@@ -197,6 +201,7 @@ class ValuesCalculation(tk.Frame):
         pa_entry = ttk.Entry(inpf, textvariable=self.min_pa)
         pa_entry.grid(column=1,row=8, pady=5)
         pa_entry.config(validate="key", validatecommand=(validation, '%P'))
+        self.input_svs.append(self.min_pa)
         
         ttk.Label(inpf, text="Pitcher Value Basis:").grid(column=0,row=9,pady=5)
         self.pitcher_basis = StringVar()
@@ -209,11 +214,13 @@ class ValuesCalculation(tk.Frame):
         self.min_sp_ip = StringVar()
         self.min_sp_ip.set("70")
         ttk.Entry(inpf, textvariable=self.min_sp_ip).grid(column=1,row=10, pady=5)
+        self.input_svs.append(self.min_sp_ip)
 
         ttk.Label(inpf, text="Min RP IP to Rank:").grid(column=0, row= 11, pady=5)
         self.min_rp_ip = StringVar()
         self.min_rp_ip.set("30")
         ttk.Entry(inpf, textvariable=self.min_rp_ip).grid(column=1,row=11, pady=5)
+        self.input_svs.append(self.min_rp_ip)
         
         # This is its own method to make the __init__ more readable
         self.set_replacement_level_ui(inpf)
@@ -724,7 +731,10 @@ class ValuesCalculation(tk.Frame):
         if len(bad_rep_level) > 0:
             errors.append(f'The following positions have bad replacement level inputs (check scheme): {", ".join(bad_rep_level)}')
 
-        #TODO Other validations
+        for sv in self.input_svs:
+            if not sv.get().isdigit():
+                errors.append('Required input fields have non-numeric values')
+                break
 
         if len(errors) > 0:
             delim = "\n\t-"
