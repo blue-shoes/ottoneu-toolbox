@@ -1,7 +1,7 @@
 import tkinter as tk     
 from tkinter import *              
 from tkinter import ttk 
-from ui.dialog.wizard import value_import_wizard
+from ui.dialog.wizard import value_import
 from ui.table import Table
 from ui.dialog import progress
 from domain.enum import CalculationDataType, ScoringFormat
@@ -49,7 +49,7 @@ class Dialog(tk.Toplevel):
         self.wait_window()
     
     def import_values(self):
-        dialog = value_import_wizard.Dialog(self.master)
+        dialog = value_import.Dialog(self.master)
         if dialog.value is not None:
             self.value = dialog.value
             self.destroy()
