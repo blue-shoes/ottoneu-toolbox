@@ -2,7 +2,7 @@ import tkinter as tk
 from tkinter import *              
 from tkinter import ttk 
 from tkinter import messagebox as mb
-from ui.dialog import league_download
+from ui.dialog.wizard import league_import
 from ui.table import Table
 
 from services import league_services
@@ -42,7 +42,7 @@ class Dialog(tk.Toplevel):
     
     def import_league(self):
         try:
-            dialog = league_download.Dialog(self.master)
+            dialog = league_import.Dialog(self.master)
             if dialog.league is not None:
                 self.league = dialog.league
             self.destroy()

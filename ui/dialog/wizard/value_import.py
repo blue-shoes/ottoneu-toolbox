@@ -47,7 +47,7 @@ class Wizard(wizard.Wizard):
         super().cancel()
     
     def finish(self):
-        self.validate_msg = None
+        self.parent.validate_msg = None
         for pos in Position.get_discrete_offensive_pos() + Position.get_discrete_pitching_pos():
             self.value.set_input(CDT.pos_to_rep_level()[pos], float(self.step2.pos_rep_lvl_sv[pos].get()))
             self.value.set_output(CDT.pos_to_rep_level()[pos], float(self.step2.pos_rep_lvl_sv[pos].get()))
@@ -175,12 +175,12 @@ class Step1(tk.Frame):
         return True
     
     def validate(self):
-        self.validate_msg = ''
+        self.parent.validate_msg = ''
 
         self.df = df = pd.read_csv(self.value_file.get())
-        self.validate_msg = calculation_services.normalize_value_upload(df)
+        self.parent.validate_msg = calculation_services.normalize_value_upload(df)
 
-        if len(self.validate_msg) > 0:
+        if len(self.parent.validate_msg) > 0:
             return False
         
         self.init_value_calc()

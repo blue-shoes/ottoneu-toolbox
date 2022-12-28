@@ -33,7 +33,7 @@ def refresh_league(league_idx, pd=None):
             for team in lg.teams:
                 #Clear roster
                 team.roster_spots=[]
-                team_map[team.index] = team
+                team_map[team.site_id] = team
             for idx, row in upd_rost.iterrows():
                 team = row['TeamID']
                 if team not in team_map:
@@ -99,17 +99,27 @@ def create_league(league_ottoneu_id, pd=None):
     fin = scraper.scrape_finances_page(league_ottoneu_id)
     for idx, row in fin.iterrows():
         team = Team()
-        team.league = lg
-        team.index = idx
+        team.site_id = idx
         team.name = row['Name']
         lg.teams.append(team)
 
     if pd is not None:
-        pd.increment_completion_percent(15)
+        pd.increment_completion_percent(15)    
 
+    return lg
+
+def save_league(lg, pd=None):
     with Session() as session:
-        session.add(lg)
+        old_lg = session.query(League).filter(League.index == lg.index).first()
+        if old_lg is None:
+            session.add(lg)
+        else:
+            old_lg.name = lg.name
+            old_lg.active = lg.active
+            for team in old_lg.teams:
+                for n_team in lg.teams:
+                    if n_team.index == team.index:
+                        team.name = n_team.name
         session.commit()
-        lg_idx = lg.index 
+        lg_idx = lg.index
     return refresh_league(lg_idx, pd)
-
