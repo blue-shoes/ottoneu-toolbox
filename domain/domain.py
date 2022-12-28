@@ -72,6 +72,7 @@ class League(Base):
 class Team(Base):
     __tablename__ = "team"
     index = Column(Integer, primary_key=True)
+    site_id = Column(Integer, nullable=False)
 
     league_id = Column(Integer, ForeignKey("league.index"))
     league = relationship("League", back_populates="teams")
