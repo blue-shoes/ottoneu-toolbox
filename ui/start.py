@@ -38,7 +38,7 @@ class Start(tk.Frame):
         a = 1
     
     def exit(self):
-        self.destroy()    
+        self.controller.exit()   
 
 #def main():
 #    try:
