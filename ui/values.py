@@ -16,7 +16,7 @@ from ui.table import Table
 from domain.domain import ValueCalculation, ScoringFormat
 from domain.enum import CalculationDataType as CDT, RankingBasis, RepLevelScheme, StatType, Position
 from services import projection_services, calculation_services
-from ui.dialog import proj_download, selection_projection, progress, name_desc
+from ui.dialog import proj_download, projection_select, progress, name_desc
 
 
 class ValuesCalculation(tk.Frame):
@@ -305,7 +305,7 @@ class ValuesCalculation(tk.Frame):
             dialog = proj_download.Dialog(self)
             self.projection = dialog.projection
         else:
-            dialog = selection_projection.Dialog(self)
+            dialog = projection_select.Dialog(self)
         if dialog.projection is not None:
             pd = progress.ProgressDialog(self, title='Loading Projection')
             pd.increment_completion_percent(15)
