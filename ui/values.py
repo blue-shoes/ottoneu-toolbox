@@ -689,7 +689,7 @@ class ValuesCalculation(tk.Frame):
                 self.value_calc.set_input(CDT.pos_to_rep_level().get(pos), float(self.rep_level_dict[pos.value].get()))
         else:
             for pos in Position.get_discrete_offensive_pos() + Position.get_discrete_pitching_pos():
-                self.value_calc.set_input(CDT.pos_to_num_rostered().get(pos), float(self.rep_level_dict[pos.value].get()))
+                self.value_calc.set_input(CDT.pos_to_num_rostered().get(pos), int(self.rep_level_dict[pos.value].get()))
         
         logging.debug("About to perform point_calc")
         calculation_services.perform_point_calculation(self.value_calc, progress.ProgressDialog(self, title='Performing Calculation'))

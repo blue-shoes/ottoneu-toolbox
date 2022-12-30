@@ -177,9 +177,12 @@ class PointValues():
             print(f"Replacement levels are: {pos_points.replacement_levels} and {pitch_points.replacement_levels}")
         else:
             #TODO: write replacement level info to ValueCalculation.data
-            for pos in Position.get_discrete_offensive_pos() + Position.get_discrete_pitching_pos():
+            for pos in Position.get_discrete_offensive_pos():
                 self.value_calc.set_output(CalculationDataType.pos_to_rep_level().get(pos), pos_points.replacement_levels[pos.value])
                 self.value_calc.set_output(CalculationDataType.pos_to_num_rostered().get(pos), pos_points.replacement_positions[pos.value])
+            for pos in Position.get_discrete_pitching_pos():
+                self.value_calc.set_output(CalculationDataType.pos_to_rep_level().get(pos), pitch_points.replacement_levels[pos.value])
+                self.value_calc.set_output(CalculationDataType.pos_to_num_rostered().get(pos), pitch_points.replacement_positions[pos.value])
 
         self.update_progress(progress, 'Calculating $/PAR and applying', 30)
         rosterable_pos = pos_min_pa.loc[pos_min_pa['Max PAR'] >= 0]
