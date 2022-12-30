@@ -5,7 +5,6 @@ from pandas import DataFrame
 import os
 from os import path
 from io import StringIO
-import hashlib
 import datetime
 from decimal import Decimal
 from re import sub
@@ -159,8 +158,6 @@ class Scrape_Ottoneu(scrape_base.Scrape_Base):
 
     def scrape_recent_trans_api(self, lg_id):
         rec_trans_url = f'https://ottoneu.fangraphs.com/api/recent_transactions?leagueID={lg_id}'
-        #response = requests.get(rec_trans_url)
-        #trans_soup = Soup(response.text, 'xml')
         trans_soup = self.get_soup(rec_trans_url, True)
         rows = trans_soup.find_all('transaction')
         parsed_rows = [self.parse_rec_trans_row(row) for row in rows]
