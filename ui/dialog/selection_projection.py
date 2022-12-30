@@ -38,6 +38,7 @@ class Dialog(tk.Toplevel):
         pt.grid(row=1, columnspan=2)
         pt.set_row_select_method(self.on_select)
         pt.set_refresh_method(self.populate_table)
+        pt.set_double_click_method(self.double_click)
 
         self.populate_table()
 
@@ -66,6 +67,10 @@ class Dialog(tk.Toplevel):
     def populate_table(self):
         for proj in self.proj_list:
             self.proj_table.insert('', tk.END, text=str(proj.index), values=(proj.name, proj.type, proj.detail, proj.timestamp, bool_to_table(proj.ros), bool_to_table(proj.dc_pt)))
+
+    def double_click(self, event):
+        self.on_select(event)
+        self.set_projection()
 
     def on_select(self, event):
         selection = event.widget.item(event.widget.selection()[0])["text"]

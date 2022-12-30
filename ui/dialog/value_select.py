@@ -33,6 +33,7 @@ class Dialog(tk.Toplevel):
         lt.grid(row=0, columnspan=span)
         lt.set_row_select_method(self.on_select)
         lt.set_refresh_method(self.populate_table)
+        lt.set_double_click_method(self.double_click)
 
         self.populate_table()
 
@@ -61,6 +62,10 @@ class Dialog(tk.Toplevel):
     def populate_table(self):
         for value in self.value_list:
             self.value_table.insert('', tk.END, text=str(value.index), values=(value.name, ScoringFormat.enum_to_short_name_map()[value.format], int(value.get_input(CalculationDataType.NUM_TEAMS)), value.description))
+
+    def double_click(self, event):
+        self.on_select(event)
+        self.set_value()
 
     def on_select(self, event):
         selection = event.widget.item(event.widget.selection()[0])["text"]

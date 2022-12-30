@@ -27,6 +27,7 @@ class Dialog(tk.Toplevel):
         lt.grid(row=0, columnspan=3)
         lt.set_row_select_method(self.on_select)
         lt.set_refresh_method(self.populate_table)
+        lt.set_double_click_method(self.double_click)
 
         self.populate_table()
 
@@ -53,6 +54,10 @@ class Dialog(tk.Toplevel):
         for lg in self.league_list:
             lgfmt = ScoringFormat.enum_to_short_name_map()[lg.format]
             self.league_table.insert('', tk.END, text=str(lg.index), values=(lg.ottoneu_id, lg.name, lgfmt, lg.num_teams))
+
+    def double_click(self, event):
+        self.on_select(event)
+        self.set_league()
 
     def on_select(self, event):
         selection = event.widget.item(event.widget.selection()[0])["text"]

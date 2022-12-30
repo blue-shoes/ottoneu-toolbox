@@ -52,6 +52,9 @@ class Table(ttk.Treeview):
     def set_right_click_method(self, rclick_method):
         self.bind('<Button-3>', rclick_method)
     
+    def set_double_click_method(self, dclick_method):
+        self.bind('<Double-Button-1>', dclick_method)
+    
     def add_scrollbar(self):
         self.pack(side='left', fill='both', expand=True)
         self.vsb = ttk.Scrollbar(self, orient="vertical", command=self.yview)
