@@ -70,12 +70,12 @@ class Step1(tk.Frame):
         pd = progress.ProgressDialog(self.master, title='Getting League')
         try:
             self.parent.league = league_services.create_league(self.league_num_entry.get(), pd)
-        except Exception as e:
-            logging.error(f'Error creating league #{self.league_num_entry.get()}')
-            logging.error(e.with_traceback())
+        except Exception as Argument:
+            logging.exception(f'Error creating league #{self.league_num_entry.get()}')
             self.parent.validate_msg = f"There was an error downloading league number {self.league_num_entry.get()}. Please confirm this is the correct league."
             return False
-        pd.complete()
+        finally:
+            pd.complete()
         return True
 
 class Step2(tk.Frame):
