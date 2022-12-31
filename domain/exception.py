@@ -1,0 +1,2 @@
+class FangraphsException(Exception):
+    pass
