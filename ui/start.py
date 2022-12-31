@@ -18,7 +18,9 @@ class Start(tk.Frame):
 
         ttk.Button(self, text='Create Player Values', command=self.create_player_values_click).grid(column=0,row=1)
         ttk.Button(self, text='Run Draft Tracker', command=self.run_draft_tracker).grid(column=1,row=1)
-        ttk.Button(self, text='League Analysis', command=self.open_league_analysis).grid(column=0,row=2)
+        la_btn = ttk.Button(self, text='League Analysis', command=self.open_league_analysis)
+        la_btn.grid(column=0,row=2)
+        la_btn['state'] = DISABLED
         ttk.Button(self, text='Exit', command=self.exit).grid(column=1,row=2)
 
         self.pack()
