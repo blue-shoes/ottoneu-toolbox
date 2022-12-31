@@ -12,21 +12,15 @@ from pathlib import Path
 import os
 import os.path
 
-class Dialog(tk.Toplevel):
+class Dialog(wizard.Dialog):
     def __init__(self, parent):
         super().__init__(parent)
+
+    def setup(self):
+        self.wizard = Wizard(self)
+        self.wizard.pack()
         self.title('Import League')
         self.league = None
-
-        self.wizard = Wizard(self)
-
-        self.wizard.pack()
-
-        self.focus_force()
-
-        self.protocol("WM_DELETE_WINDOW", self.wizard.cancel)
-
-        self.wait_window()
 
 class Wizard(wizard.Wizard):
     def __init__(self, parent):

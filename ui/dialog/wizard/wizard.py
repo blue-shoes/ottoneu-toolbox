@@ -3,6 +3,21 @@ from tkinter import *
 from tkinter import ttk 
 from tkinter import messagebox as mb
 
+class Dialog(tk.Toplevel):
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.wizard = self.setup()
+
+        self.protocol("WM_DELETE_WINDOW", self.wizard.cancel)
+
+        self.focus_force()
+
+        self.wait_window()
+
+    def setup(self):
+        #Override in subclasses
+        return None
+
 class Wizard(tk.Frame):
     def __init__(self, parent):
         super().__init__(parent, borderwidth=4)
