@@ -701,7 +701,8 @@ class ValuesCalculation(tk.Frame):
             self.update_calc_output_frame()
         except Exception as Argument:
             logging.exception('Error creating player values')
-            mb.showerror('Error creating player values. See log for details')
+            mb.showerror('Error creating player values',  'See log for details')
+        finally:
             pd.complete()
             
 
