@@ -66,11 +66,15 @@ class Scrape_Fg(scrape_base.Scrape_Base):
 
     def setup_fg_login(self):
         #FG login to get rid of ads
-        self.driver.get("https://blogs.fangraphs.com/wp-login.php")
+        if not os.path.exists('conf/fangraphs-config.txt'):
+            return
         cparser = configparser.RawConfigParser()
         cparser.read('conf/fangraphs-config.txt')
-        uname = cparser.get('fangraphs-config', 'username')
-        pword = cparser.get('fangraphs-config', 'password')
+        uname = cparser.get('fangraphs-config', 'username', fallback=None)
+        pword = cparser.get('fangraphs-config', 'password', fallback=None)
+        if uname is None or pword is None:
+            return
+        self.driver.get("https://blogs.fangraphs.com/wp-login.php")
         self.driver.find_element(By.ID, "user_login").send_keys(uname)
         self.driver.find_element(By.ID, "user_pass").send_keys(pword)
         self.driver.find_element(By.ID, "wp-submit").click()
