@@ -49,6 +49,8 @@ class Main(tk.Tk):
         self.show_start_page()
         self.current_page = Start.__name__
         self.lift()
+
+        self.protocol("WM_DELETE_WINDOW", self.exit)
     
     def create_frame(self, frame : tk.Frame):
         page_name = frame.__name__
