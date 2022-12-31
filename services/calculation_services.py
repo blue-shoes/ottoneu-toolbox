@@ -17,10 +17,6 @@ def perform_point_calculation(value_calc, pd = None):
         pd.increment_completion_percent(5)
     value_calculation = PointValues(value_calc=value_calc)
     value_calculation.calculate_values(rank_pos=True, progress=pd)
-    if pd is not None:
-        pd.set_task_title("Completed")
-        pd.set_completion_percent(100)
-        pd.destroy()
 
 def get_num_rostered_rep_levels(value_calc):
     rl_dict = {}
