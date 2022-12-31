@@ -28,6 +28,8 @@ class Dialog(tk.Toplevel):
 
         self.value = None
 
+        self.focus_force()
+
         self.wait_window()
 
 class Wizard(wizard.Wizard):

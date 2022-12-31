@@ -50,6 +50,8 @@ class Dialog(tk.Toplevel):
 
         self.protocol("WM_DELETE_WINDOW", self.cancel)
 
+        self.focus_force()
+
         self.wait_window()
     
     def import_projection(self):
