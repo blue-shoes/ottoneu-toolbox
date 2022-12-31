@@ -94,7 +94,7 @@ class Main(tk.Tk):
         self.config(menu=mb)
     
     def exit(self):
-        if(self.current_frame.exit_tasks()):
+        if(self.current_page.exit_tasks()):
             self.destroy()
 
     def exit_tasks(self):
