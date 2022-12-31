@@ -4,7 +4,7 @@ from sqlalchemy.orm import joinedload, load_only
 from sqlalchemy.dialects import sqlite
 from dao.session import Session
 from domain.domain import PlayerValue, ValueCalculation, Projection, PlayerProjection, Player
-from domain.enum import Position, CalculationDataType as CDT, StatType, ScoringFormat, RankingBasis
+from domain.enum import Position, CalculationDataType as CDT, StatType, ScoringFormat, RankingBasis, IdType
 from value.point_values import PointValues
 from services import player_services, projection_services
 from util import string_util
@@ -242,7 +242,7 @@ def has_required_data_for_rl(df:DataFrame, game_type:ScoringFormat):
     else:
         raise Exception(f'ScoringFormat {game_type} not currently implemented')
 
-def init_outputs_from_upload(vc: ValueCalculation, df : DataFrame, game_type, rep_level_cost=1, id_type='Ottoneu', pd=None):
+def init_outputs_from_upload(vc: ValueCalculation, df : DataFrame, game_type, rep_level_cost=1, id_type=IdType.OTTONEU, pd=None):
     if pd is not None:
         pd.set_task_title("Determining replacement levels...")
         pd.increment_completion_percent(33)
@@ -260,9 +260,9 @@ def init_outputs_from_upload(vc: ValueCalculation, df : DataFrame, game_type, re
             break
         total_value += value
         total_count += 1
-        if id_type == 'Ottoneu':
+        if id_type == IdType.OTTONEU:
             player = player_services.get_player_by_ottoneu_id(int(index))
-        elif id_type == "FanGraphs":
+        elif id_type == IdType.FANGRAPHS:
             player = player_services.get_player_by_fg_id(index)
         else:
             raise Exception('Invalid id type entered')

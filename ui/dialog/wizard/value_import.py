@@ -3,7 +3,7 @@ from tkinter import *
 from tkinter import ttk 
 from tkinter import filedialog as fd
 from domain.domain import ValueCalculation
-from domain.enum import ScoringFormat, RankingBasis, CalculationDataType as CDT, Position, RepLevelScheme
+from domain.enum import ScoringFormat, RankingBasis, CalculationDataType as CDT, Position, RepLevelScheme, IdType
 from ui.dialog import progress, projection_select, proj_download
 from ui.dialog.wizard import wizard
 from services import calculation_services, projection_services
@@ -91,10 +91,10 @@ class Step1(tk.Frame):
         file_btn.grid(column=1,row=3, padx=5, sticky='we', columnspan=2)
         self.value_file.set(Path.home())
 
-        id_map = ['Ottoneu', 'FanGraphs']
+        id_map = [IdType.OTTONEU.value, IdType.FANGRAPHS.value]
         ttk.Label(self, text="Player Id Type:").grid(column=0,row=4,pady=5, stick=W)
         self.id_type = StringVar()
-        self.id_type.set('Ottoneu')
+        self.id_type.set(IdType.OTTONEU.value)
         id_combo = ttk.Combobox(self, textvariable=self.id_type)
         id_combo['values'] = id_map
         id_combo.grid(column=1,row=4,pady=5, columnspan=2)
@@ -207,7 +207,9 @@ class Step1(tk.Frame):
         vc.set_input(CDT.NUM_TEAMS, float(self.num_teams_str.get()))
         vc.hitter_basis = RankingBasis.display_to_enum_map().get(self.hitter_basis.get())
         vc.pitcher_basis = RankingBasis.display_to_enum_map().get(self.pitcher_basis.get())
-        vc = calculation_services.init_outputs_from_upload(vc, self.df, ScoringFormat.name_to_enum_map()[self.game_type.get()], int(self.rep_level_value_str.get()), self.id_type.get(), prog)
+        vc = calculation_services.init_outputs_from_upload(vc, self.df, 
+            ScoringFormat.name_to_enum_map()[self.game_type.get()], int(self.rep_level_value_str.get()), 
+            IdType._value2member_map_.get(self.id_type.get()), prog)
         prog.complete()
 
     def select_projection(self):

@@ -456,3 +456,7 @@ class Position(Enum):
     @classmethod
     def get_discrete_pitching_pos(self):
         return [self.POS_SP, self.POS_RP]
+
+class IdType(Enum):
+    OTTONEU = 'Ottoneu'
+    FANGRAPHS = 'FanGraphs'
