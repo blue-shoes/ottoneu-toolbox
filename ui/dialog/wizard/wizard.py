@@ -45,11 +45,15 @@ class Wizard(tk.Frame):
         if self.current_step is not None:
             current_step = self.steps[self.current_step]
             if not current_step.validate():
-                 mb.showwarning('Input Error', self.validate_msg)
-                 self.validate_msg = None
-                 return
+                mb.showwarning('Input Error', self.validate_msg)
+                self.validate_msg = None
+                self.parent.lift()
+                self.parent.focus_force()
+                return
             if not new_step.on_show():
                 mb.showwarning('Error loading page')
+                self.parent.lift()
+                self.parent.focus_force()
                 return
             
             # remove current step
