@@ -299,6 +299,6 @@ def get_projections_for_year(year):
 
 def get_available_seasons():
     with Session() as session:
-        seasons = session.query(Projection).options(load_only(Projection.season)).distinct().all()
+        seasons = session.query(Projection.season).distinct().all()
     tmp_seasons = [record.season for record in seasons]
     return sorted(tmp_seasons, reverse=True)
