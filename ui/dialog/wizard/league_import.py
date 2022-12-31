@@ -21,6 +21,7 @@ class Dialog(wizard.Dialog):
         self.wizard.pack()
         self.title('Import League')
         self.league = None
+        return self.wizard
 
 class Wizard(wizard.Wizard):
     def __init__(self, parent):

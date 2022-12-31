@@ -25,6 +25,8 @@ class Dialog(wizard.Dialog):
         self.title('Import Player Values from File')
         self.value = None
 
+        return self.wizard
+
 class Wizard(wizard.Wizard):
     def __init__(self, parent):
         super().__init__(parent)
