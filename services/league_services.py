@@ -1,5 +1,6 @@
 from domain.domain import League, Team, Roster_Spot, Player
 from domain.enum import ScoringFormat
+from domain.exception import OttoneuException
 from dao.session import Session
 from scrape.scrape_ottoneu import Scrape_Ottoneu
 from sqlalchemy.orm import joinedload
@@ -13,7 +14,10 @@ def refresh_league(league_idx, pd=None):
         pd.set_task_title("Checking last transaction date...")
         pd.increment_completion_percent(5)
     rec_tr = scraper.scrape_recent_trans_api(lg.ottoneu_id)
-    most_recent = rec_tr.iloc[0]['Date']
+    if len(rec_tr) == 0:
+        most_recent = datetime.now()
+    else:
+        most_recent = rec_tr.iloc[0]['Date']
     if most_recent > lg.last_refresh:
         if pd is not None:
             pd.set_task_title("Updating rosters...")
@@ -97,6 +101,8 @@ def create_league(league_ottoneu_id, pd=None):
         pd.increment_completion_percent(15)
 
     fin = scraper.scrape_finances_page(league_ottoneu_id)
+    if len(fin) == 0:
+        raise OttoneuException('No teams in selected league')
     for idx, row in fin.iterrows():
         team = Team()
         team.site_id = idx

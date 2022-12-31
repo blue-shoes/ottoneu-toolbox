@@ -11,6 +11,7 @@ from re import sub
 from domain.enum import ScoringFormat
 
 from scrape import scrape_base
+from domain.exception import OttoneuException
 
 class Scrape_Ottoneu(scrape_base.Scrape_Base):
 
@@ -159,8 +160,12 @@ class Scrape_Ottoneu(scrape_base.Scrape_Base):
     def scrape_recent_trans_api(self, lg_id):
         rec_trans_url = f'https://ottoneu.fangraphs.com/api/recent_transactions?leagueID={lg_id}'
         trans_soup = self.get_soup(rec_trans_url, True)
+        if trans_soup.find('transactions') is None:
+            raise OttoneuException('League Inactive')
         rows = trans_soup.find_all('transaction')
         parsed_rows = [self.parse_rec_trans_row(row) for row in rows]
+        if len(parsed_rows) == 0:
+            return DataFrame()
         df = DataFrame(parsed_rows)
         df.columns = ['Ottoneu ID','Team ID','Date','Salary','Type']
         df = df.astype({'Ottoneu ID': 'str'})
@@ -325,7 +330,10 @@ class Scrape_Ottoneu(scrape_base.Scrape_Base):
         parsed_row.append(tds[1].string)
         parsed_row.append(tds[2].string)
         for idx in range(3,8):
-            parsed_row.append(Decimal(sub(r'[^\d.]', '', tds[idx].string)))
+            if tds[idx].string == '$':
+                parsed_row.append(0)
+            else:
+                parsed_row.append(Decimal(sub(r'[^\d.]', '', tds[idx].string)))
         for row in depth_tbl_rows:
             depth_id = row.find('a').get('href').split('=')[1]
             if id == depth_id:
