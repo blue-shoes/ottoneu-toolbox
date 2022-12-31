@@ -4,6 +4,7 @@ from tkinter import ttk
 from tkinter import messagebox as mb
 from ui.dialog.wizard import league_import
 from ui.table import Table
+import logging
 
 from services import league_services
 from domain.enum import ScoringFormat
@@ -48,9 +49,13 @@ class Dialog(tk.Toplevel):
             dialog = league_import.Dialog(self.master)
             if dialog.league is not None:
                 self.league = dialog.league
-            self.destroy()
-        except:
+                self.destroy()
+            else:
+                self.lift()
+                self.focus_force()
+        except Exception as Arguement:
             mb.showerror('Error downloading league, please try again')
+            logging.exception('Error downloading league')
     
     def populate_table(self):
         for lg in self.league_list:
