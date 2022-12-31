@@ -692,11 +692,18 @@ class ValuesCalculation(tk.Frame):
                 self.value_calc.set_input(CDT.pos_to_num_rostered().get(pos), int(self.rep_level_dict[pos.value].get()))
         
         logging.debug("About to perform point_calc")
-        calculation_services.perform_point_calculation(self.value_calc, progress.ProgressDialog(self, title='Performing Calculation'))
-        logging.debug("Performed calc")
-        self.update_values()
-        #self.populate_projections()
-        self.update_calc_output_frame()
+        pd = progress.ProgressDialog(self, title='Performing Calculation')
+        try:
+            calculation_services.perform_point_calculation(self.value_calc, pd)
+            logging.debug("Performed calc")
+            self.update_values()
+            #self.populate_projections()
+            self.update_calc_output_frame()
+        except Exception as Argument:
+            logging.exception('Error creating player values')
+            mb.showerror('Error creating player values. See log for details')
+            pd.complete()
+            
 
     def update_values(self):
         for pos, table in self.tables.items():

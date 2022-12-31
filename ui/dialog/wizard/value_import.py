@@ -9,6 +9,7 @@ from ui.dialog.wizard import wizard
 from services import calculation_services, projection_services
 import pandas as pd
 import datetime
+import logging
 
 from pathlib import Path
 import os
@@ -172,8 +173,19 @@ class Step1(tk.Frame):
     def validate(self):
         self.parent.validate_msg = ''
 
-        self.df = df = pd.read_csv(self.value_file.get())
-        self.parent.validate_msg = calculation_services.normalize_value_upload(df)
+        try:
+            self.df = df = pd.read_csv(self.value_file.get())
+            self.parent.validate_msg = calculation_services.normalize_value_upload(df)
+        except PermissionError:
+            self.parent.validate_msg = f'Error loading values file. File permission denied.'
+            return False
+        except FileNotFoundError:
+            self.parent.validate_msg = "Error loading values file. Values file not found."
+            return False
+        except Exception as Argument:
+            self.parent.validate_msg = f'Error loading values file. See log file for details.'
+            logging.exception('Error loading values file.')
+            return False
 
         if len(self.parent.validate_msg) > 0:
             return False
