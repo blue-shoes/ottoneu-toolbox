@@ -4,9 +4,11 @@ from tkinter import *
 from tkinter import ttk 
 from tkinter import filedialog as fd
 from tkinter import messagebox as mb
+import logging
 
 from services import projection_services
 from domain.enum import ProjectionType
+from domain.exception import FangraphsException
 from ui.dialog.progress import ProgressDialog
 from pathlib import Path
 import os
@@ -134,13 +136,27 @@ class Dialog(tk.Toplevel):
         #TODO: Second dialog to set name/description?
         pd = ProgressDialog(self.master, title='Getting Projection Set')
         year = projection_services.get_current_projection_year()
-        if self.source_var.get():
-            #Download proj from FG
-            self.projection = projection_services.create_projection_from_download(ProjectionType.name_to_enum_dict().get(self.proj_type.get()), self.ros_var.get(), self.dc_var.get(), year=year, progress=pd)
-        else:
-            #Upload proj from files
-            #TODO: need user entry of name/desc and indicate it's RoS
-            self.projection = projection_services.create_projection_from_upload(self.hitter_proj_file.get(), self.pitcher_proj_file.get(), name="User Custom", year=year, progress=pd)
-        pd.set_completion_percent(100)
-        pd.destroy()
+        try:
+            if self.source_var.get():
+                #Download proj from FG
+                self.projection = projection_services.create_projection_from_download(ProjectionType.name_to_enum_dict().get(self.proj_type.get()), self.ros_var.get(), self.dc_var.get(), year=year, progress=pd)
+            else:
+                #Upload proj from files
+                #TODO: need user entry of name/desc and indicate it's RoS
+                self.projection = projection_services.create_projection_from_upload(self.hitter_proj_file.get(), self.pitcher_proj_file.get(), name="User Custom", year=year, progress=pd)
+        except FangraphsException:
+            self.projection = None
+            mb.showerror('Error retrieving projection',  'The desired projection does not exist.')
+            self.lift()
+            self.focus_force()
+            return
+        except Exception as Argument:
+            self.projection = None
+            logging.exception("Error retrieving projections")
+            mb.showerror('Error retrieving projection', 'See log file for details.')
+            self.lift()
+            self.focus_force()
+            return
+        finally:
+            pd.complete()
         self.destroy()
