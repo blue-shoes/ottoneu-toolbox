@@ -169,7 +169,8 @@ class Step1(tk.Frame):
 
         self.value_file.set(file)
 
-        #self.parent.lift()
+        self.parent.parent.lift()
+        self.parent.parent.focus_force()
 
         return file
     

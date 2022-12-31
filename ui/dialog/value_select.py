@@ -56,6 +56,9 @@ class Dialog(tk.Toplevel):
         if dialog.value is not None:
             self.value = dialog.value
             self.destroy()
+        else:
+            self.lift()
+            self.focus_force()
     
     def open_create_values(self):
         self.page_controller.show_player_values()

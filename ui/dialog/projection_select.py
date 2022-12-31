@@ -71,6 +71,7 @@ class Dialog(tk.Toplevel):
             self.destroy()
         else:
             self.lift()
+            self.focus_force()
 
     def update_season(self):
         self.proj_list = projection_services.get_projections_for_year(int(self.season.get()))
