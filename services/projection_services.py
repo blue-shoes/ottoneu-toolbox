@@ -194,6 +194,9 @@ def create_projection_from_download(type, ros=False, dc_pt=False, year=None, pro
     projection.player_projections = []
     projection.ros = ros
     projection.timestamp = datetime.now()
+    projection.valid_points = True 
+    projection.valid_5x5 = True
+    projection.valid_4x4 = True
     if year == None:
         year = get_current_projection_year()
     projection.season = year

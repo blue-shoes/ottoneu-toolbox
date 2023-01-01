@@ -259,6 +259,11 @@ class Projection(Base):
     ros = Column(Boolean, nullable=False)
     dc_pt = Column(Boolean, nullable=False)
     hide = Column(Boolean, nullable=False)
+
+    valid_points = Column(Boolean)
+    valid_5x5 = Column(Boolean)
+    valid_4x4 = Column(Boolean)
+
     player_projections = relationship("PlayerProjection", back_populates="projection", cascade="all, delete")
     calculations = relationship("ValueCalculation", back_populates="projection", cascade="all, delete")
 
