@@ -206,6 +206,8 @@ class StatType(Enum):
     BB_PER_9 = 37
     ERA = 38
     FIP = 39
+    BABIP_H = 40
+    BABIP_P = 41
 
     @classmethod
     def hit_to_enum_dict(self):
@@ -230,7 +232,8 @@ class StatType(Enum):
         'SLG' : self.SLG,
         'OPS' : self.OPS,
         'wOBA' : self.WOBA,
-        'wRC+' : self.WRC_PLUS
+        'wRC+' : self.WRC_PLUS,
+        'BABIP' : self.BABIP_H
     }
 
     @classmethod
@@ -254,7 +257,8 @@ class StatType(Enum):
         'K/9' : self.K_PER_9,
         'BB/9' : self.BB_PER_9,
         'ERA' : self.ERA,
-        'FIP' : self.FIP
+        'FIP' : self.FIP,
+        'BABIP' : self.BABIP_P
     }
 
     @classmethod
@@ -281,6 +285,7 @@ class StatType(Enum):
         self.OPS : 'OPS',
         self.WOBA : 'wOBA',
         self.WRC_PLUS: 'wRC+',
+        self.BABIP_H : 'BABIP',
         self.G_PIT : 'G',
         self.GS_PIT : 'GS',
         self.IP : 'IP',
@@ -299,7 +304,8 @@ class StatType(Enum):
         self.K_PER_9 : 'K/9',
         self.BB_PER_9 : 'BB/9',
         self.ERA : 'ERA',
-        self.FIP : 'FIP'
+        self.FIP : 'FIP',
+        self.BABIP_P : 'BABIP'
     }
 
     @classmethod
