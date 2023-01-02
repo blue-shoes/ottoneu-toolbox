@@ -1,7 +1,7 @@
 import tkinter as tk     
 from tkinter import *              
 from tkinter import ttk 
-from ui.dialog import proj_download
+from ui.dialog.wizard import projection_import
 from ui.table import Table, bool_to_table
 from domain.enum import ProjectionType
 
@@ -65,7 +65,7 @@ class Dialog(tk.Toplevel):
         self.wait_window()
     
     def import_projection(self):
-        dialog = proj_download.Dialog(self.master)
+        dialog = projection_import.Dialog(self.master)
         if dialog.projection is not None:
             self.projection = dialog.projection
             self.destroy()
