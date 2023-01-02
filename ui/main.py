@@ -9,7 +9,7 @@ import os
 from ui.dialog import progress, league_select, value_select
 import datetime
 import threading
-from services import player_services, salary_services, league_services
+from services import player_services, salary_services, league_services, property_service
 from tkinter import messagebox as mb
    
 __version__ = '0.9.0'
@@ -75,6 +75,9 @@ class Main(tk.Tk):
             progress_dialog.set_task_title("Updating Player Database")
             salary_services.update_salary_info()
             progress_dialog.increment_completion_percent(33)
+        db_vers = property_service.get_db_version()
+        if db_vers is None:
+            property_service.save_db_version(__version__)
 
         progress_dialog.complete()
     

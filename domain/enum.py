@@ -472,3 +472,6 @@ class Position(Enum):
 class IdType(Enum):
     OTTONEU = 'Ottoneu'
     FANGRAPHS = 'FanGraphs'
+
+class PropertyType(Enum):
+    DB_VERSION = 'db.version'

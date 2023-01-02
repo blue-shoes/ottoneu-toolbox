@@ -6,6 +6,11 @@ from domain.enum import CalculationDataType, ProjectionType, RankingBasis, Scori
 
 Base = declarative_base()
 
+class Property(Base):
+    __tablename__ = "properties"
+    name = Column(String, primary_key=True)
+    value = Column(String)
+
 class Player(Base):
     __tablename__ = "player"
     index = Column(Integer, primary_key=True)
