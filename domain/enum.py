@@ -208,6 +208,7 @@ class StatType(Enum):
     FIP = 39
     BABIP_H = 40
     BABIP_P = 41
+    HR_PER_9 = 42
 
     @classmethod
     def hit_to_enum_dict(self):
@@ -258,7 +259,8 @@ class StatType(Enum):
         'BB/9' : self.BB_PER_9,
         'ERA' : self.ERA,
         'FIP' : self.FIP,
-        'BABIP' : self.BABIP_P
+        'BABIP' : self.BABIP_P,
+        'HR/9' : self.HR_PER_9
     }
 
     @classmethod
@@ -305,7 +307,8 @@ class StatType(Enum):
         self.BB_PER_9 : 'BB/9',
         self.ERA : 'ERA',
         self.FIP : 'FIP',
-        self.BABIP_P : 'BABIP'
+        self.BABIP_P : 'BABIP',
+        self.HR_PER_9 : 'HR/9'
     }
 
     @classmethod
@@ -354,7 +357,10 @@ class StatType(Enum):
             self.K_PER_9 : two_decimal,
             self.BB_PER_9 : two_decimal,
             self.ERA : two_decimal,
-            self.FIP : two_decimal
+            self.FIP : two_decimal,
+            self.BABIP_H : three_decimal,
+            self.BABIP_P : three_decimal,
+            self.HR_PER_9 : two_decimal
         }
 
 class ScoringFormat(Enum):
