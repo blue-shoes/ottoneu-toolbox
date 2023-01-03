@@ -94,7 +94,7 @@ class Roster_Spot(Base):
     team_id = Column(Integer, ForeignKey("team.index"))
     team = relationship("Team", back_populates="roster_spots")
 
-    ottoneu_id = Column(Integer, ForeignKey("player.index"))
+    player_id = Column(Integer, ForeignKey("player.index"))
     player = relationship("Player", back_populates="roster_spots")
 
     salary = Column(Integer)
@@ -103,7 +103,7 @@ class Salary_Info(Base):
     __tablename__ = "salary_info"
     index = Column(Integer, primary_key=True)
 
-    ottoneu_id = Column("Ottoneu ID",Integer, ForeignKey("player.index"))
+    player_id = Column(Integer, ForeignKey("player.index"))
     player = relationship("Player", back_populates="salary_info")
 
     format = Column(Enum(ScoringFormat))
