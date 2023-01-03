@@ -50,7 +50,7 @@ class DraftTool(tk.Frame):
         self.show_removed_players.set(False)
         self.targeted_players = pd.DataFrame()
         self.removed_players = []
-        self.salary_update = []
+        #self.salary_update = []
         self.league = None
         self.value_calculation = None
 
@@ -68,17 +68,18 @@ class DraftTool(tk.Frame):
 
         self.league = self.controller.league
         self.value_calculation = self.controller.value_calculation
-        self.league_text_var.set(f'League {self.controller.league.name} Draft')
+        self.league_text_var.set(f'{self.controller.league.name} Draft')
 
         pd = progress.ProgressDialog(self, title='Downloading latest salary information...')
         pd.increment_completion_percent(10)
-        if len(self.salary_update) == 0 and (datetime.now() - salary_services.get_last_refresh().last_refresh) > timedelta(days=1):
+        #if len(self.salary_update) == 0 and (datetime.now() - salary_services.get_last_refresh().last_refresh) > timedelta(days=1):
+        if (datetime.now() - salary_services.get_last_refresh().last_refresh) > timedelta(days=1):
             salary_services.update_salary_info()
-            pd.increment_completion_percent(50)
+        pd.increment_completion_percent(50)
 
-        #if self.league.format not in self.salary_update:
-            #TODO: Reimplement this with a time frame
-            #salary_services.update_salary_info(format=self.league.format)
+        format_salary_refresh = salary_services.get_last_refresh(self.controller.league.format)
+        if format_salary_refresh is None or (datetime.now() - format_salary_refresh.last_refresh) > timedelta(days=1):
+            salary_services.update_salary_info(format=self.league.format)
         pd.complete()
 
         self.initialize_draft(same_values)
