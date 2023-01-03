@@ -17,6 +17,7 @@ def update_salary_info(format=ScoringFormat.ALL):
             refresh = Salary_Refresh(format=format,last_refresh=datetime.now())
         else:
             refresh.last_refresh = datetime.now()
+        players = {}
         for idx, u_player in salary_df.iterrows():
             player = session.query(Player).filter(Player.ottoneu_id == idx).first()
             if player is None:
@@ -26,10 +27,14 @@ def update_salary_info(format=ScoringFormat.ALL):
             else:
                 #Update player in case attributes have changed
                 player_services.update_player(player, u_player)
+            players[idx] = player
+
+        existing_player_ids = []
 
         current_players = session.query(Player).join(Salary_Info).all()
         for c_player in current_players:
             si = get_format_salary_info(c_player, format)
+            existing_player_ids.append(c_player.ottoneu_id)
             if not c_player.ottoneu_id in salary_df.index:
                 # Not rostered in format, set all to 0
                 si = get_format_salary_info(c_player, format)
@@ -42,6 +47,13 @@ def update_salary_info(format=ScoringFormat.ALL):
             else:
                 u_player = salary_df.loc(c_player.ottoneu_id)
                 update_salary(si, u_player)
+        for idx, row in salary_df.iterrows():
+            if idx not in existing_player_ids:
+                si = Salary_Info()
+                si.player = players.get(idx)
+                si.format = format
+                update_salary(si, row)
+                session.add(si)
         session.add(refresh)
         session.commit()
     #TODO: Might want this to automatically update loaded value calc/rosters
@@ -57,7 +69,7 @@ def get_format_salary_info(player, format):
 
 def create_salary(row, format, player):
     salary_info = Salary_Info()
-    salary_info.ottoneu_id=player.ottoneu_id
+    salary_info.player_id=player.index
     salary_info.format = format
     salary_info.player = player
     update_salary(salary_info, row)
@@ -71,13 +83,13 @@ def update_salary(salary_info, row):
     salary_info.min_salary = Decimal(sub(r'[^\d.]', '', row['Min Salary']))
     salary_info.roster_percentage = row['Roster %']
 
-def get_last_refresh() -> Salary_Refresh:
+def get_last_refresh(scoring_format=ScoringFormat.ALL) -> Salary_Refresh:
     with Session() as session:
-        return session.query(Salary_Refresh).order_by(desc('last_refresh')).first()
+        return session.query(Salary_Refresh).filter(Salary_Refresh.format == scoring_format).first()
 
 def get_salary_info_for_player_ids(ids, format=ScoringFormat.ALL):
     with Session() as session:
-        salaries = session.query(Salary_Info).filter_by(Salary_Info.ottoneu_id.in__(ids), Salary_Info.format == format).all()
+        salaries = session.query(Salary_Info).filter_by(Salary_Info.player_id.in__(ids), Salary_Info.format == format).all()
     salary_map = {}
     for salary in salary_map:
         salary_map[salary.player.index] = salary
