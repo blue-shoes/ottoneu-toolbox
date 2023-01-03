@@ -18,6 +18,9 @@ class Main(tk.Tk):
 
     def __init__(self, debug=False, demo_source=False, *args, **kwargs):
         tk.Tk.__init__(self, *args, **kwargs)
+        self.iconbitmap("otb_icon.ico")
+        self.iconbitmap(bitmap='otb_icon.ico')
+        self.iconbitmap(default='otb_icon.ico')
         self.title(f"Ottoneu Tool Box v{__version__}") 
         #self.preferences = preferences
         self.debug = debug
