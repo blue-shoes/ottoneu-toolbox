@@ -9,8 +9,15 @@ to be useful, I began creating robust tools in Python with a GUI to facilitate t
 Users may clone the repo with 
 ```git clone https://github.com/blue-shoes/ottoneu-toolbox```
 
-Alternatively, period tool releases will contain executable files that can be downloaded and run by the user. Note that currently these executables are unsigned and 
+Alternatively, periodic tool releases will contain executable files that can be downloaded and run by the user. Note that currently these executables are unsigned and 
 will likely trigger a Windows Defender warning stating so the first time they are executed.
+
+## Execution Instructions
+Periodic releases will be directly runnable from an executable file.
+
+Running the full GUI from the command lines requires use of the -m flag as such (from the base directory for the repository):
+
+python.exe -m ottoneu_tool_box
 
 ## Current Tools
 
