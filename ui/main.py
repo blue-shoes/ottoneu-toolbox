@@ -28,8 +28,6 @@ class Main(tk.Tk):
         self.setup_logging()
         logging.info('Starting session')
 
-        self.startup_tasks()
-
         self.create_menu()
         self.value_calculation = None
         self.league = None
@@ -51,7 +49,11 @@ class Main(tk.Tk):
         logging.debug('Starting main window')
         self.show_start_page()
         self.current_page = Start.__name__
+
+        self.startup_tasks()
+
         self.lift()
+        self.focus_force()
 
         self.protocol("WM_DELETE_WINDOW", self.exit)
     
@@ -66,8 +68,7 @@ class Main(tk.Tk):
         frame.grid(row=0, column=0, sticky="nsew")
 
     def startup_tasks(self):
-        tmpFrame = tk.Frame(self)
-        progress_dialog = progress.ProgressDialog(tmpFrame, "Startup Tasks")
+        progress_dialog = progress.ProgressDialog(self.container, "Startup Tasks")
         #Check that database has players in it, and populate if it doesn't
         if not player_services.is_populated():
             progress_dialog.set_task_title("Populating Player Database")
