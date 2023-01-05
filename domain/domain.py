@@ -324,3 +324,25 @@ class Salary_Refresh(Base):
     __tablename__ = "salary_refresh"
     format = Column(Enum(ScoringFormat), primary_key=True)
     last_refresh = Column(TIMESTAMP, nullable=False)
+
+class Draft(Base):
+    '''Class to hold user draft inputs'''
+    __tablename__ = 'draft'
+    index = Column(Integer, primary_key=True)
+    league_id = Column(Integer, ForeignKey("league.index"))
+    league = relationship("League")
+
+    targets = relationship("Draft_Target", back_populates="draft", cascade="all, delete")
+
+class Draft_Target(Base):
+    '''Class to hold user draft target information'''
+    __tablename__ = 'draft_target'
+    index = Column(Integer, primary_key=True)
+    draft_id = Column(Integer, nullable=False)
+    draft = relationship("Draft", back_populates='targets')
+
+    player_id = Column(Integer, nullable=False)
+    player = relationship("Player")
+
+    price = Column(Integer, nullable=True)
+
