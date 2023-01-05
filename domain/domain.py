@@ -334,6 +334,21 @@ class Draft(Base):
 
     targets = relationship("Draft_Target", back_populates="draft", cascade="all, delete")
 
+    def get_target_by_player(self, player:Player):
+        if self.targets is not None:
+            for target in self.targets:
+                if target.player.index == player.index:
+                    return target
+        return None
+
+    def set_target(self, player, price=None):
+        target = self.get_target_by_player(player)
+        if target is None:
+            target = Draft_Target()
+            target.player = player
+            self.targets.append(target)
+        target.price = price
+
 class Draft_Target(Base):
     '''Class to hold user draft target information'''
     __tablename__ = 'draft_target'
