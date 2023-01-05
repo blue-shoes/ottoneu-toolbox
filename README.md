@@ -17,7 +17,7 @@ Periodic releases will be directly runnable from an executable file.
 
 Running the full GUI from the command lines requires use of the -m flag as such (from the base directory for the repository):
 
-python.exe -m ottoneu_tool_box
+```python.exe -m ottoneu_tool_box```
 
 ## Current Tools
 
