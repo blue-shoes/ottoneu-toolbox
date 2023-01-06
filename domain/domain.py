@@ -334,6 +334,8 @@ class Draft(Base):
 
     targets = relationship("Draft_Target", back_populates="draft", cascade="all, delete")
 
+    year = Column(Integer, nullable=False)
+
     def get_target_by_player(self, player:Player):
         if self.targets is not None:
             for target in self.targets:
