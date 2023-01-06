@@ -18,7 +18,7 @@ from scrape.scrape_ottoneu import Scrape_Ottoneu
 from domain.enum import CalculationDataType, Position, ScoringFormat, StatType
 from ui.table import Table
 from ui.dialog import progress, league_select
-from services import salary_services, league_services, calculation_services, player_services
+from services import salary_services, league_services, calculation_services, player_services, draft_services
 from demo import draft_demo
 
 from pathlib import Path
@@ -81,6 +81,8 @@ class DraftTool(tk.Frame):
         if format_salary_refresh is None or (datetime.now() - format_salary_refresh.last_refresh) > timedelta(days=1):
             salary_services.update_salary_info(format=self.league.format)
         pd.complete()
+
+        self.draft = draft_services.get_draft(self.controller.league.index)
 
         self.initialize_draft(same_values)
 
@@ -156,7 +158,6 @@ class DraftTool(tk.Frame):
         self.tab_control.grid(row=0, column=0)
 
         self.pos_view = {}
-        self.scroll_bars = {}
 
         overall_frame = ttk.Frame(self.tab_control)
         self.tab_control.add(overall_frame, text='Overall')
@@ -194,6 +195,17 @@ class DraftTool(tk.Frame):
             pv.tag_configure('removed', background='#FFCCCB')
             pv.set_refresh_method(lambda _pos = pos: self.refresh_pos_table(_pos))
             pv.add_scrollbar()
+        
+        planning_frame = ttk.Frame(self)
+        planning_frame.grid(row=2, column=2)
+
+        self.planning_tab = ptab = ttk.Notebook(planning_frame, width=570, height=300)
+        ptab.grid(row=0, column=0)
+
+        target_frame = ttk.Frame(ptab)
+        ptab.add(target_frame, text='Targets')
+        cols=['Name', '']
+
 
     def player_rclick(self, event):
         iid = event.widget.identify_row(event.y)
@@ -841,6 +853,7 @@ class DraftTool(tk.Frame):
         if self.controller.league is not None and self.league != self.controller.league:
             self.league = self.controller.league
             self.league_text_var.set(f'League {self.controller.league.name} Draft')
+            self.draft = draft_services.get_draft(self.controller.league.index)
             self.initialize_draft(same_values=True)
     
     def value_change(self):
