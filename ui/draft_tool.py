@@ -144,11 +144,11 @@ class DraftTool(tk.Frame):
         button_frame = ttk.Frame(running_list_frame)
         button_frame.grid(row=0, column=1, sticky=tk.N, pady=15)
 
-        show_drafted_btn = ttk.Checkbutton(button_frame, text="Show rostered players?", variable=self.show_drafted_players, command=self.toggle_drafted)
+        show_drafted_btn = ttk.Checkbutton(button_frame, text="Show rostered players?", variable=self.show_drafted_players, command=self.refresh_views)
         show_drafted_btn.grid(row=0, column=1, sticky=tk.NW, pady=5)
         show_drafted_btn.state(['!alternate'])
 
-        show_removed_btn = ttk.Checkbutton(button_frame, text="Show removed players?", variable=self.show_removed_players, command=self.toggle_removed)
+        show_removed_btn = ttk.Checkbutton(button_frame, text="Show removed players?", variable=self.show_removed_players, command=self.refresh_views)
         show_removed_btn.grid(row=1, column=1, sticky=tk.NW)
         show_removed_btn.state(['!alternate'])
 
@@ -198,7 +198,7 @@ class DraftTool(tk.Frame):
     def player_rclick(self, event):
         iid = event.widget.identify_row(event.y)
         event.widget.selection_set(iid)
-        playerid = event.widget.item(event.widget.selection()[0])["text"]
+        playerid = int(event.widget.item(event.widget.selection()[0])["text"])
         popup = tk.Menu(self.parent, tearoff=0)
         popup.add_command(label="Target Player", command=lambda: self.target_player(playerid))
         popup.add_separator()
@@ -222,14 +222,6 @@ class DraftTool(tk.Frame):
         self.removed_players.remove(playerid)
         self.refresh_views()
 
-    def toggle_drafted(self):
-        #self.show_drafted_players.set(not self.show_drafted_players.get())
-        self.refresh_views()
-    
-    def toggle_removed(self):
-        self.show_removed_players.set(not self.show_removed_players.get())
-        self.refresh_views()
-
     def sort_treeview(self, treeview, col, pos=None):
         if self.sort_cols[treeview] == col:
             self.sort_cols[treeview] = None
@@ -242,7 +234,7 @@ class DraftTool(tk.Frame):
 
     def on_select(self, event):
         if len(event.widget.selection()) == 1:
-            print(f'Selection is {event.widget.item(event.widget.selection()[0])["text"]}')
+            print(f'Selection is {int(event.widget.item(event.widget.selection()[0])["text"])}')
 
     def start_draft_monitor(self):
         logging.info('---Starting Draft Monitor---')
@@ -376,7 +368,7 @@ class DraftTool(tk.Frame):
         #    pos_df = self.sort_df_by(pos_df, self.sort_cols[self.overall_view])
         for i in range(len(pos_df)):
             id = pos_df.index[i]
-            if id in self.removed_players and self.show_removed_players.get() != 1:
+            if id in self.removed_players and not self.show_removed_players.get():
                 continue
             name = pos_df.iat[i, 2]
             value = '$' + "{:.0f}".format(pos_df.iat[i, 1])
