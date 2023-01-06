@@ -136,11 +136,8 @@ class ArmPoint():
                         self.get_pitcher_par_calc(df)
                         rosterable = df.loc[df['PAR'] >= 0]
                         rp_g = rosterable.apply(self.usable_rp_g_calc, axis=1).sum()
-                print(self.replacement_positions)
-                print(self.max_rost_num)
                 self.replacement_positions['SP'] = min(self.replacement_positions['SP'] + self.surplus_pos['SP'], self.max_rost_num['SP'])
                 self.replacement_positions['RP'] = min(self.replacement_positions['RP'] + self.surplus_pos['RP'], self.max_rost_num['RP'])
-                print(self.replacement_positions)
                 self.get_pitcher_par_calc(df)
 
             elif self.rep_level_scheme == RepLevelScheme.TOTAL_ROSTERED:
