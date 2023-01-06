@@ -10,6 +10,7 @@ from services import projection_services
 from domain.enum import ProjectionType
 from domain.exception import FangraphsException
 from ui.dialog.progress import ProgressDialog
+from util import date_util
 from pathlib import Path
 import os
 import os.path
@@ -135,7 +136,7 @@ class Dialog(tk.Toplevel):
     def populate_projection(self):
         #TODO: Second dialog to set name/description?
         pd = ProgressDialog(self.master, title='Getting Projection Set')
-        year = projection_services.get_current_projection_year()
+        year = date_util.get_current_ottoneu_year()
         try:
             if self.source_var.get():
                 #Download proj from FG

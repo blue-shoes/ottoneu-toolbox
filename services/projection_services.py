@@ -9,6 +9,7 @@ from dao.session import Session
 from sqlalchemy.orm import joinedload, load_only
 import pandas as pd
 import math
+from util import date_util
 
 def download_projections(projection, ros=False, dc_pt=False, progress=None):
     """Returns a list of projection dataframes. Item 1 is the batting projections. Item 2 is the pitching projections"""
@@ -167,7 +168,7 @@ def create_projection_from_upload(projection, pos_file, pitch_file, name, desc='
     projection.ros = ros
     projection.timestamp = datetime.now()
     if year == None:
-        year = get_current_projection_year()
+        year = date_util.get_current_ottoneu_year()
     projection.season = year
 
     if progress is not None:
@@ -402,7 +403,7 @@ def create_projection_from_download(projection, type, ros=False, dc_pt=False, ye
     projection.valid_5x5 = True
     projection.valid_4x4 = True
     if year == None:
-        year = get_current_projection_year()
+        year = date_util.get_current_ottoneu_year()
     projection.season = year
 
     proj_type_url = ProjectionType.enum_to_url().get(type)
@@ -491,16 +492,8 @@ def db_rows_to_df(player_proj, columns):
         row.append(player_proj.get_stat(col))
     return row
 
-def get_current_projection_year():
-    """Gets the current year for projections. Assumes October and later is next year, otherwise current year"""
-    now = datetime.now()
-    if now.month > 9:
-        return now.year + 1
-    else:
-        return now.year
-
 def get_projections_for_current_year():
-    return get_projections_for_year(get_current_projection_year)
+    return get_projections_for_year(date_util.get_current_ottoneu_year())
 
 def get_projections_for_year(year):
     with Session() as session:

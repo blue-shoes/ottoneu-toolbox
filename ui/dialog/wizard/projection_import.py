@@ -15,6 +15,7 @@ from domain.exception import FangraphsException, InputException
 from services import projection_services
 from ui.dialog import progress
 from ui.dialog.wizard import wizard
+from util import date_util
 
 class Dialog(wizard.Dialog):
     def __init__(self, parent):
@@ -180,7 +181,7 @@ class Step1(tk.Frame):
     def validate(self):
         self.parent.projection = Projection()
         pd = progress.ProgressDialog(self.master, title='Getting Projection Set')
-        year = projection_services.get_current_projection_year()
+        year = date_util.get_current_ottoneu_year()
         try:
             if self.source_var.get():
                 #Download proj from FG
