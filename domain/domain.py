@@ -353,10 +353,10 @@ class Draft_Target(Base):
     '''Class to hold user draft target information'''
     __tablename__ = 'draft_target'
     index = Column(Integer, primary_key=True)
-    draft_id = Column(Integer, nullable=False)
+    draft_id = Column(Integer, ForeignKey("draft.index"), nullable=False)
     draft = relationship("Draft", back_populates='targets')
 
-    player_id = Column(Integer, nullable=False)
+    player_id = Column(Integer, ForeignKey("player.index"), nullable=False)
     player = relationship("Player")
 
     price = Column(Integer, nullable=True)
