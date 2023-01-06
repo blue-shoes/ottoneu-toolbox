@@ -714,6 +714,7 @@ class ValuesCalculation(tk.Frame):
                     table.set(index, 0, "$0.0")
                 else:
                     table.set(index, 0, "${:.1f}".format(pv.value))
+            table.resort()
     
     def int_validation(self, input):
         if input.isdigit():

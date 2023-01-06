@@ -97,6 +97,10 @@ class Table(ttk.Treeview):
             self.vsb.pack()
         if self.hsb is not None:
             self.hsb.pack()
+    
+    def resort(self):
+        if self.sort_col is not None:
+            self.treeview_sort_column(self.sort_col, not self.reverse_sort[self.sort_col])
 
 def bool_to_table(val):
     if val:
