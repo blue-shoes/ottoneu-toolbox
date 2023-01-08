@@ -18,6 +18,7 @@ class Player(Base):
     fg_major_id = Column('FG MajorLeagueID', String)
     fg_minor_id = Column('FG MinorLeagueID', String)
     name = Column("Name",String)
+    search_name = Column(String)
     team = Column("Org",String(7))
     position = Column("Position(s)",String)
 

@@ -4,6 +4,7 @@ from domain.enum import ScoringFormat, Position
 from scrape.scrape_ottoneu import Scrape_Ottoneu
 from dao.session import Session
 from services import salary_services
+from util import string_util
 
 def create_player_universe():
     player_df = Scrape_Ottoneu().get_avg_salary_ds()
@@ -30,6 +31,7 @@ def create_player(player_row, ottoneu_id=None, fg_id=None):
             player.name = player_row['Name']
             player.team = player_row['Org']
             player.position = player_row['Position(s)']
+            player.search_name = string_util.normalize(player.name)
         else:
             # This must have come from a FG leaderboard
             if isinstance(fg_id, int) or  fg_id.isnumeric():
@@ -37,6 +39,7 @@ def create_player(player_row, ottoneu_id=None, fg_id=None):
             else:
                 player.fg_minor_id = fg_id
             player.name = player_row['Name']
+            player.search_name = string_util.normalize(player.name)
             player.team = player_row['Team']
             player.position = 'Util'
         player.salary_info = []
