@@ -128,7 +128,7 @@ class DraftTool(tk.Frame):
 
         cols = ('Name','Value','Salary','Inf. Cost','Pos','Team','Points','P/G','P/IP')
         widths = {}
-        widths['Name'] = 175
+        widths['Name'] = 125
         widths['Pos'] = 75
         align = {}
         align['Name'] = W
@@ -166,7 +166,7 @@ class DraftTool(tk.Frame):
         sortable_cols = ('Name', 'Value', 'Inf. Cost', 'Points', 'P/G', 'P/IP')
         rev_sort_cols = ('Value', 'Inf. Cost', 'Points', 'P/G', 'P/IP')
         widths = {}
-        widths['Name'] = 175
+        widths['Name'] = 125
         widths['Pos'] = 75
         align = {}
         align['Name'] = W
@@ -188,7 +188,7 @@ class DraftTool(tk.Frame):
                 cols = ('Name','Value','Inf. Cost','Pos','Team','Points','P/G')
             else:
                 cols = ('Name','Value','Inf. Cost','Pos','Team','Points','P/IP')
-            self.pos_view[pos] = pv = Table(pos_frame, cols,sortable_columns=sortable_cols, column_widths=widths, init_sort_col='Value')
+            self.pos_view[pos] = pv = Table(pos_frame, cols,sortable_columns=sortable_cols, column_widths=widths, column_alignments=align, init_sort_col='Value')
             pv.grid(column=0)
             pv.set_row_select_method(self.on_select)
             pv.set_right_click_method(self.player_rclick)
