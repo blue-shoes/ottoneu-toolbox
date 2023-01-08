@@ -62,9 +62,9 @@ def refresh_league(league_idx, pd=None):
 def get_leagues(active):
     with Session() as session:
         if active:
-            return session.query(League).filter(active).order_by(League.ottoneu_id)
+            return session.query(League).filter(active).order_by(League.ottoneu_id).all()
         else:
-            return session.query(League).order_by(League.ottoneu_id)
+            return session.query(League).order_by(League.ottoneu_id).all()
 
 def get_league_ottoneu_id(league_idx):
     with Session() as session:
@@ -131,3 +131,13 @@ def save_league(lg, pd=None):
         session.commit()
         lg_idx = lg.index
     return refresh_league(lg_idx, pd)
+
+def delete_league_by_id(lg_id):
+    with Session() as session:
+        league = session.query(League).filter(League.index == lg_id).first()
+        session.delete(league)
+        session.commit()
+
+def league_exists(lg):
+    with Session() as session:
+        return session.query(League).filter(League.index == lg.index).first() is not None

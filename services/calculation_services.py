@@ -473,3 +473,14 @@ def save_calculation_from_file(vc : ValueCalculation, df : DataFrame, pd=None):
 
     save_calculation(vc)
     return vc
+
+def delete_values_by_id(values_id):
+    with Session() as session:
+        val = session.query(ValueCalculation).filter(ValueCalculation.index == values_id).first()
+        session.delete(val)
+        session.commit()
+
+def get_values_with_projection_id(proj_id):
+    '''Gets all ValueCalculations in the databse with the input projection id'''
+    with Session() as session:
+        return session.query(ValueCalculation).join(ValueCalculation.projection).filter(Projection.index == proj_id).all()

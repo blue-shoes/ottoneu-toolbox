@@ -313,9 +313,10 @@ class ValuesCalculation(tk.Frame):
             pd.set_completion_percent(100)
             pd.destroy()
             self.sel_proj.set(self.projection.name)
-        else:
-            self.projection = None
-            self.sel_proj.set("No Projection Selected")
+        elif len(dialog.deleted_proj_ids) > 0:
+                if self.projection is not None and self.projection.index in dialog.deleted_proj_ids:
+                    self.projection = None
+                    self.sel_proj.set("No Projection Selected")
 
         self.populate_projections()
     
