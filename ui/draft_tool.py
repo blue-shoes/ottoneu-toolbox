@@ -18,7 +18,7 @@ from scrape.scrape_ottoneu import Scrape_Ottoneu
 from domain.enum import CalculationDataType, Position, ScoringFormat, StatType
 from ui.table import Table
 from ui.dialog import progress, draft_target
-from services import salary_services, league_services, calculation_services, player_services, draft_services
+from services import salary_services, league_services, calculation_services, player_services, draft_services, projection_services
 from demo import draft_demo
 
 from pathlib import Path
@@ -475,21 +475,39 @@ class DraftTool(tk.Frame):
 
     def update_player_search(self):
         text = self.search_string.get().upper()
+        df = self.values
         if text == '' or len(text) == 1:
-            df = pd.DataFrame() 
+            players = [] 
         else:
-            df = self.values.loc[self.values['Search_Name'].str.contains(text, case=False, regex=True)]
-        for i in range(len(df)):
-            id = df.index[i]
-            name = df.iat[i, 2]
-            value = f'${int(df.iat[i, 1])}'
-            inf_cost = '$' + "{:.0f}".format(df.iat[i, 1] * self.inflation)
-            salary = f'${int(df.iat[i,10])}'
-            pos = df.iat[i, 4]
-            team = df.iat[i, 3]
-            pts = "{:.1f}".format(df.iat[i, 5])
-            ppg = "{:.2f}".format(df.iat[i, 7])
-            pip = "{:.2f}".format(df.iat[i, 8])
+            players = player_services.search_by_name(text)
+        for player in players:
+            id = player.index
+            name = player.name
+            pos = player.position
+            team = player.team
+            if id in self.values.index:
+                value = self.value_calculation.get_player_value(id, Position.OVERALL).value
+                inf_cost = '$' + "{:.0f}".format(value * self.inflation)
+                value = '$' + "{:.0f}".format(value)
+            else:
+                value = '$0'
+                inf_cost = '$0'
+            if id in self.rosters.index:
+                salary = f"${int(self.rosters.at[id, 'Salary'])}"
+            else:
+                salary = '$0'
+            if id in self.value_calculation.projection.proj_dict:
+                pp = self.value_calculation.projection.get_player_projection(id)
+                h_pts = calculation_services.get_points(pp, Position.OFFENSE)
+                p_pts = calculation_services.get_points(pp, Position.PITCHER, ScoringFormat.is_sabr(self.league.format))
+                pts = "{:.1f}".format(h_pts + p_pts)
+                ppg = "{:.2f}".format(calculation_services.get_batting_point_rate_from_player_projection(pp))
+                pip = "{:.2f}".format(calculation_services.get_pitching_point_rate_from_player_projection(pp, self.league.format))
+            else:
+                pts = '0.0'
+                ppg = '0.00'
+                pip = '0.00'
+
             tags = self.get_row_tags(id)
             self.search_view.insert('', tk.END, text=id, tags=tags, values=(name, value, salary, inf_cost,pos, team, pts, ppg, pip))
    

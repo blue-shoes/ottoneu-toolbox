@@ -79,6 +79,34 @@ def get_points(player_proj, pos, sabr=False):
     except TypeError:
         return 0.0
 
+def get_batting_point_rate_from_player_projection(player_proj: PlayerProjection, basis=RankingBasis.PPG):
+    points = get_points(player_proj, Position.OFFENSE)
+    if basis == RankingBasis.PPG:
+        games = player_proj.get_stat(StatType.G_HIT)
+        if games is None or games == 0:
+            return 0
+        return points / games
+    if basis == RankingBasis.PPPA:
+        pa = player_proj.get_stat(StatType.PA)
+        if pa is None or pa == 0:
+            return 0
+        return points / pa
+    return 0
+
+def get_pitching_point_rate_from_player_projection(player_proj: PlayerProjection, format: ScoringFormat, basis=RankingBasis.PIP):
+    points = get_points(player_proj, Position.PITCHER, ScoringFormat.is_sabr(format))
+    if basis == RankingBasis.PPG:
+        games = player_proj.get_stat(StatType.G_PIT)
+        if games is None or games == 0:
+            return 0
+        return points / games
+    if basis == RankingBasis.PIP:
+        ip = player_proj.get_stat(StatType.IP)
+        if ip is None or ip == 0:
+            return 0
+        return points / ip
+    return 0
+
 def get_dataframe_with_values(value_calc : ValueCalculation, pos, text_values=True):
     assert isinstance(value_calc, ValueCalculation)
     if pos == Position.OVERALL:
