@@ -41,8 +41,6 @@ class DraftTool(tk.Frame):
         self.demo_thread = None
         self.run_event = controller.run_event
         self.queue = queue.Queue()
-        #self.value_calc = self.controller.value_calculation
-        self.extra_cost = 0
         self.sort_cols = {}
         self.show_drafted_players = tk.BooleanVar()
         self.show_drafted_players.set(False)
@@ -50,7 +48,6 @@ class DraftTool(tk.Frame):
         self.show_removed_players.set(False)
         self.targeted_players = pd.DataFrame()
         self.removed_players = []
-        #self.salary_update = []
         self.league = None
         self.value_calculation = None
 
@@ -69,6 +66,8 @@ class DraftTool(tk.Frame):
         self.league = self.controller.league
         self.value_calculation = self.controller.value_calculation
         self.league_text_var.set(f'{self.controller.league.name} Draft')
+
+        self.calculate_extra_value()
 
         pd = progress.ProgressDialog(self, title='Downloading latest salary information...')
         pd.increment_completion_percent(10)
@@ -91,6 +90,17 @@ class DraftTool(tk.Frame):
             os.remove(draft_demo.demo_trans)
 
         return True
+
+    def calculate_extra_value(self):
+        captured_value = 0
+        self.valued_roster_spots = 0
+        for pv in self.value_calculation.values:
+            if pv.position != Position.OVERALL or pv.value < 1:
+                continue
+            captured_value += pv.value
+            self.valued_roster_spots += 1
+        self.extra_value = self.league.num_teams * 400 - captured_value
+        print(f'extra_value = {self.extra_value}, valued_players = {self.valued_roster_spots}')
 
     def create_main(self):
         self.league_text_var = StringVar()
@@ -359,7 +369,6 @@ class DraftTool(tk.Frame):
                         player = player_services.get_player_by_ottoneu_id(int(otto_id))
                         if player is None:
                             logging.info(f'Otto id {otto_id} not in database')
-                            self.extra_cost += int(last_trans.iloc[index]['Salary'].split('$')[1])
                             index -= 1
                             continue
                         else:
@@ -398,10 +407,6 @@ class DraftTool(tk.Frame):
             return df.sort_values(by=['P/IP'], ascending=[False])
 
     def refresh_views(self, pos_keys=None):
-        pos_df = self.values.loc[self.values['Salary'] == 0]
-        pos_val = pos_df.loc[~(pos_df['Value'] < 0)]
-        additional_players = self.controller.league.num_teams * 40 - len(self.values.loc[self.values['Salary'] != 0]) - len(pos_val)
-        self.remaining_value = pos_val['Value'].sum() + additional_players + (int(self.value_calculation.get_input(CalculationDataType.NON_PRODUCTIVE_DOLLARS)) - self.extra_cost)
         self.calc_inflation()
         self.overall_view.refresh()
         if pos_keys == None:
@@ -806,7 +811,12 @@ class DraftTool(tk.Frame):
             return
     
     def calc_inflation(self):
-        self.remaining_dollars = 12*400 - (self.rosters['Salary'].sum() + self.extra_cost)
+        num_teams = self.controller.league.num_teams
+        pos_df = self.values.loc[self.values['Salary'] == 0]
+        pos_val = pos_df.loc[~(pos_df['Value'] < 1)]
+        remaining_valued_roster_spots = self.valued_roster_spots - len(self.rosters)
+        self.remaining_value = pos_val['Value'].sum() - remaining_valued_roster_spots
+        self.remaining_dollars = (num_teams*400 - self.extra_value) - self.rosters['Salary'].sum() - remaining_valued_roster_spots
         self.inflation = self.remaining_dollars / self.remaining_value
         self.inflation_str_var.set(f'Inflation: {"{:.1f}".format((self.inflation - 1.0)*100)}%')
 
