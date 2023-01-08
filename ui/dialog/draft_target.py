@@ -24,6 +24,8 @@ class Dialog(tk.Toplevel):
         tk.Button(frm, text="OK", command=self.ok_click).grid(row=3, column=0)
         tk.Button(frm, text="Cancel", command=self.cancel_click).grid(row=3, column=1)
 
+        self.bind('<Return>', self.enter_pressed)
+
         self.status = CANCEL
 
         frm.pack()
@@ -37,6 +39,9 @@ class Dialog(tk.Toplevel):
         price_entry.selection_range(0, END)
 
         self.wait_window()
+    
+    def enter_pressed(self, event):
+        self.ok_click()
     
     def ok_click(self):
         self.price = self.price_tv.get()
