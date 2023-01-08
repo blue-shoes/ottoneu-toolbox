@@ -54,7 +54,7 @@ class DraftTool(tk.Frame):
         self.create_main()
     
     def on_show(self):
-        if self.controller.league is None:
+        if self.controller.league is None or not league_services.league_exists(self.controller.league):
             self.controller.select_league()
         if self.controller.value_calculation is None or len(self.controller.value_calculation.values) == 0:
             self.controller.select_value_set()
@@ -935,11 +935,14 @@ class DraftTool(tk.Frame):
         return True
     
     def league_change(self):
+        while self.controller.league is None:
+            self.controller.select_league()
         if self.controller.league is not None and self.league != self.controller.league:
             self.league = self.controller.league
             self.league_text_var.set(f'League {self.controller.league.name} Draft')
             self.draft = draft_services.get_draft_by_league(self.controller.league.index)
             self.initialize_draft(same_values=True)
+
     
     def value_change(self):
         if self.controller.value_calculation is not None and self.value_calculation != self.controller.value_calculation:

@@ -6,12 +6,14 @@ from ui.dialog.wizard import league_import
 from ui.table import Table
 import logging
 
+from ui.dialog import progress
 from services import league_services
 from domain.enum import ScoringFormat
 
 class Dialog(tk.Toplevel):
     def __init__(self, parent, active=True):
         super().__init__(parent)
+        self.parent = parent
         self.league = None
         self.title("Select a League")
         frm = tk.Frame(self, borderwidth=4)
@@ -29,6 +31,7 @@ class Dialog(tk.Toplevel):
         lt.set_row_select_method(self.on_select)
         lt.set_refresh_method(self.populate_table)
         lt.set_double_click_method(self.double_click)
+        lt.set_right_click_method(self.rclick)
 
         self.populate_table()
 
@@ -67,11 +70,39 @@ class Dialog(tk.Toplevel):
         self.set_league()
 
     def on_select(self, event):
-        selection = event.widget.item(event.widget.selection()[0])["text"]
+        if len(event.widget.selection()) > 0:
+            selection = event.widget.item(event.widget.selection()[0])["text"]
+            for lg in self.league_list:
+                if lg.index == int(selection):
+                    self.league = league_services.get_league(lg.index)
+                    break
+        else:
+            selection = None
+
+    def rclick(self, event):
+        iid = event.widget.identify_row(event.y)
+        event.widget.selection_set(iid)
+        lg_id = int(event.widget.item(event.widget.selection()[0])["text"])
+        popup = tk.Menu(self.parent, tearoff=0)
+        popup.add_command(label="Delete", command=lambda: self.delete_league(lg_id))
+        try:
+            popup.post(event.x_root, event.y_root)
+        finally:
+            popup.grab_release()
+    
+    def delete_league(self, lg_id):
         for lg in self.league_list:
-            if lg.index == int(selection):
-                self.league = league_services.get_league(lg.index)
+            if lg.index == lg_id:
+                league = lg
                 break
+        if mb.askokcancel('Delete League', f'Confirm deletion of league {league.name}'):
+            self.lift()
+            pd = progress.ProgressDialog(self.parent, 'Deleting League')
+            pd.set_completion_percent(15)
+            league_services.delete_league_by_id(lg_id)
+            self.league_list.remove(league)
+            self.league_table.refresh()
+            pd.complete()
 
     def cancel(self):
         self.league = None
