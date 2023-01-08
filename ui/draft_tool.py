@@ -606,8 +606,11 @@ class DraftTool(tk.Frame):
     
     def create_roster_df(self):
         rows = self.get_roster_rows()
-        self.rosters = pd.DataFrame(rows)
-        self.rosters.columns = ['index', 'TeamID', 'ottoneu ID', 'Salary']
+        if len(rows) == 0:
+            self.rosters = pd.DataFrame(columns= ['index', 'TeamID', 'ottoneu ID', 'Salary'])
+        else:
+            self.rosters = pd.DataFrame(rows)
+            self.rosters.columns = ['index', 'TeamID', 'ottoneu ID', 'Salary']
         self.rosters.set_index('index', inplace=True)
     
     def get_roster_rows(self):
