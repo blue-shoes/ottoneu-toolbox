@@ -505,3 +505,9 @@ def get_available_seasons():
         seasons = session.query(Projection.season).distinct().all()
     tmp_seasons = [record.season for record in seasons]
     return sorted(tmp_seasons, reverse=True)
+
+def delete_projection_by_id(proj_id):
+    with Session() as session:
+        proj = session.query(Projection).filter(Projection.index == proj_id).first()
+        session.delete(proj)
+        session.commit()

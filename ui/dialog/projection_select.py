@@ -1,6 +1,9 @@
 import tkinter as tk     
 from tkinter import *              
 from tkinter import ttk 
+from tkinter import messagebox as mb
+
+from ui.dialog import progress
 from ui.dialog.wizard import projection_import
 from ui.table import Table, bool_to_table
 from domain.enum import ProjectionType
@@ -10,6 +13,7 @@ from services import projection_services
 class Dialog(tk.Toplevel):
     def __init__(self, parent):
         super().__init__(parent)
+        self.parent = parent
         self.projection = None
         self.title("Select a Projection")
         frm = tk.Frame(self, borderwidth=4)
@@ -46,6 +50,7 @@ class Dialog(tk.Toplevel):
         pt.set_row_select_method(self.on_select)
         pt.set_refresh_method(self.populate_table)
         pt.set_double_click_method(self.double_click)
+        pt.set_right_click_method(self.rclick)
 
         self.populate_table()
 
@@ -86,11 +91,39 @@ class Dialog(tk.Toplevel):
         self.set_projection()
 
     def on_select(self, event):
-        selection = event.widget.item(event.widget.selection()[0])["text"]
-        for proj in self.proj_list:
-            if proj.index == int(selection):
-                self.projection = projection_services.get_projection(proj_id=proj.index, player_data=False)
+        if len(event.widget.selection()) > 0:
+            selection = event.widget.item(event.widget.selection()[0])["text"]
+            for proj in self.proj_list:
+                if proj.index == int(selection):
+                    self.projection = projection_services.get_projection(proj_id=proj.index, player_data=False)
+                    break
+        else:
+            self.projection = None
+    
+    def rclick(self, event):
+        iid = event.widget.identify_row(event.y)
+        event.widget.selection_set(iid)
+        proj_id = int(event.widget.item(event.widget.selection()[0])["text"])
+        popup = tk.Menu(self.parent, tearoff=0)
+        popup.add_command(label="Delete", command=lambda: self.delete_proj(proj_id))
+        try:
+            popup.post(event.x_root, event.y_root)
+        finally:
+            popup.grab_release()
+    
+    def delete_proj(self, proj_id):
+        for projection in self.proj_list:
+            if projection.index == proj_id:
+                proj = projection
                 break
+        if mb.askokcancel('Delete Projection', f'Confirm deletion of projection {proj.name}'):
+            self.lift()
+            pd = progress.ProgressDialog(self.parent, 'Deleting Projection')
+            pd.set_completion_percent(15)
+            projection_services.delete_projection_by_id(proj_id)
+            self.proj_list.remove(projection)
+            self.proj_table.refresh()
+            pd.complete()
 
     def cancel(self):
         self.projection = None
