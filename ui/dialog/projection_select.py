@@ -8,7 +8,7 @@ from ui.dialog.wizard import projection_import
 from ui.table import Table, bool_to_table
 from domain.enum import ProjectionType
 
-from services import projection_services
+from services import projection_services, calculation_services
 
 class Dialog(tk.Toplevel):
     def __init__(self, parent):
@@ -116,14 +116,27 @@ class Dialog(tk.Toplevel):
             if projection.index == proj_id:
                 proj = projection
                 break
-        if mb.askokcancel('Delete Projection', f'Confirm deletion of projection {proj.name}'):
+        dep_values = calculation_services.get_values_with_projection_id(proj_id)
+        if len(dep_values) > 0:
+            if mb.askokcancel('Delete Projection', f'Confirm deletion of projection {proj.name}\n\nNote this projection is used by {len(dep_values)} value sets, which will also be deleted.'):
+                self.perform_deletion(projection)
+            else:
+                self.lift()
+                self.focus_force()
+        elif mb.askokcancel('Delete Projection', f'Confirm deletion of projection {proj.name}'):
+            self.perform_deletion(projection)
+        else:
             self.lift()
-            pd = progress.ProgressDialog(self.parent, 'Deleting Projection')
-            pd.set_completion_percent(15)
-            projection_services.delete_projection_by_id(proj_id)
-            self.proj_list.remove(projection)
-            self.proj_table.refresh()
-            pd.complete()
+            self.focus_force()
+
+    def perform_deletion(self, projection):
+        self.lift()
+        pd = progress.ProgressDialog(self.parent, 'Deleting Projection')
+        pd.set_completion_percent(15)
+        projection_services.delete_projection_by_id(projection.index)
+        self.proj_list.remove(projection)
+        self.proj_table.refresh()
+        pd.complete()
 
     def cancel(self):
         self.projection = None
