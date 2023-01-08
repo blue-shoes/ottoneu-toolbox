@@ -475,7 +475,7 @@ class DraftTool(tk.Frame):
 
     def get_row_tags(self, playerid):
         salary = self.values.loc[playerid]['Salary']
-        if salary == '$0':
+        if salary != 0:
             return ('rostered',)
         if self.draft.get_target_by_player(player_id=playerid) is not None:
             return ('targeted',)
