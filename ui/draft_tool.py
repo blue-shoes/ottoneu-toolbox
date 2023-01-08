@@ -420,8 +420,6 @@ class DraftTool(tk.Frame):
             pos_df = self.values
         else:
             pos_df = self.values.loc[self.values['Salary'] == 0]
-        #if self.sort_cols[self.overall_view] != None:
-        #    pos_df = self.sort_df_by(pos_df, self.sort_cols[self.overall_view])
         for i in range(len(pos_df)):
             id = pos_df.index[i]
             if id in self.removed_players and not self.show_removed_players.get():
@@ -437,14 +435,6 @@ class DraftTool(tk.Frame):
             salary = f'${int(pos_df.iat[i, 10])}'
             tags = self.get_row_tags(id)
             self.overall_view.insert('', tk.END, text=id, values=(name, value, inf_cost, position, team, pts, ppg, pip), tags=tags)
-            #if salary == '$0':
-            #    if id in self.removed_players:
-            #        self.overall_view.insert('', tk.END, text=id, values=(name, value, inf_cost, position, team, pts, ppg, pip), tags=('removed',))
-            #    
-            #    else:
-            #        self.overall_view.insert('', tk.END, text=id, values=(name, value, inf_cost, position, team, pts, ppg, pip))
-            #else:
-            #    self.overall_view.insert('', tk.END, text=id, values=(name, value, inf_cost, position, team, pts, ppg, pip), tags=('rostered',))
 
     def refresh_pos_table(self, pos):
         if self.show_drafted_players.get() == 1:
@@ -465,13 +455,6 @@ class DraftTool(tk.Frame):
             salary = f'${int(pos_df.iat[i, 8])}'
             tags = self.get_row_tags(id)
             self.pos_view[pos].insert('', tk.END, text=id, values=(name, value, inf_cost, position, team, pts, rate), tags=tags)
-            #if salary == '$0':
-            #    if id in self.removed_players:
-            #        
-            #    else:
-            #        self.pos_view[pos].insert('', tk.END, text=id, values=(name, value, inf_cost, position, team, pts, rate))
-            #else:
-            #    self.pos_view[pos].insert('', tk.END, text=id, values=(name, value, inf_cost, position, team, pts, rate), tags=('rostered',))
 
     def get_row_tags(self, playerid):
         salary = self.values.loc[playerid]['Salary']
@@ -505,11 +488,7 @@ class DraftTool(tk.Frame):
             pip = "{:.2f}".format(df.iat[i, 8])
             tags = self.get_row_tags(id)
             self.search_view.insert('', tk.END, text=id, tags=tags, values=(name, value, salary, inf_cost,pos, team, pts, ppg, pip))
-            #if salary != "$0":
-            #    self.search_view.insert('', tk.END, text=id, tags=('rostered',), values=(name, value, salary, inf_cost,pos, team, pts, ppg, pip))
-            #else:
-            #    self.search_view.insert('', tk.END, text=id, values=(name, value, salary, inf_cost,pos, team, pts, ppg, pip))
-    
+   
     def refresh_planning_frame(self):
         self.target_table.refresh()
 
@@ -522,12 +501,6 @@ class DraftTool(tk.Frame):
             pos = target.player.position
             tags = self.get_row_tags(id)
             self.target_table.insert('', tk.END, text=id, tags=tags, values=(name, t_price, value, pos))
-            #if self.values.loc[id]['Salary'] == '$0':
-            #    self.target_table.insert('', tk.END, text=id, tags=('rostered',), values=(name, t_price, value, pos))
-            #else:
-            #    self.target_table.insert('', tk.END, text=id, values=(name, t_price, value, pos))
-
-
 
     def create_setup_tab(self, tab):
         try:
