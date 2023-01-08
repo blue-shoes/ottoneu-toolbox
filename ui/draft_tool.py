@@ -4,7 +4,7 @@ from tkinter import *
 from tkinter import ttk 
 from tkinter import filedialog as fd
 from tkinter import messagebox as mb
-from tkinter.messagebox import showinfo
+from tkinter.messagebox import showinfo, OK
 import os
 import os.path
 import pandas as pd
@@ -17,8 +17,8 @@ import math
 from scrape.scrape_ottoneu import Scrape_Ottoneu 
 from domain.enum import CalculationDataType, Position, ScoringFormat, StatType
 from ui.table import Table
-from ui.dialog import progress, league_select
-from services import salary_services, league_services, calculation_services, player_services
+from ui.dialog import progress, draft_target
+from services import salary_services, league_services, calculation_services, player_services, draft_services
 from demo import draft_demo
 
 from pathlib import Path
@@ -82,6 +82,8 @@ class DraftTool(tk.Frame):
             salary_services.update_salary_info(format=self.league.format)
         pd.complete()
 
+        self.draft = draft_services.get_draft_by_league(self.controller.league.index)
+
         self.initialize_draft(same_values)
 
         #Clean up previous demo run
@@ -126,7 +128,7 @@ class DraftTool(tk.Frame):
 
         cols = ('Name','Value','Salary','Inf. Cost','Pos','Team','Points','P/G','P/IP')
         widths = {}
-        widths['Name'] = 175
+        widths['Name'] = 125
         widths['Pos'] = 75
         align = {}
         align['Name'] = W
@@ -136,6 +138,7 @@ class DraftTool(tk.Frame):
         sv.set_right_click_method(self.player_rclick)
         self.search_view.tag_configure('rostered', background='#A6A6A6')
         self.search_view.tag_configure('rostered', foreground='#5A5A5A')
+        self.search_view.tag_configure('targeted', background='#FCE19D')
         sv.set_refresh_method(self.update_player_search)
 
         running_list_frame = ttk.Frame(self)
@@ -156,7 +159,6 @@ class DraftTool(tk.Frame):
         self.tab_control.grid(row=0, column=0)
 
         self.pos_view = {}
-        self.scroll_bars = {}
 
         overall_frame = ttk.Frame(self.tab_control)
         self.tab_control.add(overall_frame, text='Overall')
@@ -164,7 +166,7 @@ class DraftTool(tk.Frame):
         sortable_cols = ('Name', 'Value', 'Inf. Cost', 'Points', 'P/G', 'P/IP')
         rev_sort_cols = ('Value', 'Inf. Cost', 'Points', 'P/G', 'P/IP')
         widths = {}
-        widths['Name'] = 175
+        widths['Name'] = 125
         widths['Pos'] = 75
         align = {}
         align['Name'] = W
@@ -175,6 +177,7 @@ class DraftTool(tk.Frame):
         ov.tag_configure('rostered', background='#A6A6A6')
         ov.tag_configure('rostered', foreground='#5A5A5A')
         ov.tag_configure('removed', background='#FFCCCB')
+        ov.tag_configure('targeted', background='#FCE19D')
         ov.add_scrollbar()
         ov.set_refresh_method(self.refresh_overall_view)
 
@@ -185,34 +188,86 @@ class DraftTool(tk.Frame):
                 cols = ('Name','Value','Inf. Cost','Pos','Team','Points','P/G')
             else:
                 cols = ('Name','Value','Inf. Cost','Pos','Team','Points','P/IP')
-            self.pos_view[pos] = pv = Table(pos_frame, cols,sortable_columns=sortable_cols, column_widths=widths, init_sort_col='Value')
+            self.pos_view[pos] = pv = Table(pos_frame, cols,sortable_columns=sortable_cols, column_widths=widths, column_alignments=align, init_sort_col='Value')
             pv.grid(column=0)
             pv.set_row_select_method(self.on_select)
             pv.set_right_click_method(self.player_rclick)
             pv.tag_configure('rostered', background='#A6A6A6')
             pv.tag_configure('rostered', foreground='#5A5A5A')
             pv.tag_configure('removed', background='#FFCCCB')
+            pv.tag_configure('targeted', background='#FCE19D')
             pv.set_refresh_method(lambda _pos = pos: self.refresh_pos_table(_pos))
             pv.add_scrollbar()
+        
+        planning_frame = ttk.Frame(self)
+        planning_frame.grid(row=2, column=2)
+
+        self.planning_tab = ptab = ttk.Notebook(planning_frame, width=570, height=300)
+        ptab.grid(row=0, column=0)
+
+        target_frame = ttk.Frame(ptab)
+        ptab.add(target_frame, text='Targets')
+        cols=['Name', 'Target Price', 'Value', 'Pos']
+        rev_sort = ['Target Price', 'Value']
+
+        self.target_table = tt = Table(target_frame, columns=cols, column_alignments=align, 
+            column_widths=widths, sortable_columns=cols, reverse_col_sort=rev_sort, init_sort_col='Value')
+        tt.grid(column=0)
+        tt.set_row_select_method(self.on_select)
+        tt.set_right_click_method(self.target_rclick)
+        tt.tag_configure('rostered', background='#A6A6A6')
+        tt.tag_configure('rostered', foreground='#5A5A5A')
+        tt.set_refresh_method(self.refresh_targets)
+        tt.add_scrollbar()
+
+    def target_rclick(self, event):
+        iid = event.widget.identify_row(event.y)
+        event.widget.selection_set(iid)
+        playerid = int(event.widget.item(event.widget.selection()[0])["text"])
+        popup = tk.Menu(self.parent, tearoff=0)
+        popup.add_command(label="Change Target Price", command=lambda: self.target_player(playerid))
+        popup.add_command(label="Remove Target", command=lambda: self.remove_target(playerid))
+        try:
+            popup.post(event.x_root, event.y_root)
+        finally:
+            popup.grab_release()
 
     def player_rclick(self, event):
         iid = event.widget.identify_row(event.y)
         event.widget.selection_set(iid)
         playerid = int(event.widget.item(event.widget.selection()[0])["text"])
         popup = tk.Menu(self.parent, tearoff=0)
-        popup.add_command(label="Target Player", command=lambda: self.target_player(playerid))
+        popup.add_command(label="Target Player", command=lambda: self.target_player(int(playerid)))
         popup.add_separator()
         if playerid in self.removed_players:
-            popup.add_command(label='Restore Player', command=lambda: self.restore_player(playerid))
+            popup.add_command(label='Restore Player', command=lambda: self.restore_player(int(playerid)))
         else:
-            popup.add_command(label='Remove Player', command=lambda: self.remove_player(playerid))
+            popup.add_command(label='Remove Player', command=lambda: self.remove_player(int(playerid)))
         try:
             popup.post(event.x_root, event.y_root)
         finally:
             popup.grab_release()
     
     def target_player(self, playerid):
-        print(f'Targeting player {playerid}')
+        target = self.draft.get_target_by_player(playerid)
+        if target is None:
+            dialog = draft_target.Dialog(self, playerid)
+            if dialog.status == OK:
+                target = draft_services.create_target(self.draft, playerid, dialog.price)
+                self.draft.targets.append(target)
+        else: 
+            dialog = draft_target.Dialog(self, playerid, target.price)
+            if dialog.status == OK:
+                draft_services.update_target(target, dialog.price)
+                self.draft.set_target(playerid, dialog.price)
+        if dialog.status == OK:
+            self.refresh_planning_frame()
+    
+    def remove_target(self, playerid):
+        target = self.draft.get_target_by_player(playerid)
+        self.draft.targets.remove(target)
+        draft_services.delete_target(target)
+        self.refresh_planning_frame()
     
     def remove_player(self, playerid):
         self.removed_players.append(playerid)
@@ -358,6 +413,7 @@ class DraftTool(tk.Frame):
                 self.pos_view[pos].refresh()
         
         self.refresh_search()
+        self.refresh_planning_frame()
     
     def refresh_overall_view(self):
         if self.show_drafted_players.get() == 1:
@@ -379,13 +435,16 @@ class DraftTool(tk.Frame):
             ppg = "{:.2f}".format(pos_df.iat[i, 7])
             pip = "{:.2f}".format(pos_df.iat[i, 8])
             salary = f'${int(pos_df.iat[i, 10])}'
-            if salary == '$0':
-                if id in self.removed_players:
-                    self.overall_view.insert('', tk.END, text=id, values=(name, value, inf_cost, position, team, pts, ppg, pip), tags=('removed',))
-                else:
-                    self.overall_view.insert('', tk.END, text=id, values=(name, value, inf_cost, position, team, pts, ppg, pip))
-            else:
-                self.overall_view.insert('', tk.END, text=id, values=(name, value, inf_cost, position, team, pts, ppg, pip), tags=('rostered',))
+            tags = self.get_row_tags(id)
+            self.overall_view.insert('', tk.END, text=id, values=(name, value, inf_cost, position, team, pts, ppg, pip), tags=tags)
+            #if salary == '$0':
+            #    if id in self.removed_players:
+            #        self.overall_view.insert('', tk.END, text=id, values=(name, value, inf_cost, position, team, pts, ppg, pip), tags=('removed',))
+            #    
+            #    else:
+            #        self.overall_view.insert('', tk.END, text=id, values=(name, value, inf_cost, position, team, pts, ppg, pip))
+            #else:
+            #    self.overall_view.insert('', tk.END, text=id, values=(name, value, inf_cost, position, team, pts, ppg, pip), tags=('rostered',))
 
     def refresh_pos_table(self, pos):
         if self.show_drafted_players.get() == 1:
@@ -404,13 +463,25 @@ class DraftTool(tk.Frame):
             pts = "{:.1f}".format(pos_df.iat[i, 5])
             rate = "{:.2f}".format(pos_df.iat[i, 7])
             salary = f'${int(pos_df.iat[i, 8])}'
-            if salary == '$0':
-                if id in self.removed_players:
-                    self.pos_view[pos].insert('', tk.END, text=id, values=(name, value, inf_cost, position, team, pts, rate), tags=('removed',))
-                else:
-                    self.pos_view[pos].insert('', tk.END, text=id, values=(name, value, inf_cost, position, team, pts, rate))
-            else:
-                self.pos_view[pos].insert('', tk.END, text=id, values=(name, value, inf_cost, position, team, pts, rate), tags=('rostered',))
+            tags = self.get_row_tags(id)
+            self.pos_view[pos].insert('', tk.END, text=id, values=(name, value, inf_cost, position, team, pts, rate), tags=tags)
+            #if salary == '$0':
+            #    if id in self.removed_players:
+            #        
+            #    else:
+            #        self.pos_view[pos].insert('', tk.END, text=id, values=(name, value, inf_cost, position, team, pts, rate))
+            #else:
+            #    self.pos_view[pos].insert('', tk.END, text=id, values=(name, value, inf_cost, position, team, pts, rate), tags=('rostered',))
+
+    def get_row_tags(self, playerid):
+        salary = self.values.loc[playerid]['Salary']
+        if salary == '$0':
+            return ('rostered',)
+        if self.draft.get_target_by_player(player_id=playerid) is not None:
+            return ('targeted',)
+        if playerid in self.removed_players:
+            return ('removed',)
+        return ''
 
     def refresh_search(self):
         self.search_view.refresh()
@@ -432,11 +503,32 @@ class DraftTool(tk.Frame):
             pts = "{:.1f}".format(df.iat[i, 5])
             ppg = "{:.2f}".format(df.iat[i, 7])
             pip = "{:.2f}".format(df.iat[i, 8])
-            if salary != "$0":
-                self.search_view.insert('', tk.END, text=id, tags=('rostered',), values=(name, value, salary, inf_cost,pos, team, pts, ppg, pip))
-            else:
-                self.search_view.insert('', tk.END, text=id, values=(name, value, salary, inf_cost,pos, team, pts, ppg, pip))
+            tags = self.get_row_tags(id)
+            self.search_view.insert('', tk.END, text=id, tags=tags, values=(name, value, salary, inf_cost,pos, team, pts, ppg, pip))
+            #if salary != "$0":
+            #    self.search_view.insert('', tk.END, text=id, tags=('rostered',), values=(name, value, salary, inf_cost,pos, team, pts, ppg, pip))
+            #else:
+            #    self.search_view.insert('', tk.END, text=id, values=(name, value, salary, inf_cost,pos, team, pts, ppg, pip))
     
+    def refresh_planning_frame(self):
+        self.target_table.refresh()
+
+    def refresh_targets(self):
+        for target in self.draft.targets:
+            id = target.player_id
+            name = target.player.name
+            t_price = f'${target.price}'
+            value = '$' + "{:.0f}".format(self.value_calculation.get_player_value(id, pos=Position.OVERALL).value)
+            pos = target.player.position
+            tags = self.get_row_tags(id)
+            self.target_table.insert('', tk.END, text=id, tags=tags, values=(name, t_price, value, pos))
+            #if self.values.loc[id]['Salary'] == '$0':
+            #    self.target_table.insert('', tk.END, text=id, tags=('rostered',), values=(name, t_price, value, pos))
+            #else:
+            #    self.target_table.insert('', tk.END, text=id, values=(name, t_price, value, pos))
+
+
+
     def create_setup_tab(self, tab):
         try:
             ttk.Label(tab, text = "Enter League #:").grid(column=0,row=0, pady=5, sticky=tk.E)
@@ -833,6 +925,7 @@ class DraftTool(tk.Frame):
         if self.controller.league is not None and self.league != self.controller.league:
             self.league = self.controller.league
             self.league_text_var.set(f'League {self.controller.league.name} Draft')
+            self.draft = draft_services.get_draft_by_league(self.controller.league.index)
             self.initialize_draft(same_values=True)
     
     def value_change(self):

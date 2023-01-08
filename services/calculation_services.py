@@ -7,7 +7,7 @@ from domain.domain import PlayerValue, ValueCalculation, Projection, PlayerProje
 from domain.enum import Position, CalculationDataType as CDT, StatType, ScoringFormat, RankingBasis, IdType
 from value.point_values import PointValues
 from services import player_services, projection_services
-from util import string_util
+from util import string_util, date_util
 import math
 import logging
 
@@ -57,7 +57,7 @@ def load_calculation(calc_index):
 
 def get_values_for_year(year=None):
     if year is None:
-        year = projection_services.get_current_projection_year()
+        year = date_util.get_current_ottoneu_year()
     with Session() as session:
         return session.query(ValueCalculation).join(ValueCalculation.projection).filter(Projection.season == year).all()
 

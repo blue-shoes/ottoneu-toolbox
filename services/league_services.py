@@ -47,6 +47,8 @@ def refresh_league(league_idx, pd=None):
                 rs.player = session.query(Player).filter_by(ottoneu_id = idx).first()
                 rs.salary = row['Salary'].split('$')[1]
                 team_map[team].roster_spots.append(rs)
+                if team_map[team].name != row['Team Name']:
+                    team_map[team].name = row['Team Name']
             
             lg.last_refresh = datetime.now()
             session.commit()
