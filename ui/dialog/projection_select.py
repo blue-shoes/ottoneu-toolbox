@@ -15,6 +15,7 @@ class Dialog(tk.Toplevel):
         super().__init__(parent)
         self.parent = parent
         self.projection = None
+        self.deleted_proj_ids = []
         self.title("Select a Projection")
         frm = tk.Frame(self, borderwidth=4)
 
@@ -136,6 +137,7 @@ class Dialog(tk.Toplevel):
         projection_services.delete_projection_by_id(projection.index)
         self.proj_list.remove(projection)
         self.proj_table.refresh()
+        self.deleted_proj_ids.append(projection.index)
         pd.complete()
 
     def cancel(self):
