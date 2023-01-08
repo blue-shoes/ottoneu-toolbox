@@ -462,8 +462,7 @@ class DraftTool(tk.Frame):
             self.pos_view[pos].insert('', tk.END, text=id, values=(name, value, inf_cost, position, team, pts, rate), tags=tags)
 
     def get_row_tags(self, playerid):
-        salary = self.values.loc[playerid]['Salary']
-        if salary != 0:
+        if playerid in self.rosters.index:
             return ('rostered',)
         if self.draft.get_target_by_player(player_id=playerid) is not None:
             return ('targeted',)
