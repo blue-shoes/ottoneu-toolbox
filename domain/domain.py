@@ -336,18 +336,18 @@ class Draft(Base):
 
     year = Column(Integer, nullable=False)
 
-    def get_target_by_player(self, player:Player):
+    def get_target_by_player(self, player_id):
         if self.targets is not None:
             for target in self.targets:
-                if target.player.index == player.index:
+                if target.player.index == player_id:
                     return target
         return None
 
-    def set_target(self, player, price=None):
-        target = self.get_target_by_player(player)
+    def set_target(self, player_id, price=None):
+        target = self.get_target_by_player(player_id)
         if target is None:
             target = Draft_Target()
-            target.player = player
+            target.player_id = player_id
             self.targets.append(target)
         target.price = price
 
@@ -359,7 +359,7 @@ class Draft_Target(Base):
     draft = relationship("Draft", back_populates='targets')
 
     player_id = Column(Integer, ForeignKey("player.index"), nullable=False)
-    player = relationship("Player")
+    player = relationship("Player", lazy="joined")
 
     price = Column(Integer, nullable=True)
 
