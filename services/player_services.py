@@ -1,4 +1,6 @@
 from datetime import datetime
+from sqlalchemy.orm import joinedload
+
 from domain.domain import Player, Salary_Refresh
 from domain.enum import ScoringFormat, Position
 from scrape.scrape_ottoneu import Scrape_Ottoneu
@@ -91,3 +93,10 @@ def get_player_positions(player, discrete=False):
                 pitcher = True
             positions.append(pos)
     return positions
+
+def search_by_name(search_str, salary_info=True):
+    with Session() as session:
+        if salary_info:
+            return session.query(Player).options(joinedload(Player.salary_info)).filter(Player.search_name.contains(search_str)).all()
+        else:
+            return session.query(Player).filter(Player.search_name.contains(search_str)).all()
