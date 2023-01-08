@@ -18,7 +18,8 @@ class Dialog(tk.Toplevel):
         self.price_tv = IntVar()
         if price is not None:
             self.price_tv.set(price)
-        tk.Entry(frm, textvariable=self.price_tv).grid(row=1, column=1)
+        price_entry = tk.Entry(frm, textvariable=self.price_tv)
+        price_entry.grid(row=1, column=1)
 
         tk.Button(frm, text="OK", command=self.ok_click).grid(row=3, column=0)
         tk.Button(frm, text="Cancel", command=self.cancel_click).grid(row=3, column=1)
@@ -27,7 +28,13 @@ class Dialog(tk.Toplevel):
 
         frm.pack()
 
+        self.lift()
+        self.focus_force()
+
         self.protocol("WM_DELETE_WINDOW", self.cancel_click)
+
+        price_entry.focus()
+        price_entry.selection_range(0, END)
 
         self.wait_window()
     
