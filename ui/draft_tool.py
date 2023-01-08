@@ -91,6 +91,9 @@ class DraftTool(tk.Frame):
 
         return True
 
+    def leave_page(self):
+        return True
+
     def calculate_extra_value(self):
         captured_value = 0
         self.valued_roster_spots = 0

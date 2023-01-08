@@ -27,6 +27,9 @@ class Start(tk.Frame):
     
     def on_show(self):
         return True
+    
+    def leave_page(self):
+        return True
 
     def create_player_values_click(self):
         # TODO: Move to Create Player Values Module

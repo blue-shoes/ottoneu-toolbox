@@ -40,6 +40,18 @@ class ValuesCalculation(tk.Frame):
             self.controller.value_calculation = ValueCalculation()
             self.value_calc = self.controller.value_calculation
         return True
+    
+    def leave_page(self):
+        if self.value_calc.index is None and len(self.value_calc.values) > 0:
+            ret = mb.askyesnocancel('Save Calculation', 'Do you want to save the last run value calculation?')
+            if ret is None:
+                return False
+            if ret:
+                self.save_values()
+            else:
+                self.controller.value_calculation = None
+        return True
+
 
     def refresh_ui(self):
         pd = progress.ProgressDialog(self.parent, 'Updating Value Calculator Window...')

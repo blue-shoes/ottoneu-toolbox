@@ -42,6 +42,7 @@ class Main(tk.Tk):
         self.container.grid_columnconfigure(0, weight=1)
 
         self.frames = {}
+        self.current_page = None
         self.create_frame(Start)
         self.create_frame(ValuesCalculation)
         self.create_frame(DraftTool)
@@ -126,10 +127,11 @@ class Main(tk.Tk):
     
     def show_frame(self, page_name):
         '''Show a frame for the given page name'''
-        frame = self.frames[page_name]
-        if frame.on_show():
-            frame.tkraise()
-            self.current_page = page_name
+        if self.current_page is None or self.frames[self.current_page].leave_page():
+            frame = self.frames[page_name]
+            if frame.on_show():
+                frame.tkraise()
+                self.current_page = page_name
     
     def show_start_page(self):
         self.show_frame(Start.__name__)
