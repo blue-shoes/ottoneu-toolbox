@@ -16,7 +16,8 @@ from ui.table import Table
 from domain.domain import ValueCalculation, ScoringFormat
 from domain.enum import CalculationDataType as CDT, RankingBasis, RepLevelScheme, StatType, Position
 from services import projection_services, calculation_services
-from ui.dialog import proj_download, projection_select, progress, name_desc
+from ui.dialog import projection_select, progress, name_desc
+from ui.dialog.wizard import projection_import
 
 
 class ValuesCalculation(tk.Frame):
@@ -314,7 +315,7 @@ class ValuesCalculation(tk.Frame):
     def select_projection(self):
         count = projection_services.get_projection_count()
         if count == 0:
-            dialog = proj_download.Dialog(self)
+            dialog = projection_import.Dialog(self)
             self.projection = dialog.projection
         else:
             dialog = projection_select.Dialog(self)
