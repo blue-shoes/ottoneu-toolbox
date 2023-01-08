@@ -473,3 +473,9 @@ def save_calculation_from_file(vc : ValueCalculation, df : DataFrame, pd=None):
 
     save_calculation(vc)
     return vc
+
+def delete_values_by_id(values_id):
+    with Session() as session:
+        val = session.query(ValueCalculation).filter(ValueCalculation.index == values_id).first()
+        session.delete(val)
+        session.commit()

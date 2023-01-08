@@ -1,6 +1,8 @@
 import tkinter as tk     
 from tkinter import *              
 from tkinter import ttk 
+from tkinter import messagebox as mb
+
 from ui.dialog.wizard import value_import
 from ui.table import Table
 from ui.dialog import progress
@@ -11,6 +13,7 @@ from services import calculation_services
 class Dialog(tk.Toplevel):
     def __init__(self, parent, page_controller, active=True, year=None, redirect=True):
         super().__init__(parent)
+        self.parent = parent
         self.value = None
         self.title("Select a Value Set")
         self.page_controller = page_controller
@@ -34,6 +37,7 @@ class Dialog(tk.Toplevel):
         lt.set_row_select_method(self.on_select)
         lt.set_refresh_method(self.populate_table)
         lt.set_double_click_method(self.double_click)
+        lt.set_right_click_method(self.rclick)
 
         self.populate_table()
 
@@ -73,11 +77,39 @@ class Dialog(tk.Toplevel):
         self.set_value()
 
     def on_select(self, event):
-        selection = event.widget.item(event.widget.selection()[0])["text"]
-        for value in self.value_list:
-            if value.index == int(selection):
-                self.value = value
+        if len(event.widget.selection()) > 0:
+            selection = event.widget.item(event.widget.selection()[0])["text"]
+            for value in self.value_list:
+                if value.index == int(selection):
+                    self.value = value
+                    break
+        else:
+            self.value = None
+    
+    def rclick(self, event):
+        iid = event.widget.identify_row(event.y)
+        event.widget.selection_set(iid)
+        value_id = int(event.widget.item(event.widget.selection()[0])["text"])
+        popup = tk.Menu(self.parent, tearoff=0)
+        popup.add_command(label="Delete", command=lambda: self.delete_values(value_id))
+        try:
+            popup.post(event.x_root, event.y_root)
+        finally:
+            popup.grab_release()
+    
+    def delete_values(self, values_id):
+        for values in self.value_list:
+            if values.index == values_id:
+                val = values
                 break
+        if mb.askokcancel('Delete Values', f'Confirm deletion of values {val.name}'):
+            self.lift()
+            pd = progress.ProgressDialog(self.parent, 'Deleting Values')
+            pd.set_completion_percent(15)
+            calculation_services.delete_values_by_id(values_id)
+            self.value_list.remove(val)
+            self.value_table.refresh()
+            pd.complete()
 
     def cancel(self):
         self.value = None
