@@ -1,4 +1,4 @@
-import datetime
+from datetime import datetime
 
 def get_current_ottoneu_year():
     """Gets the current year for projections. Assumes October and later is next year, otherwise current year"""
