@@ -119,7 +119,7 @@ class DraftTool(tk.Frame):
         ttk.Label(search_frame, text = 'Player Search: ', font='bold').grid(column=0,row=1,pady=5)
 
         self.search_string = ss = tk.StringVar()
-        ss.trace("w", lambda name, index, mode, sv=ss: self.refresh_search())
+        ss.trace("w", lambda name, index, mode, sv=ss: self.search_view.refresh())
         ttk.Entry(search_frame, textvariable=ss).grid(column=1,row=1)
 
         self.start_monitor = ttk.Button(search_frame, text='Start Draft Monitor', command=self.start_draft_monitor).grid(column=0,row=2)
@@ -420,7 +420,7 @@ class DraftTool(tk.Frame):
                 logging.debug(f'updating {pos.value}')
                 self.pos_view[pos].refresh()
         
-        self.refresh_search()
+        self.search_view.refresh()
         self.refresh_planning_frame()
     
     def refresh_overall_view(self):
@@ -472,9 +472,6 @@ class DraftTool(tk.Frame):
         if playerid in self.removed_players:
             return ('removed',)
         return ''
-
-    def refresh_search(self):
-        self.search_view.refresh()
 
     def update_player_search(self):
         text = self.search_string.get().upper()
