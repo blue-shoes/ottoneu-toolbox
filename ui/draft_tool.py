@@ -103,7 +103,6 @@ class DraftTool(tk.Frame):
             captured_value += pv.value
             self.valued_roster_spots += 1
         self.extra_value = self.league.num_teams * 400 - captured_value
-        print(f'extra_value = {self.extra_value}, valued_players = {self.valued_roster_spots}')
 
     def create_main(self):
         self.league_text_var = StringVar()
@@ -139,13 +138,15 @@ class DraftTool(tk.Frame):
         
         ttk.Label(f, text = 'Search Results', font='bold').grid(column=0, row=0)
 
-        cols = ('Name','Value','Salary','Inf. Cost','Pos','Team','Points','P/G','P/IP')
+        cols = ('Name','Value','Salary','Inf. Cost','Pos','Team','Points','P/G','P/IP', 'Roster %')
         widths = {}
         widths['Name'] = 125
         widths['Pos'] = 75
         align = {}
         align['Name'] = W
-        self.search_view = sv = Table(f, columns=cols, column_alignments=align, column_widths=widths)    
+        custom_sort = {}
+        custom_sort['Value'] = self.default_search_sort
+        self.search_view = sv = Table(f, columns=cols, column_alignments=align, column_widths=widths, sortable_columns=cols, init_sort_col='Value', custom_sort=custom_sort)    
         self.search_view.grid(column=0,row=1, padx=5)   
         sv.set_row_select_method(self.on_select)
         sv.set_right_click_method(self.player_rclick)
@@ -303,6 +304,16 @@ class DraftTool(tk.Frame):
     def on_select(self, event):
         if len(event.widget.selection()) == 1:
             print(f'Selection is {int(event.widget.item(event.widget.selection()[0])["text"])}')
+    
+    def default_search_sort(self):
+        l = [((self.search_view.set(k, 'Value'), self.search_view.set(k,'Roster %')), k) for k in self.search_view.get_children('')]
+        l = sorted(l, reverse=self.search_view.reverse_sort['Value'], key=lambda x: self.sort_search_val_and_rost(x))
+        return l
+    
+    def sort_search_val_and_rost(self, val_rost):
+        val = float(val_rost[0][0][1:])
+        rost = float(val_rost[0][1][:-1])
+        return (val, rost)
 
     def start_draft_monitor(self):
         logging.info('---Starting Draft Monitor---')
@@ -507,9 +518,14 @@ class DraftTool(tk.Frame):
                 pts = '0.0'
                 ppg = '0.00'
                 pip = '0.00'
+            si = player.get_salary_info_for_format(self.league.format)
+            if si is None:
+                roster_percent = '0.0%'
+            else:
+                roster_percent = "{:.1f}".format(si.roster_percentage) + "%"
 
             tags = self.get_row_tags(id)
-            self.search_view.insert('', tk.END, text=id, tags=tags, values=(name, value, salary, inf_cost,pos, team, pts, ppg, pip))
+            self.search_view.insert('', tk.END, text=id, tags=tags, values=(name, value, salary, inf_cost,pos, team, pts, ppg, pip, roster_percent))
    
     def refresh_planning_frame(self):
         self.target_table.refresh()
