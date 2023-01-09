@@ -61,6 +61,12 @@ class Player(Base):
             if pos.value in self.position:
                 pitch = True
         return hit and pitch
+    
+    def get_salary_info_for_format(self, format=ScoringFormat.ALL):
+        for si in self.salary_info:
+            if si.format == format:
+                return si
+        return None
 
 class League(Base):
     __tablename__ = "league"
