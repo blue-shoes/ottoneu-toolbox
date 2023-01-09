@@ -375,6 +375,10 @@ class ScoringFormat(Enum):
     @classmethod
     def is_points_type(self, format):
         return format in [self.FG_POINTS, self.H2H_FG_POINTS, self.SABR_POINTS, self.H2H_SABR_POINTS]
+    
+    @classmethod
+    def is_sabr(self, format):
+        return format in [self.SABR_POINTS, self.H2H_SABR_POINTS]
 
     @classmethod
     def name_to_enum_map(self):

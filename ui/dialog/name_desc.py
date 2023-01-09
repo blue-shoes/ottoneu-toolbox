@@ -30,6 +30,9 @@ class Dialog(tk.Toplevel):
 
         frm.pack()
 
+        self.lift()
+        self.focus_force()
+
         self.protocol("WM_DELETE_WINDOW", self.cancel_click)
 
         self.wait_window()

@@ -18,7 +18,7 @@ from scrape.scrape_ottoneu import Scrape_Ottoneu
 from domain.enum import CalculationDataType, Position, ScoringFormat, StatType
 from ui.table import Table
 from ui.dialog import progress, draft_target
-from services import salary_services, league_services, calculation_services, player_services, draft_services
+from services import salary_services, league_services, calculation_services, player_services, draft_services, projection_services
 from demo import draft_demo
 
 from pathlib import Path
@@ -46,6 +46,8 @@ class DraftTool(tk.Frame):
         self.show_drafted_players.set(False)
         self.show_removed_players = tk.BooleanVar()
         self.show_removed_players.set(False)
+        self.search_unrostered_bv = tk.BooleanVar()
+        self.search_unrostered_bv.set(False)
         self.targeted_players = pd.DataFrame()
         self.removed_players = []
         self.league = None
@@ -91,6 +93,9 @@ class DraftTool(tk.Frame):
 
         return True
 
+    def leave_page(self):
+        return True
+
     def calculate_extra_value(self):
         captured_value = 0
         self.valued_roster_spots = 0
@@ -100,7 +105,6 @@ class DraftTool(tk.Frame):
             captured_value += pv.value
             self.valued_roster_spots += 1
         self.extra_value = self.league.num_teams * 400 - captured_value
-        print(f'extra_value = {self.extra_value}, valued_players = {self.valued_roster_spots}')
 
     def create_main(self):
         self.league_text_var = StringVar()
@@ -116,33 +120,35 @@ class DraftTool(tk.Frame):
         ttk.Label(search_frame, text = 'Player Search: ', font='bold').grid(column=0,row=1,pady=5)
 
         self.search_string = ss = tk.StringVar()
-        ss.trace("w", lambda name, index, mode, sv=ss: self.refresh_search())
+        ss.trace("w", lambda name, index, mode, sv=ss: self.search_view.refresh())
         ttk.Entry(search_frame, textvariable=ss).grid(column=1,row=1)
 
-        self.start_monitor = ttk.Button(search_frame, text='Start Draft Monitor', command=self.start_draft_monitor).grid(column=0,row=2)
+        self.start_monitor = ttk.Button(search_frame, text='Start Draft Monitor', command=self.start_draft_monitor).grid(column=0,row=3)
         self.monitor_status = tk.StringVar()
         self.monitor_status.set('Monitor not started')
         self.monitor_status_lbl = tk.Label(search_frame, textvariable=self.monitor_status, fg='red')
-        self.monitor_status_lbl.grid(column=1,row=2)
-        self.stop_monitor = ttk.Button(search_frame, text="Stop Draft Monitor", command=self.stop_draft_monitor).grid(column=0,row=3)
+        self.monitor_status_lbl.grid(column=1,row=3)
+        self.stop_monitor = ttk.Button(search_frame, text="Stop Draft Monitor", command=self.stop_draft_monitor).grid(column=0,row=4)
 
         self.inflation_str_var = tk.StringVar()
 
         self.inflation_lbl = ttk.Label(search_frame, textvariable=self.inflation_str_var)
-        self.inflation_lbl.grid(column=0,row=4)
+        self.inflation_lbl.grid(column=0,row=5)
 
         f = ttk.Frame(self)
         f.grid(column=1,row=1)
         
         ttk.Label(f, text = 'Search Results', font='bold').grid(column=0, row=0)
 
-        cols = ('Name','Value','Salary','Inf. Cost','Pos','Team','Points','P/G','P/IP')
+        cols = ('Name','Value','Salary','Inf. Cost','Pos','Team','Points','P/G','P/IP', 'Roster %')
         widths = {}
         widths['Name'] = 125
         widths['Pos'] = 75
         align = {}
         align['Name'] = W
-        self.search_view = sv = Table(f, columns=cols, column_alignments=align, column_widths=widths)    
+        custom_sort = {}
+        custom_sort['Value'] = self.default_search_sort
+        self.search_view = sv = Table(f, columns=cols, column_alignments=align, column_widths=widths, sortable_columns=cols, init_sort_col='Value', custom_sort=custom_sort)    
         self.search_view.grid(column=0,row=1, padx=5)   
         sv.set_row_select_method(self.on_select)
         sv.set_right_click_method(self.player_rclick)
@@ -150,6 +156,10 @@ class DraftTool(tk.Frame):
         self.search_view.tag_configure('rostered', foreground='#5A5A5A')
         self.search_view.tag_configure('targeted', background='#FCE19D')
         sv.set_refresh_method(self.update_player_search)
+
+        search_unrostered_btn = ttk.Checkbutton(search_frame, text="Search 0% Rostered?", variable=self.search_unrostered_bv, command=self.search_view.refresh)
+        search_unrostered_btn.grid(row=2, column=1, sticky=tk.NW, pady=5)
+        search_unrostered_btn.state(['!alternate'])
 
         running_list_frame = ttk.Frame(self)
         running_list_frame.grid(row=2, column=0, columnspan=2, pady=5)
@@ -300,6 +310,16 @@ class DraftTool(tk.Frame):
     def on_select(self, event):
         if len(event.widget.selection()) == 1:
             print(f'Selection is {int(event.widget.item(event.widget.selection()[0])["text"])}')
+    
+    def default_search_sort(self):
+        l = [((self.search_view.set(k, 'Value'), self.search_view.set(k,'Roster %')), k) for k in self.search_view.get_children('')]
+        l = sorted(l, reverse=self.search_view.reverse_sort['Value'], key=lambda x: self.sort_search_val_and_rost(x))
+        return l
+    
+    def sort_search_val_and_rost(self, val_rost):
+        val = float(val_rost[0][0][1:])
+        rost = float(val_rost[0][1][:-1])
+        return (val, rost)
 
     def start_draft_monitor(self):
         logging.info('---Starting Draft Monitor---')
@@ -417,7 +437,7 @@ class DraftTool(tk.Frame):
                 logging.debug(f'updating {pos.value}')
                 self.pos_view[pos].refresh()
         
-        self.refresh_search()
+        self.search_view.refresh()
         self.refresh_planning_frame()
     
     def refresh_overall_view(self):
@@ -462,8 +482,7 @@ class DraftTool(tk.Frame):
             self.pos_view[pos].insert('', tk.END, text=id, values=(name, value, inf_cost, position, team, pts, rate), tags=tags)
 
     def get_row_tags(self, playerid):
-        salary = self.values.loc[playerid]['Salary']
-        if salary != 0:
+        if playerid in self.rosters.index:
             return ('rostered',)
         if self.draft.get_target_by_player(player_id=playerid) is not None:
             return ('targeted',)
@@ -471,28 +490,50 @@ class DraftTool(tk.Frame):
             return ('removed',)
         return ''
 
-    def refresh_search(self):
-        self.search_view.refresh()
-
     def update_player_search(self):
         text = self.search_string.get().upper()
         if text == '' or len(text) == 1:
-            df = pd.DataFrame() 
+            players = [] 
         else:
-            df = self.values.loc[self.values['Search_Name'].str.contains(text, case=False, regex=True)]
-        for i in range(len(df)):
-            id = df.index[i]
-            name = df.iat[i, 2]
-            value = f'${int(df.iat[i, 1])}'
-            inf_cost = '$' + "{:.0f}".format(df.iat[i, 1] * self.inflation)
-            salary = f'${int(df.iat[i,10])}'
-            pos = df.iat[i, 4]
-            team = df.iat[i, 3]
-            pts = "{:.1f}".format(df.iat[i, 5])
-            ppg = "{:.2f}".format(df.iat[i, 7])
-            pip = "{:.2f}".format(df.iat[i, 8])
+            players = player_services.search_by_name(text)
+        for player in players:
+            si = player.get_salary_info_for_format(self.league.format)
+            if si is None and not self.search_unrostered_bv.get():
+                continue
+            id = player.index
+            name = player.name
+            pos = player.position
+            team = player.team
+            if id in self.values.index:
+                value = self.value_calculation.get_player_value(id, Position.OVERALL).value
+                inf_cost = '$' + "{:.0f}".format(value * self.inflation)
+                value = '$' + "{:.0f}".format(value)
+            else:
+                value = '$0'
+                inf_cost = '$0'
+            if id in self.rosters.index:
+                salary = f"${int(self.rosters.at[id, 'Salary'])}"
+            else:
+                salary = '$0'
+            if id in self.value_calculation.projection.proj_dict:
+                pp = self.value_calculation.projection.get_player_projection(id)
+                h_pts = calculation_services.get_points(pp, Position.OFFENSE)
+                p_pts = calculation_services.get_points(pp, Position.PITCHER, ScoringFormat.is_sabr(self.league.format))
+                pts = "{:.1f}".format(h_pts + p_pts)
+                ppg = "{:.2f}".format(calculation_services.get_batting_point_rate_from_player_projection(pp))
+                pip = "{:.2f}".format(calculation_services.get_pitching_point_rate_from_player_projection(pp, self.league.format))
+            else:
+                pts = '0.0'
+                ppg = '0.00'
+                pip = '0.00'
+            
+            if si is None:
+                roster_percent = '0.0%'
+            else:
+                roster_percent = "{:.1f}".format(si.roster_percentage) + "%"
+
             tags = self.get_row_tags(id)
-            self.search_view.insert('', tk.END, text=id, tags=tags, values=(name, value, salary, inf_cost,pos, team, pts, ppg, pip))
+            self.search_view.insert('', tk.END, text=id, tags=tags, values=(name, value, salary, inf_cost,pos, team, pts, ppg, pip, roster_percent))
    
     def refresh_planning_frame(self):
         self.target_table.refresh()

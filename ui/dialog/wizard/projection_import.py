@@ -26,6 +26,7 @@ class Dialog(wizard.Dialog):
         self.wizard.pack()
         self.title('Import Projection')
         self.projection = None
+        self.deleted_proj_ids = []
         return self.wizard
 
 class Wizard(wizard.Wizard):

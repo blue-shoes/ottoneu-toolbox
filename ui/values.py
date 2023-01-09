@@ -16,7 +16,8 @@ from ui.table import Table
 from domain.domain import ValueCalculation, ScoringFormat
 from domain.enum import CalculationDataType as CDT, RankingBasis, RepLevelScheme, StatType, Position
 from services import projection_services, calculation_services
-from ui.dialog import proj_download, projection_select, progress, name_desc
+from ui.dialog import projection_select, progress, name_desc
+from ui.dialog.wizard import projection_import
 
 
 class ValuesCalculation(tk.Frame):
@@ -40,6 +41,18 @@ class ValuesCalculation(tk.Frame):
             self.controller.value_calculation = ValueCalculation()
             self.value_calc = self.controller.value_calculation
         return True
+    
+    def leave_page(self):
+        if self.value_calc.index is None and len(self.value_calc.values) > 0:
+            ret = mb.askyesnocancel('Save Calculation', 'Do you want to save the last run value calculation?')
+            if ret is None:
+                return False
+            if ret:
+                self.save_values()
+            else:
+                self.controller.value_calculation = None
+        return True
+
 
     def refresh_ui(self):
         pd = progress.ProgressDialog(self.parent, 'Updating Value Calculator Window...')
@@ -302,7 +315,7 @@ class ValuesCalculation(tk.Frame):
     def select_projection(self):
         count = projection_services.get_projection_count()
         if count == 0:
-            dialog = proj_download.Dialog(self)
+            dialog = projection_import.Dialog(self)
             self.projection = dialog.projection
         else:
             dialog = projection_select.Dialog(self)
@@ -550,13 +563,11 @@ class ValuesCalculation(tk.Frame):
         if dialog.status == mb.OK:
             pd = progress.ProgressDialog(self, title='Saving Calculation')
             pd.increment_completion_percent(5)
-            self.value_calc.index = None
             self.value_calc.name = dialog.name_tv.get()
             self.value_calc.description = dialog.desc_tv.get()
             self.value_calc.timestamp = datetime.now()
             self.value_calc = calculation_services.save_calculation(self.value_calc)
-            self.projection = self.value_calc.projection
-            #calculation_services.save_calculation(self.value_calc)
+            self.controller.value_calculation = self.value_calc
             pd.set_completion_percent(100)
             pd.destroy()
     
@@ -672,6 +683,7 @@ class ValuesCalculation(tk.Frame):
         if self.has_errors():
             logging.warning("Input errors")
             return
+        self.value_calc = ValueCalculation()
         self.value_calc.projection = self.projection
         self.value_calc.format = ScoringFormat.name_to_enum_map()[self.game_type.get()]
         self.value_calc.inputs = []

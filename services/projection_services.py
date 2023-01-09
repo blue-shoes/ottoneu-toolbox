@@ -434,10 +434,8 @@ def get_projection(proj_id, player_data=True):
                 .options(joinedload(Projection.player_projections))
                 .filter_by(index = proj_id).first()
             )
-            proj.init_proj_dict()
         else:
             proj = session.query(Projection).filter(Projection.index == proj_id).first()
-    
     return proj     
 
 def convert_to_df(proj):
@@ -511,3 +509,7 @@ def delete_projection_by_id(proj_id):
         proj = session.query(Projection).filter(Projection.index == proj_id).first()
         session.delete(proj)
         session.commit()
+
+def get_player_projection(pp_id):
+    with Session() as session:
+        return session.query(PlayerProjection).filter(PlayerProjection.index == pp_id).first()

@@ -7,12 +7,13 @@ from tkinter import messagebox as mb
 from numpy import sort
 
 class Table(ttk.Treeview):
-    def __init__(self, parent, columns, column_alignments=None, column_widths=None, sortable_columns=None, reverse_col_sort=None, hscroll=True, init_sort_col=None):
+    def __init__(self, parent, columns, column_alignments=None, column_widths=None, sortable_columns=None, reverse_col_sort=None, hscroll=True, init_sort_col=None, custom_sort={}):
         super().__init__(parent, columns=columns, show='headings')
         self.hscroll = hscroll
         self.reverse_sort = {}
         self.vsb = None
         self.hsb = None
+        self.custom_sort = custom_sort
         col_num = 1
         for col in columns:
             align = CENTER
@@ -29,6 +30,7 @@ class Table(ttk.Treeview):
                     # From https://stackoverflow.com/a/30724912
                     self.heading(col, text=col, command=lambda _col=col: self.treeview_sort_column(_col) )
                     self.reverse_sort[col] = True
+
                 else:
                     self.heading(col, text=col)
                     self.reverse_sort[col] = True
@@ -77,9 +79,12 @@ class Table(ttk.Treeview):
         if reverse is not None:
             self.reverse_sort[col] = reverse
             
-        # From https://stackoverflow.com/a/1967793
-        l = [(self.set(k, col), k) for k in self.get_children('')]
-        l.sort(reverse=self.reverse_sort[col], key=lambda x: sort_cmp(x))
+        if col in self.custom_sort:
+            l = self.custom_sort.get(col)()
+        else:
+            # From https://stackoverflow.com/a/1967793
+            l = [(self.set(k, col), k) for k in self.get_children('')]
+            l.sort(reverse=self.reverse_sort[col], key=lambda x: sort_cmp(x))
 
         # rearrange items in sorted positions
         for index, (val, k) in enumerate(l):
