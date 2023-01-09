@@ -563,7 +563,6 @@ class ValuesCalculation(tk.Frame):
         if dialog.status == mb.OK:
             pd = progress.ProgressDialog(self, title='Saving Calculation')
             pd.increment_completion_percent(5)
-            self.value_calc.index = None
             self.value_calc.name = dialog.name_tv.get()
             self.value_calc.description = dialog.desc_tv.get()
             self.value_calc.timestamp = datetime.now()
@@ -685,6 +684,7 @@ class ValuesCalculation(tk.Frame):
         if self.has_errors():
             logging.warning("Input errors")
             return
+        self.value_calc = ValueCalculation()
         self.value_calc.projection = self.projection
         self.value_calc.format = ScoringFormat.name_to_enum_map()[self.game_type.get()]
         self.value_calc.inputs = []
