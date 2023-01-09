@@ -567,8 +567,7 @@ class ValuesCalculation(tk.Frame):
             self.value_calc.description = dialog.desc_tv.get()
             self.value_calc.timestamp = datetime.now()
             self.value_calc = calculation_services.save_calculation(self.value_calc)
-            self.projection = self.value_calc.projection
-            #calculation_services.save_calculation(self.value_calc)
+            self.controller.value_calculation = self.value_calc
             pd.set_completion_percent(100)
             pd.destroy()
     
