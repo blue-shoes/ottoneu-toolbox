@@ -685,6 +685,7 @@ class ValuesCalculation(tk.Frame):
         if self.has_errors():
             logging.warning("Input errors")
             return
+        self.value_calc = ValueCalculation()
         self.value_calc.projection = self.projection
         self.value_calc.format = ScoringFormat.name_to_enum_map()[self.game_type.get()]
         self.value_calc.inputs = []
