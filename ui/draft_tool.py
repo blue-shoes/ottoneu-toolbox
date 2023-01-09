@@ -46,6 +46,8 @@ class DraftTool(tk.Frame):
         self.show_drafted_players.set(False)
         self.show_removed_players = tk.BooleanVar()
         self.show_removed_players.set(False)
+        self.search_unrostered_bv = tk.BooleanVar()
+        self.search_unrostered_bv.set(False)
         self.targeted_players = pd.DataFrame()
         self.removed_players = []
         self.league = None
@@ -121,17 +123,17 @@ class DraftTool(tk.Frame):
         ss.trace("w", lambda name, index, mode, sv=ss: self.search_view.refresh())
         ttk.Entry(search_frame, textvariable=ss).grid(column=1,row=1)
 
-        self.start_monitor = ttk.Button(search_frame, text='Start Draft Monitor', command=self.start_draft_monitor).grid(column=0,row=2)
+        self.start_monitor = ttk.Button(search_frame, text='Start Draft Monitor', command=self.start_draft_monitor).grid(column=0,row=3)
         self.monitor_status = tk.StringVar()
         self.monitor_status.set('Monitor not started')
         self.monitor_status_lbl = tk.Label(search_frame, textvariable=self.monitor_status, fg='red')
-        self.monitor_status_lbl.grid(column=1,row=2)
-        self.stop_monitor = ttk.Button(search_frame, text="Stop Draft Monitor", command=self.stop_draft_monitor).grid(column=0,row=3)
+        self.monitor_status_lbl.grid(column=1,row=3)
+        self.stop_monitor = ttk.Button(search_frame, text="Stop Draft Monitor", command=self.stop_draft_monitor).grid(column=0,row=4)
 
         self.inflation_str_var = tk.StringVar()
 
         self.inflation_lbl = ttk.Label(search_frame, textvariable=self.inflation_str_var)
-        self.inflation_lbl.grid(column=0,row=4)
+        self.inflation_lbl.grid(column=0,row=5)
 
         f = ttk.Frame(self)
         f.grid(column=1,row=1)
@@ -154,6 +156,10 @@ class DraftTool(tk.Frame):
         self.search_view.tag_configure('rostered', foreground='#5A5A5A')
         self.search_view.tag_configure('targeted', background='#FCE19D')
         sv.set_refresh_method(self.update_player_search)
+
+        search_unrostered_btn = ttk.Checkbutton(search_frame, text="Search 0% Rostered?", variable=self.search_unrostered_bv, command=self.search_view.refresh)
+        search_unrostered_btn.grid(row=2, column=1, sticky=tk.NW, pady=5)
+        search_unrostered_btn.state(['!alternate'])
 
         running_list_frame = ttk.Frame(self)
         running_list_frame.grid(row=2, column=0, columnspan=2, pady=5)
@@ -486,12 +492,14 @@ class DraftTool(tk.Frame):
 
     def update_player_search(self):
         text = self.search_string.get().upper()
-        df = self.values
         if text == '' or len(text) == 1:
             players = [] 
         else:
             players = player_services.search_by_name(text)
         for player in players:
+            si = player.get_salary_info_for_format(self.league.format)
+            if si is None and not self.search_unrostered_bv.get():
+                continue
             id = player.index
             name = player.name
             pos = player.position
@@ -518,7 +526,7 @@ class DraftTool(tk.Frame):
                 pts = '0.0'
                 ppg = '0.00'
                 pip = '0.00'
-            si = player.get_salary_info_for_format(self.league.format)
+            
             if si is None:
                 roster_percent = '0.0%'
             else:
