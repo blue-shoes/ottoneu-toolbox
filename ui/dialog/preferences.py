@@ -62,9 +62,9 @@ class Dialog(tk.Toplevel):
         button_frame = tk.Frame(frm, pady=5)
         button_frame.grid(row=2, column=0)
 
-        tk.Button(button_frame, command=self.apply, text='Apply').grid(row=0, column=0)
-        tk.Button(button_frame, command=self.ok, text='OK').grid(row=0, column=1)
-        tk.Button(button_frame, command=self.cancel, text='Cancel').grid(row=0, column=2)
+        tk.Button(button_frame, command=self.apply, text='Apply', width=7).grid(row=0, column=0, padx=5)
+        tk.Button(button_frame, command=self.ok, text='OK', width=7).grid(row=0, column=1, padx=5)
+        tk.Button(button_frame, command=self.cancel, text='Cancel', width=7).grid(row=0, column=2, padx=5)
 
     def apply(self):
         changed = False
