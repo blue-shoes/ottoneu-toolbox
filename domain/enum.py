@@ -480,7 +480,7 @@ class IdType(Enum):
 class PropertyType(Enum):
     DB_VERSION = 'db.version'
 
-class AvgSalaryFom(Enum):
+class AvgSalaryFom(str, Enum):
     MEAN = 'Mean',
     MEDIAN = 'Median'
 
@@ -489,4 +489,3 @@ class Preference(str, Enum):
     AVG_SALARY_FOM = 'avg_sal_fom',
     DOCK_DRAFT_TARGETS = 'dock_draft_targets',
     DOCK_DRAFT_PLAYER_SEARCH = 'dock_draft_player_search'
-
