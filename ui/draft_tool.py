@@ -16,6 +16,7 @@ import math
 
 from scrape.scrape_ottoneu import Scrape_Ottoneu 
 from domain.enum import CalculationDataType, Position, ScoringFormat, StatType
+from ui.main import Main
 from ui.table import Table
 from ui.dialog import progress, draft_target
 from services import salary_services, league_services, calculation_services, player_services, draft_services, projection_services
@@ -33,7 +34,7 @@ class IdType(Enum):
     FG = 1
 
 class DraftTool(tk.Frame):
-    def __init__(self, parent, controller):
+    def __init__(self, parent, controller: Main):
         tk.Frame.__init__(self, parent)
         self.parent = parent
         self.controller = controller
