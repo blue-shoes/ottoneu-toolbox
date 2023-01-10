@@ -46,6 +46,7 @@ class Main(tk.Tk):
         self.container.grid_columnconfigure(0, weight=1)
 
         self.frames = {}
+        self.frame_type = {}
         self.current_page = None
         self.create_frame(Start)
         self.create_frame(ValuesCalculation)
@@ -64,6 +65,7 @@ class Main(tk.Tk):
     
     def create_frame(self, frame : tk.Frame):
         page_name = frame.__name__
+        self.frame_type[page_name] = frame
         frame = frame(parent=self.container, controller=self)
         self.frames[page_name] = frame
 
@@ -120,7 +122,17 @@ class Main(tk.Tk):
         return True
 
     def open_preferences(self):
-        preferences.Dialog(self.preferences)
+        preferences.Dialog(self)
+    
+    def reload_ui(self):
+        for name in self.frames:
+            if name == Start.__name__:
+                continue
+            frame = self.frames.get(name)
+            frame.destroy()
+            self.frames[name] = self.frame_type.get(name)(parent=self.container, controller=self)
+        self.show_frame(self.current_page, ignore_forget=True)
+
     
     def setup_logging(self, config=None):
         if config != None and 'log_level' in config:
@@ -133,12 +145,12 @@ class Main(tk.Tk):
             os.mkdir('.\\logs')
         logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s %(message)s', level=level, filename='.\\logs\\toolbox.log')
     
-    def show_frame(self, page_name):
+    def show_frame(self, page_name, ignore_forget=False):
         '''Show a frame for the given page name'''
         if self.current_page is None or self.frames[self.current_page].leave_page():
             frame = self.frames[page_name]
             if frame.on_show():
-                if self.current_page is not None:
+                if self.current_page is not None and not ignore_forget:
                     self.frames[self.current_page].pack_forget()
                 frame.pack(fill="both", expand=True)
                 frame.tkraise()
