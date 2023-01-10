@@ -1,10 +1,9 @@
-from re import search
 import tkinter as tk     
 from tkinter import *              
 from tkinter import ttk 
 from tkinter import filedialog as fd
 from tkinter import messagebox as mb
-from tkinter.messagebox import showinfo, OK
+from tkinter.messagebox import OK
 import os
 import os.path
 import pandas as pd
@@ -15,14 +14,13 @@ import logging
 import math
 
 from scrape.scrape_ottoneu import Scrape_Ottoneu 
-from domain.enum import CalculationDataType, Position, ScoringFormat, StatType
+from domain.enum import Position, ScoringFormat, StatType, Preference as Pref
 from ui.main import Main
 from ui.table import Table
 from ui.dialog import progress, draft_target
-from services import salary_services, league_services, calculation_services, player_services, draft_services, projection_services
+from services import salary_services, league_services, calculation_services, player_services, draft_services
 from demo import draft_demo
 
-from pathlib import Path
 import threading
 from time import sleep
 from datetime import datetime, timedelta
@@ -220,14 +218,19 @@ class DraftTool(tk.Frame):
             pv.set_refresh_method(lambda _pos = pos: self.refresh_pos_table(_pos))
             pv.add_scrollbar()
         
-        planning_frame = ttk.Frame(self)
-        planning_frame.grid(row=2, column=2)
+        if self.controller.preferences.getboolean('Draft', Pref.DOCK_DRAFT_TARGETS, fallback=False):
+            target_frame = ttk.Frame(self.tab_control)
+            self.tab_control.add(target_frame, text='Targets')
+        else:
+            planning_frame = ttk.Frame(self)
+            planning_frame.grid(row=2, column=2)
 
-        self.planning_tab = ptab = ttk.Notebook(planning_frame, width=570, height=300)
-        ptab.grid(row=0, column=0)
+            self.planning_tab = ptab = ttk.Notebook(planning_frame, width=570, height=300)
+            ptab.grid(row=0, column=0)
 
-        target_frame = ttk.Frame(ptab)
-        ptab.add(target_frame, text='Targets')
+            target_frame = ttk.Frame(ptab)
+            ptab.add(target_frame, text='Targets')
+
         cols=['Name', 'Target Price', 'Value', 'Pos']
         rev_sort = ['Target Price', 'Value']
 
