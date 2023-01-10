@@ -6,11 +6,13 @@ from ui.draft_tool import DraftTool
 from ui.values import ValuesCalculation
 import logging
 import os
+import configparser
 from ui.dialog import progress, league_select, value_select
 import datetime
 import threading
 from services import player_services, salary_services, league_services, property_service
 from tkinter import messagebox as mb
+from domain.enum import Preference as Pref, AvgSalaryFom
    
 __version__ = '0.9.0'
 
@@ -27,6 +29,8 @@ class Main(tk.Tk):
         self.demo_source = demo_source
         self.setup_logging()
         logging.info('Starting session')
+
+        self.load_preferences()
 
         self.create_menu()
         self.value_calculation = None
@@ -71,15 +75,24 @@ class Main(tk.Tk):
             salary_services.update_salary_info()
             progress_dialog.increment_completion_percent(33)
         refresh = salary_services.get_last_refresh()
-        if refresh is None or (datetime.datetime.now() - refresh.last_refresh).days > 30:
+        if refresh is None or (datetime.datetime.now() - refresh.last_refresh).days > self.preferences.getint('General', Pref.SALARY_REFRESH_FREQUENCY, fallback=30):
             progress_dialog.set_task_title("Updating Player Database")
             salary_services.update_salary_info()
             progress_dialog.increment_completion_percent(33)
         db_vers = property_service.get_db_version()
         if db_vers is None:
             property_service.save_db_version(__version__)
+        #TODO: DB updates based on tool version
 
         progress_dialog.complete()
+    
+    def load_preferences(self):
+        self.preferences = configparser.ConfigParser()
+        config_path = 'conf/otb.conf'
+        if not os.path.exists('conf'):
+            os.mkdir('conf')
+        if os.path.exists(config_path):
+            self.preferences.read(config_path)
     
     def create_menu(self):
         self.menubar = mb = tk.Menu(self)
