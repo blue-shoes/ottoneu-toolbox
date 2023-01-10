@@ -63,11 +63,6 @@ class Main(tk.Tk):
         frame = frame(parent=self.container, controller=self)
         self.frames[page_name] = frame
 
-        # put all of the pages in the same location;
-        # the one on the top of the stacking order
-        # will be the one that is visible.
-        frame.grid(row=0, column=0, sticky="nsew")
-
     def startup_tasks(self):
         progress_dialog = progress.ProgressDialog(self.container, "Startup Tasks")
         #Check that database has players in it, and populate if it doesn't
@@ -130,6 +125,9 @@ class Main(tk.Tk):
         if self.current_page is None or self.frames[self.current_page].leave_page():
             frame = self.frames[page_name]
             if frame.on_show():
+                if self.current_page is not None:
+                    self.frames[self.current_page].pack_forget()
+                frame.pack(fill="both", expand=True)
                 frame.tkraise()
                 self.current_page = page_name
     
