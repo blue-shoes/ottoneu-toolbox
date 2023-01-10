@@ -29,3 +29,10 @@ def parse_dollar(value):
         else:
             return float(vals[1])
     return float(value)
+
+def int_validation(input):
+    if input.isdigit():
+        return True
+    if input == "":
+        return True
+    return False
