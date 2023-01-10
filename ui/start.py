@@ -4,11 +4,13 @@ from tkinter import *
 from tkinter import ttk 
 from tkinter import filedialog as fd
 from tkinter import messagebox as mb
-from ui.main import Main
+from ui import draft_tool, values
+from ui.values import ValuesCalculation
+from ui.draft_tool import DraftTool
 
 
 class Start(tk.Frame):
-    def __init__(self, parent, controller: Main):
+    def __init__(self, parent, controller):
         tk.Frame.__init__(self, parent)
         self.controller = controller
         main_lbl = ttk.Label(self, text = "Select a module", font='bold')

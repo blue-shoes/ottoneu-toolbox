@@ -12,7 +12,6 @@ import os
 import os.path
 import pandas as pd
 
-from ui.main import Main
 from ui.table import Table
 from domain.domain import ValueCalculation, ScoringFormat
 from domain.enum import CalculationDataType as CDT, RankingBasis, RepLevelScheme, StatType, Position
@@ -22,7 +21,7 @@ from ui.dialog.wizard import projection_import
 
 
 class ValuesCalculation(tk.Frame):
-    def __init__(self, parent, controller: Main):
+    def __init__(self, parent, controller):
         tk.Frame.__init__(self, parent)
         self.parent = parent
         self.controller = controller
