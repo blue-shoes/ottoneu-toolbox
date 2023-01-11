@@ -71,15 +71,7 @@ class ValuesCalculation(tk.Frame):
             self.min_sp_ip.set("70")
             self.min_rp_ip.set("30")
             self.rep_level_scheme.set(RepLevelScheme.NUM_ROSTERED.value)
-            self.rep_level_dict["C"].set("24")
-            self.rep_level_dict["1B"].set("40")
-            self.rep_level_dict["2B"].set("38")
-            self.rep_level_dict["SS"].set("42")
-            self.rep_level_dict["3B"].set("24")
-            self.rep_level_dict["OF"].set("95")
-            self.rep_level_dict["Util"].set("200")
-            self.rep_level_dict["SP"].set("85")
-            self.rep_level_dict["RP"].set("70")
+            self.set_default_rep_level(RepLevelScheme.NUM_ROSTERED)
             self.dollars_per_fom_val.set('$--')
             self.total_fom_sv.set("--")
             self.bat_rep_level_lbl.set("Rep. Level")
@@ -674,10 +666,13 @@ class ValuesCalculation(tk.Frame):
     def update_rep_level_scheme(self):
         if self.rep_level_scheme.get() == RepLevelScheme.NUM_ROSTERED.value:
             self.rep_level_txt.set("Set number of rostered players for each position:")
+            self.set_default_rep_level(RepLevelScheme.NUM_ROSTERED)
         elif self.rep_level_scheme.get() == RepLevelScheme.STATIC_REP_LEVEL.value:
             self.rep_level_txt.set("Set replacement level production for each position:")
+            self.set_default_rep_level(RepLevelScheme.STATIC_REP_LEVEL)
         else:
             self.rep_level_txt.set("Set number of rostered players beyond games filled for each position:")
+            self.set_default_rep_level(RepLevelScheme.FILL_GAMES)
     
     def calculate_values(self):
         if self.has_errors():
@@ -717,7 +712,34 @@ class ValuesCalculation(tk.Frame):
             mb.showerror('Error creating player values',  'See log for details')
         finally:
             pd.complete()
-            
+    
+    def set_default_rep_level(self, scheme):
+        if scheme == RepLevelScheme.NUM_ROSTERED:
+            self.rep_level_dict["C"].set("24")
+            self.rep_level_dict["1B"].set("40")
+            self.rep_level_dict["2B"].set("38")
+            self.rep_level_dict["SS"].set("42")
+            self.rep_level_dict["3B"].set("24")
+            self.rep_level_dict["OF"].set("95")
+            self.rep_level_dict["Util"].set("200")
+            self.rep_level_dict["SP"].set("85")
+            self.rep_level_dict["RP"].set("70")
+        elif scheme == RepLevelScheme.FILL_GAMES:
+            for sv in self.rep_level_dict.values():
+                sv.set('0')
+        elif scheme == RepLevelScheme.STATIC_REP_LEVEL:
+            if RankingBasis.display_to_enum_map()[self.hitter_basis.get()] == RankingBasis.PPG:
+                for pos in Position.get_discrete_offensive_pos():
+                    self.rep_level_dict[pos.value].set("4.5")
+            elif RankingBasis.display_to_enum_map()[self.hitter_basis.get()] == RankingBasis.PPPA:
+                for pos in Position.get_discrete_offensive_pos():
+                    self.rep_level_dict[pos.value].set("1.0")
+            if RankingBasis.display_to_enum_map()[self.pitcher_basis.get()] == RankingBasis.PIP:
+                self.rep_level_dict["SP"].set("3.5")
+                self.rep_level_dict["RP"].set("6.0")
+            elif RankingBasis.display_to_enum_map()[self.pitcher_basis.get()] == RankingBasis.PPG:
+                self.rep_level_dict["SP"].set("20")
+                self.rep_level_dict["RP"].set("6.0")
 
     def update_values(self):
         for pos, table in self.tables.items():
