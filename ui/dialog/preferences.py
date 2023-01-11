@@ -68,10 +68,10 @@ class Dialog(tk.Toplevel):
 
     def apply(self):
         changed = False
-        changed = changed or self.set_and_check_changed('General', Pref.SALARY_REFRESH_FREQUENCY, self.sal_ref_days_tv.get())
-        changed = changed or self.set_and_check_changed('General', Pref.AVG_SALARY_FOM, self.avg_type.get())
-        changed = changed or self.set_and_check_changed('Draft', Pref.DOCK_DRAFT_TARGETS, self.get_str_for_boolean_var(self.stack_targets_bv))
-        changed = changed or self.set_and_check_changed('Draft', Pref.DOCK_DRAFT_PLAYER_SEARCH, self.get_str_for_boolean_var(self.stack_search_bv))
+        changed = self.set_and_check_changed('General', Pref.SALARY_REFRESH_FREQUENCY, self.sal_ref_days_tv.get()) or changed
+        changed = self.set_and_check_changed('General', Pref.AVG_SALARY_FOM, self.avg_type.get()) or changed
+        changed = self.set_and_check_changed('Draft', Pref.DOCK_DRAFT_TARGETS, self.get_str_for_boolean_var(self.stack_targets_bv)) or changed
+        changed = self.set_and_check_changed('Draft', Pref.DOCK_DRAFT_PLAYER_SEARCH, self.get_str_for_boolean_var(self.stack_search_bv)) or changed
 
         if changed:
             if not os.path.exists('conf'):
