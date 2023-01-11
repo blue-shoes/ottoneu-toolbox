@@ -50,13 +50,13 @@ class Dialog(tk.Toplevel):
 
         s_stack_lbl = tk.Label(draft_frame, text='Stack Player Search with Position Tables')
         s_stack_lbl.grid(column=0, row=2)
-        s_stack_lbl.configure(state='disable')
+        #s_stack_lbl.configure(state='disable')
 
         self.stack_search_bv = BooleanVar()
         self.stack_search_bv.set(self.pref.getboolean('Draft', Pref.DOCK_DRAFT_PLAYER_SEARCH, fallback=False))
         s_stack_cb = tk.Checkbutton(draft_frame, variable=self.stack_search_bv)
         s_stack_cb.grid(column=1, row=2)
-        s_stack_cb.configure(state='disable')
+        #s_stack_cb.configure(state='disable')
 
         #--Button Frame--
         button_frame = tk.Frame(frm, pady=5)

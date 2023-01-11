@@ -113,54 +113,13 @@ class DraftTool(tk.Frame):
         self.lg_lbl = ttk.Label(self, textvariable=self.league_text_var, font='bold')
         self.lg_lbl.grid(column=0,row=0, pady=5, columnspan=2)
 
-        search_frame = ttk.Frame(self)
-        search_frame.grid(column=0,row=1, padx=5, sticky=tk.N, pady=17)
-        ttk.Label(search_frame, text = 'Player Search: ', font='bold').grid(column=0,row=1,pady=5)
-
-        self.search_string = ss = tk.StringVar()
-        ss.trace("w", lambda name, index, mode, sv=ss: self.search_view.refresh())
-        ttk.Entry(search_frame, textvariable=ss).grid(column=1,row=1)
-
-        self.start_monitor = ttk.Button(search_frame, text='Start Draft Monitor', command=self.start_draft_monitor).grid(column=0,row=3)
-        self.monitor_status = tk.StringVar()
-        self.monitor_status.set('Monitor not started')
-        self.monitor_status_lbl = tk.Label(search_frame, textvariable=self.monitor_status, fg='red')
-        self.monitor_status_lbl.grid(column=1,row=3)
-        self.stop_monitor = ttk.Button(search_frame, text="Stop Draft Monitor", command=self.stop_draft_monitor).grid(column=0,row=4)
-
-        self.inflation_str_var = tk.StringVar()
-
-        self.inflation_lbl = ttk.Label(search_frame, textvariable=self.inflation_str_var)
-        self.inflation_lbl.grid(column=0,row=5)
-
-        f = ttk.Frame(self)
-        f.grid(column=1,row=1)
-        
-        ttk.Label(f, text = 'Search Results', font='bold').grid(column=0, row=0)
-
-        cols = ('Name','Value','Salary','Inf. Cost','Pos','Team','Points','P/G','P/IP', 'Roster %')
-        widths = {}
-        widths['Name'] = 125
-        widths['Pos'] = 75
-        align = {}
-        align['Name'] = W
-        custom_sort = {}
-        custom_sort['Value'] = self.default_search_sort
-        self.search_view = sv = Table(f, columns=cols, column_alignments=align, column_widths=widths, sortable_columns=cols, init_sort_col='Value', custom_sort=custom_sort)    
-        self.search_view.grid(column=0,row=1, padx=5)   
-        sv.set_row_select_method(self.on_select)
-        sv.set_right_click_method(self.player_rclick)
-        self.search_view.tag_configure('rostered', background='#A6A6A6')
-        self.search_view.tag_configure('rostered', foreground='#5A5A5A')
-        self.search_view.tag_configure('targeted', background='#FCE19D')
-        sv.set_refresh_method(self.update_player_search)
-
-        search_unrostered_btn = ttk.Checkbutton(search_frame, text="Search 0% Rostered?", variable=self.search_unrostered_bv, command=self.search_view.refresh)
-        search_unrostered_btn.grid(row=2, column=1, sticky=tk.NW, pady=5)
-        search_unrostered_btn.state(['!alternate'])
-
-        running_list_frame = ttk.Frame(self)
+        running_list_frame = ttk.Frame(self, border=4)
         running_list_frame.grid(row=2, column=0, columnspan=2, pady=5)
+
+        self.tab_control = ttk.Notebook(running_list_frame, width=570, height=300)
+        self.tab_control.grid(row=0, column=0)
+
+        self.create_search()
 
         button_frame = ttk.Frame(running_list_frame)
         button_frame.grid(row=0, column=1, sticky=tk.N, pady=15)
@@ -172,9 +131,6 @@ class DraftTool(tk.Frame):
         show_removed_btn = ttk.Checkbutton(button_frame, text="Show removed players?", variable=self.show_removed_players, command=self.refresh_views)
         show_removed_btn.grid(row=1, column=1, sticky=tk.NW)
         show_removed_btn.state(['!alternate'])
-
-        self.tab_control = ttk.Notebook(running_list_frame, width=570, height=300)
-        self.tab_control.grid(row=0, column=0)
 
         self.pos_view = {}
 
@@ -242,6 +198,92 @@ class DraftTool(tk.Frame):
         tt.tag_configure('rostered', foreground='#5A5A5A')
         tt.set_refresh_method(self.refresh_targets)
         tt.add_scrollbar()
+    
+    def create_search(self):
+        if self.controller.preferences.getboolean('Draft', Pref.DOCK_DRAFT_PLAYER_SEARCH):
+            monitor_frame = ttk.Frame(self)
+            monitor_frame.grid(row=1, column=0, columnspan=2)
+            self.start_monitor = ttk.Button(monitor_frame, text='Start Draft', command=self.start_draft_monitor).grid(column=0,row=0)
+            self.monitor_status = tk.StringVar()
+            self.monitor_status.set('Not started')
+            self.monitor_status_lbl = tk.Label(monitor_frame, textvariable=self.monitor_status, fg='red')
+            self.monitor_status_lbl.grid(column=2,row=0)
+            self.stop_monitor = ttk.Button(monitor_frame, text="Stop Draft", command=self.stop_draft_monitor).grid(column=1,row=0)
+
+            self.inflation_str_var = tk.StringVar()
+
+            self.inflation_lbl = ttk.Label(monitor_frame, textvariable=self.inflation_str_var)
+            self.inflation_lbl.grid(column=3,row=0)
+
+            search_frame = ttk.Frame(self.tab_control, border=4)
+            self.tab_control.add(search_frame, text='Search')
+            #search_frame.grid(column=0)
+            ttk.Label(search_frame, text = 'Search:').grid(column=0,row=0,pady=5)
+
+            self.search_string = ss = tk.StringVar()
+            ss.trace("w", lambda name, index, mode, sv=ss: self.search_view.refresh())
+            ttk.Entry(search_frame, textvariable=ss).grid(column=1,row=0)
+
+            f = ttk.Frame(search_frame, border=4)
+            f.grid(column=0,row=1, columnspan=3)
+
+            self.create_search_table(f, 0, 0)
+
+            #search_unrostered_btn = ttk.Checkbutton(search_frame, text="Search 0% Rostered?", variable=self.search_unrostered_bv)
+            search_unrostered_btn = ttk.Checkbutton(search_frame, text="Search 0% Rostered?", variable=self.search_unrostered_bv, command=self.search_view.refresh)
+            search_unrostered_btn.grid(row=0, column=2, sticky=tk.NW, pady=5)
+            search_unrostered_btn.state(['!alternate'])
+        
+        else:
+
+            search_frame = ttk.Frame(self)
+            search_frame.grid(column=0,row=1, padx=5, sticky=tk.N, pady=17)
+            ttk.Label(search_frame, text = 'Player Search: ', font='bold').grid(column=0,row=1,pady=5)
+
+            self.search_string = ss = tk.StringVar()
+            ss.trace("w", lambda name, index, mode, sv=ss: self.search_view.refresh())
+            ttk.Entry(search_frame, textvariable=ss).grid(column=1,row=1)
+
+            self.start_monitor = ttk.Button(search_frame, text='Start Draft Monitor', command=self.start_draft_monitor).grid(column=0,row=3)
+            self.monitor_status = tk.StringVar()
+            self.monitor_status.set('Monitor not started')
+            self.monitor_status_lbl = tk.Label(search_frame, textvariable=self.monitor_status, fg='red')
+            self.monitor_status_lbl.grid(column=1,row=3)
+            self.stop_monitor = ttk.Button(search_frame, text="Stop Draft Monitor", command=self.stop_draft_monitor).grid(column=0,row=4)
+
+            self.inflation_str_var = tk.StringVar()
+
+            self.inflation_lbl = ttk.Label(search_frame, textvariable=self.inflation_str_var)
+            self.inflation_lbl.grid(column=0,row=5)
+
+            f = ttk.Frame(self)
+            f.grid(column=1,row=1)
+            
+            ttk.Label(f, text = 'Search Results', font='bold').grid(column=0, row=0)
+
+            self.create_search_table(f, col=0, row=1)
+
+            search_unrostered_btn = ttk.Checkbutton(search_frame, text="Search 0% Rostered?", variable=self.search_unrostered_bv, command=self.search_view.refresh)
+            search_unrostered_btn.grid(row=2, column=1, sticky=tk.NW, pady=5)
+            search_unrostered_btn.state(['!alternate'])
+    
+    def create_search_table(self, parent, col, row, col_span=1):
+        cols = ('Name','Value','Salary','Inf. Cost','Pos','Team','Points','P/G','P/IP', 'Roster %')
+        widths = {}
+        widths['Name'] = 125
+        widths['Pos'] = 75
+        align = {}
+        align['Name'] = W
+        custom_sort = {}
+        custom_sort['Value'] = self.default_search_sort
+        self.search_view = sv = Table(parent, columns=cols, column_alignments=align, column_widths=widths, sortable_columns=cols, init_sort_col='Value', custom_sort=custom_sort)    
+        self.search_view.grid(column=col,row=row, padx=5, columnspan=col_span)   
+        sv.set_row_select_method(self.on_select)
+        sv.set_right_click_method(self.player_rclick)
+        self.search_view.tag_configure('rostered', background='#A6A6A6')
+        self.search_view.tag_configure('rostered', foreground='#5A5A5A')
+        self.search_view.tag_configure('targeted', background='#FCE19D')
+        sv.set_refresh_method(self.update_player_search)
 
     def target_rclick(self, event):
         iid = event.widget.identify_row(event.y)
@@ -330,7 +372,7 @@ class DraftTool(tk.Frame):
         self.monitor_thread = threading.Thread(target = self.refresh_thread)
         self.monitor_thread.daemon = True
         self.monitor_thread.start()
-        self.monitor_status.set('Monitor enabled')
+        self.monitor_status.set('Draft Started')
         self.monitor_status_lbl.config(fg='green')
         self.parent.update_idletasks()
         self.parent.after(1000, self.update_ui)
@@ -353,7 +395,7 @@ class DraftTool(tk.Frame):
     def stop_draft_monitor(self):
         logging.info('!!!Stopping Draft Monitor!!!')
         self.run_event.clear()
-        self.monitor_status.set('Monitor stopped')
+        self.monitor_status.set('Draft stopped')
         self.monitor_status_lbl.config(fg='red')
         self.parent.update_idletasks()
     
