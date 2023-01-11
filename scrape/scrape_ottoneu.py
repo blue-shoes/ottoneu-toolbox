@@ -71,7 +71,7 @@ class Scrape_Ottoneu(scrape_base.Scrape_Base):
         df = DataFrame(parsed_rows)
         df.columns = ['Ottoneu ID','Name','FG MajorLeagueID','FG MinorLeagueID','Avg Salary','Min Salary','Max Salary','Median Salary','Last 10','Roster %','Position(s)','Org']
         df.set_index('Ottoneu ID', inplace=True)
-        df.index = df.index.astype(str, copy=False)
+        df.index = df.index.astype(int, copy=False)
         return df
 
     def parse_avg_salary_row(self, row):
