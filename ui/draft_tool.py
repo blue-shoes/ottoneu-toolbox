@@ -518,8 +518,8 @@ class DraftTool(tk.Frame):
                 salary = f"${int(self.rosters.at[id, 'Salary'])}"
             else:
                 salary = '$0'
-            if id in self.value_calculation.projection.proj_dict:
-                pp = self.value_calculation.projection.get_player_projection(id)
+            pp = self.value_calculation.projection.get_player_projection(id)
+            if pp is not None:
                 h_pts = calculation_services.get_points(pp, Position.OFFENSE)
                 p_pts = calculation_services.get_points(pp, Position.PITCHER, ScoringFormat.is_sabr(self.league.format))
                 pts = "{:.1f}".format(h_pts + p_pts)
