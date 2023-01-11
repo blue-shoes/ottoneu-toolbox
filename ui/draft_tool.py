@@ -188,7 +188,7 @@ class DraftTool(tk.Frame):
         widths['Pos'] = 75
         align = {}
         align['Name'] = W
-        self.overall_view = ov = Table(overall_frame, cols,sortable_columns=sortable_cols, column_widths=widths, init_sort_col='Value')
+        self.overall_view = ov = Table(overall_frame, cols,sortable_columns=sortable_cols, column_widths=widths, init_sort_col='Value', column_alignments=align)
         ov.grid(column=0)
         ov.set_row_select_method(self.on_select)
         ov.set_right_click_method(self.player_rclick)
