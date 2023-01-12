@@ -25,10 +25,10 @@ class Scrape_Base(object):
         if self.driver != None:
             self.driver.quit()
 
-    def getDataset(self, page, element_id, filepath):
+    def getDataset(self, page, element_id, filepath, by_type=By.ID):
         #Click the passed element id to download the csv file
         self.driver.get(page)
-        csvJs = self.driver.find_element(By.ID, element_id)
+        csvJs = self.driver.find_element(by_type, element_id)
         csvJs.click()
         self.download_wait()
         return self.getDatasetFromDownloads(filepath)

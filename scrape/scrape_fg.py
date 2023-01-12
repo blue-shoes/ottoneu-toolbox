@@ -57,10 +57,10 @@ class Scrape_Fg(scrape_base.Scrape_Base):
                 self.setupDriver()
                 self.setup_fg_login()
             #Use driver to get dataset
-            dataframe = self.getDataset(page, 'ProjectionBoard1_cmdCSV', filepath)
+            dataframe = self.getDataset(page, 'data-export', filepath, by_type=By.CLASS_NAME)
         #If the dataset is player based (not league based), reindex to the FG player id
         if player:
-            dataframe.set_index("playerid", inplace=True)
+            dataframe.set_index("PlayerId", inplace=True)
             dataframe.index = dataframe.index.astype(str, copy = False)
         return dataframe
 
