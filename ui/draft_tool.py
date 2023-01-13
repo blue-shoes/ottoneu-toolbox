@@ -1,8 +1,6 @@
 import tkinter as tk     
 from tkinter import *              
 from tkinter import ttk 
-from tkinter import filedialog as fd
-from tkinter import messagebox as mb
 from tkinter.messagebox import OK
 import os
 import os.path
@@ -11,7 +9,9 @@ import numpy as np
 import util.string_util
 import queue
 import logging
-import math
+import threading
+from time import sleep
+from datetime import datetime, timedelta
 
 from scrape.scrape_ottoneu import Scrape_Ottoneu 
 from domain.enum import Position, ScoringFormat, StatType, Preference as Pref, AvgSalaryFom
@@ -19,16 +19,6 @@ from ui.table import Table
 from ui.dialog import progress, draft_target
 from services import salary_services, league_services, calculation_services, player_services, draft_services
 from demo import draft_demo
-
-import threading
-from time import sleep
-from datetime import datetime, timedelta
-
-from enum import Enum
-
-class IdType(Enum):
-    OTTONEU = 0
-    FG = 1
 
 class DraftTool(tk.Frame):
     def __init__(self, parent, controller):
@@ -449,19 +439,6 @@ class DraftTool(tk.Frame):
                 self.queue.put(('pos', list(set(update_pos))))
             sleep(delay)
 
-    def sort_df_by(self, df, col):
-        if col == 'Value':
-            if 'Blank col 0' in df:
-                return df.sort_values(by=['Blank col 0'], ascending=[False])
-            else:
-                return df.sort_values(by=['PAR'], ascending=[False])
-        if col == 'Points':
-            return df.sort_values(by=['Points'], ascending=[False])
-        if col == 'P/G':
-            return df.sort_values(by=['P/G'], ascending=[False])
-        if col == 'P/IP':
-            return df.sort_values(by=['P/IP'], ascending=[False])
-
     def refresh_views(self, pos_keys=None):
         self.calc_inflation()
         self.overall_view.refresh()
@@ -544,7 +521,7 @@ class DraftTool(tk.Frame):
             return ('removed',)
         return ''
     
-    def set_row_colors(self, table, targets=True):
+    def set_row_colors(self, table: Table, targets=True):
         table.tag_configure('rostered', background='#A6A6A6')
         table.tag_configure('rostered', foreground='#5A5A5A')
         table.tag_configure('removed', background='#FFCCCB')
@@ -608,43 +585,6 @@ class DraftTool(tk.Frame):
             pos = target.player.position
             tags = self.get_row_tags(id)
             self.target_table.insert('', tk.END, text=id, tags=tags, values=(name, t_price, value, pos))
-
-    def create_setup_tab(self, tab):
-        try:
-            ttk.Label(tab, text = "Enter League #:").grid(column=0,row=0, pady=5, sticky=tk.E)
-            #width is in text units, not pixels
-            self.league_num_entry = ttk.Entry(tab, width = 10)
-            self.league_num_entry.grid(column=1,row=0, sticky=tk.W, padx=5)
-            ttk.Label(tab, text = "Player Values Directory:").grid(column=0,row=1, pady=5, stick=tk.E)
-            self.dir_button = ttk.Button(tab, textvariable = self.value_dir, command=self.select_dir)
-            self.dir_button.grid(column=1,row=1, padx=5)
-
-            ttk.Button(tab, text='Initialize Session', command=self.initialize_draft).grid(column=1,row=2, pady=5, sticky=tk.W, padx=5)
-
-            tab.pack()
-        except Exception as e:
-            logging.exception('Error creating draft')
-            mb.showerror("Draft Error", f'Error creating draft, see ./logs/draft.log')
-
-    def select_dir(self):
-        filetypes = (
-            ('csv files', '*.csv'),
-            ('All files', '*.*')
-        )
-
-        dir = fd.askdirectory(
-            title='Choose a directory',
-            initialdir=self.value_dir.get())
-
-        value_file = os.path.join(dir, 'values.csv')
-        
-        if not os.path.exists(value_file):
-            value_file = os.path.join(dir, 'ottoneu_values.csv')
-            if not os.path.exists(value_file):
-                mb.showinfo('Bad Directory', f'The directory {dir} does not contain a values.csv or ottoneu_values.csv file. Please select a different directory.')
-                return
-
-        self.value_dir.set(dir)
         
     def initialize_draft(self, same_values=False):  
         restart = False
@@ -801,90 +741,6 @@ class DraftTool(tk.Frame):
             rows.append(row)
         return rows
 
-    def initialize_draft_legacy(self):
-        self.popup = tk.Toplevel()
-        tk.Label(self.popup, text='Draft Initializing').grid(row=0,column=0)
-        progress = 0
-        self.progress_var = tk.DoubleVar()
-        self.progress_var.set(0)
-        ttk.Progressbar(self.popup, variable=self.progress_var, maximum=100).grid(row=1, column=0)
-        self.popup.pack_slaves()
-
-        self.progress_step = sv = tk.StringVar()
-        self.progress_label = ttk.Label(self.popup, textvariable=self.progress_step)
-        self.progress_label.grid(column=0,row=2)
-
-        try:
-            self.value_file_path = os.path.join(self.value_dir.get(), 'values.csv')
-
-            if not os.path.exists(self.value_file_path):
-                self.value_file_path = os.path.join(self.value_dir.get(), 'ottoneu_values.csv')
-                if not os.path.exists(self.value_file_path):
-                    mb.showinfo('Bad Directory', f'The directory {self.value_dir.get()} does not contain a values.csv or ottoneu_values.csv file. Please select a different directory.')
-                    return
-            self.progress_step.set('Getting Ottoneu Player Universe...')
-            self.popup.update()
-            scraper = Scrape_Ottoneu()
-            self.positions = scraper.get_avg_salary_ds()
-            progress += 30
-            self.progress_var.set(progress)
-            self.popup.update()
-
-            self.progress_step.set('Loading Player Values...')
-            try:
-                result = self.load_values()
-            except KeyError as ke:
-                logging.exception('Error initializing draft')
-                mb.showerror("Initialization Error", f"There was an error initializing the draft. Columns missing in one or more *values.csv files.")
-                self.progress_var.set(100)
-                self.popup.destroy()
-                return
-            except Exception as e:
-                logging.exception('Error initializing draft')
-                mb.showerror("Initialization Error", f"There was an error initializing the draft, see ./logs/draft.log")
-                self.progress_var.set(100)
-                self.popup.destroy()
-                return
-
-            if not result:
-                mb.showinfo('Bad Player Ids', f'The player ids did not match Ottoneu or FanGraphs ids. Please use one of these player id types.')
-                self.progress_var.set(100)
-                self.popup.destroy()
-                return
-
-            self.controller.league.ottoneu_id = self.league_num_entry.get()
-            self.progress_step.set(f'Getting League {self.controller.league.ottoneu_id} Rosters...')
-            progress += 30
-            self.progress_var.set(progress)
-            self.popup.update()
-            self.rosters = scraper.scrape_roster_export(self.controller.league.ottoneu_id)
-            #Below used for api testing
-            #self.rosters = pd.read_csv('C:\\Users\\adam.scharf\\Documents\\Personal\\FFB\\Test\\rosters.csv')
-            #self.rosters.set_index("ottoneu ID", inplace=True)
-            #self.rosters.index = self.rosters.index.astype(str, copy=False)
-
-            progress += 15
-            self.progress_var.set(progress)
-            self.popup.update()
-            self.progress_step.set('Updating Values With Roster Info...')
-            self.update_rostered_players()
-            if 'Blank col 0' in self.values.columns:
-                self.values.sort_values(by=['Blank col 0'], ascending=[False], inplace=True)
-                for pos in Position.get_offensive_pos():
-                    self.pos_values[pos].sort_values(by=['P/G'], ascending=[False], inplace=True)
-                for pos in Position.get_pitching_pos():
-                    self.pos_values[pos].sort_values(by=['P/IP'], ascending=[False], inplace=True)
-            
-            self.progress_step.set('Initialization Complete')
-            self.progress_var.set(100)
-            self.setup_win.destroy()
-        
-        except Exception as e:
-            logging.exception('Error initializing draft')
-            mb.showerror("Initialization Error", f"There was an error initializing the draft, see ./logs/draft.log")
-            self.popup.destroy()
-            return
-    
     def calc_inflation(self):
         num_teams = self.controller.league.num_teams
         pos_df = self.values.loc[self.values['Salary'] == 0]
@@ -899,115 +755,6 @@ class DraftTool(tk.Frame):
         self.values = self.values.merge(self.rosters[['Salary']], how='left', left_index=True, right_index=True, sort=False).fillna(0)
         for pos in self.pos_values:
             self.pos_values[pos] = self.pos_values[pos].merge(self.rosters[['Salary']], how='left', left_index=True, right_index=True, sort=False).fillna(0)
-            #set index to str because if you managed to get them all as ints, you will not match up on the back side
-            #self.pos_values[pos].index = self.pos_values[pos].index.astype(str, copy = False)
-
-    def load_roster_salaries(self, salary_col):
-        split = salary_col.split('$')
-        if len(split) > 1:
-            return int(split[1])
-        else:
-            return 0
-
-    def convert_rates(self, value):
-        if value == 'NA' or math.isnan(value):
-            return float(0)
-        elif type(value) == float:
-            return value
-        else:
-            return float(value)
-
-    def load_values(self):
-        self.values = pd.read_csv(self.value_file_path, index_col=0)
-        self.values.index = self.values.index.astype(str, copy = False)
-        soto_id = self.values.index[self.values['Name'] == "Juan Soto"].tolist()[0]
-        if soto_id == '23717':
-            self.id_type = IdType.OTTONEU
-        elif soto_id == '20123':
-            self.id_type = IdType.FG
-            self.values = self.values.astype({'OttoneuID': 'str'})
-        else:
-            return False
-        #Leif output. Remap columns
-        self.values.rename(columns={'price': 'Value', 'Pos':'Position(s)', 'FGPts':'Points', 'FGPtspIP':'P/IP', 'FGPtspG':'P/G', 'FGPts_G':'P/G', 'SABRPts' : 'Points', 'SABRPtspIP' : 'P/IP', 'SABRPtspG':'P/G'}, inplace=True)
-        
-        self.values['P/G'] = self.values['P/G'].apply(self.convert_rates)
-        self.values['P/IP'] = self.values['P/IP'].apply(self.convert_rates)
-
-        if not 'PAR' in self.values:
-            self.values['PAR'] = 0
-        
-        if not 'Team' in self.values:
-            self.values = self.values.merge(self.positions[['Org']], how='left', left_index=True, right_index=True, sort=False).fillna('---')
-            self.values['Team'] = self.values['Org']
-            self.values = self.values.drop('Org', axis=1)
-
-        if self.id_type == IdType.OTTONEU:
-            if self.values['Value'].dtype == object:
-                self.values['Blank col 0'] = self.values['Value'].apply(lambda x: float(x.split('$')[1]))
-            else:
-                self.values['Blank col 0'] = self.values['Value']
-            #Leif doesn't have teams, need to merge here
-            self.values = self.values[['Blank col 0', 'Value', 'Name', 'Team', 'Position(s)', 'Points', 'PAR', 'P/G', 'P/IP']]    
-        else:
-            self.values =  self.values[['OttoneuID', 'Value', 'Name', 'Team', 'Position(s)', 'Points', 'PAR', 'P/G', 'P/IP']]   
-
-        if not self.values['Value'].dtype == object:
-            self.values['Value'] = self.values['Value'].apply(lambda x: "${:.0f}".format(x)) 
-
-        #TODO: data validation here
-        self.pos_values = {}
-        for pos in Position.get_offensive_pos():
-            pos_path = os.path.join(self.value_dir.get(), f'{pos}_values.csv')
-            if os.path.exists(pos_path):
-                self.pos_values[pos] = pd.read_csv(pos_path, index_col=0)
-                self.pos_values[pos] = self.pos_values[pos].astype({'OttoneuID': 'str'})
-                if not 'PAR' in self.pos_values[pos]:
-                        self.pos_values[pos]['PAR'] = 0
-                if not 'Team' in self.pos_values[pos]:
-                    self.pos_values[pos] = self.pos_values[pos].merge(self.positions[['Org']], how='left', left_index=True, right_index=True, sort=False).fillna('---')
-                    self.pos_values[pos]['Team'] = self.pos_values[pos]['Org']
-                    self.pos_values[pos] = self.pos_values[pos].drop('Org', axis=1)
-                if self.id_type == IdType.OTTONEU:
-                    self.pos_values[pos]['Blank col 0'] = 0
-                    self.pos_values[pos] = self.pos_values[pos][['Blank col 0', 'Value', 'Name', 'Team', 'Position(s)', 'Points', 'PAR', 'P/G']]
-                else:
-                    self.pos_values[pos] =  self.pos_values[pos][['OttoneuID', 'Value', 'Name', 'Team', 'Position(s)', 'Points', 'PAR', 'P/G']]
-                #self.pos_values[pos].set_index('playerid', inplace=True)
-                #TODO data validation here
-            else:
-                if pos == 'MI':
-                    self.pos_values[pos] = self.values.loc[self.values['Position(s)'].str.contains("2B|SS", case=False, regex=True)].sort_values(by=['P/G'], ascending=[False])
-                elif pos == 'Util':
-                    self.pos_values[pos] = self.values.loc[self.values['P/G'] > 0].sort_values(by=['P/G'], ascending=[False])
-                else:
-                    self.pos_values[pos] = self.values.loc[self.values['Position(s)'].str.contains(pos)].sort_values(by=['P/G'], ascending=[False])
-                self.pos_values[pos] = self.pos_values[pos].drop('P/IP', axis=1)
-        for pos in Position.get_pitching_pos():
-            pos_path = os.path.join(self.value_dir.get(), f'{pos}_values.csv')
-            if os.path.exists(pos_path):
-                self.pos_values[pos] = pd.read_csv(pos_path, index_col=0)
-                self.pos_values[pos] = self.pos_values[pos].astype({'OttoneuID': 'str'})
-                if not 'PAR' in self.pos_values[pos]:
-                        self.pos_values[pos]['PAR'] = 0
-                if not 'Team' in self.pos_values[pos]:
-                    self.pos_values[pos] = self.pos_values[pos].merge(self.positions[['Org']], how='left', left_index=True, right_index=True, sort=False).fillna('---')
-                    self.pos_values[pos]['Team'] = self.pos_values[pos]['Org']
-                    self.pos_values[pos] = self.pos_values[pos].drop('Org', axis=1)
-                if self.id_type == IdType.OTTONEU:
-                    self.pos_values[pos]['Blank col 0'] = 0
-                    self.pos_values[pos] = self.pos_values[pos][['Blank col 0', 'Value', 'Name', 'Team', 'Position(s)', 'Points', 'PAR', 'P/IP']]
-                else:
-                    self.pos_values[pos] =  self.pos_values[pos][['OttoneuID', 'Value', 'Name', 'Team', 'Position(s)', 'Points', 'PAR', 'P/IP']]
-                #self.pos_values[pos].set_index('playerid', inplace=True)
-                #TODO data validation here
-            else:
-                self.pos_values[pos] = self.values.loc[self.values['Position(s)'].str.contains(pos)].sort_values(by=['P/IP'], ascending=[False])
-                self.pos_values[pos] = self.pos_values[pos].drop('P/G', axis=1)
-        
-        self.values['Search_Name'] = self.values['Name'].apply(lambda x: util.string_util.normalize(x))
-
-        return True
     
     def league_change(self):
         while self.controller.league is None:
@@ -1017,7 +764,6 @@ class DraftTool(tk.Frame):
             self.league_text_var.set(f'League {self.controller.league.name} Draft')
             self.draft = draft_services.get_draft_by_league(self.controller.league.index)
             self.initialize_draft(same_values=True)
-
     
     def value_change(self):
         if self.controller.value_calculation is not None and self.value_calculation != self.controller.value_calculation:
