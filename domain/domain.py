@@ -23,7 +23,7 @@ class Player(Base):
     position = Column("Position(s)",String)
 
     roster_spots = relationship("Roster_Spot", back_populates="player", cascade="all, delete")
-    salary_info = relationship("Salary_Info", back_populates="player", cascade="all, delete")
+    salary_info = relationship("Salary_Info", back_populates="player", cascade="all, delete", lazy="joined")
     values = relationship("PlayerValue", back_populates="player", cascade="all, delete")
     projections = relationship("PlayerProjection", back_populates="player", cascade="all, delete")
 

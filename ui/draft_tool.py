@@ -14,7 +14,7 @@ import logging
 import math
 
 from scrape.scrape_ottoneu import Scrape_Ottoneu 
-from domain.enum import Position, ScoringFormat, StatType, Preference as Pref
+from domain.enum import Position, ScoringFormat, StatType, Preference as Pref, AvgSalaryFom
 from ui.table import Table
 from ui.dialog import progress, draft_target
 from services import salary_services, league_services, calculation_services, player_services, draft_services
@@ -136,9 +136,9 @@ class DraftTool(tk.Frame):
 
         overall_frame = ttk.Frame(self.tab_control)
         self.tab_control.add(overall_frame, text='Overall')
-        cols = ('Name','Value','Inf. Cost','Pos','Team','Points','P/G','P/IP')
-        sortable_cols = ('Name', 'Value', 'Inf. Cost', 'Points', 'P/G', 'P/IP')
-        rev_sort_cols = ('Value', 'Inf. Cost', 'Points', 'P/G', 'P/IP')
+        cols = ('Name','Value','Inf. Cost','Pos','Team','Points','P/G','P/IP', 'Avg. Price', 'L10 Price', 'Roster %')
+        sortable_cols = ('Name', 'Value', 'Inf. Cost', 'Points', 'P/G', 'P/IP', 'Avg. Price', 'L10 Price', 'Roster %')
+        rev_sort_cols = ('Value', 'Inf. Cost', 'Points', 'P/G', 'P/IP', 'Avg. Price', 'L10 Price', 'Roster %')
         widths = {}
         widths['Name'] = 125
         widths['Pos'] = 75
@@ -159,9 +159,9 @@ class DraftTool(tk.Frame):
             pos_frame = ttk.Frame(self.tab_control)
             self.tab_control.add(pos_frame, text=pos.value) 
             if pos in Position.get_offensive_pos():
-                cols = ('Name','Value','Inf. Cost','Pos','Team','Points','P/G')
+                cols = ('Name','Value','Inf. Cost','Pos','Team','Points','P/G', 'Avg. Price', 'L10 Price', 'Roster %')
             else:
-                cols = ('Name','Value','Inf. Cost','Pos','Team','Points','P/IP')
+                cols = ('Name','Value','Inf. Cost','Pos','Team','Points','P/IP', 'Avg. Price', 'L10 Price', 'Roster %')
             self.pos_view[pos] = pv = Table(pos_frame, cols,sortable_columns=sortable_cols, column_widths=widths, column_alignments=align, init_sort_col='Value')
             pv.grid(column=0)
             pv.set_row_select_method(self.on_select)
@@ -503,8 +503,9 @@ class DraftTool(tk.Frame):
             ppg = "{:.2f}".format(pos_df.iat[i, 7])
             pip = "{:.2f}".format(pos_df.iat[i, 8])
             salary = f'${int(pos_df.iat[i, 10])}'
+            sal_tup = self.get_salary_tuple(int(id))
             tags = self.get_row_tags(id)
-            self.overall_view.insert('', tk.END, text=id, values=(name, value, inf_cost, position, team, pts, ppg, pip), tags=tags)
+            self.overall_view.insert('', tk.END, text=id, values=(name, value, inf_cost, position, team, pts, ppg, pip, sal_tup[0], sal_tup[1], sal_tup[2]), tags=tags)
 
     def refresh_pos_table(self, pos):
         if self.show_drafted_players.get() == 1:
@@ -524,7 +525,24 @@ class DraftTool(tk.Frame):
             rate = "{:.2f}".format(pos_df.iat[i, 7])
             salary = f'${int(pos_df.iat[i, 8])}'
             tags = self.get_row_tags(id)
-            self.pos_view[pos].insert('', tk.END, text=id, values=(name, value, inf_cost, position, team, pts, rate), tags=tags)
+            sal_tup = self.get_salary_tuple(int(id))
+
+            self.pos_view[pos].insert('', tk.END, text=id, values=(name, value, inf_cost, position, team, pts, rate, sal_tup[0], sal_tup[1], sal_tup[2]), tags=tags)
+
+    def get_salary_tuple(self, playerid):
+        si = self.value_calculation.get_player_value(playerid, pos=Position.OVERALL).player.get_salary_info_for_format(self.league.format)
+        if si is None:
+            avg = '$0.0'
+            l10 = '$0.0'
+            roster = '0.0%'
+        else:
+            if self.controller.preferences.get('General', Pref.AVG_SALARY_FOM) == AvgSalaryFom.MEAN.value:
+                avg = f'$' + "{:.1f}".format(si.avg_salary)
+            else:
+                avg = f'$' + "{:.1f}".format(si.med_salary)
+            l10 = f'$' + "{:.1f}".format(si.last_10)
+            roster = "{:.1f}".format(si.roster_percentage) + '%'
+        return (avg, l10, roster)
 
     def get_row_tags(self, playerid):
         if playerid in self.rosters.index:
