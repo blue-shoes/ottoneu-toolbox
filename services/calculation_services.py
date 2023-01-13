@@ -302,7 +302,8 @@ def init_outputs_from_upload(vc: ValueCalculation, df : DataFrame, game_type, re
         hit = False
         pitch = False
         positions = player_services.get_player_positions(player, discrete=True)
-        if len(positions) == 1 and player.index in vc.projection.proj_dict:
+        pp = vc.projection.get_player_projection(player.index)
+        if len(positions) == 1 and pp is not None:
             pos = positions[0]
             pitch_role_good = True
             if pos in Position.get_pitching_pos():
@@ -490,8 +491,8 @@ def save_calculation_from_file(vc : ValueCalculation, df : DataFrame, pd=None):
                     #This is a difficult nut to crack. Ideally we would reverse engineer a SP and RP rate, but that
                     #is likely imposible to do without having save/hold information. For now, to make sure we don't miss anyone,
                     #put them in the db positions and if able check projections to see if they do any starting or relieving
-                    if idx in vc.projection.proj_dict:
-                        pp = vc.projection.get_player_projection(idx)
+                    pp = vc.projection.get_player_projection(idx)
+                    if pp is not None:
                         if pp.get_stat(StatType.GS_PIT) > 0 or pos == Position.POS_SP:
                             vc.set_player_value(idx, Position.POS_SP, row['Values'])
                         if pp.get_stat(StatType.G_PIT) > pp.get_stat(StatType.GS_PIT) or pos == Position.POS_RP:

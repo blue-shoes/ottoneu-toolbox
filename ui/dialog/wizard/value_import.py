@@ -15,6 +15,8 @@ from pathlib import Path
 import os
 import os.path
 
+from util import string_util
+
 class Dialog(wizard.Dialog):
     def __init__(self, parent):
         super().__init__(parent)
@@ -73,7 +75,7 @@ class Step1(tk.Frame):
         header = tk.Label(self, text="Upload Value Set")
         header.grid(row=0, column=0, columnspan=3)
 
-        validation = self.register(int_validation)
+        validation = self.register(string_util.int_validation)
 
         tk.Label(self, text="Name:").grid(row=1, column=0, stick=W)
         self.name_tv = StringVar()
@@ -328,11 +330,3 @@ class Step2(tk.Frame):
         vc = self.parent.value
 
         return True
-
-
-def int_validation(input):
-    if input.isdigit():
-        return True
-    if input == "":
-        return True
-    return False

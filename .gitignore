@@ -12,3 +12,4 @@ build/*
 */*.pyc
 __pycache__/*
 demo/data/output/*
+conf/*

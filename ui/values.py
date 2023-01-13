@@ -18,6 +18,7 @@ from domain.enum import CalculationDataType as CDT, RankingBasis, RepLevelScheme
 from services import projection_services, calculation_services
 from ui.dialog import projection_select, progress, name_desc
 from ui.dialog.wizard import projection_import
+from util import string_util
 
 
 class ValuesCalculation(tk.Frame):
@@ -142,7 +143,7 @@ class ValuesCalculation(tk.Frame):
         self.input_frame = inpf = ttk.Frame(self)
         inpf.grid(column=0,row=0, padx=5, sticky=tk.N, pady=17)
 
-        validation = inpf.register(self.int_validation)
+        validation = inpf.register(string_util.int_validation)
 
         ttk.Label(inpf, text="Selected Projections:").grid(column=0,row=0, pady=5)
         self.sel_proj = tk.StringVar()
@@ -750,13 +751,6 @@ class ValuesCalculation(tk.Frame):
                 else:
                     table.set(index, 0, "${:.1f}".format(pv.value))
             table.resort()
-    
-    def int_validation(self, input):
-        if input.isdigit():
-            return True
-        if input == "":
-            return True
-        return False
         
     def has_errors(self):
         errors = []

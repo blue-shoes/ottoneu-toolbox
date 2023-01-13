@@ -37,7 +37,6 @@ def update_salary_info(format=ScoringFormat.ALL):
             existing_player_ids.append(c_player.ottoneu_id)
             if not c_player.ottoneu_id in salary_df.index:
                 # Not rostered in format, set all to 0
-                si = get_format_salary_info(c_player, format)
                 si.avg_salary = 0.0
                 si.med_salary = 0.0
                 si.min_salary = 0.0
@@ -45,7 +44,7 @@ def update_salary_info(format=ScoringFormat.ALL):
                 si.last_10 = 0.0
                 si.roster_percentage = 0.0
             else:
-                u_player = salary_df.loc(c_player.ottoneu_id)
+                u_player = salary_df.loc[c_player.ottoneu_id]
                 update_salary(si, u_player)
         for idx, row in salary_df.iterrows():
             if idx not in existing_player_ids:
@@ -64,6 +63,7 @@ def get_format_salary_info(player, format):
         if si.format == format:
             return si
     si = Salary_Info()
+    si.format = format
     player.salary_info.append(si)
     return si
 

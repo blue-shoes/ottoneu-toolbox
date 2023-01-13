@@ -6,11 +6,13 @@ from ui.draft_tool import DraftTool
 from ui.values import ValuesCalculation
 import logging
 import os
+import configparser
 from ui.dialog import progress, league_select, value_select
 import datetime
 import threading
 from services import player_services, salary_services, league_services, property_service
 from tkinter import messagebox as mb
+from domain.enum import Preference as Pref, AvgSalaryFom
    
 __version__ = '0.9.0'
 
@@ -28,6 +30,8 @@ class Main(tk.Tk):
         self.setup_logging()
         logging.info('Starting session')
 
+        self.load_preferences()
+
         self.create_menu()
         self.value_calculation = None
         self.league = None
@@ -42,6 +46,7 @@ class Main(tk.Tk):
         self.container.grid_columnconfigure(0, weight=1)
 
         self.frames = {}
+        self.frame_type = {}
         self.current_page = None
         self.create_frame(Start)
         self.create_frame(ValuesCalculation)
@@ -60,13 +65,9 @@ class Main(tk.Tk):
     
     def create_frame(self, frame : tk.Frame):
         page_name = frame.__name__
+        self.frame_type[page_name] = frame
         frame = frame(parent=self.container, controller=self)
         self.frames[page_name] = frame
-
-        # put all of the pages in the same location;
-        # the one on the top of the stacking order
-        # will be the one that is visible.
-        frame.grid(row=0, column=0, sticky="nsew")
 
     def startup_tasks(self):
         progress_dialog = progress.ProgressDialog(self.container, "Startup Tasks")
@@ -76,15 +77,24 @@ class Main(tk.Tk):
             salary_services.update_salary_info()
             progress_dialog.increment_completion_percent(33)
         refresh = salary_services.get_last_refresh()
-        if refresh is None or (datetime.datetime.now() - refresh.last_refresh).days > 30:
+        if refresh is None or (datetime.datetime.now() - refresh.last_refresh).days > self.preferences.getint('General', Pref.SALARY_REFRESH_FREQUENCY, fallback=30):
             progress_dialog.set_task_title("Updating Player Database")
             salary_services.update_salary_info()
             progress_dialog.increment_completion_percent(33)
         db_vers = property_service.get_db_version()
         if db_vers is None:
             property_service.save_db_version(__version__)
+        #TODO: DB updates based on tool version
 
         progress_dialog.complete()
+    
+    def load_preferences(self):
+        self.preferences = configparser.ConfigParser()
+        config_path = 'conf/otb.conf'
+        if not os.path.exists('conf'):
+            os.mkdir('conf')
+        if os.path.exists(config_path):
+            self.preferences.read(config_path)
     
     def create_menu(self):
         self.menubar = mb = tk.Menu(self)
@@ -112,7 +122,17 @@ class Main(tk.Tk):
         return True
 
     def open_preferences(self):
-        preferences.Dialog(self.preferences)
+        preferences.Dialog(self)
+    
+    def reload_ui(self):
+        for name in self.frames:
+            if name == Start.__name__:
+                continue
+            frame = self.frames.get(name)
+            frame.destroy()
+            self.frames[name] = self.frame_type.get(name)(parent=self.container, controller=self)
+        self.show_frame(self.current_page, ignore_forget=True)
+
     
     def setup_logging(self, config=None):
         if config != None and 'log_level' in config:
@@ -125,11 +145,14 @@ class Main(tk.Tk):
             os.mkdir('.\\logs')
         logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s %(message)s', level=level, filename='.\\logs\\toolbox.log')
     
-    def show_frame(self, page_name):
+    def show_frame(self, page_name, ignore_forget=False):
         '''Show a frame for the given page name'''
         if self.current_page is None or self.frames[self.current_page].leave_page():
             frame = self.frames[page_name]
             if frame.on_show():
+                if self.current_page is not None and not ignore_forget:
+                    self.frames[self.current_page].pack_forget()
+                frame.pack(fill="both", expand=True)
                 frame.tkraise()
                 self.current_page = page_name
     
