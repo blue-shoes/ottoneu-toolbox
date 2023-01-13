@@ -148,10 +148,7 @@ class DraftTool(tk.Frame):
         ov.grid(column=0)
         ov.set_row_select_method(self.on_select)
         ov.set_right_click_method(self.player_rclick)
-        ov.tag_configure('rostered', background='#A6A6A6')
-        ov.tag_configure('rostered', foreground='#5A5A5A')
-        ov.tag_configure('removed', background='#FFCCCB')
-        ov.tag_configure('targeted', background='#FCE19D')
+        self.set_row_colors(ov)
         ov.add_scrollbar()
         ov.set_refresh_method(self.refresh_overall_view)
 
@@ -166,10 +163,7 @@ class DraftTool(tk.Frame):
             pv.grid(column=0)
             pv.set_row_select_method(self.on_select)
             pv.set_right_click_method(self.player_rclick)
-            pv.tag_configure('rostered', background='#A6A6A6')
-            pv.tag_configure('rostered', foreground='#5A5A5A')
-            pv.tag_configure('removed', background='#FFCCCB')
-            pv.tag_configure('targeted', background='#FCE19D')
+            self.set_row_colors(pv)
             pv.set_refresh_method(lambda _pos = pos: self.refresh_pos_table(_pos))
             pv.add_scrollbar()
         
@@ -194,8 +188,7 @@ class DraftTool(tk.Frame):
         tt.grid(column=0)
         tt.set_row_select_method(self.on_select)
         tt.set_right_click_method(self.target_rclick)
-        tt.tag_configure('rostered', background='#A6A6A6')
-        tt.tag_configure('rostered', foreground='#5A5A5A')
+        self.set_row_colors(tt, targets=False)
         tt.set_refresh_method(self.refresh_targets)
         tt.add_scrollbar()
     
@@ -280,9 +273,7 @@ class DraftTool(tk.Frame):
         self.search_view.grid(column=col,row=row, padx=5, columnspan=col_span)   
         sv.set_row_select_method(self.on_select)
         sv.set_right_click_method(self.player_rclick)
-        self.search_view.tag_configure('rostered', background='#A6A6A6')
-        self.search_view.tag_configure('rostered', foreground='#5A5A5A')
-        self.search_view.tag_configure('targeted', background='#FCE19D')
+        self.set_row_colors(sv)
         sv.set_refresh_method(self.update_player_search)
 
     def target_rclick(self, event):
@@ -552,6 +543,13 @@ class DraftTool(tk.Frame):
         if playerid in self.removed_players:
             return ('removed',)
         return ''
+    
+    def set_row_colors(self, table, targets=True):
+        table.tag_configure('rostered', background='#A6A6A6')
+        table.tag_configure('rostered', foreground='#5A5A5A')
+        table.tag_configure('removed', background='#FFCCCB')
+        if targets:
+            table.tag_configure('targeted', background='#FCE19D')
 
     def update_player_search(self):
         text = self.search_string.get().upper()
