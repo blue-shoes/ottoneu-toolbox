@@ -116,8 +116,8 @@ class Main(tk.Tk):
         self.help_menu = hm = tk.Menu(mb, tearoff=0)
         hm.add_command(label='Project Wiki', command=self.open_project_wiki)
         hm.add_command(label='Visit Project Home', command=self.open_project_home)
+        hm.add_separator()
         hm.add_command(label='View License', command=self.show_license)
-        hm.add_command(label='Acknowledgements', command=self.show_acknowledgements)
         mb.add_cascade(label="Help", menu=hm)
         self.config(menu=mb)
     
@@ -129,10 +129,6 @@ class Main(tk.Tk):
     
     def show_license(self):
         show_license.Dialog(self)
-    
-    def show_acknowledgements(self):
-        #TODO: implement
-        i=1
 
     def exit(self):
         if(self.current_page.exit_tasks()):
