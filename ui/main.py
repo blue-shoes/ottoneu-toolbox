@@ -16,7 +16,7 @@ from services import player_services, salary_services, league_services, property
 from tkinter import messagebox as mb
 from domain.enum import Preference as Pref
    
-__version__ = '0.9.0'
+__version__ = '1.0.0'
 
 class Main(tk.Tk):
 
