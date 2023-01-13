@@ -7,7 +7,6 @@ import value.arm_points
 
 from services import projection_services, calculation_services
 from domain.enum import CalculationDataType, Position, RepLevelScheme, RankingBasis, ScoringFormat
-from domain.domain import PlayerValue
 
 from scrape import scrape_ottoneu
 

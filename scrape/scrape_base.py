@@ -1,12 +1,9 @@
-from time import sleep
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from webdriver_manager.chrome import ChromeDriverManager
 import shutil
 import pandas as pd
 import os
-from os import path
-from urllib.parse import unquote, urlparse
 import time
 
 class Scrape_Base(object):

@@ -1,12 +1,12 @@
 from pandas import DataFrame
-from domain.domain import Player, PlayerProjection, Projection, ProjectionData
+from domain.domain import PlayerProjection, Projection, ProjectionData
 from scrape import scrape_fg
 from domain.enum import ProjectionType, StatType, IdType
 from domain.exception import FangraphsException, InputException
 from datetime import datetime
 from services import player_services
 from dao.session import Session
-from sqlalchemy.orm import joinedload, load_only
+from sqlalchemy.orm import joinedload
 import pandas as pd
 import math
 from util import date_util

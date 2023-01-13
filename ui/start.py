@@ -1,12 +1,6 @@
-import logging
 import tkinter as tk     
 from tkinter import *              
 from tkinter import ttk 
-from tkinter import filedialog as fd
-from tkinter import messagebox as mb
-from ui import draft_tool, values
-from ui.values import ValuesCalculation
-from ui.draft_tool import DraftTool
 
 
 class Start(tk.Frame):

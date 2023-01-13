@@ -1,8 +1,6 @@
 import tkinter as tk     
 from tkinter import *              
 from tkinter import ttk 
-from tkinter import filedialog as fd
-from tkinter import messagebox as mb
 
 
 class ProgressDialog(tk.Toplevel):

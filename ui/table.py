@@ -1,10 +1,5 @@
-import logging
-import tkinter as tk     
 from tkinter import *              
 from tkinter import ttk 
-from tkinter import messagebox as mb
-
-from numpy import sort
 
 class Table(ttk.Treeview):
     def __init__(self, parent, columns, column_alignments=None, column_widths=None, sortable_columns=None, reverse_col_sort=None, hscroll=True, init_sort_col=None, custom_sort={}):

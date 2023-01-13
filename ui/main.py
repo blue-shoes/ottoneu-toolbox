@@ -12,7 +12,7 @@ import datetime
 import threading
 from services import player_services, salary_services, league_services, property_service
 from tkinter import messagebox as mb
-from domain.enum import Preference as Pref, AvgSalaryFom
+from domain.enum import Preference as Pref
    
 __version__ = '0.9.0'
 

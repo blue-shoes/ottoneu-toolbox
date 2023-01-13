@@ -4,8 +4,8 @@ from tkinter import ttk
 from tkinter import filedialog as fd
 from domain.domain import ValueCalculation
 from domain.enum import ScoringFormat, RankingBasis, CalculationDataType as CDT, Position, RepLevelScheme, IdType
-from ui.dialog import progress, projection_select, proj_download
-from ui.dialog.wizard import wizard
+from ui.dialog import progress, projection_select
+from ui.dialog.wizard import wizard, projection_import
 from services import calculation_services, projection_services
 import pandas as pd
 import datetime
@@ -217,7 +217,7 @@ class Step1(tk.Frame):
     def select_projection(self):
         count = projection_services.get_projection_count()
         if count == 0:
-            dialog = proj_download.Dialog(self)
+            dialog = projection_import.Dialog(self)
             self.projection = dialog.projection
         else:
             dialog = projection_select.Dialog(self)
