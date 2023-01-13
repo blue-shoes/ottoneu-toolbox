@@ -1,11 +1,9 @@
-from itertools import islice
 import tkinter as tk     
 from tkinter import *              
 from tkinter import ttk 
 
 from services import league_services
 from ui.dialog.progress import ProgressDialog
-import os.path
 
 class Dialog(tk.Toplevel):
     def __init__(self, parent):

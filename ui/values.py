@@ -1,15 +1,12 @@
 from datetime import datetime
 import logging
 import pathlib
-from re import I
 import tkinter as tk     
 from tkinter import *              
 from tkinter import ttk 
 from tkinter import filedialog as fd
 from tkinter import messagebox as mb
 from pathlib import Path
-import os
-import os.path
 import pandas as pd
 
 from ui.table import Table

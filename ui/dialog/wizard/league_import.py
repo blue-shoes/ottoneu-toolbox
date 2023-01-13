@@ -8,10 +8,6 @@ from ui.dialog.wizard import wizard
 import logging
 from tkinter import messagebox as mb
 
-from pathlib import Path
-import os
-import os.path
-
 class Dialog(wizard.Dialog):
     def __init__(self, parent):
         super().__init__(parent)

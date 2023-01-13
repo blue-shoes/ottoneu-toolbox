@@ -3,7 +3,6 @@ import os
 from os import path
 import pandas as pd
 from scrape import scrape_base
-import requests
 from selenium.webdriver.common.by import By
 
 class Scrape_Fg(scrape_base.Scrape_Base):

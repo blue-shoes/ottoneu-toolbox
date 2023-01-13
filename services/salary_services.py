@@ -1,4 +1,3 @@
-from sqlalchemy import desc
 from dao.session import Session
 from scrape.scrape_ottoneu import Scrape_Ottoneu
 from domain.domain import Player, Salary_Info, Salary_Refresh

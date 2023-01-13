@@ -1,4 +1,3 @@
-from unittest import result
 import pandas as pd
 from random import randint
 from time import sleep
