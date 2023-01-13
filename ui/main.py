@@ -9,7 +9,7 @@ import os
 import configparser
 import webbrowser
 
-from ui.dialog import progress, league_select, value_select
+from ui.dialog import progress, league_select, value_select, show_license
 import datetime
 import threading
 from services import player_services, salary_services, league_services, property_service
@@ -128,8 +128,7 @@ class Main(tk.Tk):
         webbrowser.open_new_tab('https://github.com/blue-shoes/ottoneu-toolbox')
     
     def show_license(self):
-        #TODO: implement
-        i=1
+        show_license.Dialog(self)
     
     def show_acknowledgements(self):
         #TODO: implement
