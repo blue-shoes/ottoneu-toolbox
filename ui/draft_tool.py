@@ -183,7 +183,7 @@ class DraftTool(tk.Frame):
         tt.add_scrollbar()
     
     def create_search(self):
-        if self.controller.preferences.getboolean('Draft', Pref.DOCK_DRAFT_PLAYER_SEARCH):
+        if self.controller.preferences.getboolean('Draft', Pref.DOCK_DRAFT_PLAYER_SEARCH, fallback=False):
             monitor_frame = ttk.Frame(self)
             monitor_frame.grid(row=1, column=0, columnspan=2)
             self.start_monitor = ttk.Button(monitor_frame, text='Start Draft', command=self.start_draft_monitor).grid(column=0,row=0)
