@@ -7,6 +7,8 @@ from ui.values import ValuesCalculation
 import logging
 import os
 import configparser
+import webbrowser
+
 from ui.dialog import progress, league_select, value_select
 import datetime
 import threading
@@ -32,7 +34,7 @@ class Main(tk.Tk):
 
         self.load_preferences()
 
-        self.create_menu()
+        self.create_menus()
         self.value_calculation = None
         self.league = None
         self.run_event = threading.Event()
@@ -96,7 +98,7 @@ class Main(tk.Tk):
         if os.path.exists(config_path):
             self.preferences.read(config_path)
     
-    def create_menu(self):
+    def create_menus(self):
         self.menubar = mb = tk.Menu(self)
         self.main_menu = mm = tk.Menu(mb, tearoff=0)
         self.view_menu = vm = tk.Menu(mm, tearoff=0)
@@ -111,8 +113,28 @@ class Main(tk.Tk):
         mm.add_separator()
         mm.add_command(label="Exit", command=self.exit)
         mb.add_cascade(label="Menu", menu=mm)
+        self.help_menu = hm = tk.Menu(mb, tearoff=0)
+        hm.add_command(label='Project Wiki', command=self.open_project_wiki)
+        hm.add_command(label='Visit Project Home', command=self.open_project_home)
+        hm.add_command(label='View License', command=self.show_license)
+        hm.add_command(label='Acknowledgements', command=self.show_acknowledgements)
+        mb.add_cascade(label="Help", menu=hm)
         self.config(menu=mb)
     
+    def open_project_wiki(self):
+        webbrowser.open_new_tab('https://github.com/blue-shoes/ottoneu-toolbox/wiki')
+    
+    def open_project_home(self):
+        webbrowser.open_new_tab('https://github.com/blue-shoes/ottoneu-toolbox')
+    
+    def show_license(self):
+        #TODO: implement
+        i=1
+    
+    def show_acknowledgements(self):
+        #TODO: implement
+        i=1
+
     def exit(self):
         if(self.current_page.exit_tasks()):
             self.destroy()
