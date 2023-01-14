@@ -107,6 +107,6 @@ class Scrape_Base(object):
             options.set_preference("browser.download.manager.showWhenStarting", False)
             options.set_preference("browser.download.dir", self.download_dir)
             options.set_preference("browser.helperApps.neverAsk.saveToDisk", "application/x-gzip")
-            self.driver = webdriver.Firefox(executable_path=GeckoDriverManager().install(), options=options)
+            self.driver = webdriver.Firefox(executable_path=GeckoDriverManager().install(), options=options, service_log_path='logs/geckodriver.log')
 
         
