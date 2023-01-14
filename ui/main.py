@@ -9,7 +9,7 @@ import os
 import configparser
 import webbrowser
 
-from ui.dialog import progress, league_select, value_select, show_license
+from ui.dialog import progress, league_select, value_select, show_license, show_acknowledgments
 import datetime
 import threading
 from services import player_services, salary_services, league_services, property_service
@@ -129,6 +129,7 @@ class Main(tk.Tk):
         hm.add_command(label='Visit Project Home', command=self.open_project_home)
         hm.add_separator()
         hm.add_command(label='View License', command=self.show_license)
+        hm.add_command(label='Acknowledgements', command=self.show_acknowledgements)
         mb.add_cascade(label="Help", menu=hm)
         self.config(menu=mb)
     
@@ -140,6 +141,9 @@ class Main(tk.Tk):
     
     def show_license(self):
         show_license.Dialog(self)
+    
+    def show_acknowledgements(self):
+        show_acknowledgments.Dialog(self)
 
     def exit(self):
         if(self.current_page.exit_tasks()):
