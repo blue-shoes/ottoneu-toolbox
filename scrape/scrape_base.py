@@ -1,6 +1,9 @@
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from webdriver_manager.chrome import ChromeDriverManager
+from webdriver_manager.firefox import GeckoDriverManager
+from webdriver_manager.microsoft import EdgeChromiumDriverManager
+from winreg import *
 import shutil
 import pandas as pd
 import os
@@ -78,11 +81,32 @@ class Scrape_Base(object):
             """)
     
     def setupDriver(self):
-        options = webdriver.ChromeOptions()
-        options.add_argument('--headless')
-        prefs = {}
-        prefs["profile.default_content_settings.popups"]=0
-        prefs["download.default_directory"]=self.download_dir
-        options.add_experimental_option("prefs", prefs)
-        self.driver = webdriver.Chrome(ChromeDriverManager().install(), options=options)
-        #self.driver = webdriver.Chrome(ChromeDriverManager().install())
+        
+        with OpenKey(HKEY_CURRENT_USER, r"Software\\Microsoft\\Windows\\Shell\\Associations\\UrlAssociations\\http\\UserChoice") as key:
+            browser = QueryValueEx(key, 'Progid')[0]
+        print(f'browser = {browser}')
+        if browser == 'ChromeHTML':
+            options = webdriver.ChromeOptions()
+            options.add_argument('--headless')
+            prefs = {}
+            prefs["profile.default_content_settings.popups"]=0
+            prefs["download.default_directory"]=self.download_dir
+            options.add_experimental_option("prefs", prefs)
+            self.driver = webdriver.Chrome(ChromeDriverManager().install(), options=options)
+        elif browser == 'MSEdgeHTM':
+            options = webdriver.EdgeOptions()
+            options.add_argument('--headless')
+            options.add_experimental_option('prefs', {
+                "download.default_directory": self.download_dir,
+                "download.prompt_for_download": False})
+            self.driver = webdriver.Edge(executable_path=EdgeChromiumDriverManager().install(), options=options)
+        elif 'FirefoxURL' in browser:
+            options = webdriver.FirefoxOptions()
+            options.add_argument('--headless')
+            options.set_preference("browser.download.folderList", 2)
+            options.set_preference("browser.download.manager.showWhenStarting", False)
+            options.set_preference("browser.download.dir", self.download_dir)
+            options.set_preference("browser.helperApps.neverAsk.saveToDisk", "application/x-gzip")
+            self.driver = webdriver.Firefox(executable_path=GeckoDriverManager().install(), options=options)
+
+        
