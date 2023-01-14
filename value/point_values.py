@@ -5,7 +5,7 @@ from os import path
 import value.bat_points
 import value.arm_points
 
-from services import projection_services, calculation_services
+from services import projection_services, calculation_services, browser_services
 from domain.enum import CalculationDataType, Position, RepLevelScheme, RankingBasis, ScoringFormat
 
 from scrape import scrape_ottoneu
@@ -89,7 +89,7 @@ class PointValues():
         pitch_proj = projs[1]
         
         try:
-            otto_scraper = scrape_ottoneu.Scrape_Ottoneu()
+            otto_scraper = scrape_ottoneu.Scrape_Ottoneu(browser_services.get_desired_browser())
             positions = otto_scraper.get_player_position_ds(self.force)
         finally:
             otto_scraper.close()

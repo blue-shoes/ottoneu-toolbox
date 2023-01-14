@@ -13,3 +13,4 @@ build/*
 __pycache__/*
 demo/data/output/*
 conf/*
+dist/*

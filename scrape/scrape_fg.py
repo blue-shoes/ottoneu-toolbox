@@ -7,8 +7,8 @@ from selenium.webdriver.common.by import By
 
 class Scrape_Fg(scrape_base.Scrape_Base):
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, browser):
+        super().__init__(browser)
         if not os.path.exists('data_dirs'):
             os.mkdir('data_dirs')
 

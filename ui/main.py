@@ -9,7 +9,7 @@ import os
 import configparser
 import webbrowser
 
-from ui.dialog import progress, league_select, value_select, show_license
+from ui.dialog import progress, league_select, value_select, show_license, show_acknowledgments
 import datetime
 import threading
 from services import player_services, salary_services, league_services, property_service
@@ -20,11 +20,19 @@ __version__ = '1.0.0'
 
 class Main(tk.Tk):
 
-    def __init__(self, debug=False, demo_source=False, *args, **kwargs):
+    def __init__(self, debug=False, demo_source=False, resource_path=None, *args, **kwargs):
         tk.Tk.__init__(self, *args, **kwargs)
-        self.iconbitmap("otb_icon.ico")
-        self.iconbitmap(bitmap='otb_icon.ico')
-        self.iconbitmap(default='otb_icon.ico')
+        self.resource_path = resource_path
+        if resource_path is None:
+            self.iconbitmap("otb_icon.ico")
+            self.iconbitmap(bitmap='otb_icon.ico')
+            self.iconbitmap(default='otb_icon.ico')
+        else:
+            iconbitmap = resource_path('otb_icon.ico')
+            self.iconbitmap(iconbitmap)
+            self.iconbitmap(bitmap=iconbitmap)
+            self.iconbitmap(default=iconbitmap)
+
         self.title(f"Ottoneu Tool Box v{__version__}") 
         #self.preferences = preferences
         self.debug = debug
@@ -90,6 +98,9 @@ class Main(tk.Tk):
 
         progress_dialog.complete()
     
+    def get_resource_path(self, resource):
+        return self.resource_path(resource)
+    
     def load_preferences(self):
         self.preferences = configparser.ConfigParser()
         config_path = 'conf/otb.conf'
@@ -118,6 +129,7 @@ class Main(tk.Tk):
         hm.add_command(label='Visit Project Home', command=self.open_project_home)
         hm.add_separator()
         hm.add_command(label='View License', command=self.show_license)
+        hm.add_command(label='Acknowledgements', command=self.show_acknowledgements)
         mb.add_cascade(label="Help", menu=hm)
         self.config(menu=mb)
     
@@ -129,6 +141,9 @@ class Main(tk.Tk):
     
     def show_license(self):
         show_license.Dialog(self)
+    
+    def show_acknowledgements(self):
+        show_acknowledgments.Dialog(self)
 
     def exit(self):
         if(self.current_page.exit_tasks()):

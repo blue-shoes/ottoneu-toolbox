@@ -6,7 +6,7 @@ class Dialog(tk.Toplevel):
 
     def __init__(self, parent):
         super().__init__(parent) 
-        license_path = parent.get_resource_path('LICENSE')
+        license_path = parent.get_resource_path('THIRDPARTYLICENSE')
         with open(license_path, 'r') as lic_fil:
             long_text = lic_fil.read()
         text_widget = scrolledtext.ScrolledText(self, width=100, height=20,

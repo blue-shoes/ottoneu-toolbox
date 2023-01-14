@@ -2,8 +2,12 @@ import tkinter as tk
 from tkinter import *              
 from tkinter import ttk 
 import os
+from tkinter import messagebox as mb
+import logging
 
-from domain.enum import Preference as Pref, AvgSalaryFom
+from domain.enum import Preference as Pref, AvgSalaryFom, Browsers
+from services import salary_services, browser_services
+from ui.dialog import progress
 from util import string_util
 
 class Dialog(tk.Toplevel):
@@ -31,16 +35,36 @@ class Dialog(tk.Toplevel):
         sal_ref_entry.config(validate="key", validatecommand=(validation, '%P'))
         sal_ref_entry.grid(column=1, row=1)
 
+        tk.Button(gen_frame, text='Refresh Now', command=self.refresh_player_universe).grid(column=2, row=1)
+
         tk.Label(gen_frame, text='Average Salary to Display:').grid(column=0, row=2)
         self.avg_type = StringVar()
         self.avg_type.set(self.pref.get('General', Pref.AVG_SALARY_FOM, fallback=AvgSalaryFom.MEAN))
         avg_type_combo = ttk.Combobox(gen_frame, textvariable=self.avg_type)
         avg_type_combo['values'] = (AvgSalaryFom.MEAN.value, AvgSalaryFom.MEDIAN.value)
         avg_type_combo.grid(column=1, row=2)
+        
+        #--Value Preferences--
+        value_frame = tk.Frame(frm, pady=5)
+        value_frame.grid(row=1, column=0)
+        tk.Label(value_frame, text='Player Values', font='bold').grid(column=0, row=0, columnspan=2)
+
+        tk.Label(value_frame, text='Default Browser:').grid(column=0, row=1)
+        self.browser_type = StringVar()
+        
+        try:
+            browser = browser_services.get_desired_browser()
+            self.browser_type.set(Browsers.get_display(browser))
+        except:
+            logging.warning('Bad browser attempted to load in preferences')
+        
+        browser_combo = ttk.Combobox(value_frame, textvariable=self.browser_type)
+        browser_combo['values'] = (Browsers.get_display(Browsers.CHROME), Browsers.get_display(Browsers.FIREFOX), Browsers.get_display(Browsers.EDGE))
+        browser_combo.grid(column=1, row=1)
 
         #--Draft Preferences--
         draft_frame = tk.Frame(frm, pady=5)
-        draft_frame.grid(row=1, column=0)
+        draft_frame.grid(row=2, column=0)
         tk.Label(draft_frame, text='Draft Tool', font='bold').grid(column=0, row=0, columnspan=2)
 
         tk.Label(draft_frame, text='Stack Targets Table with Position Tables').grid(column=0, row=1)
@@ -60,29 +84,37 @@ class Dialog(tk.Toplevel):
 
         #--Button Frame--
         button_frame = tk.Frame(frm, pady=5)
-        button_frame.grid(row=2, column=0)
+        button_frame.grid(row=3, column=0)
 
         tk.Button(button_frame, command=self.apply, text='Apply', width=7).grid(row=0, column=0, padx=5)
         tk.Button(button_frame, command=self.ok, text='OK', width=7).grid(row=0, column=1, padx=5)
         tk.Button(button_frame, command=self.cancel, text='Cancel', width=7).grid(row=0, column=2, padx=5)
 
+    def refresh_player_universe(self):
+        pd = progress.ProgressDialog(self, 'Refreshing Player Universe...')
+        pd.set_completion_percent(10)
+        salary_services.update_salary_info()
+        pd.complete()
+
     def apply(self):
         changed = False
         changed = self.set_and_check_changed('General', Pref.SALARY_REFRESH_FREQUENCY, self.sal_ref_days_tv.get()) or changed
         changed = self.set_and_check_changed('General', Pref.AVG_SALARY_FOM, self.avg_type.get()) or changed
+        self.set_and_check_changed('Player_Values', Pref.DEFAULT_BROWSER, Browsers.get_enum_from_display(self.browser_type.get()).value)
         changed = self.set_and_check_changed('Draft', Pref.DOCK_DRAFT_TARGETS, self.get_str_for_boolean_var(self.stack_targets_bv)) or changed
         changed = self.set_and_check_changed('Draft', Pref.DOCK_DRAFT_PLAYER_SEARCH, self.get_str_for_boolean_var(self.stack_search_bv)) or changed
 
+        if not os.path.exists('conf'):
+            os.mkdir('conf')
+        with open('conf/otb.conf', 'w') as fd:
+            self.pref.write(fd)
+
         if changed:
-            if not os.path.exists('conf'):
-                os.mkdir('conf')
-            with open('conf/otb.conf', 'w') as fd:
-                self.pref.write(fd)
             self.controller.reload_ui()
     
     def set_and_check_changed(self, group, option, str_val: str):
         if not self.pref.has_section(group):
-            self.pref.add_section('General')
+            self.pref.add_section(group)
             self.pref.set(group, option, str_val)
             return True
         if not self.pref.has_option(group, option):

@@ -22,8 +22,8 @@ class Scrape_Ottoneu(scrape_base.Scrape_Base):
         else:
             return Soup(response.text, 'html.parser')
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, browser=None):
+        super().__init__(browser)
         #Initialize directory for output calc files if required
         self.dirname = os.path.abspath(os.path.join(os.path.dirname( __file__ ), '..'))
         dir_path = os.path.join(self.dirname, 'data_dirs')
