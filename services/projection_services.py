@@ -4,7 +4,7 @@ from scrape import scrape_fg
 from domain.enum import ProjectionType, StatType, IdType
 from domain.exception import FangraphsException, InputException
 from datetime import datetime
-from services import player_services
+from services import player_services, browser_services
 from dao.session import Session
 from sqlalchemy.orm import joinedload
 import pandas as pd
@@ -21,7 +21,7 @@ def download_projections(projection, ros=False, dc_pt=False, progress=None):
         else:
             projection = 'r' + projection
     try:
-        fg_scraper = scrape_fg.Scrape_Fg()
+        fg_scraper = scrape_fg.Scrape_Fg(browser_services.get_desired_browser())
         pos_proj = fg_scraper.getProjectionDataset(f"https://www.fangraphs.com/projections.aspx?pos=all&stats=bat&type={projection}&team=0&lg=all&players=0", f'{projection}_pos.csv', True)
         #THE BAT X does not have pitcher projections, so revert them to simply THE BAT
         if progress is not None:
@@ -62,7 +62,7 @@ def convertToDcPlayingTime(proj, ros, position, fg_scraper=None):
     close = False
     try:
         if fg_scraper == None:
-            fg_scraper = scrape_fg.Scrape_Fg()
+            fg_scraper = scrape_fg.Scrape_Fg(browser_services.get_desired_browser())
             close = True
         if position:
             dc_proj = fg_scraper.getProjectionDataset(f"https://www.fangraphs.com/projections.aspx?pos=all&stats=bat&type={dc_set}&team=0&lg=all&players=0", f'{dc_set}_pos.csv', True)

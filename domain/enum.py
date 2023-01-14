@@ -488,4 +488,25 @@ class Preference(str, Enum):
     SALARY_REFRESH_FREQUENCY = 'sal_refresh_freq',
     AVG_SALARY_FOM = 'avg_sal_fom',
     DOCK_DRAFT_TARGETS = 'dock_draft_targets',
-    DOCK_DRAFT_PLAYER_SEARCH = 'dock_draft_player_search'
+    DOCK_DRAFT_PLAYER_SEARCH = 'dock_draft_player_search',
+    DEFAULT_BROWSER = 'default_proj_browser'
+
+class Browsers(str, Enum):
+    CHROME = 'ChromeHTML',
+    FIREFOX = 'FirefoxURL',
+    EDGE = 'MSEdgeHTM'
+
+    @classmethod
+    def get_display(self, enum):
+        return {
+            self.CHROME: 'Chrome',
+            self.FIREFOX: 'Firefox',
+            self.EDGE: 'Microsoft Edge'}.get(enum, None)
+    
+    @classmethod
+    def get_enum_from_display(self, display):
+        return {
+            'Chrome': self.CHROME,
+            'Firefox': self.FIREFOX,
+            'Microsoft Edge': self.EDGE
+        }.get(display, None)
