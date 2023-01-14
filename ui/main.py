@@ -20,11 +20,19 @@ __version__ = '1.0.0'
 
 class Main(tk.Tk):
 
-    def __init__(self, debug=False, demo_source=False, *args, **kwargs):
+    def __init__(self, debug=False, demo_source=False, resource_path=None, *args, **kwargs):
         tk.Tk.__init__(self, *args, **kwargs)
-        self.iconbitmap("otb_icon.ico")
-        self.iconbitmap(bitmap='otb_icon.ico')
-        self.iconbitmap(default='otb_icon.ico')
+        self.resource_path = resource_path
+        if resource_path is None:
+            self.iconbitmap("otb_icon.ico")
+            self.iconbitmap(bitmap='otb_icon.ico')
+            self.iconbitmap(default='otb_icon.ico')
+        else:
+            iconbitmap = resource_path('otb_icon.ico')
+            self.iconbitmap(iconbitmap)
+            self.iconbitmap(bitmap=iconbitmap)
+            self.iconbitmap(default=iconbitmap)
+
         self.title(f"Ottoneu Tool Box v{__version__}") 
         #self.preferences = preferences
         self.debug = debug
@@ -89,6 +97,9 @@ class Main(tk.Tk):
         #TODO: DB updates based on tool version
 
         progress_dialog.complete()
+    
+    def get_resource_path(self, resource):
+        return self.resource_path(resource)
     
     def load_preferences(self):
         self.preferences = configparser.ConfigParser()
