@@ -342,10 +342,23 @@ class Scrape_Ottoneu(scrape_base.Scrape_Base):
                     parsed_row.append(td.string)
         return parsed_row
 
+    def get_player_from_player_page(self, player_id, league_id):
+        url = f'https://ottoneu.fangraphs.com/{league_id}/playercard?id={player_id}'
+        player_soup = self.get_soup(url)
+        header = player_soup.findAll('div', {'class': 'page-header__primary'})[0]
+        name = header.find('h1').contents[0].string.strip()
+        org_info = header.find('h1').find('span', {'class':'strong tinytext'}).contents[0].string.split()
+        team = org_info[0]
+        pos = org_info[1]
+        fg_id = header.find('a').get('href').split('=')[1]
+        return (player_id, name, team, pos, fg_id)
+
+
 def main():
     scraper = Scrape_Ottoneu()
+    scraper.get_player_from_player_page(31948, 1128)
     #avg = scraper.get_avg_salary_ds(True)
-    print(scraper.scrape_finances_page(160))
+    #print(scraper.scrape_finances_page(160))
     #scraper.get_universe_production_tables()
     #rost = scraper.scrape_roster_export(160)
     #print(rost.head(50))
