@@ -141,6 +141,7 @@ class Main(tk.Tk):
         self.help_menu = hm = tk.Menu(mb, tearoff=0)
         hm.add_command(label='Project Wiki', command=self.open_project_wiki)
         hm.add_command(label='Visit Project Home', command=self.open_project_home)
+        hm.add_command(label='Release Notes', command=self.open_release_notes)
         hm.add_separator()
         hm.add_command(label='View License', command=self.show_license)
         hm.add_command(label='Acknowledgements', command=self.show_acknowledgements)
@@ -152,6 +153,9 @@ class Main(tk.Tk):
     
     def open_project_home(self):
         webbrowser.open_new_tab('https://github.com/blue-shoes/ottoneu-toolbox')
+    
+    def open_release_notes(self):
+        webbrowser.open_new_tab('https://github.com/blue-shoes/ottoneu-toolbox/wiki/Release-Notes')
     
     def show_license(self):
         show_license.Dialog(self)
