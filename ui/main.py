@@ -17,7 +17,7 @@ from services import player_services, salary_services, league_services, property
 from domain.enum import Preference as Pref
 from dao import db_update
    
-__version__ = '1.0.0'
+__version__ = '1.0.1'
 
 class Main(tk.Tk):
 
