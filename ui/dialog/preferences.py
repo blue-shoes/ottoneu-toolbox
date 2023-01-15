@@ -3,11 +3,12 @@ from tkinter import *
 from tkinter import ttk 
 import os
 from tkinter import messagebox as mb
+from tkinter.messagebox import OK
 import logging
 
 from domain.enum import Preference as Pref, AvgSalaryFom, Browsers
 from services import salary_services, browser_services
-from ui.dialog import progress
+from ui.dialog import progress, fg_login
 from util import string_util
 
 class Dialog(tk.Toplevel):
@@ -62,6 +63,14 @@ class Dialog(tk.Toplevel):
         browser_combo['values'] = (Browsers.get_display(Browsers.CHROME), Browsers.get_display(Browsers.FIREFOX), Browsers.get_display(Browsers.EDGE))
         browser_combo.grid(column=1, row=1)
 
+        self.fg_auth = fg_auth = StringVar()
+        if os.path.exists('conf/fangraphs.conf'):
+            fg_auth.set('Credentials entered')
+        else:
+            fg_auth.set('Credentials needed')
+        tk.Label(value_frame, textvariable=fg_auth).grid(row=2, column=0)
+        tk.Button(value_frame, command=self.show_fg_dialog, text='Update FG Login').grid(row=2, column=1)
+
         #--Draft Preferences--
         draft_frame = tk.Frame(frm, pady=5)
         draft_frame.grid(row=2, column=0)
@@ -95,6 +104,11 @@ class Dialog(tk.Toplevel):
         pd.set_completion_percent(10)
         salary_services.update_salary_info()
         pd.complete()
+    
+    def show_fg_dialog(self):
+        dialog = fg_login.Dialog(self)
+        if dialog == OK:
+            self.fg_auth.set('Credentials entered')
 
     def apply(self):
         changed = False
