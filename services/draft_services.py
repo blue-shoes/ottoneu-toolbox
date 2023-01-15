@@ -18,6 +18,10 @@ def get_draft_by_league(lg_id):
             draft.targets = []
             session.add(draft)
             session.commit()
+            draft = session.query(Draft)\
+                .options(joinedload(Draft.targets))\
+                .filter_by(league_id = lg_id, year = year)\
+                .first()
     return draft
 
 def create_target(draft: Draft, playerid, price):

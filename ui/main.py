@@ -1,20 +1,21 @@
 import tkinter as tk  
 from tkinter import ttk 
-from ui.dialog import preferences, progress
-from ui.start import Start
-from ui.draft_tool import DraftTool
-from ui.values import ValuesCalculation
 import logging
 import os
 import configparser
 import webbrowser
-
-from ui.dialog import progress, league_select, value_select, show_license, show_acknowledgments
+from distutils.version import StrictVersion
+from tkinter import messagebox as mb
 import datetime
 import threading
+
+from ui.dialog import preferences, progress, league_select, value_select, show_license, show_acknowledgments
+from ui.start import Start
+from ui.draft_tool import DraftTool
+from ui.values import ValuesCalculation
 from services import player_services, salary_services, league_services, property_service
-from tkinter import messagebox as mb
 from domain.enum import Preference as Pref
+from dao import db_update
    
 __version__ = '1.0.0'
 
@@ -81,6 +82,22 @@ class Main(tk.Tk):
 
     def startup_tasks(self):
         progress_dialog = progress.ProgressDialog(self.container, "Startup Tasks")
+        db_vers = property_service.get_db_version()
+        if db_vers is None:
+            db_vers = property_service.save_db_version(__version__)
+        db_strict_vers = StrictVersion(db_vers.value)
+        if db_strict_vers < StrictVersion(__version__):
+            progress_dialog.set_task_title('Updating Database Structure...')
+            progress_dialog.increment_completion_percent(5)
+            to_run = []
+            sql_dir = self.resource_path('scripts')
+            for filename in os.listdir(sql_dir):
+                vers = StrictVersion(filename.split('.sql')[0])
+                if vers > StrictVersion(db_vers.value) and vers <= StrictVersion(__version__):
+                    to_run.append(os.path.join(sql_dir, filename))
+            if len(to_run) > 0:
+                db_update.run_db_updates(to_run)
+            property_service.save_db_version(__version__)
         progress_dialog.increment_completion_percent(10)
         #Check that database has players in it, and populate if it doesn't
         if not player_services.is_populated():
@@ -92,10 +109,6 @@ class Main(tk.Tk):
             progress_dialog.set_task_title("Updating Player Database")
             salary_services.update_salary_info()
             progress_dialog.increment_completion_percent(33)
-        db_vers = property_service.get_db_version()
-        if db_vers is None:
-            property_service.save_db_version(__version__)
-        #TODO: DB updates based on tool version
 
         progress_dialog.complete()
     
