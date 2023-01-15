@@ -37,7 +37,8 @@ def refresh_league(league_idx, pd=None):
             team_map = {}
             for team in lg.teams:
                 #Clear roster
-                team.roster_spots=[]
+                for rs in team.roster_spots:
+                    session.delete(rs)
                 team_map[team.site_id] = team
             for idx, row in upd_rost.iterrows():
                 team = row['TeamID']
