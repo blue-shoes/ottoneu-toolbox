@@ -20,3 +20,4 @@ def save_db_version(version):
     prop.name = PropertyType.DB_VERSION.value
     prop.value = version
     save_property(prop)
+    return prop
