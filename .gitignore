@@ -14,3 +14,4 @@ __pycache__/*
 demo/data/output/*
 conf/*
 dist/*
+tmp/*
