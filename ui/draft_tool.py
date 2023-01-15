@@ -61,10 +61,6 @@ class DraftTool(tk.Frame):
 
         pd = progress.ProgressDialog(self, title='Downloading latest salary information...')
         pd.increment_completion_percent(10)
-        #if len(self.salary_update) == 0 and (datetime.now() - salary_services.get_last_refresh().last_refresh) > timedelta(days=1):
-        if (datetime.now() - salary_services.get_last_refresh().last_refresh) > timedelta(days=1):
-            salary_services.update_salary_info()
-        pd.increment_completion_percent(50)
 
         format_salary_refresh = salary_services.get_last_refresh(self.controller.league.format)
         if format_salary_refresh is None or (datetime.now() - format_salary_refresh.last_refresh) > timedelta(days=1):
