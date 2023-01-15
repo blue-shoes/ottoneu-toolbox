@@ -1,8 +1,12 @@
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.chrome.service import Service as ChromeService
 from webdriver_manager.firefox import GeckoDriverManager
+from selenium.webdriver.firefox.service import Service as FirefoxService
 from webdriver_manager.microsoft import EdgeChromiumDriverManager
+from selenium.webdriver.edge.service import Service as EdgeService
+from subprocess import CREATE_NO_WINDOW
 
 import shutil
 import pandas as pd
@@ -89,14 +93,18 @@ class Scrape_Base(object):
             prefs["profile.default_content_settings.popups"]=0
             prefs["download.default_directory"]=self.download_dir
             options.add_experimental_option("prefs", prefs)
-            self.driver = webdriver.Chrome(ChromeDriverManager().install(), options=options)
+            service = ChromeService(ChromeDriverManager().install())
+            service.creationflags = CREATE_NO_WINDOW
+            self.driver = webdriver.Chrome(service=service, options=options)
         elif self.browser == 'MSEdgeHTM':
             options = webdriver.EdgeOptions()
             options.add_argument('--headless')
             options.add_experimental_option('prefs', {
                 "download.default_directory": self.download_dir,
                 "download.prompt_for_download": False})
-            self.driver = webdriver.Edge(executable_path=EdgeChromiumDriverManager().install(), options=options)
+            service = EdgeService(EdgeChromiumDriverManager().install())
+            service.creationflags = CREATE_NO_WINDOW
+            self.driver = webdriver.Edge(service=service, options=options)
         elif 'FirefoxURL' in self.browser:
             options = webdriver.FirefoxOptions()
             options.add_argument('--headless')
@@ -104,7 +112,10 @@ class Scrape_Base(object):
             options.set_preference("browser.download.manager.showWhenStarting", False)
             options.set_preference("browser.download.dir", self.download_dir)
             options.set_preference("browser.helperApps.neverAsk.saveToDisk", "application/x-gzip")
-            self.driver = webdriver.Firefox(executable_path=GeckoDriverManager().install(), options=options, service_log_path='logs/geckodriver.log')
+            options.add_argument('--disable-gpu')
+            service = FirefoxService(GeckoDriverManager().install(), log_path='logs/geckodriver.log')
+            service.creationflags = CREATE_NO_WINDOW
+            self.driver = webdriver.Firefox(service=service, options=options)
         else:
             raise Exception('Unknown browser type. Please use Chrome, Firefox, or Microsoft Edge')
         
