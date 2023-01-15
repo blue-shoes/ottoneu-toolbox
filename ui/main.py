@@ -9,7 +9,7 @@ from tkinter import messagebox as mb
 import datetime
 import threading
 
-from ui.dialog import preferences, progress, league_select, value_select, show_license, show_acknowledgments
+from ui.dialog import preferences, progress, league_select, value_select, help
 from ui.start import Start
 from ui.draft_tool import DraftTool
 from ui.values import ValuesCalculation
@@ -158,10 +158,10 @@ class Main(tk.Tk):
         webbrowser.open_new_tab('https://github.com/blue-shoes/ottoneu-toolbox/wiki/Release-Notes')
     
     def show_license(self):
-        show_license.Dialog(self)
+        help.Dialog(self, 'LICENSE')
     
     def show_acknowledgements(self):
-        show_acknowledgments.Dialog(self)
+        help.Dialog(self, 'THIRDPARTYLICENSE')
 
     def exit(self):
         if(self.current_page.exit_tasks()):
