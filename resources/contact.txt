@@ -1,0 +1,7 @@
+For suggestions or help with issues with the Ottoneu Toolbox:
+
+On the Ottoneu Slack channel: @blue_shoes
+On the Ottoneu Community site (community.ottoneu.com): @Blue_Shoes
+
+Or submit a bug report or feature request to the project GitHub page at:
+     https://github.com/blue-shoes/ottoneu-toolbox/issues/new

@@ -145,6 +145,8 @@ class Main(tk.Tk):
         hm.add_separator()
         hm.add_command(label='View License', command=self.show_license)
         hm.add_command(label='Acknowledgements', command=self.show_acknowledgements)
+        hm.add_separator()
+        hm.add_command(label='Contact', command=self.show_contact)
         mb.add_cascade(label="Help", menu=hm)
         self.config(menu=mb)
     
@@ -162,6 +164,9 @@ class Main(tk.Tk):
     
     def show_acknowledgements(self):
         help.Dialog(self, 'THIRDPARTYLICENSE')
+    
+    def show_contact(self):
+        help.Dialog(self, 'contact.txt')
 
     def exit(self):
         if(self.current_page.exit_tasks()):
