@@ -104,17 +104,22 @@ def search_by_name(search_str, salary_info=True):
 def get_player_from_ottoneu_player_page(player_id, league_id):
     player_tuple = Scrape_Ottoneu().get_player_from_player_page(player_id, league_id)
     with Session() as session:
-        player = Player()
+        fg_id = player_tuple[4]
+        player = get_player_by_fg_id(fg_id)
+        if player is None:
+            player = Player()
+            player.name = player_tuple[1]
+            player.search_name = string_util.normalize(player.name)
+            session.add(player)
+            if isinstance(fg_id, int) or  fg_id.isnumeric():
+                player.fg_major_id = int(fg_id)
+            else:
+                player.fg_minor_id = fg_id
         player.ottoneu_id = int(player_tuple[0])
-        player.name = player_tuple[1]
-        player.search_name = string_util.normalize(player.name)
+        
         player.team = player_tuple[2]
         player.position = player_tuple[3]
-        fg_id = player_tuple[4]
-        if isinstance(fg_id, int) or  fg_id.isnumeric():
-            player.fg_major_id = int(fg_id)
-        else:
-            player.fg_minor_id = fg_id
+
         player.salary_info = []
         sal_info = Salary_Info()
         sal_info.avg_salary = 0
@@ -125,5 +130,5 @@ def get_player_from_ottoneu_player_page(player_id, league_id):
         sal_info.min_salary = 0
         sal_info.roster_percentage = 0
         player.salary_info.append(sal_info)
-        session.add(player)
+        session.add(sal_info)
     return player
