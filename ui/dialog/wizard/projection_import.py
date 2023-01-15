@@ -2,6 +2,8 @@ import tkinter as tk
 from tkinter import *              
 from tkinter import ttk 
 from tkinter import filedialog as fd
+from tkinter import messagebox as mb
+from tkinter.messagebox import CANCEL
 from tkinter import font
 from itertools import islice
 import logging
@@ -13,7 +15,7 @@ from domain.domain import Projection
 from domain.enum import ProjectionType, IdType
 from domain.exception import FangraphsException, InputException
 from services import projection_services
-from ui.dialog import progress
+from ui.dialog import progress, fg_login
 from ui.dialog.wizard import wizard
 from util import date_util
 
@@ -180,6 +182,12 @@ class Step1(tk.Frame):
         return True
     
     def validate(self):
+        if not os.path.exists('conf/fangraphs.conf'):
+            dialog = fg_login.Dialog(self)
+            if dialog.status == CANCEL:
+                self.parent.validate_msg = 'Please enter a FanGraphs username and password to proceed'
+                mb.showerror('Download Error', 'Projections cannot be downloaded by the Toolbox without FanGraph credentials')
+                return False
         self.parent.projection = Projection()
         pd = progress.ProgressDialog(self.master, title='Getting Projection Set')
         year = date_util.get_current_ottoneu_year()
