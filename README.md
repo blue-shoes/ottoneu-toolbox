@@ -19,6 +19,11 @@ Running the full GUI from the command lines requires use of the -m flag as such 
 
 ```python.exe -m ottoneu_tool_box```
 
+## Build Instructions
+A single executable file may be compiled for the program using the PyInstaller module. A .spec file has already been generated, so the executable may be created with simply the following:
+
+```python -m PyInstaller .\ottoneu_tool_box.spec```
+
 ## Current Tools
 
 ### Create Player Values
@@ -48,12 +53,10 @@ league inflation rate.
 ![image](https://user-images.githubusercontent.com/61890211/160003776-1a0b6d03-1fd7-40c4-a19c-3ebf1eca3c2e.png)
 
 ## Work in Progress
-The current verison v0.8.1 is considered a Minimum Viable Product (MVP), with room for expansion. Potential feature expansions include:
-- Addition of 4x4 and 5x5 formats
-- Ability to toggle view to show or hide drafted players
-- Current Ottoneu Universe salary information for each player
-- Ability to identify targets in the tables
+Potential feature expansions for the Ottoneu Toolbox include:
+- Addition of 4x4 and 5x5 formats for values and draft tool
 - Ability to view stats/projections for individual players on-demand
+- Expansion to in-season league analysis of rosters, trades, free agents, etc.
 
 ## Framework details
 The Toolbox is backed by a SQLite database using SQLAlchemy ORM mappings. Graphics provided via Tkinter. Web scraping with BeautifulSoup and Selenium.
