@@ -7,9 +7,12 @@ from re import sub
 from services import player_services
 from datetime import datetime
 
-def update_salary_info(format=ScoringFormat.ALL):
+def update_salary_info(format=ScoringFormat.ALL, pd=None):
     scraper = Scrape_Ottoneu()
     salary_df = scraper.get_avg_salary_ds(game_type = format)
+    if pd is not None:
+        pd.set_task_title('Refreshing DB...')
+        pd.increment_completion_percent(40)
     with Session() as session:
         refresh = session.query(Salary_Refresh).filter(Salary_Refresh.format == format).first()
         if refresh is None:
