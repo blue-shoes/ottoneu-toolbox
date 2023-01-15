@@ -1,7 +1,7 @@
 from datetime import datetime
 from sqlalchemy.orm import joinedload
 
-from domain.domain import Player, Salary_Refresh
+from domain.domain import Player, Salary_Refresh, Salary_Info
 from domain.enum import ScoringFormat, Position
 from scrape.scrape_ottoneu import Scrape_Ottoneu
 from dao.session import Session
@@ -100,3 +100,35 @@ def search_by_name(search_str, salary_info=True):
             return session.query(Player).options(joinedload(Player.salary_info)).filter(Player.search_name.contains(search_str)).all()
         else:
             return session.query(Player).filter(Player.search_name.contains(search_str)).all()
+
+def get_player_from_ottoneu_player_page(player_id, league_id):
+    player_tuple = Scrape_Ottoneu().get_player_from_player_page(player_id, league_id)
+    with Session() as session:
+        fg_id = player_tuple[4]
+        player = get_player_by_fg_id(fg_id)
+        if player is None:
+            player = Player()
+            player.name = player_tuple[1]
+            player.search_name = string_util.normalize(player.name)
+            session.add(player)
+            if isinstance(fg_id, int) or  fg_id.isnumeric():
+                player.fg_major_id = int(fg_id)
+            else:
+                player.fg_minor_id = fg_id
+        player.ottoneu_id = int(player_tuple[0])
+        
+        player.team = player_tuple[2]
+        player.position = player_tuple[3]
+
+        player.salary_info = []
+        sal_info = Salary_Info()
+        sal_info.avg_salary = 0
+        sal_info.format = ScoringFormat.ALL
+        sal_info.last_10 = 0
+        sal_info.max_salary = 0
+        sal_info.med_salary = 0
+        sal_info.min_salary = 0
+        sal_info.roster_percentage = 0
+        player.salary_info.append(sal_info)
+        session.add(sal_info)
+    return player

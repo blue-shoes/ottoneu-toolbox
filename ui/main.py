@@ -98,10 +98,11 @@ class Main(tk.Tk):
             if len(to_run) > 0:
                 db_update.run_db_updates(to_run)
             property_service.save_db_version(__version__)
+        progress_dialog.increment_completion_percent(10)
         #Check that database has players in it, and populate if it doesn't
         if not player_services.is_populated():
             progress_dialog.set_task_title("Populating Player Database")
-            salary_services.update_salary_info()
+            salary_services.update_salary_info(pd=progress_dialog)
             progress_dialog.increment_completion_percent(33)
         refresh = salary_services.get_last_refresh()
         if refresh is None or (datetime.datetime.now() - refresh.last_refresh).days > self.preferences.getint('General', Pref.SALARY_REFRESH_FREQUENCY, fallback=30):

@@ -3,6 +3,7 @@ from domain.enum import ScoringFormat
 from domain.exception import OttoneuException
 from dao.session import Session
 from scrape.scrape_ottoneu import Scrape_Ottoneu
+from services import player_services
 from sqlalchemy.orm import joinedload
 
 from datetime import datetime
@@ -44,7 +45,10 @@ def refresh_league(league_idx, pd=None):
                     # team not present, possibly on the restricted list
                     continue
                 rs = Roster_Spot()
-                rs.player = session.query(Player).filter_by(ottoneu_id = idx).first()
+                player = session.query(Player).filter_by(ottoneu_id = idx).first()
+                if player is None:
+                    player = player_services.get_player_from_ottoneu_player_page(idx, league_idx)
+                rs.player = player
                 rs.salary = row['Salary'].split('$')[1]
                 team_map[team].roster_spots.append(rs)
                 if team_map[team].name != row['Team Name']:
