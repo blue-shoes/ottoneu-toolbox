@@ -19,6 +19,11 @@ Running the full GUI from the command lines requires use of the -m flag as such 
 
 ```python.exe -m ottoneu_tool_box```
 
+## Build Instructions
+A single executable file may be compiled for the program using the PyInstaller module. A .spec file has already been generated, so the executable may be created with simply the following:
+
+```python -m PyInstaller .\ottoneu_tool_box.spec```
+
 ## Current Tools
 
 ### Create Player Values
