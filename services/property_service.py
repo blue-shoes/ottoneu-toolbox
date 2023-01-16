@@ -20,9 +20,3 @@ def save_property(prop: Property):
 def get_property(name):
     with Session() as session:
         return session.query(Property).filter(Property.name == name).first()
-
-def save_db_version(version):
-    prop = Property()
-    
-    save_property(prop)
-    return prop
