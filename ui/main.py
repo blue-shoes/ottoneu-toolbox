@@ -84,9 +84,7 @@ class Main(tk.Tk):
     def startup_tasks(self):
         progress_dialog = progress.ProgressDialog(self.container, "Startup Tasks")
         db_vers = property_service.get_db_version()
-        print(db_vers)
         if db_vers is None:
-            print('in conditional')
             db_vers = Property()
             db_vers.name = PropertyType.DB_VERSION.value
             db_vers.value = __version__
@@ -103,7 +101,8 @@ class Main(tk.Tk):
                     to_run.append(os.path.join(sql_dir, filename))
             if len(to_run) > 0:
                 db_update.run_db_updates(to_run)
-            property_service.save_db_version(__version__)
+            db_vers.value = __version__
+            property_service.save_property(db_vers)
         progress_dialog.increment_completion_percent(10)
         #Check that database has players in it, and populate if it doesn't
         if not player_services.is_populated():
