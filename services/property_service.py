@@ -14,10 +14,15 @@ def save_property(prop: Property):
         else:
             old_prop.value = prop.value
         session.commit()
+        prop = get_property(prop.name)
+    return prop
+
+def get_property(name):
+    with Session() as session:
+        return session.query(Property).filter(Property.name == name).first()
 
 def save_db_version(version):
     prop = Property()
-    prop.name = PropertyType.DB_VERSION.value
-    prop.value = version
+    
     save_property(prop)
     return prop

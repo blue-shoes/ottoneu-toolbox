@@ -14,7 +14,8 @@ from ui.start import Start
 from ui.draft_tool import DraftTool
 from ui.values import ValuesCalculation
 from services import player_services, salary_services, league_services, property_service
-from domain.enum import Preference as Pref
+from domain.domain import Property
+from domain.enum import Preference as Pref, PropertyType
 from dao import db_update
    
 __version__ = '1.0.1'
@@ -83,8 +84,13 @@ class Main(tk.Tk):
     def startup_tasks(self):
         progress_dialog = progress.ProgressDialog(self.container, "Startup Tasks")
         db_vers = property_service.get_db_version()
+        print(db_vers)
         if db_vers is None:
-            db_vers = property_service.save_db_version(__version__)
+            print('in conditional')
+            db_vers = Property()
+            db_vers.name = PropertyType.DB_VERSION.value
+            db_vers.value = __version__
+            db_vers = property_service.save_property(db_vers)
         db_strict_vers = StrictVersion(db_vers.value)
         if db_strict_vers < StrictVersion(__version__):
             progress_dialog.set_task_title('Updating Database Structure...')
