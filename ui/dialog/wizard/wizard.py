@@ -64,7 +64,7 @@ class Wizard(tk.Frame):
             self.next_button.pack(side="right")
             self.finish_button.pack_forget()
 
-        elif step == len(self.steps)-1:
+        elif self.is_last_page(step):
             # last step
             self.back_button.pack(side="left")
             self.next_button.pack_forget()
@@ -94,6 +94,9 @@ class Wizard(tk.Frame):
     
     def determine_previous_step(self):
         return self.current_step - 1
+
+    def is_last_page(self, step):
+        return step == len(self.steps)-1
     
     def cancel(self):
         self.parent.destroy()
