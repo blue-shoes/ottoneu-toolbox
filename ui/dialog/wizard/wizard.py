@@ -82,10 +82,16 @@ class Wizard(tk.Frame):
             self.finish_button.pack_forget()
 
     def next(self):
-        self.show_step(self.current_step + 1)
+        self.show_step(self.determine_next_step())
     
     def back(self):
-        self.show_step(self.current_step - 1)
+        self.show_step(self.determine_previous_step())
+    
+    def determine_next_step(self):
+        return self.current_step + 1
+    
+    def determine_previous_step(self):
+        return self.current_step - 1
     
     def cancel(self):
         self.parent.destroy()
