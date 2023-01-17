@@ -147,7 +147,7 @@ class Step1(tk.Frame):
         self.hitter_proj_file.set(self.select_projection_file(True))
     
     def select_pitcher_proj_file(self):
-        self.pitcher_proj_file.set(self.select_projection_file('Choose a pitcher projection file'))
+        self.pitcher_proj_file.set(self.select_projection_file(False))
 
     def select_projection_file(self, batting):
         filetypes = (
