@@ -583,7 +583,11 @@ class DraftTool(tk.Frame):
             id = target.player_id
             name = target.player.name
             t_price = f'${target.price}'
-            value = '$' + "{:.0f}".format(self.value_calculation.get_player_value(id, pos=Position.OVERALL).value)
+            pv = self.value_calculation.get_player_value(id, pos=Position.OVERALL)
+            if pv is None:
+                value = '$0'
+            else:
+                value = '$' + "{:.0f}".format(pv.value)
             pos = target.player.position
             tags = self.get_row_tags(id)
             self.target_table.insert('', tk.END, text=id, tags=tags, values=(name, t_price, value, pos))
