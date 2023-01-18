@@ -304,13 +304,14 @@ class DraftTool(tk.Frame):
                 self.draft.set_target(playerid, dialog.price)
         if dialog.status == OK:
             self.refresh_planning_frame()
-            #TODO: Need a hook to update row tags
+            self.set_player_tags_all_tables(playerid)
     
     def remove_target(self, playerid):
         target = self.draft.get_target_by_player(playerid)
         self.draft.targets.remove(target)
         draft_services.delete_target(target)
         self.refresh_planning_frame()
+        self.set_player_tags_all_tables(playerid)
     
     def remove_player(self, playerid):
         self.removed_players.append(playerid)
@@ -319,6 +320,13 @@ class DraftTool(tk.Frame):
     def restore_player(self, playerid):
         self.removed_players.remove(playerid)
         self.refresh_views()
+    
+    def set_player_tags_all_tables(self, player_id):
+        tags = self.get_row_tags(player_id)
+        self.overall_view.set_tags_by_row_text(player_id, tags)
+        for pos in self.pos_view:
+            self.pos_view[pos].set_tags_by_row_text(player_id, tags)
+        self.search_view.set_tags_by_row_text(player_id, tags)
 
     def sort_treeview(self, treeview, col, pos=None):
         if self.sort_cols[treeview] == col:
@@ -573,7 +581,7 @@ class DraftTool(tk.Frame):
                 roster_percent = "{:.1f}".format(si.roster_percentage) + "%"
 
             tags = self.get_row_tags(id)
-            self.search_view.insert('', tk.END, text=id, tags=tags, values=(name, value, salary, inf_cost,pos, team, pts, ppg, pip, roster_percent))
+            self.search_view.insert('', tk.END, text=str(id), tags=tags, values=(name, value, salary, inf_cost,pos, team, pts, ppg, pip, roster_percent))
    
     def refresh_planning_frame(self):
         self.target_table.refresh()
@@ -715,7 +723,6 @@ class DraftTool(tk.Frame):
 
     def get_offensive_rows(self, pos):
         rows = []
-        print(f'getting for pos {pos}')
         for pv in self.value_calculation.get_position_values(pos):
             row = []
             row.append(pv.player.index)
