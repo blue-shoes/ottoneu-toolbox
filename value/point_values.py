@@ -255,7 +255,7 @@ class PointValues():
 
         if rank_pos:
             for pos in self.pitch_pos:
-                pos_value = pd.DataFrame(real_pitchers.loc[real_pitchers['Position(s)'].str.contains(pos)])
+                pos_value = pd.DataFrame(real_pitchers.loc[real_pitchers[f'IP {pos}'] > 0])
                 if self.arm_dol_per_par > 0:
                     pos_value['Value'] = pos_value[f'PAR {pos}'].apply(lambda x: x*self.arm_dol_per_par + 1.0 if x >= 0 else 0)
                 else:
