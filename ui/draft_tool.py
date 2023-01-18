@@ -304,6 +304,7 @@ class DraftTool(tk.Frame):
                 self.draft.set_target(playerid, dialog.price)
         if dialog.status == OK:
             self.refresh_planning_frame()
+            #TODO: Need a hook to update row tags
     
     def remove_target(self, playerid):
         target = self.draft.get_target_by_player(playerid)
@@ -549,13 +550,18 @@ class DraftTool(tk.Frame):
                 salary = f"${int(self.rosters.at[id, 'Salary'])}"
             else:
                 salary = '$0'
-            pp = self.value_calculation.projection.get_player_projection(id)
-            if pp is not None:
-                h_pts = calculation_services.get_points(pp, Position.OFFENSE)
-                p_pts = calculation_services.get_points(pp, Position.PITCHER, ScoringFormat.is_sabr(self.league.format))
-                pts = "{:.1f}".format(h_pts + p_pts)
-                ppg = "{:.2f}".format(calculation_services.get_batting_point_rate_from_player_projection(pp))
-                pip = "{:.2f}".format(calculation_services.get_pitching_point_rate_from_player_projection(pp, self.league.format))
+            if self.value_calculation.projection is not None:
+                pp = self.value_calculation.projection.get_player_projection(id)
+                if pp is not None:
+                    h_pts = calculation_services.get_points(pp, Position.OFFENSE)
+                    p_pts = calculation_services.get_points(pp, Position.PITCHER, ScoringFormat.is_sabr(self.league.format))
+                    pts = "{:.1f}".format(h_pts + p_pts)
+                    ppg = "{:.2f}".format(calculation_services.get_batting_point_rate_from_player_projection(pp))
+                    pip = "{:.2f}".format(calculation_services.get_pitching_point_rate_from_player_projection(pp, self.league.format))
+                else:
+                    pts = '0.0'
+                    ppg = '0.00'
+                    pip = '0.00'
             else:
                 pts = '0.0'
                 ppg = '0.00'
@@ -671,28 +677,41 @@ class DraftTool(tk.Frame):
             row.append(pv.player.name)
             row.append(pv.player.team)
             row.append(pv.player.position)
-            pp = self.value_calculation.projection.get_player_projection(pv.player.index)
-            o_points = calculation_services.get_points(pp, Position.OFFENSE,self.league.format == ScoringFormat.SABR_POINTS)
-            p_points = calculation_services.get_points(pp, Position.PITCHER,self.league.format == ScoringFormat.SABR_POINTS)
-            row.append(o_points + p_points)
-            # Currently have a 'PAR' column that might be defunct
-            row.append("0")
-            games = pp.get_stat(StatType.G_HIT)
-            if games is None or games == 0:
-                row.append(0)
+            if self.value_calculation.projection is not None:
+                pp = self.value_calculation.projection.get_player_projection(pv.player.index)
+                if pp is None:
+                    row.append(0.00) #points
+                    row.append(0.00) #par
+                    row.append(0.00) #hit rate
+                    row.append(0.00) #pitch rate
+                else:
+                    o_points = calculation_services.get_points(pp, Position.OFFENSE,self.league.format == ScoringFormat.SABR_POINTS)
+                    p_points = calculation_services.get_points(pp, Position.PITCHER,self.league.format == ScoringFormat.SABR_POINTS)
+                    row.append(o_points + p_points)
+                    # Currently have a 'PAR' column that might be defunct
+                    row.append("0")
+                    games = pp.get_stat(StatType.G_HIT)
+                    if games is None or games == 0:
+                        row.append(0)
+                    else:
+                        row.append(o_points / games)
+                    ip = pp.get_stat(StatType.IP)
+                    if ip is None or ip == 0:
+                        row.append(0)
+                    else:
+                        row.append(p_points/ip)
             else:
-                row.append(o_points / games)
-            ip = pp.get_stat(StatType.IP)
-            if ip is None or ip == 0:
-                row.append(0)
-            else:
-                row.append(p_points/ip)
+                row.append(0.00) #points
+                row.append(0.00) #par
+                row.append(0.00) #hit rate
+                row.append(0.00) #pitch rate
             row.append(util.string_util.normalize(pv.player.name))
             rows.append(row)
         return rows
 
     def get_offensive_rows(self, pos):
         rows = []
+        print(f'getting for pos {pos}')
         for pv in self.value_calculation.get_position_values(pos):
             row = []
             row.append(pv.player.index)
@@ -701,16 +720,26 @@ class DraftTool(tk.Frame):
             row.append(pv.player.name)
             row.append(pv.player.team)
             row.append(pv.player.position)
-            pp = self.value_calculation.projection.get_player_projection(pv.player.index)
-            o_points = calculation_services.get_points(pp, Position.OFFENSE,self.league.format == ScoringFormat.SABR_POINTS)
-            row.append(o_points)
-            # Currently have a 'PAR' column that might be defunct
-            row.append("0")
-            games = pp.get_stat(StatType.G_HIT)
-            if games is None or games == 0:
-                row.append(0)
+            if self.value_calculation.projection is not None:
+                pp = self.value_calculation.projection.get_player_projection(pv.player.index)
+                if pp is not None:
+                    o_points = calculation_services.get_points(pp, Position.OFFENSE,self.league.format == ScoringFormat.SABR_POINTS)
+                    row.append(o_points)
+                    # Currently have a 'PAR' column that might be defunct
+                    row.append("0")
+                    games = pp.get_stat(StatType.G_HIT)
+                    if games is None or games == 0:
+                        row.append(0)
+                    else:
+                        row.append(o_points / games)
+                else:
+                    row.append(0.00) # points
+                    row.append(0.00) # par
+                    row.append(0.00) # hit rate
             else:
-                row.append(o_points / games)
+                row.append(0.00) # points
+                row.append(0.00) # par
+                row.append(0.00) # hit rate
             rows.append(row)
         return rows
     
@@ -724,16 +753,26 @@ class DraftTool(tk.Frame):
             row.append(pv.player.name)
             row.append(pv.player.team)
             row.append(pv.player.position)
-            pp = self.value_calculation.projection.get_player_projection(pv.player.index)
-            p_points = calculation_services.get_points(pp, Position.PITCHER,self.league.format == ScoringFormat.SABR_POINTS)
-            row.append(p_points)
-            # Currently have a 'PAR' column that might be defunct
-            row.append("0")
-            ip = pp.get_stat(StatType.IP)
-            if ip is None or ip == 0:
-                row.append(0)
+            if self.value_calculation.projection is not None:
+                pp = self.value_calculation.projection.get_player_projection(pv.player.index)
+                if pp is not None:
+                    p_points = calculation_services.get_points(pp, Position.PITCHER,self.league.format == ScoringFormat.SABR_POINTS)
+                    row.append(p_points)
+                    # Currently have a 'PAR' column that might be defunct
+                    row.append("0")
+                    ip = pp.get_stat(StatType.IP)
+                    if ip is None or ip == 0:
+                        row.append(0)
+                    else:
+                        row.append(p_points/ip)
+                else:
+                    row.append(0.00) # points
+                    row.append(0.00) # par
+                    row.append(0.00) # pitch rate
             else:
-                row.append(p_points/ip)
+                row.append(0.00) # points
+                row.append(0.00) # par
+                row.append(0.00) # pitch rate
             rows.append(row)
         return rows
 
