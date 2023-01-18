@@ -10,12 +10,18 @@ from services import calculation_services, projection_services
 import pandas as pd
 import datetime
 import logging
+from enum import Enum
 
 from pathlib import Path
 import os
 import os.path
 
 from util import string_util
+
+class ValueTypeEnum(str, Enum):
+    OTTOVALUES = 'Ottovalues Export',
+    FG_AUCTION_CALC = 'FanGraphs Auction Calculator',
+    CUSTOM = 'Custom Values'
 
 class Dialog(wizard.Dialog):
     def __init__(self, parent):
@@ -33,11 +39,16 @@ class Wizard(wizard.Wizard):
     def __init__(self, parent):
         super().__init__(parent)
         self.parent = parent
+        self.step0 = Step0(self)
+        self.step1_fg = Step1_FG(self)
         self.step1 = Step1(self)
         self.step2 = Step2(self)
+        self.steps.append(self.step0)
+        self.steps.append(self.step1_fg)
         self.steps.append(self.step1)
         self.steps.append(self.step2)
         self.value = ValueCalculation()
+        self.value_type = None
 
         self.show_step(0)
     
@@ -45,28 +56,235 @@ class Wizard(wizard.Wizard):
         self.value = None
         super().cancel()
     
+    def determine_next_step(self):
+        self.value_type = self.step0.value_type.get()
+        if self.value_type == ValueTypeEnum.FG_AUCTION_CALC:
+            if self.current_step == 1:
+                return self.current_step + 2
+        elif self.current_step == 0:
+            return self.current_step + 2
+        return super().determine_next_step()
+    
+    def determine_previous_step(self):
+        self.value_type = self.step0.value_type.get()
+        if self.value_type == ValueTypeEnum.FG_AUCTION_CALC:
+            if self.current_step == 3:
+                return self.current_step - 2
+        elif self.current_step == 2:
+            return self.current_step - 2
+        return super().determine_previous_step()
+    
+    def is_last_page(self, step):
+        if self.step0.value_type.get() == ValueTypeEnum.FG_AUCTION_CALC:
+            return self.current_step == 1
+        return super().is_last_page(step)
+    
     def finish(self):
-        self.parent.validate_msg = None
-        for pos in Position.get_discrete_offensive_pos() + Position.get_discrete_pitching_pos():
-            self.value.set_input(CDT.pos_to_rep_level()[pos], float(self.step2.pos_rep_lvl_sv[pos].get()))
-            self.value.set_output(CDT.pos_to_rep_level()[pos], float(self.step2.pos_rep_lvl_sv[pos].get()))
-        
-        self.value.set_output(CDT.HITTER_DOLLAR_PER_FOM, float(self.step2.hit_dollars_per_fom_val.get()))
-        self.value.set_output(CDT.PITCHER_DOLLAR_PER_FOM, float(self.step2.pitch_dollars_per_fom_val.get()))
-        self.value.timestamp = datetime.datetime.now()
-        self.value.index = None
-        self.value.name = self.step1.name_tv.get()
-        self.value.description = self.step1.desc_tv.get()
-        self.value.set_input(CDT.REP_LEVEL_SCHEME, float(RepLevelScheme.STATIC_REP_LEVEL.value))
-        pd = progress.ProgressDialog(self.master, title='Saving Values...')
-        pd.set_task_title('Uploading')
-        pd.set_completion_percent(15)
-        self.value = calculation_services.save_calculation_from_file(self.value, self.step1.df, pd)
-        pd.set_task_title("Updating")
-        pd.set_completion_percent(80)
-        self.parent.value = calculation_services.load_calculation(self.value.index)
-        pd.complete()
-        super().finish()
+        try:
+            self.parent.validate_msg = None
+            self.value.timestamp = datetime.datetime.now()
+            self.value.set_input(CDT.NUM_TEAMS, self.step1_fg.num_teams_str.get())
+            progd = progress.ProgressDialog(self.master, title='Saving Values...')
+            if self.step0.value_type.get() == ValueTypeEnum.FG_AUCTION_CALC:
+                try:
+                    hit_df = pd.read_csv(self.step1_fg.hitter_value_file.get())
+                    pitch_df = pd.read_csv(self.step1_fg.pitcher_value_file.get())
+                except PermissionError:
+                    self.parent.validate_msg = f'Error loading values file. File permission denied.'
+                    return False
+                except FileNotFoundError:
+                    self.parent.validate_msg = "Error loading values file. Values file not found."
+                    return False
+                except Exception as Argument:
+                    self.parent.validate_msg = f'Error loading values file. See log file for details.'
+                    logging.exception('Error loading values file.')
+                    return False
+                self.value.name = self.step1_fg.name_tv.get()
+                self.value.description = self.step1_fg.desc_tv.get()
+                self.value.format = ScoringFormat.name_to_enum_map().get(self.step1_fg.game_type.get())
+                self.value.hitter_basis = RankingBasis.FG_AC
+                self.value.pitcher_basis = RankingBasis.FG_AC
+                if self.step1_fg.projection is not None:
+                    self.value.projection = self.step1_fg.projection
+                progd.set_task_title('Parsing')
+                progd.set_completion_percent(15)
+                self.value = calculation_services.get_values_from_fg_auction_files(self.value, hit_df, pitch_df, int(self.step1_fg.rep_level_value_str.get()),progd)
+            else:
+                for pos in Position.get_discrete_offensive_pos() + Position.get_discrete_pitching_pos():
+                    self.value.set_input(CDT.pos_to_rep_level()[pos], float(self.step2.pos_rep_lvl_sv[pos].get()))
+                    self.value.set_output(CDT.pos_to_rep_level()[pos], float(self.step2.pos_rep_lvl_sv[pos].get()))
+                
+                self.value.set_output(CDT.HITTER_DOLLAR_PER_FOM, float(self.step2.hit_dollars_per_fom_val.get()))
+                self.value.set_output(CDT.PITCHER_DOLLAR_PER_FOM, float(self.step2.pitch_dollars_per_fom_val.get()))
+                self.value.name = self.step1.name_tv.get()
+                self.value.description = self.step1.desc_tv.get()
+                self.value.set_input(CDT.REP_LEVEL_SCHEME, float(RepLevelScheme.STATIC_REP_LEVEL.value))
+                progd.set_task_title('Uploading')
+                progd.set_completion_percent(15)
+                self.value = calculation_services.save_calculation_from_file(self.value, self.step1.df, progd)
+            progd.set_task_title("Updating")
+            progd.set_completion_percent(80)
+            self.parent.value = calculation_services.load_calculation(self.value.index)
+            progd.complete()
+        except Exception as Argument:
+            logging.exception('Error loading values')
+            self.parent.validate_msg = 'Error uploading values. Please check logs/toolbox.log'
+        finally:
+            super().finish()
+
+class Step0(tk.Frame):
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.parent = parent
+        header = tk.Label(self, text="Select type of Values To Import")
+        header.grid(row=0, column=0, columnspan=3)
+
+        value_type_map = [e.value for e in ValueTypeEnum]
+        ttk.Label(self, text="Value Type:").grid(column=0,row=1,pady=5, stick=W)
+        self.value_type = StringVar()
+        self.value_type.set(ValueTypeEnum.OTTOVALUES)
+        value_type_combo = ttk.Combobox(self, textvariable=self.value_type)
+        value_type_combo['values'] = value_type_map
+        value_type_combo.grid(column=1,row=1,pady=5, columnspan=2)
+
+    def on_show(self):
+        return True
+    
+    def validate(self):
+        self.parent.validate_msg = ''
+        if self.value_type.get() in [e for e in ValueTypeEnum]:
+            return True
+        self.parent.validate_msg = 'Please select a type of value set to import'
+        return False
+
+class Step1_FG(tk.Frame):
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.parent = parent
+
+        validation = self.register(string_util.int_validation)
+
+        header = tk.Label(self, text="Upload FanGraphs Auction Calculator Value Set")
+        header.grid(row=0, column=0, columnspan=3)
+
+        tk.Label(self, text="Name:").grid(row=1, column=0, stick=W)
+        self.name_tv = StringVar()
+        tk.Entry(self, textvariable=self.name_tv).grid(row=1, column=1, sticky='we', columnspan=2)
+
+        tk.Label(self, text="Description:").grid(row=2, column=0, stick=W)
+        self.desc_tv = StringVar()
+        tk.Entry(self, textvariable=self.desc_tv).grid(row=2, column=1, sticky='we', columnspan=2)
+
+        ttk.Label(self, text = "Hitter Value File (csv):").grid(column=0,row=3, pady=5, stick=W)
+
+        self.hitter_value_file = tk.StringVar()
+        ttk.Button(self, textvariable = self.hitter_value_file, command=self.select_hitter_value_file).grid(column=1,row=3, padx=5, sticky='we', columnspan=2)
+        self.hitter_value_file.set(Path.home())
+
+        ttk.Label(self, text = "Pitcher Value File (csv):").grid(column=0,row=4, pady=5, stick=W)
+
+        self.pitcher_value_file = tk.StringVar()
+        ttk.Button(self, textvariable = self.pitcher_value_file, command=self.select_pitcher_value_file).grid(column=1,row=4, padx=5, sticky='we', columnspan=2)
+        self.pitcher_value_file.set(Path.home())
+
+        gt_map = ScoringFormat.enum_to_full_name_map()
+        ttk.Label(self, text="Game Type:").grid(column=0,row=5,pady=5, stick=W)
+        self.game_type = StringVar()
+        self.game_type.set(gt_map[ScoringFormat.FG_POINTS])
+        gt_combo = ttk.Combobox(self, textvariable=self.game_type)
+
+        gt_combo['values'] = tuple([ScoringFormat.enum_to_full_name_map().get(e) for e in ScoringFormat.get_discrete_types()])
+        gt_combo.grid(column=1,row=5,pady=5, columnspan=2)
+
+        ttk.Label(self, text="Number of Teams:").grid(column=0, row=6,pady=5, stick=W)
+        self.num_teams_str = StringVar()
+        self.num_teams_str.set("12")
+        team_entry = ttk.Entry(self, textvariable=self.num_teams_str)
+        team_entry.grid(column=1,row=6,pady=5, sticky='we', columnspan=2)
+        team_entry.config(validate="key", validatecommand=(validation, '%P'))
+
+        ttk.Label(self, text="Replacement Level Value ($): ").grid(column=0, row=7,pady=5, stick=W)
+        self.rep_level_value_str = StringVar()
+        self.rep_level_value_str.set("1")
+        rep_level_entry = ttk.Entry(self, textvariable=self.rep_level_value_str)
+        rep_level_entry.grid(column=1,row=7,pady=5, sticky='we', columnspan=2)
+        rep_level_entry.config(validate="key", validatecommand=(validation, '%P'))
+
+        ttk.Label(self, text="Selected Projections (optional):").grid(column=0,row=8, pady=5, stick=W)
+        self.sel_proj = tk.StringVar()
+        self.sel_proj.set("None")
+        self.projection = None
+        ttk.Button(self, textvariable=self.sel_proj, command=self.select_projection).grid(column=1,row=8, sticky='we', columnspan=2)
+    
+    def select_hitter_value_file(self):
+        self.hitter_value_file.set(self.select_value_file(True))
+    
+    def select_pitcher_value_file(self):
+        self.pitcher_value_file.set(self.select_value_file(False))
+
+    def select_value_file(self, batting):
+        filetypes = (
+            ('csv files', '*.csv'),
+            ('All files', '*.*')
+        )
+
+        if batting:
+            title = 'Choose a hitter value file'
+            if os.path.isfile(self.hitter_value_file.get()):
+                init_dir = os.path.dirname(self.hitter_value_file.get())
+            else:
+                init_dir = self.hitter_value_file.get()
+        else:
+            title = 'Choose a pitcher value file'
+            if os.path.isfile(self.pitcher_value_file.get()):
+                init_dir = os.path.dirname(self.pitcher_value_file.get())
+            else:
+                init_dir = self.pitcher_value_file.get()
+
+        file = fd.askopenfilename(
+            title=title,
+            initialdir=init_dir,
+            filetypes=filetypes)
+
+        self.parent.lift()
+        self.parent.focus_force()
+
+        return file
+    
+    def select_projection(self):
+        count = projection_services.get_projection_count()
+        if count == 0:
+            dialog = projection_import.Dialog(self)
+            self.projection = dialog.projection
+        else:
+            dialog = projection_select.Dialog(self)
+        if dialog.projection is not None:
+            self.projection = dialog.projection
+            self.sel_proj.set(self.projection.name)
+        else:
+            self.projection = None
+            self.sel_proj.set("No Projection Selected")
+    
+    def on_show(self):
+        return True
+    
+    def validate(self):
+        return True
+    
+    def init_fg_value_calc(self):
+        prog = progress.ProgressDialog(self.parent, 'Initializing Value Set')
+        vc = self.parent.value
+        if self.projection is not None:
+            prog.set_task_title('Getting projections...')
+            prog.set_completion_percent(15)
+            vc.projection = projection_services.get_projection(self.projection.index, player_data=True)
+        vc.format = ScoringFormat.name_to_enum_map()[self.game_type.get()]
+        vc.inputs = []
+        vc.set_input(CDT.NUM_TEAMS, float(self.num_teams_str.get()))
+        #vc.hitter_basis = RankingBasis.display_to_enum_map().get(self.hitter_basis.get())
+        #vc.pitcher_basis = RankingBasis.display_to_enum_map().get(self.pitcher_basis.get())
+        calculation_services.init_outputs_from_fg_upload(vc, self.hit_df, self.pitch_df, prog)
+        prog.complete()
 
 class Step1(tk.Frame):
     def __init__(self, parent):
@@ -101,7 +319,7 @@ class Step1(tk.Frame):
         id_combo['values'] = id_map
         id_combo.grid(column=1,row=4,pady=5, columnspan=2)
 
-        ttk.Label(self, text="Selected Projections:").grid(column=0,row=5, pady=5, stick=W)
+        ttk.Label(self, text="Selected Projections (optional):").grid(column=0,row=5, pady=5, stick=W)
         self.sel_proj = tk.StringVar()
         self.sel_proj.set("None")
         self.projection = None
@@ -201,15 +419,16 @@ class Step1(tk.Frame):
     def init_value_calc(self):
         prog = progress.ProgressDialog(self.parent, 'Initializing Value Set')
         vc = self.parent.value
-        prog.set_task_title('Getting projections...')
-        prog.set_completion_percent(15)
-        vc.projection = projection_services.get_projection(self.projection.index, player_data=True)
+        if self.projection is not None:
+            prog.set_task_title('Getting projections...')
+            prog.set_completion_percent(15)
+            vc.projection = projection_services.get_projection(self.projection.index, player_data=True)
         vc.format = ScoringFormat.name_to_enum_map()[self.game_type.get()]
         vc.inputs = []
         vc.set_input(CDT.NUM_TEAMS, float(self.num_teams_str.get()))
         vc.hitter_basis = RankingBasis.display_to_enum_map().get(self.hitter_basis.get())
         vc.pitcher_basis = RankingBasis.display_to_enum_map().get(self.pitcher_basis.get())
-        vc = calculation_services.init_outputs_from_upload(vc, self.df, 
+        calculation_services.init_outputs_from_upload(vc, self.df, 
             ScoringFormat.name_to_enum_map()[self.game_type.get()], int(self.rep_level_value_str.get()), 
             IdType._value2member_map_.get(self.id_type.get()), prog)
         prog.complete()

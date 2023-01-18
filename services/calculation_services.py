@@ -1,12 +1,13 @@
 from pandas import DataFrame
 from dao.session import Session
 from domain.domain import ValueCalculation, Projection, PlayerProjection
-from domain.enum import Position, CalculationDataType as CDT, StatType, ScoringFormat, RankingBasis, IdType
+from domain.enum import Position, CalculationDataType as CDT, StatType, ScoringFormat, RankingBasis, IdType, RepLevelScheme
 from value.point_values import PointValues
 from services import player_services, projection_services
 from util import string_util, date_util
 import math
 import logging
+import datetime
 
 def perform_point_calculation(value_calc, pd = None):
     if pd is not None:
@@ -47,16 +48,19 @@ def load_calculation(calc_index):
         #This is hacky, but it loads these fields so much faster than trying to do the .options(joinedload()) operations. Makes no sense
         for pv in value_calc.values:
             break
-        for pp in value_calc.projection.player_projections:
-            break
+        if value_calc.projection is not None:
+            for pp in value_calc.projection.player_projections:
+                break
     value_calc.init_value_dict()
     return value_calc
 
 def get_values_for_year(year=None):
     if year is None:
         year = date_util.get_current_ottoneu_year()
+    end = datetime.datetime(year, 10, 1)
+    start = datetime.datetime(year-1, 10, 1)
     with Session() as session:
-        return session.query(ValueCalculation).join(ValueCalculation.projection).filter(Projection.season == year).all()
+        return session.query(ValueCalculation).filter(ValueCalculation.timestamp > start, ValueCalculation.timestamp < end).all()
 
 def get_points(player_proj, pos, sabr=False):
     try:
@@ -267,6 +271,91 @@ def has_required_data_for_rl(df:DataFrame, game_type:ScoringFormat):
     else:
         raise Exception(f'ScoringFormat {game_type} not currently implemented')
 
+def get_values_from_fg_auction_files(vc: ValueCalculation, hit_df : DataFrame, pitch_df : DataFrame, rep_lvl_dol, pd=None):
+    if pd is not None:
+        pd.set_task_title("Determining replacement levels...")
+        pd.increment_completion_percent(33)
+    hit_df.set_index("PlayerId", inplace=True)
+    rep_lvl_tuples = []
+    for idx, row in hit_df.iterrows():
+        if row['Dollars'] == float(rep_lvl_dol):
+            rep_lvl_tuples.append((row['POS'], row['aPOS']))
+    if len(rep_lvl_tuples) != 7:
+        logging.error(f'len rep levels = {len(rep_lvl_tuples)}')
+        raise Exception('Error parsing replacement levels. Confirm input min player value matches that used in value calculation')
+    rep_lvls = {}
+    min = 9999
+    mi = 9999
+    for pos in Position.get_discrete_offensive_pos():
+        if pos == Position.POS_UTIL:
+            continue
+        for rl in rep_lvl_tuples:
+            if pos.value in rl[0]:
+                if pos not in rep_lvls or rep_lvls.get(pos) > rl[1]:
+                    rep_lvls[pos] = rl[1]
+                    if rl[1] < min:
+                        min = rl[1]
+                    if (pos == Position.POS_2B or pos == Position.POS_SS) and rl[1] < mi:
+                        mi = rl[1]
+    rep_lvls[Position.POS_UTIL] = min
+    rep_lvls[Position.POS_MI] = mi
+
+    rost = {}
+    total_hitters = 0
+    for idx, row in hit_df.iterrows():
+        player = player_services.get_player_by_fg_id(idx)
+        if row['Dollars'] >= rep_lvl_dol:
+            total_hitters = total_hitters + 1
+        vc.set_player_value(player.index, Position.OVERALL, row['Dollars'])
+        vc.set_player_value(player.index, Position.OFFENSE, row['Dollars'])
+        for pos in Position.get_offensive_pos():
+            if pos == Position.OFFENSE:
+                continue
+            if player.pos_eligible(pos):
+                val = row['PTS'] + rep_lvls.get(pos) + float(rep_lvl_dol)
+                vc.set_player_value(player.index, pos, val)
+                if row['Dollars'] >= rep_lvl_dol:
+                    rost[pos] = rost.get(pos, 0) + 1
+
+    pitch_df.set_index("PlayerId", inplace=True)
+    total_pitchers = 0
+    for idx, row in pitch_df.iterrows():
+        player = player_services.get_player_by_fg_id(idx)
+        if player.position == 'SP':
+            rep_lvls[Position.POS_SP] = row['aPOS']
+            break
+    for idx, row in pitch_df.iterrows():
+        player = player_services.get_player_by_fg_id(idx)
+        if player.position == 'RP':
+            rep_lvls[Position.POS_RP] = row['aPOS']
+            break
+    for idx, row in pitch_df.iterrows():
+        player = player_services.get_player_by_fg_id(idx)
+        if player.index in vc.value_dict:
+            vc.set_player_value(player.index, Position.OVERALL, row['Dollars'] + vc.get_player_value(player.index, Position.OVERALL).value)
+        else:
+            vc.set_player_value(player.index, Position.OVERALL, row['Dollars'])
+        if row['Dollars'] > rep_lvl_dol:
+            total_pitchers = total_pitchers + 1
+        for pos in Position.get_discrete_pitching_pos():
+            if player.pos_eligible(pos):
+                #with info given by Auction Calculator, may not be possible to split swing roles, so leave as-is 
+                vc.set_player_value(player.index, pos, row['Dollars'])
+                if row['Dollars'] >= float(rep_lvl_dol):
+                    rost[pos] = rost.get(pos, 0) + 1
+    for pos in Position.get_discrete_offensive_pos() + Position.get_discrete_pitching_pos():
+        vc.set_input(CDT.pos_to_num_rostered()[pos], rost[pos])
+        vc.set_input(CDT.REP_LEVEL_SCHEME, float(RepLevelScheme.NUM_ROSTERED.value))
+        vc.set_output(CDT.pos_to_num_rostered()[pos], rost[pos])
+        vc.set_output(CDT.pos_to_rep_level()[pos], rep_lvls[pos])
+    vc.set_output(CDT.TOTAL_HITTERS_ROSTERED, total_hitters)
+    vc.set_output(CDT.TOTAL_PITCHERS_ROSTERED, total_pitchers)
+
+    if pd is not None:
+        pd.set_task_title('Saving Values')
+        pd.increment_completion_percent(33)
+    return save_calculation(vc)
+
 def init_outputs_from_upload(vc: ValueCalculation, df : DataFrame, game_type, rep_level_cost=1, id_type=IdType.OTTONEU, pd=None):
     if pd is not None:
         pd.set_task_title("Determining replacement levels...")
@@ -299,29 +388,30 @@ def init_outputs_from_upload(vc: ValueCalculation, df : DataFrame, game_type, re
         hit = False
         pitch = False
         positions = player_services.get_player_positions(player, discrete=True)
-        pp = vc.projection.get_player_projection(player.index)
-        if len(positions) == 1 and pp is not None:
-            pos = positions[0]
-            pitch_role_good = True
-            if pos in Position.get_pitching_pos():
-                #This mitigates potential issues where a pitcher's Ottoneu position doens't reflect their projection
-                #and protects against swingman roles being used to determine replacement level
-                pp = vc.projection.get_player_projection(player.index)
-                if pos == Position.POS_SP:
-                    if pp.get_stat(StatType.G_PIT) > pp.get_stat(StatType.GS_PIT):
-                        pitch_role_good = False
-                else:
-                    if pp.get_stat(StatType.GS_PIT) > 0:
-                        pitch_role_good = False
-            if pitch_role_good:
-                sample_list = sample_players.get(positions[0])
-                if sample_list is None:
-                    sample_list = []
-                    sample_players[positions[0]] = sample_list
-                if proj_derive:
-                    sample_list.append((value, player.index))
-                else:
-                    sample_list.append((value, row['Points'], row['H_PT'], row['P_PT']))
+        if vc.projection is not None:
+            pp = vc.projection.get_player_projection(player.index)
+            if len(positions) == 1 and pp is not None:
+                pos = positions[0]
+                pitch_role_good = True
+                if pos in Position.get_pitching_pos():
+                    #This mitigates potential issues where a pitcher's Ottoneu position doens't reflect their projection
+                    #and protects against swingman roles being used to determine replacement level
+                    pp = vc.projection.get_player_projection(player.index)
+                    if pos == Position.POS_SP:
+                        if pp.get_stat(StatType.G_PIT) > pp.get_stat(StatType.GS_PIT):
+                            pitch_role_good = False
+                    else:
+                        if pp.get_stat(StatType.GS_PIT) > 0:
+                            pitch_role_good = False
+                if pitch_role_good:
+                    sample_list = sample_players.get(positions[0])
+                    if sample_list is None:
+                        sample_list = []
+                        sample_players[positions[0]] = sample_list
+                    if proj_derive:
+                        sample_list.append((value, player.index))
+                    else:
+                        sample_list.append((value, row['Points'], row['H_PT'], row['P_PT']))
         for pos in positions:
             if pos in Position.get_discrete_offensive_pos():
                 hit = True
@@ -347,61 +437,62 @@ def init_outputs_from_upload(vc: ValueCalculation, df : DataFrame, game_type, re
         vc.set_output(CDT.pos_to_num_rostered().get(pos), pos_count[pos])
     hit_dol_per_fom = -999
     pitch_dol_per_fom = -999
-    for pos in sample_players:
-        sample_list = sample_players.get(pos)
-        if len(sample_list) < 4:
-            vc.set_output(CDT.pos_to_rep_level().get(pos), -999)
-            continue
-        prices = [sample_list[0][0], sample_list[-1][0], sample_list[1][0], sample_list[-2][0]]
-        if proj_derive:
-            p_idx = [sample_list[0][1], sample_list[-1][1], sample_list[1][1], sample_list[-2][1]]
-            points = []
-            pt = []
-            for idx in p_idx:
-                pp = vc.projection.get_player_projection(idx)
-                points.append(get_points(pp, pos, game_type in [ScoringFormat.SABR_POINTS, ScoringFormat.H2H_SABR_POINTS]))
-                if pos in Position.get_discrete_offensive_pos():
-                    if vc.hitter_basis == RankingBasis.PPG:
-                        pt.append(pp.get_stat(StatType.G_HIT))
-                    elif vc.hitter_basis == RankingBasis.PPPA:
-                        pt.append(pp.get_stat(StatType.PA))
+    if vc.projection is not None:
+        for pos in sample_players:
+            sample_list = sample_players.get(pos)
+            if len(sample_list) < 4:
+                vc.set_output(CDT.pos_to_rep_level().get(pos), -999)
+                continue
+            prices = [sample_list[0][0], sample_list[-1][0], sample_list[1][0], sample_list[-2][0]]
+            if proj_derive:
+                p_idx = [sample_list[0][1], sample_list[-1][1], sample_list[1][1], sample_list[-2][1]]
+                points = []
+                pt = []
+                for idx in p_idx:
+                    pp = vc.projection.get_player_projection(idx)
+                    points.append(get_points(pp, pos, game_type in [ScoringFormat.SABR_POINTS, ScoringFormat.H2H_SABR_POINTS]))
+                    if pos in Position.get_discrete_offensive_pos():
+                        if vc.hitter_basis == RankingBasis.PPG:
+                            pt.append(pp.get_stat(StatType.G_HIT))
+                        elif vc.hitter_basis == RankingBasis.PPPA:
+                            pt.append(pp.get_stat(StatType.PA))
+                        else:
+                            raise Exception(f'Hitter basis {vc.hitter_basis.value} not implemented')
                     else:
-                        raise Exception(f'Hitter basis {vc.hitter_basis.value} not implemented')
-                else:
-                    if vc.pitcher_basis == RankingBasis.PPG:
-                        pt.append(pp.get_stat(StatType.G_PIT))
-                    elif vc.hitter_basis == RankingBasis.PIP:
-                        pt.append(pp.get_stat(StatType.IP))
-                    else:
-                        raise Exception(f'Pitcher basis {vc.pitcher_basis.value} not implemented')
-        else:
-            points = [sample_list[0][1], sample_list[-1][1], sample_list[1][1], sample_list[-2][1]]
-            if pos in Position.get_offensive_pos():
-                pt = [sample_list[0][2], sample_list[-1][2], sample_list[1][2], sample_list[-2][2]]
+                        if vc.pitcher_basis == RankingBasis.PPG:
+                            pt.append(pp.get_stat(StatType.G_PIT))
+                        elif vc.hitter_basis == RankingBasis.PIP:
+                            pt.append(pp.get_stat(StatType.IP))
+                        else:
+                            raise Exception(f'Pitcher basis {vc.pitcher_basis.value} not implemented')
             else:
-                pt = [sample_list[0][3], sample_list[-1][3], sample_list[1][3], sample_list[-2][3]]
+                points = [sample_list[0][1], sample_list[-1][1], sample_list[1][1], sample_list[-2][1]]
+                if pos in Position.get_offensive_pos():
+                    pt = [sample_list[0][2], sample_list[-1][2], sample_list[1][2], sample_list[-2][2]]
+                else:
+                    pt = [sample_list[0][3], sample_list[-1][3], sample_list[1][3], sample_list[-2][3]]
+            
+            rl, d = calc_rep_levels_from_values(prices, points, pt)
+            vc.set_output(CDT.pos_to_rep_level().get(pos), rl)
+
+            if pos in Position.get_offensive_pos() and hit_dol_per_fom < 0:
+                hit_dol_per_fom = d
+            elif pos in Position.get_pitching_pos() and pitch_dol_per_fom < 0:
+                pitch_dol_per_fom = d
+
+        #Util rep level is either the highest offensive position level, or the Util value, whichever is lower
+        max_lvl = 0
+        for pos in Position.get_discrete_offensive_pos():
+            if pos == Position.POS_UTIL:
+                continue
+            rl = vc.get_output(CDT.pos_to_rep_level().get(pos), 0)
+            if rl > max_lvl:
+                max_lvl = rl
+        if max_lvl < vc.get_output(CDT.pos_to_rep_level().get(Position.POS_UTIL), 999):
+            vc.set_output(CDT.pos_to_rep_level().get(Position.POS_UTIL), max_lvl)
         
-        rl, d = calc_rep_levels_from_values(prices, points, pt)
-        vc.set_output(CDT.pos_to_rep_level().get(pos), rl)
-
-        if pos in Position.get_offensive_pos() and hit_dol_per_fom < 0:
-            hit_dol_per_fom = d
-        elif pos in Position.get_pitching_pos() and pitch_dol_per_fom < 0:
-            pitch_dol_per_fom = d
-
-    #Util rep level is either the highest offensive position level, or the Util value, whichever is lower
-    max_lvl = 0
-    for pos in Position.get_discrete_offensive_pos():
-        if pos == Position.POS_UTIL:
-            continue
-        rl = vc.get_output(CDT.pos_to_rep_level().get(pos), 0)
-        if rl > max_lvl:
-            max_lvl = rl
-    if max_lvl < vc.get_output(CDT.pos_to_rep_level().get(Position.POS_UTIL), 999):
-        vc.set_output(CDT.pos_to_rep_level().get(Position.POS_UTIL), max_lvl)
-    
-    vc.set_output(CDT.HITTER_DOLLAR_PER_FOM, hit_dol_per_fom)
-    vc.set_output(CDT.PITCHER_DOLLAR_PER_FOM, pitch_dol_per_fom)
+        vc.set_output(CDT.HITTER_DOLLAR_PER_FOM, hit_dol_per_fom)
+        vc.set_output(CDT.PITCHER_DOLLAR_PER_FOM, pitch_dol_per_fom)
 
 def calc_rep_levels_from_values(vals, points, pt):
     #Calcs done algebraicly from equation (Value1 - Value2) = Dol/FOM * [(Points1 - rl * Games1) - (Points2 - rl * Games2)]
