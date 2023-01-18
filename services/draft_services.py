@@ -40,8 +40,10 @@ def update_target(target: Draft_Target, price):
     with Session() as session:
         target = session.query(Draft_Target).filter_by(index = target.index).first()
         target.price = price
+        session.commit()
 
 def delete_target(target):
     with Session() as session:
         session.delete(target)
+        session.commit()
             
