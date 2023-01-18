@@ -729,8 +729,13 @@ class ValuesCalculation(tk.Frame):
             self.set_default_rep_level(RepLevelScheme.FILL_GAMES)
     
     def calculate_values(self):
-        if self.has_errors():
-            logging.warning("Input errors")
+        try:
+            if self.has_errors():
+                logging.warning("Input errors")
+                return
+        except Exception as Argument:
+            mb.showerror("Error starting calculation", 'There was an error checking inputs. Please see the logs.')
+            logging.exception("Errors validating calculation inputs")
             return
         self.value_calc = ValueCalculation()
         self.value_calc.projection = self.projection
@@ -814,7 +819,9 @@ class ValuesCalculation(tk.Frame):
                     bad_rep_level.append(key)
         else:
             for key, value in self.rep_level_dict.items():
-                if float(value.get()) > 10.0:
+                if not value.get().isnumeric():
+                    bad_rep_level.append(key)
+                elif float(value.get()) > 10.0:
                     if self.pitcher_basis.get() == RankingBasis.PPG and key == 'SP' and float(value.get()) < 40.0:
                         continue
                     bad_rep_level.append(key)
