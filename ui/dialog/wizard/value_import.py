@@ -520,8 +520,12 @@ class Step2(tk.Frame):
 
     def on_show(self):
         vc = self.parent.value
-        self.hit_dollars_per_fom_val.set("{:.3f}".format(vc.get_output(CDT.HITTER_DOLLAR_PER_FOM)))
-        self.pitch_dollars_per_fom_val.set("{:.3f}".format(vc.get_output(CDT.PITCHER_DOLLAR_PER_FOM)))
+        if vc.get_output(CDT.HITTER_DOLLAR_PER_FOM) is None:
+            self.hit_dollars_per_fom_val.set('---')
+            self.pitch_dollars_per_fom_val.set('---')
+        else:
+            self.hit_dollars_per_fom_val.set("{:.3f}".format(vc.get_output(CDT.HITTER_DOLLAR_PER_FOM)))
+            self.pitch_dollars_per_fom_val.set("{:.3f}".format(vc.get_output(CDT.PITCHER_DOLLAR_PER_FOM)))
         hitter_rb = RankingBasis.enum_to_display_dict()[vc.hitter_basis]
         self.bat_rep_level_lbl.set(f"Rep. Level ({hitter_rb})")
         pitcher_rb = RankingBasis.enum_to_display_dict()[vc.pitcher_basis]
