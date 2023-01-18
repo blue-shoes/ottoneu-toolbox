@@ -394,7 +394,7 @@ class ArmPoint():
             return 1.0
         non_top_rank = row['Rank SP Rate'] - 6 * self.num_teams
         factor = non_top_rank // self.num_teams + 1
-        return 1 - factor * 0.05
+        return max(1 - factor * 0.05, 0.5) #TODO: Move 0.15 factor to preference
 
     def rp_multiplier_assignment(self, row):
         #Once you get past 5 RP per team, there are diminishing returns on how many relief innings are actually usable
@@ -402,7 +402,7 @@ class ArmPoint():
             return 1.0
         non_top_rank = row['Rank RP Rate'] - 5 * self.num_teams
         factor = non_top_rank // self.num_teams + 1
-        return 1 - factor * 0.3
+        return max(1 - factor * 0.15, 0.5) #TODO: Move 0.15 factor to preference
 
     def estimate_role_splits(self, df):
         df['IP RP'] = df.apply(self.rp_ip_func, axis=1)
