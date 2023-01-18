@@ -471,9 +471,12 @@ class ValuesCalculation(tk.Frame):
         if self.projection is not None:
             self.tables[pos].restore_all_columns()
             for pp in self.projection.player_projections:
-                if pp.player.pos_eligible(pos) and pp.get_stat(StatType.IP) is not None:
-                    val = self.get_player_row(pp, StatType.pitch_to_enum_dict(), self.pitching_columns, pos)
-                    self.tables[pos].insert('', tk.END, text=str(pp.player_id), values=val)
+                if pp.get_stat(StatType.IP) is not None:
+                    if  pos == Position.PITCHER \
+                        or (pos == Position.POS_RP and pp.get_stat(StatType.G_PIT) > pp.get_stat(StatType.GS_PIT)) \
+                        or (pos == Position.POS_SP and pp.get_stat(StatType.GS_PIT) > 0):
+                            val = self.get_player_row(pp, StatType.pitch_to_enum_dict(), self.pitching_columns, pos)
+                            self.tables[pos].insert('', tk.END, text=str(pp.player_id), values=val)
         elif self.value_calc is not None and self.value_calc.values is not None and len(self.value_calc.values) > 0:
             self.tables[pos].hide_columns(self.pitching_columns)
             for player_id in self.value_calc.value_dict:
