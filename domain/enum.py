@@ -132,7 +132,8 @@ class RankingBasis(Enum):
     PPPA = 1
     PIP  = 2
     ZSCORE = 3
-    SGP = 4
+    SGP = 4,
+    FG_AC = 5
 
     @classmethod
     def num_to_enum_map(self):
@@ -141,7 +142,8 @@ class RankingBasis(Enum):
             1 : self.PPPA,
             2 : self.PIP,
             3 : self.ZSCORE,
-            4 : self.SGP
+            4 : self.SGP,
+            5 : self.FG_AC
         }
     
     @classmethod
@@ -161,7 +163,8 @@ class RankingBasis(Enum):
             self.PPPA : 'P/PA',
             self.PIP : 'P/IP',
             self.ZSCORE : 'z-Score',
-            self.SGP : 'SGP'
+            self.SGP : 'SGP',
+            self.FG_AC : 'FG AC'
         }
 
     
@@ -409,6 +412,15 @@ class ScoringFormat(Enum):
                             self.SABR_POINTS: 'SABR',
                             self.H2H_FG_POINTS: 'H2H FGP',
                             self.H2H_SABR_POINTS: 'H2H SABR'}
+    
+    @classmethod 
+    def get_discrete_types(self):
+        return [self.CLASSIC_4X4,
+                self.OLD_SCHOOL_5X5,
+                self.FG_POINTS,
+                self.SABR_POINTS,
+                self.H2H_FG_POINTS,
+                self.H2H_SABR_POINTS] 
 
 class Position(Enum):
     POS_C = 'C'
