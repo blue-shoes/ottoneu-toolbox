@@ -101,6 +101,30 @@ class Table(ttk.Treeview):
     def resort(self):
         if self.sort_col is not None:
             self.treeview_sort_column(self.sort_col, not self.reverse_sort[self.sort_col])
+    
+    def hide_columns(self, to_hide):
+        new_dc = self['displaycolumns']
+        if new_dc == ('#all',):
+            new_dc = self['columns']
+        new_dc = list(new_dc)
+        for col in to_hide:
+            if col in new_dc:
+                new_dc.remove(col)
+        self['displaycolumns'] = tuple(new_dc)
+
+    def show_columns(self, to_show: dict):
+        '''Columns to add back to table. Dictionary is column name to desired index'''
+        new_dc = self['displaycolumns']
+        if new_dc == ('#all',):
+            return
+        new_dc = list(new_dc)
+        for col in to_show:
+            if col in new_dc:
+                new_dc.append(to_show[col], col)
+        self['displaycolumns'] = tuple(new_dc)
+    
+    def restore_all_columns(self):
+        self['displaycolumns'] = ('#all',)
 
 def bool_to_table(val):
     if val:

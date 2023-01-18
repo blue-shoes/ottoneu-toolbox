@@ -443,32 +443,38 @@ class ValuesCalculation(tk.Frame):
     
     def refresh_overall(self):
         if self.projection is not None:
+            self.tables[Position.OVERALL].restore_all_columns()
             for pp in self.projection.player_projections:
                 val = self.get_overall_row(pp)
                 self.tables[Position.OVERALL].insert('', tk.END, text=str(pp.player_id), values=val)
         elif self.value_calc is not None and self.value_calc.values is not None and len(self.value_calc.values) > 0:
+            self.tables[Position.OVERALL].hide_columns(self.overall_columns)
             for player_id in self.value_calc.value_dict:
                 val = self.get_overall_row_no_proj(player_id)
                 self.tables[Position.OVERALL].insert('',  tk.END, text=str(player_id), values=val)
 
     def refresh_hitters(self, pos):
         if self.projection is not None:
+            self.tables[pos].restore_all_columns()
             for pp in self.projection.player_projections:
                 if pp.player.pos_eligible(pos) and pp.get_stat(StatType.AB) is not None:
                     val = self.get_player_row(pp, StatType.hit_to_enum_dict(), self.hitting_columns, pos)
                     self.tables[pos].insert('', tk.END, text=str(pp.player_id), values=val)
         elif self.value_calc is not None and self.value_calc.values is not None and len(self.value_calc.values) > 0:
+            self.tables[pos].hide_columns(self.hitting_columns)
             for player_id in self.value_calc.value_dict:
                 val = self.get_player_row_no_proj(player_id, pos, self.hitting_columns)
                 self.tables[pos].insert('',  tk.END, text=str(player_id), values=val)
     
     def refresh_pitchers(self, pos):
         if self.projection is not None:
+            self.tables[pos].restore_all_columns()
             for pp in self.projection.player_projections:
                 if pp.player.pos_eligible(pos) and pp.get_stat(StatType.IP) is not None:
                     val = self.get_player_row(pp, StatType.pitch_to_enum_dict(), self.pitching_columns, pos)
                     self.tables[pos].insert('', tk.END, text=str(pp.player_id), values=val)
         elif self.value_calc is not None and self.value_calc.values is not None and len(self.value_calc.values) > 0:
+            self.tables[pos].hide_columns(self.pitching_columns)
             for player_id in self.value_calc.value_dict:
                 val = self.get_player_row_no_proj(player_id, pos, self.pitching_columns)
                 self.tables[pos].insert('',  tk.END, text=str(player_id), values=val)
