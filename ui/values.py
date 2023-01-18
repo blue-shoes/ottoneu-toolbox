@@ -87,7 +87,10 @@ class ValuesCalculation(tk.Frame):
         else:
             v = self.value_calc
             self.game_type.set(ScoringFormat.enum_to_full_name_map()[v.format])
-            self.sel_proj.set(v.projection.name)
+            if v.projection is None:
+                self.sel_proj.set("No Projection")
+            else:
+                self.sel_proj.set(v.projection.name)
             self.projection = v.projection
             self.num_teams_str.set(int(v.get_input(CDT.NUM_TEAMS)))
             if v.get_input(CDT.HITTER_SPLIT) is None:
@@ -96,7 +99,7 @@ class ValuesCalculation(tk.Frame):
             else:
                 self.manual_split.set(True)
                 self.hitter_allocation.set(int(v.get_input(CDT.HITTER_SPLIT)))
-            self.non_prod_dollars_str.set(int(v.get_input(CDT.NON_PRODUCTIVE_DOLLARS)))
+            self.safe_set_input_value(CDT.NON_PRODUCTIVE_DOLLARS, self.non_prod_dollars_str, True)
             self.hitter_basis.set(RankingBasis.enum_to_display_dict()[v.hitter_basis])
             self.safe_set_input_value(CDT.PA_TO_RANK, self.min_pa, True)
             self.pitcher_basis.set(RankingBasis.enum_to_display_dict()[v.pitcher_basis])
@@ -370,6 +373,21 @@ class ValuesCalculation(tk.Frame):
         val.append("{:.1f}".format(p_points + o_points))
         return val
     
+    def get_overall_row_no_proj(self, player_id):
+        val = []
+        pv = self.value_calc.get_player_value(player_id, Position.OVERALL)
+        if pv is None:
+            val.append("$0.0")
+        else:
+            val.append("${:.1f}".format(pv.value))
+        val.append(pv.player.name)
+        val.append(pv.player.team)
+        val.append(pv.player.position)
+        val.append('0.00') # hit rate
+        val.append('0.00') # pitch rate
+        val.append('0.0') # points
+        return val
+
     def get_player_row(self, pp, enum_dict, cols, pos):
         val = []
         if len(self.value_calc.values) > 0:
@@ -407,11 +425,31 @@ class ValuesCalculation(tk.Frame):
                     val.append(fmt.format(stat))
         return val
     
+    def get_player_row_no_proj(self, player_id, pos, cols):
+        val = []
+        pv = self.value_calc.get_player_value(player_id, Position.OVERALL)
+        if pv is None:
+            val.append("$0.0")
+        else:
+            val.append("${:.1f}".format(pv.value))
+        val.append(pv.player.name)
+        val.append(pv.player.team)
+        val.append(pv.player.position)
+        val.append('0.00') # rate
+        val.append('0.0') # points
+        for col in cols:
+            val.append('0.0')
+        return val
+    
     def refresh_overall(self):
         if self.projection is not None:
             for pp in self.projection.player_projections:
                 val = self.get_overall_row(pp)
                 self.tables[Position.OVERALL].insert('', tk.END, text=str(pp.player_id), values=val)
+        elif self.value_calc is not None and self.value_calc.values is not None and len(self.value_calc.values) > 0:
+            for player_id in self.value_calc.value_dict:
+                val = self.get_overall_row_no_proj(player_id)
+                self.tables[Position.OVERALL].insert('',  tk.END, text=str(player_id), values=val)
 
     def refresh_hitters(self, pos):
         if self.projection is not None:
@@ -419,6 +457,10 @@ class ValuesCalculation(tk.Frame):
                 if pp.player.pos_eligible(pos) and pp.get_stat(StatType.AB) is not None:
                     val = self.get_player_row(pp, StatType.hit_to_enum_dict(), self.hitting_columns, pos)
                     self.tables[pos].insert('', tk.END, text=str(pp.player_id), values=val)
+        elif self.value_calc is not None and self.value_calc.values is not None and len(self.value_calc.values) > 0:
+            for player_id in self.value_calc.value_dict:
+                val = self.get_player_row_no_proj(player_id, pos, self.hitting_columns)
+                self.tables[pos].insert('',  tk.END, text=str(player_id), values=val)
     
     def refresh_pitchers(self, pos):
         if self.projection is not None:
@@ -426,6 +468,10 @@ class ValuesCalculation(tk.Frame):
                 if pp.player.pos_eligible(pos) and pp.get_stat(StatType.IP) is not None:
                     val = self.get_player_row(pp, StatType.pitch_to_enum_dict(), self.pitching_columns, pos)
                     self.tables[pos].insert('', tk.END, text=str(pp.player_id), values=val)
+        elif self.value_calc is not None and self.value_calc.values is not None and len(self.value_calc.values) > 0:
+            for player_id in self.value_calc.value_dict:
+                val = self.get_player_row_no_proj(player_id, pos, self.pitching_columns)
+                self.tables[pos].insert('',  tk.END, text=str(player_id), values=val)
     
     def create_output_frame(self):
         self.output_frame = outf = ttk.Frame(self)
@@ -528,7 +574,11 @@ class ValuesCalculation(tk.Frame):
         if self.manual_split.get():
             self.dollars_per_fom_val.set('$' + "{:.3f}".format(self.value_calc.get_output(CDT.HITTER_DOLLAR_PER_FOM)) + '(Bat), $' + "{:.3f}".format(self.value_calc.get_output(CDT.PITCHER_DOLLAR_PER_FOM)) + '(Arm)')
         else:
-            self.dollars_per_fom_val.set('$' + "{:.3f}".format(self.value_calc.get_output(CDT.DOLLARS_PER_FOM)))
+            dol_per = self.value_calc.get_output(CDT.DOLLARS_PER_FOM)
+            if dol_per is None:
+                self.dollars_per_fom_val.set('---')
+            else:
+                self.dollars_per_fom_val.set('$' + "{:.3f}".format(dol_per))
         
         self.safe_set_output_value(CDT.TOTAL_FOM_ABOVE_REPLACEMENT, self.total_fom_sv, format="{:.0f}")
         self.safe_set_output_value(CDT.TOTAL_HITTERS_ROSTERED, self.total_bat_rostered_sv, integer=True)
