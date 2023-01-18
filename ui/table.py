@@ -45,6 +45,18 @@ class Table(ttk.Treeview):
             self.sort_col = None
         #self.add_scrollbar()
 
+    def get_row_by_text(self, text):
+        if isinstance(text, int):
+            text = str(text)
+        for child in self.get_children():
+            if self.item(child,"text") == text:
+                return child
+        return None
+    
+    def set_tags_by_row_text(self, text, tags):
+        row = self.get_row_by_text(text)
+        if row is not None:
+            self.item(row, tags=tags)
     
     def set_right_click_method(self, rclick_method):
         self.bind('<Button-3>', rclick_method)
