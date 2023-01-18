@@ -222,7 +222,7 @@ class ValueCalculation(Base):
             #Get all positions
             return self.value_dict[player_id]
         else:
-            return self.value_dict[player_id][pos]
+            return self.value_dict[player_id].get(pos, None)
     
     def get_position_values(self, pos) -> list[PlayerValue]:
         values = []
