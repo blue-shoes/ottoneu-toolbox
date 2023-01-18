@@ -427,9 +427,9 @@ class ValuesCalculation(tk.Frame):
     
     def get_player_row_no_proj(self, player_id, pos, cols):
         val = []
-        pv = self.value_calc.get_player_value(player_id, Position.OVERALL)
+        pv = self.value_calc.get_player_value(player_id, pos)
         if pv is None:
-            val.append("$0.0")
+            return None
         else:
             val.append("${:.1f}".format(pv.value))
         val.append(pv.player.name)
@@ -464,7 +464,8 @@ class ValuesCalculation(tk.Frame):
             self.tables[pos].hide_columns(self.hitting_columns)
             for player_id in self.value_calc.value_dict:
                 val = self.get_player_row_no_proj(player_id, pos, self.hitting_columns)
-                self.tables[pos].insert('',  tk.END, text=str(player_id), values=val)
+                if val is not None:
+                    self.tables[pos].insert('',  tk.END, text=str(player_id), values=val)
     
     def refresh_pitchers(self, pos):
         if self.projection is not None:
@@ -477,7 +478,8 @@ class ValuesCalculation(tk.Frame):
             self.tables[pos].hide_columns(self.pitching_columns)
             for player_id in self.value_calc.value_dict:
                 val = self.get_player_row_no_proj(player_id, pos, self.pitching_columns)
-                self.tables[pos].insert('',  tk.END, text=str(player_id), values=val)
+                if val is not None:
+                    self.tables[pos].insert('',  tk.END, text=str(player_id), values=val)
     
     def create_output_frame(self):
         self.output_frame = outf = ttk.Frame(self)
