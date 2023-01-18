@@ -2,6 +2,7 @@ from sqlalchemy import Column, ForeignKey, Index
 from sqlalchemy import Integer, String, Boolean, Float, Date, Enum, TIMESTAMP
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
+import re
 from domain.enum import CalculationDataType, ProjectionType, RankingBasis, ScoringFormat, StatType, Position
 
 Base = declarative_base()
@@ -43,6 +44,8 @@ class Player(Base):
                 if p.value in self.position:
                     return True
             return False
+        elif pos == Position.POS_MI:
+            return bool(re.search('2B|SS', self.position))
         elif pos == Position.PITCHER:
             for p in Position.get_discrete_pitching_pos():
                 if p.value in self.position:
