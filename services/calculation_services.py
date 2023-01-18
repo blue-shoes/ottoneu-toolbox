@@ -335,6 +335,7 @@ def get_values_from_fg_auction_files(vc: ValueCalculation, hit_df : DataFrame, p
             vc.set_player_value(player.index, Position.OVERALL, row['Dollars'] + vc.get_player_value(player.index, Position.OVERALL).value)
         else:
             vc.set_player_value(player.index, Position.OVERALL, row['Dollars'])
+        vc.set_player_value(player.index, Position.PITCHER, row['Dollars'])
         if row['Dollars'] > rep_lvl_dol:
             total_pitchers = total_pitchers + 1
         for pos in Position.get_discrete_pitching_pos():
