@@ -47,7 +47,7 @@ def create_player(player_row, ottoneu_id=None, fg_id=None):
         player.salary_info = []
         return player
 
-def get_player_by_fg_id(player_id):
+def get_player_by_fg_id(player_id) -> Player:
     with Session() as session:
         if isinstance(player_id, int) or player_id.isdigit():
             player = session.query(Player).filter(Player.fg_major_id == player_id).first()
@@ -55,7 +55,7 @@ def get_player_by_fg_id(player_id):
             player = session.query(Player).filter(Player.fg_minor_id == player_id).first()
     return player
 
-def get_player_by_ottoneu_id(ottoneu_id):
+def get_player_by_ottoneu_id(ottoneu_id) -> Player:
     with Session() as session:
         return session.query(Player).filter(Player.ottoneu_id == ottoneu_id).first()
 
