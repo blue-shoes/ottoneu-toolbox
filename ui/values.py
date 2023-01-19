@@ -856,9 +856,15 @@ class ValuesCalculation(tk.Frame):
     def has_errors(self):
         errors = []
         bad_rep_level = []
-        if self.rep_level_scheme.get() == RepLevelScheme.NUM_ROSTERED.value or self.rep_level_scheme.get() == RepLevelScheme.FILL_GAMES.value:
+        if self.rep_level_scheme.get() == RepLevelScheme.NUM_ROSTERED.value:
             for key, value in self.rep_level_dict.items():
                 if not value.get().isnumeric():
+                    bad_rep_level.append(key)
+        elif self.rep_level_scheme.get() == RepLevelScheme.FILL_GAMES.value:
+            for key, value in self.rep_level_dict.items():
+                try:
+                    val = int(value.get())
+                except:
                     bad_rep_level.append(key)
         else:
             for key, value in self.rep_level_dict.items():
