@@ -34,7 +34,7 @@ class Dialog(tk.Toplevel):
         self.season.set(str_seasons[0])
         season_cb.bind("<<ComboboxSelected>>", self.update_season)
 
-        self.proj_list = projection_services.get_projections_for_year(seasons[0])
+        self.proj_list = projection_services.get_projections_for_year(seasons[0], inc_hidden=False)
 
         cols = ('Name', 'Detail', 'Type', 'Timestamp','RoS?','DC PT?')
         align = {}

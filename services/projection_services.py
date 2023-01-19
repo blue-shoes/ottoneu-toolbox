@@ -493,9 +493,12 @@ def db_rows_to_df(player_proj, columns):
 def get_projections_for_current_year():
     return get_projections_for_year(date_util.get_current_ottoneu_year())
 
-def get_projections_for_year(year):
+def get_projections_for_year(year, inc_hidden=False):
     with Session() as session:
-        projs = session.query(Projection).filter(Projection.season == year).all()
+        if inc_hidden:
+            projs = session.query(Projection).filter(Projection.season == year).all()
+        else:
+            projs = session.query(Projection).filter(Projection.season == year, Projection.hide == False).all()
     return projs
 
 def get_available_seasons():
