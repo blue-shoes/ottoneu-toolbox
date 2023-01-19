@@ -8,6 +8,7 @@ class ProjectionType(Enum):
     THE_BAT = 4
     THE_BATX = 5
     CUSTOM = 6
+    VALUE_DERIVED = 7
 
     fg_downloadable = [STEAMER, ZIPS, DEPTH_CHARTS, ATC, THE_BAT, THE_BATX]
 
@@ -20,7 +21,8 @@ class ProjectionType(Enum):
         self.ATC : "ATC",
         self.THE_BAT : "THE BAT",
         self.THE_BATX : "THE BATX",
-        self.CUSTOM : "Custom"
+        self.CUSTOM : "Custom",
+        self.VALUE_DERIVED: "Derived"
     }
 
     @classmethod
@@ -32,7 +34,8 @@ class ProjectionType(Enum):
         "ATC" : self.ATC,
         "THE BAT" : self.THE_BAT,
         "THE BATX" : self.THE_BATX,
-        "Custom" : self.CUSTOM
+        "Custom" : self.CUSTOM,
+        "Derived" : self.VALUE_DERIVED
     }
 
     @classmethod
@@ -212,6 +215,9 @@ class StatType(Enum):
     BABIP_H = 40
     BABIP_P = 41
     HR_PER_9 = 42
+    POINTS = 43
+    PPG = 44
+    PIP = 45
 
     @classmethod
     def hit_to_enum_dict(self):
@@ -311,7 +317,10 @@ class StatType(Enum):
         self.ERA : 'ERA',
         self.FIP : 'FIP',
         self.BABIP_P : 'BABIP',
-        self.HR_PER_9 : 'HR/9'
+        self.HR_PER_9 : 'HR/9',
+        self.POINTS: 'Points',
+        self.PPG: 'PPG',
+        self.PIP: 'PIP'
     }
 
     @classmethod
@@ -363,7 +372,10 @@ class StatType(Enum):
             self.FIP : two_decimal,
             self.BABIP_H : three_decimal,
             self.BABIP_P : three_decimal,
-            self.HR_PER_9 : two_decimal
+            self.HR_PER_9 : two_decimal, 
+            self.POINTS: one_decimal,
+            self.PPG: two_decimal,
+            self.PIP: two_decimal
         }
 
 class ScoringFormat(Enum):
