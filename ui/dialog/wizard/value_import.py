@@ -2,6 +2,8 @@ import tkinter as tk
 from tkinter import *              
 from tkinter import ttk 
 from tkinter import filedialog as fd
+from tkinter import messagebox as mb
+
 from domain.domain import ValueCalculation
 from domain.enum import ScoringFormat, RankingBasis, CalculationDataType as CDT, Position, RepLevelScheme, IdType
 from ui.dialog import progress, projection_select
@@ -126,11 +128,11 @@ class Wizard(wizard.Wizard):
             progd.set_completion_percent(80)
             self.parent.value = calculation_services.load_calculation(self.value.index)
             progd.complete()
+            super().finish()
         except Exception as Argument:
             logging.exception('Error loading values')
             self.parent.validate_msg = 'Error uploading values. Please check logs/toolbox.log'
-        finally:
-            super().finish()
+            mb.showerror('Error uploading', 'There was an error uploading values. Please check logs/toolbox.log')
 
 class Step0(tk.Frame):
     def __init__(self, parent):
