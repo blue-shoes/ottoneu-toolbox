@@ -641,7 +641,12 @@ def save_calculation_from_file(vc : ValueCalculation, df : DataFrame, pd=None):
 def delete_values_by_id(values_id):
     with Session() as session:
         val = session.query(ValueCalculation).filter(ValueCalculation.index == values_id).first()
+        proj = None
+        if val.projection.type == ProjectionType.VALUE_DERIVED:
+            proj = val.projection
         session.delete(val)
+        if proj is not None:
+            session.delete(proj)
         session.commit()
 
 def get_values_with_projection_id(proj_id):
