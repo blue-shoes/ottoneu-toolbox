@@ -1,7 +1,7 @@
 from pandas import DataFrame
 from dao.session import Session
-from domain.domain import ValueCalculation, Projection, PlayerProjection
-from domain.enum import Position, CalculationDataType as CDT, StatType, ScoringFormat, RankingBasis, IdType, RepLevelScheme
+from domain.domain import ValueCalculation, Projection, PlayerProjection, ProjectionData
+from domain.enum import Position, CalculationDataType as CDT, StatType, ScoringFormat, RankingBasis, IdType, RepLevelScheme, ProjectionType
 from value.point_values import PointValues
 from services import player_services, projection_services
 from util import string_util, date_util
@@ -527,6 +527,24 @@ def save_calculation_from_file(vc : ValueCalculation, df : DataFrame, pd=None):
     count = 0
     vc.values = []
     proj_derive = not has_required_data_for_rl(df, vc.format)
+    pop_proj = False
+    if not proj_derive and vc.projection is None:
+        pop_proj = True
+        # Create hidden projection
+        proj = Projection()
+        proj.name = vc.name
+        proj.detail = vc.description
+        proj.dc_pt = False
+        proj.hide = True
+        proj.player_projections = []
+        proj.ros = False
+        proj.season = date_util.get_current_ottoneu_year()
+        proj.timestamp = datetime.datetime.now()
+        proj.type = ProjectionType.VALUE_DERIVED
+        proj.valid_4x4 = vc.format == ScoringFormat.CLASSIC_4X4
+        proj.valid_5x5 = vc.format == ScoringFormat.OLD_SCHOOL_5X5
+        proj.valid_points = ScoringFormat.is_points_type(vc.format)
+        vc.projection = proj
     for idx, row in df.iterrows():
         count += 1
         if count == tick:
@@ -537,7 +555,7 @@ def save_calculation_from_file(vc : ValueCalculation, df : DataFrame, pd=None):
             logging.debug(f'player with idx {idx} is not available')
             continue
         vc.set_player_value(idx, Position.OVERALL, row['Values'])
-        if proj_derive:
+        if proj_derive and vc.projection is not None:
             pp = vc.projection.get_player_projection(idx)
             if pp is None:
                 #Can't do any more. They simply won't show up in position-specific tables
@@ -559,17 +577,28 @@ def save_calculation_from_file(vc : ValueCalculation, df : DataFrame, pd=None):
                 raise Exception(f'Unhandled pitching basis {vc.pitcher_basis}')
         else:
             h_points = row['Points']
-            p_points = row['Points']
-            h_pt = row['H_PT']
-            p_pt = row['P_PT']
+            if pop_proj:
+                h_pt = row['H_PT']
+                p_pt = row['P_PT']
+                pp = PlayerProjection()
+                pp.player = player
+                pp.projection_data = []
+                pp.projection_data.append(ProjectionData(stat_type=StatType.POINTS, stat_value=row['Points']))
+                pp.projection_data.append(ProjectionData(stat_type=StatType.PPG, stat_value=row['Hit_Rate']))
+                pp.projection_data.append(ProjectionData(stat_type=StatType.PIP, stat_value=row['Pitch_Rate']))
+                pp.pitcher = p_pt > 0 and h_pt == 0
+                pp.two_way = (p_pt > 0 and h_pt > 0) or (row['Hit_Rate'] == 'NA' and row['Pitch_Rate'] == 'NA')
+                vc.projection.player_projections.append(pp)
         hit = False
         pitch = False
-        if player.is_two_way():
+        if vc.projection is None:
+            # We don't have projections and we don't have points/rates/pt in values. Can't make position-specific determinations
+            for pos in player_services.get_player_positions(player, discrete=False):
+                vc.set_player_value(idx, pos, row['Values'])
+        elif player.is_two_way():
             #Not a good way to handle this right now, just print the value again
-            vc.set_player_value(idx, Position.OFFENSE, row['Values'])
-            vc.set_player_value(idx, Position.POS_UTIL, row['Values'])
-            vc.set_player_value(idx, Position.PITCHER, row['Values'])
-            vc.set_player_value(idx, Position.POS_SP, row['Values'])
+            for pos in player_services.get_player_positions(player, discrete=False):
+                vc.set_player_value(idx, pos, row['Values'])
         else:
             for pos in player_services.get_player_positions(player, discrete=True):
                 if pos in Position.get_offensive_pos():
@@ -594,7 +623,7 @@ def save_calculation_from_file(vc : ValueCalculation, df : DataFrame, pd=None):
                     #This is a difficult nut to crack. Ideally we would reverse engineer a SP and RP rate, but that
                     #is likely imposible to do without having save/hold information. For now, to make sure we don't miss anyone,
                     #put them in the db positions and if able check projections to see if they do any starting or relieving
-                    if vc.projection is None:
+                    if vc.projection is None or not proj_derive:
                         vc.set_player_value(idx, pos, row['Values'])
                     else:
                         pp = vc.projection.get_player_projection(idx)
