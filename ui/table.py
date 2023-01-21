@@ -149,6 +149,8 @@ def bool_to_table(val):
     
 def sort_cmp(t1):
     v1 = t1[0]
+    if len(v1) == 0:
+        return v1
     if v1[0] == '$':
         return float(v1[1:])
     try:
