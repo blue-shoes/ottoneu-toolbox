@@ -19,7 +19,9 @@ from util import string_util
 
 player_columns = ('Value', 'Name', 'Team', 'Pos')
 #fom_columns = ('P/G', 'HP/G', 'P/PA', 'P/IP', 'PP/G', 'Points', 'zScore', 'SGP')
-fom_columns = ('P/G', 'HP/G', 'P/PA', 'P/IP', 'PP/G', 'Points')
+h_fom_columns = ('P/G', 'HP/G', 'P/PA')
+p_fom_columns = ('P/IP', 'PP/G', 'SABR P/IP', 'SABR PP/G')
+point_cols = ('FG Pts', 'SABR Pts')
 points_hitting_columns = ('G', 'PA', 'AB', 'H', '2B', '3B', 'HR', 'BB', 'HBP', 'SB','CS')
 points_pitching_columns = ('G', 'GS', 'IP', 'SO','H','BB','HBP','HR','SV','HLD')
 old_school_hitting_columns = ('G', 'PA', 'AB', 'R', 'HR', 'RBI', 'SB', 'AVG')
@@ -130,6 +132,7 @@ class ValuesCalculation(tk.Frame):
             for table in self.tables.values():
                 table.refresh()
                 pd.increment_completion_percent(5)
+        self.set_display_columns()
         pd.set_completion_percent(100)
         pd.destroy()
 
@@ -264,13 +267,6 @@ class ValuesCalculation(tk.Frame):
 
         arm_frame = ttk.Frame(self.tab_control)
         self.tab_control.add(arm_frame, text='Pitchers')
-
-        self.player_columns = ('Value', 'Name', 'Team', 'Pos')
-        self.overall_columns = ('P/G', 'P/IP', 'Points')
-        self.hitting_columns = ('P/G', 'Points', 'G', 'PA', 'AB', 'H', '2B', '3B', 'HR', 'BB', 'HBP', 'SB','CS')
-        self.raw_hitting_columns = ('G', 'PA', 'AB', 'H', '2B', '3B', 'HR', 'BB', 'HBP', 'SB','CS')
-        self.pitching_columns = ('P/IP', 'Points', 'G', 'GS', 'IP', 'SO','H','BB','HBP','HR','SV','HLD')
-        self.raw_pitching_columns = ('G', 'GS', 'IP', 'SO','H','BB','HBP','HR','SV','HLD')
         
         col_align = {}
         col_align['Name'] = W
@@ -278,19 +274,24 @@ class ValuesCalculation(tk.Frame):
         col_width['Name'] = 125
 
         #self.overall_table = ot = Table(overall_frame, self.player_columns + self.overall_columns, column_widths=col_width, column_alignments=col_align, sortable_columns=self.player_columns + self.overall_columns)
-        self.overall_table = ot = Table(overall_frame, player_columns + fom_columns, column_widths=col_width, column_alignments=col_align, sortable_columns=player_columns + fom_columns)
+        cols = player_columns + h_fom_columns + p_fom_columns + point_cols
+        self.overall_table = ot = Table(overall_frame, cols, column_widths=col_width, column_alignments=col_align, sortable_columns=cols)
         self.tables[Position.OVERALL] = ot
         ot.set_refresh_method(self.refresh_overall)
         ot.grid(row=0, column=0)
         ot.add_scrollbar()
 
-        self.bat_table = Table(bat_frame, self.player_columns + self.hitting_columns, column_widths=col_width, column_alignments=col_align, sortable_columns=self.player_columns + self.hitting_columns)
+        hit_cols = player_columns + h_fom_columns + point_cols + all_hitting_stats
+
+        self.bat_table = Table(bat_frame, hit_cols, column_widths=col_width, column_alignments=col_align, sortable_columns=hit_cols)
         self.tables[Position.OFFENSE] = self.bat_table
         self.bat_table.set_refresh_method(lambda: self.refresh_hitters(Position.OFFENSE))
         self.bat_table.grid(row=0, column=0)
         self.bat_table.add_scrollbar()
 
-        self.arm_table = Table(arm_frame, self.player_columns + self.pitching_columns, column_widths=col_width, column_alignments=col_align, sortable_columns=self.player_columns + self.pitching_columns)
+        pitch_cols = player_columns + p_fom_columns + point_cols + all_pitching_stats
+
+        self.arm_table = Table(arm_frame, pitch_cols, column_widths=col_width, column_alignments=col_align, sortable_columns=pitch_cols)
         self.tables[Position.PITCHER] = self.arm_table
         self.arm_table.set_refresh_method(lambda: self.refresh_pitchers(Position.PITCHER))
         self.arm_table.grid(row=0,column=0)
@@ -299,7 +300,7 @@ class ValuesCalculation(tk.Frame):
         for pos in Position.get_discrete_offensive_pos():
             frame = ttk.Frame(self.tab_control)
             self.tab_control.add(frame, text=pos.value)
-            pt = Table(frame, self.player_columns + self.hitting_columns, column_widths=col_width, column_alignments=col_align, sortable_columns=self.player_columns + self.hitting_columns)
+            pt = Table(frame, hit_cols, column_widths=col_width, column_alignments=col_align, sortable_columns=hit_cols)
             self.tables[pos] = pt
             pt.set_refresh_method(lambda _pos=pos: self.refresh_hitters(_pos))
             pt.grid(row=0, column=0)
@@ -308,19 +309,14 @@ class ValuesCalculation(tk.Frame):
         for pos in Position.get_discrete_pitching_pos():
             frame = ttk.Frame(self.tab_control)
             self.tab_control.add(frame, text=pos.value)
-            pt = Table(frame, self.player_columns + self.pitching_columns, column_widths=col_width, column_alignments=col_align, sortable_columns=self.player_columns + self.pitching_columns)
+            pt = Table(frame, pitch_cols, column_widths=col_width, column_alignments=col_align, sortable_columns=pitch_cols)
             self.tables[pos] = pt
             pt.set_refresh_method(lambda _pos=pos: self.refresh_pitchers(_pos))
             pt.grid(row=0, column=0)
             pt.add_scrollbar()
 
-    def update_game_type(self, event):
-        pd = progress.ProgressDialog(self, title='Updating Game Type')
-        pd.increment_completion_percent(33)
-        self.populate_projections(pd)
-        #TODO: other actions
-        pd.set_completion_percent(100)
-        pd.destroy()
+    def update_game_type(self, event: Event):
+        self.set_display_columns()
 
     def select_projection(self):
         count = projection_services.get_projection_count()
@@ -354,10 +350,6 @@ class ValuesCalculation(tk.Frame):
             table.refresh()
             pd.increment_completion_percent(delta)
         self.set_display_columns()
-        #self.bat_table.refresh()
-        #pd.increment_completion_percent(25)
-        #self.arm_table.refresh()
-        #pd.increment_completion_percent(25)
         if fresh_pd:
             pd.set_completion_percent(100)
             pd.destroy()
@@ -383,15 +375,18 @@ class ValuesCalculation(tk.Frame):
         if derived:
             val.append("{:.2f}".format(pp.get_stat(StatType.PPG)))
             val.append("{:.2f}".format(pp.get_stat(StatType.PPG)))
-            val.append('-')
+            val.append("{:.2f}".format(pp.get_stat(StatType.PPG)))
             val.append("{:.2f}".format(pp.get_stat(StatType.PIP)))
-            val.append('-')
+            val.append("{:.2f}".format(pp.get_stat(StatType.PIP)))
+            val.append("{:.2f}".format(pp.get_stat(StatType.PIP)))
+            val.append("{:.2f}".format(pp.get_stat(StatType.PIP)))
+            val.append("{:.1f}".format(pp.get_stat(StatType.POINTS)))
             val.append("{:.1f}".format(pp.get_stat(StatType.POINTS)))
         else:
-            # ('P/G', 'HP/G', 'P/PA', 'P/IP', 'PP/G', 'Points', 'zScore', 'SGP')
             o_points = calculation_services.get_points(pp, Position.OFFENSE, sabr=(self.game_type.get() == ScoringFormat.enum_to_full_name_map()[ScoringFormat.SABR_POINTS]))
             games = pp.get_stat(StatType.G_HIT)
             if games is None or games == 0:
+                val.append("0.00")
                 val.append("0.00")
             else:
                 val.append("{:.2f}".format(o_points / games))
@@ -402,24 +397,23 @@ class ValuesCalculation(tk.Frame):
             else:
                 val.append("{:.2f}".format(o_points / pa))
             
-            p_points = calculation_services.get_points(pp, Position.PITCHER, sabr=(self.game_type.get() == ScoringFormat.enum_to_full_name_map()[ScoringFormat.SABR_POINTS]))
+            p_points = calculation_services.get_points(pp, Position.PITCHER, sabr=False)
+            s_p_points = calculation_services.get_points(pp, Position.PITCHER, sabr=True)
             ip = pp.get_stat(StatType.IP)
-            if ip is None or ip == 0:
+            games = pp.get_stat(StatType.G_PIT)
+            if ip is None or ip == 0 or games is None or games == 0:
+                val.append("0.00")
+                val.append("0.00")
+                val.append("0.00")
                 val.append("0.00")
             else:
                 val.append("{:.2f}".format(p_points/ip))
-            games = pp.get_stat(StatType.G_PIT)
-            if games is None or games == 0:
-                val.append("0.00")
-            else:
                 val.append("{:.2f}".format(p_points/games))
-            
-            #if len(self.value_calc.values) > 0:
-            #    append
-            #else:
-            #    append('-')
+                val.append("{:.2f}".format(s_p_points/ip))
+                val.append("{:.2f}".format(s_p_points/games))
 
             val.append("{:.1f}".format(p_points + o_points))
+            val.append("{:.1f}".format(s_p_points + o_points))
         return val
     
     def get_overall_row_no_proj(self, player_id):
@@ -432,32 +426,6 @@ class ValuesCalculation(tk.Frame):
         val.append(pv.player.name)
         val.append(pv.player.team)
         val.append(pv.player.position)
-        val.append('0.00') # p/g
-        val.append('0.00') # hp/g
-        val.append('0.00') # p/pa
-        val.append('0.00') # p/ip
-        val.append('0.00') # pp/g
-        val.append('0.0') # points
-        return val
-
-    def get_player_row_derived(self, pp: PlayerProjection, pos, hitting):
-        val = []
-        if len(self.value_calc.values) > 0:
-            pv = self.value_calc.get_player_value(pp.player.index, pos)
-            if pv is None:
-                val.append("$0.0")
-            else:
-                val.append("${:.1f}".format(pv.value))
-        else:
-            val.append('-')
-        val.append(pp.player.name)
-        val.append(pp.player.team)
-        val.append(pp.player.position)
-        if hitting:
-            val.append("{:.2f}".format(pp.get_stat(StatType.PPG)))
-        else:
-            val.append("{:.2f}".format(pp.get_stat(StatType.PIP)))
-        val.append("{:.1f}".format(pp.get_stat(StatType.POINTS)))
         return val
 
     def get_player_row(self, pp, enum_dict, cols, pos):
@@ -473,28 +441,59 @@ class ValuesCalculation(tk.Frame):
         val.append(pp.player.name)
         val.append(pp.player.team)
         val.append(pp.player.position)
-        points = calculation_services.get_points(pp, pos, sabr=(self.game_type.get() == ScoringFormat.enum_to_full_name_map()[ScoringFormat.SABR_POINTS]))
+        
         if pos in Position.get_offensive_pos():
-            games = pp.get_stat(StatType.G_HIT)
-            if games is None or games == 0:
-                val.append("0.00")
+            if self.projection.type == ProjectionType.VALUE_DERIVED:
+                val.append(pp.get_stat(StatType.PPG)) # p/g
+                val.append(pp.get_stat(StatType.PPG)) # hp/g
+                val.append(pp.get_stat(StatType.PPG)) # p/pa
+                f_points = pp.get_stat(StatType.POINTS)
+                s_points = f_points
             else:
-                val.append("{:.2f}".format(points / games))
-        else:
-            ip = pp.get_stat(StatType.IP)
-            if ip is None or ip == 0:
-                val.append("0.00")
-            else:
-                val.append("{:.2f}".format(points/ip))
-        val.append("{:.1f}".format(points))
-        for col in cols:
-            if col in enum_dict:
-                stat = pp.get_stat(enum_dict[col])
-                fmt = StatType.get_stat_format()[enum_dict[col]]
-                if stat is None:
-                    val.append(fmt.format(0))
+                f_points = calculation_services.get_points(pp, pos, sabr=False)
+                s_points = f_points
+                games = pp.get_stat(StatType.G_HIT)
+                if games is None or games == 0:
+                    val.append("0.00") # p/g
+                    val.append("0.00") # hp/g
+                    val.append("0.00") # p/pa
                 else:
-                    val.append(fmt.format(stat))
+                    val.append("{:.2f}".format(f_points / games)) # p/g
+                    val.append("{:.2f}".format(f_points / games)) # hp/g
+                    val.append("{:.2f}".format(f_points / pp.get_stat(StatType.PA))) # p/pa
+        else:
+            if self.projection.type == ProjectionType.VALUE_DERIVED:
+                val.append(pp.get_stat(StatType.PIP)) # p/ip
+                val.append(pp.get_stat(StatType.PIP)) # pp/g
+                val.append(pp.get_stat(StatType.PIP)) # s_p/ip
+                val.append(pp.get_stat(StatType.PIP)) # s_pp/g
+                f_points = pp.get_stat(StatType.POINTS)
+                s_points = f_points
+            else:
+                f_points = calculation_services.get_points(pp, pos, sabr=False)
+                s_points = calculation_services.get_points(pp, pos, sabr=True)
+                ip = pp.get_stat(StatType.IP)
+                if ip is None or ip == 0:
+                    val.append("0.00") # p/ip
+                    val.append("0.00") # pp/g
+                    val.append("0.00") # s_p/ip
+                    val.append("0.00") # s_pp/g
+                else:
+                    val.append("{:.2f}".format(f_points/ip))
+                    val.append("{:.2f}".format(f_points/pp.get_stat(StatType.G_PIT)))
+                    val.append("{:.2f}".format(s_points/ip))
+                    val.append("{:.2f}".format(s_points/pp.get_stat(StatType.G_PIT)))
+        val.append("{:.1f}".format(f_points))
+        val.append("{:.1f}".format(s_points))
+        if self.projection.type != ProjectionType.VALUE_DERIVED:
+            for col in cols:
+                if col in enum_dict:
+                    stat = pp.get_stat(enum_dict[col])
+                    fmt = StatType.get_stat_format()[enum_dict[col]]
+                    if stat is None:
+                        val.append(fmt.format(0))
+                    else:
+                        val.append(fmt.format(stat))
         return val
     
     def get_player_row_no_proj(self, player_id, pos, cols):
@@ -515,55 +514,47 @@ class ValuesCalculation(tk.Frame):
     
     def refresh_overall(self):
         if self.projection is not None:
-            self.tables[Position.OVERALL].restore_all_columns()
             for pp in self.projection.player_projections:
                 val = self.get_overall_row(pp, self.projection.type == ProjectionType.VALUE_DERIVED)
                 self.tables[Position.OVERALL].insert('', tk.END, text=str(pp.player_id), values=val)
         elif self.value_calc is not None and self.value_calc.values is not None and len(self.value_calc.values) > 0:
-            self.tables[Position.OVERALL].hide_columns(self.overall_columns)
             for player_id in self.value_calc.value_dict:
                 val = self.get_overall_row_no_proj(player_id)
                 self.tables[Position.OVERALL].insert('',  tk.END, text=str(player_id), values=val)
 
     def refresh_hitters(self, pos):
         if self.projection is not None:
-            self.tables[pos].restore_all_columns()
-            if self.projection.type == ProjectionType.VALUE_DERIVED:
-                self.tables[pos].hide_columns(self.raw_hitting_columns)
             for pp in self.projection.player_projections:
                 if pp.player.pos_eligible(pos):
                     if self.projection.type == ProjectionType.VALUE_DERIVED:
-                        val = self.get_player_row_derived(pp, pos, True)
+                        val = self.get_player_row(pp, StatType.hit_to_enum_dict(), all_hitting_stats, pos)
                     elif pp.get_stat(StatType.AB) is not None:
-                        val = self.get_player_row(pp, StatType.hit_to_enum_dict(), self.hitting_columns, pos)
+                        val = self.get_player_row(pp, StatType.hit_to_enum_dict(), all_hitting_stats, pos)
                     self.tables[pos].insert('', tk.END, text=str(pp.player_id), values=val)
         elif self.value_calc is not None and self.value_calc.values is not None and len(self.value_calc.values) > 0:
-            self.tables[pos].hide_columns(self.hitting_columns)
+            hit_col = player_columns + h_fom_columns + point_cols + all_hitting_stats
             for player_id in self.value_calc.value_dict:
-                val = self.get_player_row_no_proj(player_id, pos, self.hitting_columns)
+                val = self.get_player_row_no_proj(player_id, pos, hit_col)
                 if val is not None:
                     self.tables[pos].insert('',  tk.END, text=str(player_id), values=val)
     
     def refresh_pitchers(self, pos):
         if self.projection is not None:
-            self.tables[pos].restore_all_columns()
-            if self.projection.type == ProjectionType.VALUE_DERIVED:
-                self.tables[pos].hide_columns(self.raw_pitching_columns)
             for pp in self.projection.player_projections:
                 if self.projection.type == ProjectionType.VALUE_DERIVED:
                     if pp.player.pos_eligible(pos):
-                        val = self.get_player_row_derived(pp, pos, False)
+                        val = self.get_player_row(pp, StatType.pitch_to_enum_dict(), all_pitching_stats, pos)
                         self.tables[pos].insert('', tk.END, text=str(pp.player_id), values=val)
                 elif pp.get_stat(StatType.IP) is not None:
                     if  pos == Position.PITCHER \
                         or (pos == Position.POS_RP and pp.get_stat(StatType.G_PIT) > pp.get_stat(StatType.GS_PIT)) \
                         or (pos == Position.POS_SP and pp.get_stat(StatType.GS_PIT) > 0):
-                            val = self.get_player_row(pp, StatType.pitch_to_enum_dict(), self.pitching_columns, pos)
+                            val = self.get_player_row(pp, StatType.pitch_to_enum_dict(), all_pitching_stats, pos)
                             self.tables[pos].insert('', tk.END, text=str(pp.player_id), values=val)
         elif self.value_calc is not None and self.value_calc.values is not None and len(self.value_calc.values) > 0:
-            self.tables[pos].hide_columns(self.pitching_columns)
+            pitch_cols = player_columns + p_fom_columns + point_cols + all_pitching_stats
             for player_id in self.value_calc.value_dict:
-                val = self.get_player_row_no_proj(player_id, pos, self.pitching_columns)
+                val = self.get_player_row_no_proj(player_id, pos, pitch_cols)
                 if val is not None:
                     self.tables[pos].insert('',  tk.END, text=str(player_id), values=val)
     
@@ -693,7 +684,6 @@ class ValuesCalculation(tk.Frame):
     
     def save_values(self):
         dialog = name_desc.Dialog(self, 'Save Values')
-        #print("dialog.state = " + dialog.state)
         if dialog.status == mb.OK:
             pd = progress.ProgressDialog(self, title='Saving Calculation')
             pd.increment_completion_percent(5)
@@ -748,25 +738,58 @@ class ValuesCalculation(tk.Frame):
     
     def set_display_columns(self, event=None):
         overall = []
+        hit = []
+        pitch = []
         overall.extend(player_columns)
-        h_basis = RankingBasis.display_to_enum_map().get(self.hitter_basis.get())
-        p_basis = RankingBasis.display_to_enum_map().get(self.pitcher_basis.get())
-        if h_basis == RankingBasis.PPG:
+        hit.extend(player_columns)
+        pitch.extend(player_columns)
+        if self.projection is not None:
+            h_basis = RankingBasis.display_to_enum_map().get(self.hitter_basis.get())
+            p_basis = RankingBasis.display_to_enum_map().get(self.pitcher_basis.get())
+            scoring_format = ScoringFormat.name_to_enum_map().get(self.game_type.get())
+            if h_basis == RankingBasis.PPG:
+                if p_basis == RankingBasis.PPG:
+                    overall.append('HP/G')
+                else:
+                    overall.append("P/G")
+                hit.append("P/G")
+            elif h_basis == RankingBasis.PPPA:
+                overall.append("P/PA")
+                hit.append("P/PA")
             if p_basis == RankingBasis.PPG:
-                overall.append('HP/G')
-            else:
-                overall.append("P/G")
-        elif h_basis == RankingBasis.PPPA:
-            overall.append("P/PA")
-        if p_basis == RankingBasis.PPG:
-            overall.append("PP/G")
-        elif p_basis == RankingBasis.PIP:
-            overall.append("P/IP")
-        scoring_format = ScoringFormat.name_to_enum_map().get(self.game_type.get())
-        if ScoringFormat.is_points_type(scoring_format):
-            overall.append("Points")
+                if ScoringFormat.is_sabr(scoring_format):
+                    overall.append("SABR PP/G")
+                    pitch.append("SABR PP/G")
+                else:
+                    overall.append("PP/G")
+                    pitch.append("PP/G")
+            elif p_basis == RankingBasis.PIP:
+                if ScoringFormat.is_sabr(scoring_format):
+                    overall.append("SABR P/IP")
+                    pitch.append("SABR P/IP")
+                else:
+                    overall.append("P/IP")
+                    pitch.append("P/IP")
+            if ScoringFormat.is_points_type(scoring_format):
+                if ScoringFormat.is_sabr(scoring_format):
+                    overall.append("SABR Pts")
+                    pitch.append("SABR Pts")
+                else:
+                    overall.append("FG Pts")
+                    pitch.append("FG Pts")
+                hit.append("FG Pts")
+                print(self.projection.type)
+                if self.projection.type != ProjectionType.VALUE_DERIVED:
+                    print('adding stats')
+                    hit.extend(points_hitting_columns)
+                    pitch.extend(points_pitching_columns)
+        print(f'setting columns to {overall}')
         self.overall_table.set_display_columns(tuple(overall))
-
+        for pos in self.tables:
+            if pos in Position.get_offensive_pos():
+                self.tables[pos].set_display_columns(tuple(hit))
+            elif pos in Position.get_pitching_pos():
+                self.tables[pos].set_display_columns(tuple(pitch))
     
     def set_replacement_level_ui(self, inpf):
         ttk.Label(inpf, text="Select Replacement Level Scheme").grid(column=0,row=12,columnspan=2,pady=5)
