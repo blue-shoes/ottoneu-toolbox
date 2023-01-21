@@ -280,9 +280,6 @@ def get_values_from_fg_auction_files(vc: ValueCalculation, hit_df : DataFrame, p
     for idx, row in hit_df.iterrows():
         if row['Dollars'] == float(rep_lvl_dol):
             rep_lvl_tuples.append((row['POS'], row['aPOS']))
-    if len(rep_lvl_tuples) != 7:
-        logging.error(f'len rep levels = {len(rep_lvl_tuples)}')
-        raise Exception('Error parsing replacement levels. Confirm input min player value matches that used in value calculation')
     rep_lvls = {}
     min = 9999
     mi = 9999
