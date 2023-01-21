@@ -114,6 +114,9 @@ class Table(ttk.Treeview):
         if self.sort_col is not None:
             self.treeview_sort_column(self.sort_col, not self.reverse_sort[self.sort_col])
     
+    def set_display_columns(self, columns):
+        self['displaycolumns'] = columns
+    
     def hide_columns(self, to_hide):
         new_dc = self['displaycolumns']
         if new_dc == ('#all',):

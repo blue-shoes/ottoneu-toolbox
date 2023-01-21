@@ -17,6 +17,17 @@ from ui.dialog import projection_select, progress, name_desc
 from ui.dialog.wizard import projection_import
 from util import string_util
 
+player_columns = ('Value', 'Name', 'Team', 'Pos')
+#fom_columns = ('P/G', 'HP/G', 'P/PA', 'P/IP', 'PP/G', 'Points', 'zScore', 'SGP')
+fom_columns = ('P/G', 'HP/G', 'P/PA', 'P/IP', 'PP/G', 'Points')
+points_hitting_columns = ('G', 'PA', 'AB', 'H', '2B', '3B', 'HR', 'BB', 'HBP', 'SB','CS')
+points_pitching_columns = ('G', 'GS', 'IP', 'SO','H','BB','HBP','HR','SV','HLD')
+old_school_hitting_columns = ('G', 'PA', 'AB', 'R', 'HR', 'RBI', 'SB', 'AVG')
+old_school_pitching_columns = ('G', 'GS', 'IP', 'W', 'SV', 'SO', 'ERA', 'WHIP')
+classic_hitting_columns = ('G', 'PA', 'AB', 'OBP', 'SLG', 'HR', 'R')
+classic_pitching_columns = ('G', 'GS', 'IP', 'ERA', 'WHIP', 'HR/9', 'SO')
+all_hitting_stats = ('G', 'PA', 'AB', 'H', '2B', '3B', 'HR', 'BB', 'HBP', 'SB','CS', 'R', 'RBI', 'SB', 'AVG', 'OBP', 'SLG')
+all_pitching_stats = ('G', 'GS', 'IP', 'SO','H','BB','HBP','HR','SV','HLD', 'W', 'ERA', 'WHIP', 'HR/9')
 
 class ValuesCalculation(tk.Frame):
     def __init__(self, parent, controller):
@@ -84,6 +95,7 @@ class ValuesCalculation(tk.Frame):
                 self.pos_rep_lvl_sv[pos].set('--')
             self.total_pitch_rostered_sv.set('--')
             self.total_ip_rostered_sv.set('--')
+            self.set_display_columns()
         else:
             v = self.value_calc
             self.game_type.set(ScoringFormat.enum_to_full_name_map()[v.format])
@@ -200,6 +212,7 @@ class ValuesCalculation(tk.Frame):
         self.hitter_basis_cb = hbcb = ttk.Combobox(inpf, textvariable=self.hitter_basis)
         hbcb['values'] = ('P/G','P/PA')
         hbcb.grid(column=1,row=7,pady=5)
+        hbcb.bind("<<ComboboxSelected>>", self.set_display_columns)
 
         ttk.Label(inpf, text="Min PA to Rank:").grid(column=0, row= 8, pady=5)
         self.min_pa = StringVar()
@@ -215,6 +228,7 @@ class ValuesCalculation(tk.Frame):
         self.pitcher_basis_cb = pbcb = ttk.Combobox(inpf, textvariable=self.pitcher_basis)
         pbcb['values'] = ('P/IP','P/G')
         pbcb.grid(column=1,row=9,pady=5)
+        pbcb.bind("<<ComboboxSelected>>", self.set_display_columns)
 
         ttk.Label(inpf, text="Min SP IP to Rank:").grid(column=0, row= 10, pady=5)
         self.min_sp_ip = StringVar()
@@ -263,7 +277,8 @@ class ValuesCalculation(tk.Frame):
         col_width = {}
         col_width['Name'] = 125
 
-        self.overall_table = ot = Table(overall_frame, self.player_columns + self.overall_columns, column_widths=col_width, column_alignments=col_align, sortable_columns=self.player_columns + self.overall_columns)
+        #self.overall_table = ot = Table(overall_frame, self.player_columns + self.overall_columns, column_widths=col_width, column_alignments=col_align, sortable_columns=self.player_columns + self.overall_columns)
+        self.overall_table = ot = Table(overall_frame, player_columns + fom_columns, column_widths=col_width, column_alignments=col_align, sortable_columns=player_columns + fom_columns)
         self.tables[Position.OVERALL] = ot
         ot.set_refresh_method(self.refresh_overall)
         ot.grid(row=0, column=0)
@@ -338,6 +353,7 @@ class ValuesCalculation(tk.Frame):
         for table in self.tables.values():
             table.refresh()
             pd.increment_completion_percent(delta)
+        self.set_display_columns()
         #self.bat_table.refresh()
         #pd.increment_completion_percent(25)
         #self.arm_table.refresh()
@@ -346,30 +362,45 @@ class ValuesCalculation(tk.Frame):
             pd.set_completion_percent(100)
             pd.destroy()
     
-    def get_overall_row(self, pp, derived):
-        val = []
+    def append_player_column_data(self, val, pp, pos):
         if len(self.value_calc.values) > 0:
-            pv = self.value_calc.get_player_value(pp.player.index, Position.OVERALL)
+            pv = self.value_calc.get_player_value(pp.player.index, pos)
             if pv is None:
                 val.append("$0.0")
             else:
                 val.append("${:.1f}".format(pv.value))
         else:
+            pv = None
             val.append('-')
         val.append(pp.player.name)
         val.append(pp.player.team)
         val.append(pp.player.position)
+
+    def get_overall_row(self, pp, derived):
+        val = []
+        self.append_player_column_data(val, pp, Position.OVERALL)
+        
         if derived:
             val.append("{:.2f}".format(pp.get_stat(StatType.PPG)))
+            val.append("{:.2f}".format(pp.get_stat(StatType.PPG)))
+            val.append('-')
             val.append("{:.2f}".format(pp.get_stat(StatType.PIP)))
+            val.append('-')
             val.append("{:.1f}".format(pp.get_stat(StatType.POINTS)))
         else:
+            # ('P/G', 'HP/G', 'P/PA', 'P/IP', 'PP/G', 'Points', 'zScore', 'SGP')
             o_points = calculation_services.get_points(pp, Position.OFFENSE, sabr=(self.game_type.get() == ScoringFormat.enum_to_full_name_map()[ScoringFormat.SABR_POINTS]))
             games = pp.get_stat(StatType.G_HIT)
             if games is None or games == 0:
                 val.append("0.00")
             else:
                 val.append("{:.2f}".format(o_points / games))
+                val.append("{:.2f}".format(o_points / games))
+            pa = pp.get_stat(StatType.PA)
+            if pa is None or pa == 0:
+                val.append("0.00")
+            else:
+                val.append("{:.2f}".format(o_points / pa))
             
             p_points = calculation_services.get_points(pp, Position.PITCHER, sabr=(self.game_type.get() == ScoringFormat.enum_to_full_name_map()[ScoringFormat.SABR_POINTS]))
             ip = pp.get_stat(StatType.IP)
@@ -377,6 +408,17 @@ class ValuesCalculation(tk.Frame):
                 val.append("0.00")
             else:
                 val.append("{:.2f}".format(p_points/ip))
+            games = pp.get_stat(StatType.G_PIT)
+            if games is None or games == 0:
+                val.append("0.00")
+            else:
+                val.append("{:.2f}".format(p_points/games))
+            
+            #if len(self.value_calc.values) > 0:
+            #    append
+            #else:
+            #    append('-')
+
             val.append("{:.1f}".format(p_points + o_points))
         return val
     
@@ -390,8 +432,11 @@ class ValuesCalculation(tk.Frame):
         val.append(pv.player.name)
         val.append(pv.player.team)
         val.append(pv.player.position)
-        val.append('0.00') # hit rate
-        val.append('0.00') # pitch rate
+        val.append('0.00') # p/g
+        val.append('0.00') # hp/g
+        val.append('0.00') # p/pa
+        val.append('0.00') # p/ip
+        val.append('0.00') # pp/g
         val.append('0.0') # points
         return val
 
@@ -700,6 +745,28 @@ class ValuesCalculation(tk.Frame):
         else:
             self.hitter_aloc_lbl.configure(state='disable')
             self.hitter_aloc_entry.configure(state='disable')
+    
+    def set_display_columns(self, event=None):
+        overall = []
+        overall.extend(player_columns)
+        h_basis = RankingBasis.display_to_enum_map().get(self.hitter_basis.get())
+        p_basis = RankingBasis.display_to_enum_map().get(self.pitcher_basis.get())
+        if h_basis == RankingBasis.PPG:
+            if p_basis == RankingBasis.PPG:
+                overall.append('HP/G')
+            else:
+                overall.append("P/G")
+        elif h_basis == RankingBasis.PPPA:
+            overall.append("P/PA")
+        if p_basis == RankingBasis.PPG:
+            overall.append("PP/G")
+        elif p_basis == RankingBasis.PIP:
+            overall.append("P/IP")
+        scoring_format = ScoringFormat.name_to_enum_map().get(self.game_type.get())
+        if ScoringFormat.is_points_type(scoring_format):
+            overall.append("Points")
+        self.overall_table.set_display_columns(tuple(overall))
+
     
     def set_replacement_level_ui(self, inpf):
         ttk.Label(inpf, text="Select Replacement Level Scheme").grid(column=0,row=12,columnspan=2,pady=5)
