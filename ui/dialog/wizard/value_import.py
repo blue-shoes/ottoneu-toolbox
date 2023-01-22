@@ -272,21 +272,6 @@ class Step1_FG(tk.Frame):
     
     def validate(self):
         return True
-    
-    def init_fg_value_calc(self):
-        prog = progress.ProgressDialog(self.parent, 'Initializing Value Set')
-        vc = self.parent.value
-        if self.projection is not None:
-            prog.set_task_title('Getting projections...')
-            prog.set_completion_percent(15)
-            vc.projection = projection_services.get_projection(self.projection.index, player_data=True)
-        vc.format = ScoringFormat.name_to_enum_map()[self.game_type.get()]
-        vc.inputs = []
-        vc.set_input(CDT.NUM_TEAMS, float(self.num_teams_str.get()))
-        #vc.hitter_basis = RankingBasis.display_to_enum_map().get(self.hitter_basis.get())
-        #vc.pitcher_basis = RankingBasis.display_to_enum_map().get(self.pitcher_basis.get())
-        calculation_services.init_outputs_from_fg_upload(vc, self.hit_df, self.pitch_df, prog)
-        prog.complete()
 
 class Step1(tk.Frame):
     def __init__(self, parent):
@@ -336,7 +321,7 @@ class Step1(tk.Frame):
         gt_combo.bind("<<ComboboxSelected>>", self.update_game_type)
         # TODO: Don't hardcode game types, include other types
 
-        gt_combo['values'] = (gt_map[ScoringFormat.FG_POINTS], gt_map[ScoringFormat.SABR_POINTS])
+        gt_combo['values'] = (gt_map[ScoringFormat.FG_POINTS], gt_map[ScoringFormat.SABR_POINTS], gt_map[ScoringFormat.OLD_SCHOOL_5X5])
         gt_combo.grid(column=1,row=6,pady=5, columnspan=2)
 
         ttk.Label(self, text="Number of Teams:").grid(column=0, row=7,pady=5, stick=W)
@@ -399,7 +384,7 @@ class Step1(tk.Frame):
 
         try:
             self.df = df = pd.read_csv(self.value_file.get())
-            self.parent.validate_msg = calculation_services.normalize_value_upload(df)
+            self.parent.validate_msg = calculation_services.normalize_value_upload(df, ScoringFormat.name_to_enum_map().get(self.game_type.get()))
         except PermissionError:
             self.parent.validate_msg = f'Error loading values file. File permission denied.'
             return False
@@ -449,7 +434,7 @@ class Step1(tk.Frame):
             self.projection = None
             self.sel_proj.set("No Projection Selected")
 
-    def update_game_type(self):
+    def update_game_type(self, event):
         i=1
         #TODO: Implement this
 

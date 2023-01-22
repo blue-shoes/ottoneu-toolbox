@@ -158,63 +158,113 @@ def get_dataframe_with_values(value_calc : ValueCalculation, pos, text_values=Tr
         df.set_index('Ottoneu Id', inplace=True)
         return df
 
-def normalize_value_upload(df : DataFrame):
-    id_col = None
-    value_col = None
-    hit_rate_col = None
-    pitch_rate_col = None
-    points_col = None
-    hit_pt_col = None
-    pitch_pt_col = None
-    col_map = {}
-    for col in df.columns:
-        if 'ID' in col.upper():
-            id_col = col
-        if 'VAL' in col.upper() or 'PRICE' in col.upper() or '$' in col:
-            value_col = col
-            col_map[value_col] = "Values"
-        if 'PTSPG' in col.upper() or 'P/G' in col.upper() or 'PTSPPA' in col.upper() or 'P/PA' in col.upper():
-            hit_rate_col = col
-            col_map[hit_rate_col] = 'Hit_Rate'
-        elif 'PTSPG' in col.upper() or 'P/G' in col.upper() or 'PTSPIP' in col.upper() or 'P/IP' in col.upper():
-            pitch_rate_col = col
-            col_map[pitch_rate_col] = 'Pitch_Rate'
-        elif 'PTS' in col.upper() or 'POINTS' in col.upper():
-            points_col = col
-            col_map[points_col] = 'Points'
-        if 'G' == col.upper() or 'GAME' in col.upper() or 'PA' == col.upper():
-            hit_pt_col = col
-            col_map[hit_pt_col] = 'H_PT'
-        if 'IP' == col.upper() or 'GS' == col.upper():
-            pitch_pt_col = col
-            col_map[pitch_pt_col] = 'P_PT'
-    
-    validate_msg = ''
-    if id_col is None:
-        validate_msg += 'No column with header containing \"ID\"\n'
-    else:
-        df.set_index(id_col, inplace=True)
-    if value_col is None:
-        validate_msg += 'Value column must be labeled \"Value\", \"Price\", or \"$\"\n'
+def normalize_value_upload(df : DataFrame, game_type:ScoringFormat):
+    if ScoringFormat.is_points_type(game_type):
+        id_col = None
+        value_col = None
+        hit_rate_col = None
+        pitch_rate_col = None
+        points_col = None
+        hit_pt_col = None
+        pitch_pt_col = None
+        col_map = {}
+        for col in df.columns:
+            if 'ID' in col.upper():
+                id_col = col
+            if 'VAL' in col.upper() or 'PRICE' in col.upper() or '$' in col:
+                value_col = col
+                col_map[value_col] = "Values"
+            if 'PTSPG' in col.upper() or 'P/G' in col.upper() or 'PTSPPA' in col.upper() or 'P/PA' in col.upper():
+                hit_rate_col = col
+                col_map[hit_rate_col] = 'Hit_Rate'
+            elif 'PTSPG' in col.upper() or 'P/G' in col.upper() or 'PTSPIP' in col.upper() or 'P/IP' in col.upper():
+                pitch_rate_col = col
+                col_map[pitch_rate_col] = 'Pitch_Rate'
+            elif 'PTS' in col.upper() or 'POINTS' in col.upper():
+                points_col = col
+                col_map[points_col] = 'Points'
+            if 'G' == col.upper() or 'GAME' in col.upper() or 'PA' == col.upper():
+                hit_pt_col = col
+                col_map[hit_pt_col] = 'H_PT'
+            if 'IP' == col.upper() or 'GS' == col.upper():
+                pitch_pt_col = col
+                col_map[pitch_pt_col] = 'P_PT'
+        
+        validate_msg = ''
+        if id_col is None:
+            validate_msg += 'No column with header containing \"ID\"\n'
+        else:
+            df.set_index(id_col, inplace=True)
+        if value_col is None:
+            validate_msg += 'Value column must be labeled \"Value\", \"Price\", or \"$\"\n'
 
-    df.rename(columns=col_map, inplace=True)
-    if hit_rate_col is not None:
-        df['Hit_Rate'] = df['Hit_Rate'].apply(convert_vals)
-    if pitch_rate_col is not None:
-        df['Pitch_Rate'] = df['Pitch_Rate'].apply(convert_vals)
-    if hit_pt_col is not None:
-        df['H_PT'] = df['H_PT'].apply(convert_vals)
-    if pitch_pt_col is not None:
-        df['P_PT'] = df['P_PT'].apply(convert_vals)
+        df.rename(columns=col_map, inplace=True)
+        if hit_rate_col is not None:
+            df['Hit_Rate'] = df['Hit_Rate'].apply(convert_vals)
+        if pitch_rate_col is not None:
+            df['Pitch_Rate'] = df['Pitch_Rate'].apply(convert_vals)
+        if hit_pt_col is not None:
+            df['H_PT'] = df['H_PT'].apply(convert_vals)
+        if pitch_pt_col is not None:
+            df['P_PT'] = df['P_PT'].apply(convert_vals)
 
-    if not None in [hit_rate_col, points_col] or not None in [points_col, hit_pt_col]:
-        fill_df_hit_columns(df)
+        if not None in [hit_rate_col, points_col] or not None in [points_col, hit_pt_col]:
+            fill_df_hit_columns(df)
 
-    if not None in [pitch_rate_col, points_col] or not None in [points_col, pitch_pt_col]:
-        fill_df_pitch_columns(df)
-    
-    if 'Points' not in df and not None in [hit_rate_col, hit_pt_col] and not None in [pitch_rate_col, pitch_pt_col]:
-        df['Points'] = df.apply(calc_points, axis=0)
+        if not None in [pitch_rate_col, points_col] or not None in [points_col, pitch_pt_col]:
+            fill_df_pitch_columns(df)
+        
+        if 'Points' not in df and not None in [hit_rate_col, hit_pt_col] and not None in [pitch_rate_col, pitch_pt_col]:
+            df['Points'] = df.apply(calc_points, axis=0)
+    elif game_type == ScoringFormat.OLD_SCHOOL_5X5:
+        id_col = None
+        value_col = None
+        hit_rate_col = None
+        pitch_rate_col = None
+        points_col = None
+        hit_pt_col = None
+        pitch_pt_col = None
+        col_map = {}
+        for col in df.columns:
+            if 'ID' in col.upper():
+                id_col = col
+            if 'VAL' in col.upper() or 'PRICE' in col.upper() or '$' in col:
+                value_col = col
+                col_map[value_col] = "Values"
+            if 'R_Z' in col.upper() or 'R_SGP' in col.upper():
+                col_map[col] = 'R_FOM'
+            if 'HR_Z' in col.upper() or 'HR_SGP' in col.upper():
+                col_map[col] = 'HR_FOM'
+            if 'RBI_Z' in col.upper() or 'RBI_SGP' in col.upper():
+                col_map[col] = 'RBI_FOM'
+            if 'AVG_Z' in col.upper() or 'AVG_SGP' in col.upper():
+                col_map[col] = 'AVG_FOM'
+            if 'SB_Z' in col.upper() or 'SB_SGP' in col.upper():
+                col_map[col] = 'SB_FOM'
+            if 'W_Z' in col.upper() or 'W_SGP' in col.upper():
+                col_map[col] = 'W_FOM'
+            if 'SV_Z' in col.upper() or 'SV_SGP' in col.upper():
+                col_map[col] = 'SV_FOM'
+            if 'WHIP_Z' in col.upper() or 'WHIP_SGP' in col.upper():
+                col_map[col] = 'WHIP_FOM'
+            if 'ERA_Z' in col.upper() or 'ERA_SGP' in col.upper():
+                col_map[col] = 'ERA_FOM'
+            if 'K_Z' in col.upper() or 'K_SGP' in col.upper():
+                col_map[col] = 'K_FOM'
+        
+        df.rename(columns=col_map, inplace=True)
+        validate_msg = ''
+        if id_col is None:
+            validate_msg += 'No column with header containing \"ID\"\n'
+        else:
+            df.set_index(id_col, inplace=True)
+        if value_col is None:
+            validate_msg += 'Value column must be labeled \"Value\", \"Price\", or \"$\"\n'
+
+        if has_required_data_for_rl(df, game_type):
+            df['FOM'] = df.apply(calc_old_school_fom, axis=1)
+        
+        print(df.head())
 
     return validate_msg
 
@@ -265,9 +315,21 @@ def convert_vals(value):
     else:
         return float(value)
 
+def calc_old_school_fom(row):
+    return na_to_0(row['R_FOM']) + na_to_0(row['HR_FOM']) + na_to_0(row['RBI_FOM']) + na_to_0(row['AVG_FOM']) + na_to_0(row['SB_FOM']) \
+            + na_to_0(row['W_FOM']) + na_to_0(row['SV_FOM']) + na_to_0(row['WHIP_FOM']) + na_to_0(row['ERA_FOM']) + na_to_0(row['K_FOM'])
+    
+def na_to_0(value):
+    if value == 'NA' or math.isnan(value):
+        return 0
+    else:
+        return value
+
 def has_required_data_for_rl(df:DataFrame, game_type:ScoringFormat):
     if ScoringFormat.is_points_type(game_type):
         return set(['Points','H_PT','P_PT']).issubset(df.columns)
+    elif game_type == ScoringFormat.OLD_SCHOOL_5X5:
+        return set(['R_FOM','HR_FOM','RBI_FOM','AVG_FOM','SB_FOM','W_FOM','SV_FOM','WHIP_FOM','ERA_FOM','K_FOM'])
     else:
         raise Exception(f'ScoringFormat {game_type} not currently implemented')
 
@@ -408,18 +470,25 @@ def init_outputs_from_upload(vc: ValueCalculation, df : DataFrame, game_type, re
                         sample_players[positions[0]] = sample_list
                     if proj_derive:
                         sample_list.append((value, player.index))
-                    else:
+                    elif ScoringFormat.is_points_type(game_type):
                         sample_list.append((value, row['Points'], row['H_PT'], row['P_PT']))
+                    elif game_type == ScoringFormat.OLD_SCHOOL_5X5:
+                        sample_list.append((value, row['FOM']))
+                    else:
+                        sample_list.append((value, player.index))
         elif not proj_derive:
             if len(positions) == 1:
                 sample_list = sample_players.get(positions[0])
                 if sample_list is None:
                     sample_list = []
                     sample_players[positions[0]] = sample_list
-                if proj_derive:
-                    sample_list.append((value, player.index))
-                else:
+                if ScoringFormat.is_points_type(game_type):
                     sample_list.append((value, row['Points'], row['H_PT'], row['P_PT']))
+                elif game_type == ScoringFormat.OLD_SCHOOL_5X5:
+                    sample_list.append((value, row['FOM']))
+                else:
+                    sample_list.append((value, player.index))
+
         for pos in positions:
             if pos in Position.get_discrete_offensive_pos():
                 hit = True
@@ -457,34 +526,44 @@ def init_outputs_from_upload(vc: ValueCalculation, df : DataFrame, game_type, re
                 pitch_dol_per_fom = 0
                 vc.set_output(CDT.pos_to_rep_level().get(pos), rl)
                 continue
-            p_idx = [sample_list[0][1], sample_list[-1][1], sample_list[1][1], sample_list[-2][1]]
-            points = []
-            pt = []
-            for idx in p_idx:
-                pp = vc.projection.get_player_projection(idx)
-                points.append(get_points(pp, pos, game_type in [ScoringFormat.SABR_POINTS, ScoringFormat.H2H_SABR_POINTS]))
-                if pos in Position.get_discrete_offensive_pos():
-                    if vc.hitter_basis == RankingBasis.PPG:
-                        pt.append(pp.get_stat(StatType.G_HIT))
-                    elif vc.hitter_basis == RankingBasis.PPPA:
-                        pt.append(pp.get_stat(StatType.PA))
+            if ScoringFormat.is_points_type(game_type):
+                p_idx = [sample_list[0][1], sample_list[-1][1], sample_list[1][1], sample_list[-2][1]]
+                fom = []
+                pt = []
+                for idx in p_idx:
+                    pp = vc.projection.get_player_projection(idx)
+                    fom.append(get_points(pp, pos, game_type in [ScoringFormat.SABR_POINTS, ScoringFormat.H2H_SABR_POINTS]))
+                    if pos in Position.get_discrete_offensive_pos():
+                        if vc.hitter_basis == RankingBasis.PPG:
+                            pt.append(pp.get_stat(StatType.G_HIT))
+                        elif vc.hitter_basis == RankingBasis.PPPA:
+                            pt.append(pp.get_stat(StatType.PA))
+                        else:
+                            raise Exception(f'Hitter basis {vc.hitter_basis.value} not implemented')
                     else:
-                        raise Exception(f'Hitter basis {vc.hitter_basis.value} not implemented')
-                else:
-                    if vc.pitcher_basis == RankingBasis.PPG:
-                        pt.append(pp.get_stat(StatType.G_PIT))
-                    elif vc.hitter_basis == RankingBasis.PIP:
-                        pt.append(pp.get_stat(StatType.IP))
-                    else:
-                        raise Exception(f'Pitcher basis {vc.pitcher_basis.value} not implemented')
-        else:
-            points = [sample_list[0][1], sample_list[-1][1], sample_list[1][1], sample_list[-2][1]]
-            if pos in Position.get_offensive_pos():
-                pt = [sample_list[0][2], sample_list[-1][2], sample_list[1][2], sample_list[-2][2]]
+                        if vc.pitcher_basis == RankingBasis.PPG:
+                            pt.append(pp.get_stat(StatType.G_PIT))
+                        elif vc.hitter_basis == RankingBasis.PIP:
+                            pt.append(pp.get_stat(StatType.IP))
+                        else:
+                            raise Exception(f'Pitcher basis {vc.pitcher_basis.value} not implemented')
             else:
-                pt = [sample_list[0][3], sample_list[-1][3], sample_list[1][3], sample_list[-2][3]]
+                hit_dol_per_fom = 0
+                pitch_dol_per_fom = 0
+                vc.set_output(CDT.pos_to_rep_level().get(pos), rl)
+                continue
+        else:
+            if ScoringFormat.is_points_type(game_type):
+                fom = [sample_list[0][1], sample_list[-1][1], sample_list[1][1], sample_list[-2][1]]
+                if pos in Position.get_offensive_pos():
+                    pt = [sample_list[0][2], sample_list[-1][2], sample_list[1][2], sample_list[-2][2]]
+                else:
+                    pt = [sample_list[0][3], sample_list[-1][3], sample_list[1][3], sample_list[-2][3]]
+            elif game_type == ScoringFormat.OLD_SCHOOL_5X5:
+                fom = [sample_list[0][1], sample_list[-1][1], sample_list[1][1], sample_list[-2][1]]
+                pt = []
         
-        rl, d = calc_rep_levels_from_values(prices, points, pt)
+        rl, d = calc_rep_levels_from_values(prices, game_type, fom, pt, rep_level_cost)
         vc.set_output(CDT.pos_to_rep_level().get(pos), rl)
 
         if pos in Position.get_offensive_pos() and hit_dol_per_fom < 0:
@@ -506,15 +585,22 @@ def init_outputs_from_upload(vc: ValueCalculation, df : DataFrame, game_type, re
     vc.set_output(CDT.HITTER_DOLLAR_PER_FOM, hit_dol_per_fom)
     vc.set_output(CDT.PITCHER_DOLLAR_PER_FOM, pitch_dol_per_fom)
 
-def calc_rep_levels_from_values(vals, points, pt):
-    #Calcs done algebraicly from equation (Value1 - Value2) = Dol/FOM * [(Points1 - rl * Games1) - (Points2 - rl * Games2)]
-    if len(vals) < 4 or len(points) < 4 or len(pt) < 4:
+def calc_rep_levels_from_values(vals, game_type, fom, pt, rep_lvl_dol):
+    if len(vals) < 4 or len(fom) < 4:
         raise Exception('calc_rep_levels_from_values requires input lists of at least four entries')
-    numer = (vals[0] - vals[1])*(points[2]-points[3])-(vals[2]-vals[3])*(points[0] - points[1])
-    denom = (vals[0] - vals[1])*(pt[2] - pt[3]) - (vals[2] - vals[3])*(pt[0] - pt[1])
-    rl = numer / denom
-    d_per_fom = (vals[0] - vals[1])/((points[0] - rl*pt[0])-(points[1] - rl*pt[1]))
-    return rl, d_per_fom
+    if ScoringFormat.is_points_type(game_type):
+        #Calcs done algebraicly from equation (Value1 - Value2) = Dol/FOM * [(Points1 - rl * Games1) - (Points2 - rl * Games2)]
+        numer = (vals[0] - vals[1])*(fom[2]-fom[3])-(vals[2]-vals[3])*(fom[0] - fom[1])
+        denom = (vals[0] - vals[1])*(pt[2] - pt[3]) - (vals[2] - vals[3])*(pt[0] - pt[1])
+        rl = numer / denom
+        d_per_fom = (vals[0] - vals[1])/((fom[0] - rl*pt[0])-(fom[1] - rl*pt[1]))
+        return rl, d_per_fom
+    elif game_type == ScoringFormat.OLD_SCHOOL_5X5:
+        d_per_fom = (vals[0] - vals[1]) / (fom[0] - fom[1])
+        rl = fom[0] - (vals[0] - rep_lvl_dol) / d_per_fom
+        return rl, d_per_fom
+    else:
+        raise Exception(f'Unsupported game type {game_type}')
 
 def save_calculation_from_file(vc : ValueCalculation, df : DataFrame, pd=None):
     df.set_index('OTB_Idx', inplace=True)
