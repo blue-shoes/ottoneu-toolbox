@@ -155,7 +155,7 @@ class RankingBasis(Enum):
             'P/G' : self.PPG,
             'P/PA' : self.PPPA,
             'P/IP' : self.PIP,
-            'z-Score' : self.ZSCORE,
+            'zScore' : self.ZSCORE,
             'SGP' : self.SGP
         }
     
@@ -165,7 +165,7 @@ class RankingBasis(Enum):
             self.PPG : 'P/G',
             self.PPPA : 'P/PA',
             self.PIP : 'P/IP',
-            self.ZSCORE : 'z-Score',
+            self.ZSCORE : 'zScore',
             self.SGP : 'SGP',
             self.FG_AC : 'FG AC'
         }
