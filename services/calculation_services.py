@@ -263,8 +263,6 @@ def normalize_value_upload(df : DataFrame, game_type:ScoringFormat):
 
         if has_required_data_for_rl(df, game_type):
             df['FOM'] = df.apply(calc_old_school_fom, axis=1)
-        
-        print(df.head())
 
     return validate_msg
 
