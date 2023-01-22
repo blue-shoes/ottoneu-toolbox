@@ -517,7 +517,8 @@ def init_outputs_from_upload(vc: ValueCalculation, df : DataFrame, game_type, re
     for pos in sample_players:
         sample_list = sample_players.get(pos)
         if len(sample_list) < 4:
-            vc.set_output(CDT.pos_to_rep_level().get(pos), -999)
+            if pos != Position.POS_UTIL:
+                vc.set_output(CDT.pos_to_rep_level().get(pos), -999)
             continue
         prices = [sample_list[0][0], sample_list[-1][0], sample_list[1][0], sample_list[-2][0]]
         if proj_derive:
@@ -572,7 +573,7 @@ def init_outputs_from_upload(vc: ValueCalculation, df : DataFrame, game_type, re
             pitch_dol_per_fom = d
 
     #Util rep level is either the highest offensive position level, or the Util value, whichever is lower
-    max_lvl = 0
+    max_lvl = -999
     for pos in Position.get_discrete_offensive_pos():
         if pos == Position.POS_UTIL:
             continue
@@ -602,7 +603,7 @@ def calc_rep_levels_from_values(vals, game_type, fom, pt, rep_lvl_dol):
     else:
         raise Exception(f'Unsupported game type {game_type}')
 
-def save_calculation_from_file(vc : ValueCalculation, df : DataFrame, pd=None):
+def save_calculation_from_file(vc : ValueCalculation, df : DataFrame, pd=None, rep_val=1):
     df.set_index('OTB_Idx', inplace=True)
     pd.set_task_title('Creating position values...')
     remaining = (80 - pd.progress)
@@ -611,7 +612,7 @@ def save_calculation_from_file(vc : ValueCalculation, df : DataFrame, pd=None):
     vc.values = []
     proj_derive = not has_required_data_for_rl(df, vc.format)
     pop_proj = False
-    if not proj_derive and vc.projection is None:
+    if not proj_derive and vc.projection is None and ScoringFormat.is_points_type(vc.format):
         pop_proj = True
         # Create hidden projection
         proj = Projection()
@@ -658,7 +659,7 @@ def save_calculation_from_file(vc : ValueCalculation, df : DataFrame, pd=None):
                 p_pt = pp.get_stat(StatType.G_PIT)
             else:
                 raise Exception(f'Unhandled pitching basis {vc.pitcher_basis}')
-        else:
+        elif ScoringFormat.is_points_type(vc.format):
             h_points = row['Points']
             if pop_proj:
                 h_pt = row['H_PT']
@@ -674,49 +675,85 @@ def save_calculation_from_file(vc : ValueCalculation, df : DataFrame, pd=None):
                 vc.projection.player_projections.append(pp)
         hit = False
         pitch = False
-        if vc.projection is None:
-            # We don't have projections and we don't have points/rates/pt in values. Can't make position-specific determinations
-            for pos in player_services.get_player_positions(player, discrete=False):
-                vc.set_player_value(idx, pos, row['Values'])
-        elif player.is_two_way():
-            #Not a good way to handle this right now, just print the value again
-            for pos in player_services.get_player_positions(player, discrete=False):
-                vc.set_player_value(idx, pos, row['Values'])
-        else:
-            for pos in player_services.get_player_positions(player, discrete=True):
-                if pos in Position.get_offensive_pos():
-                    if not hit:
-                        vc.set_player_value(idx, Position.OFFENSE, row['Values'])
-                        u_val = (h_points - vc.get_output(CDT.REP_LEVEL_UTIL) * h_pt) * vc.get_output(CDT.HITTER_DOLLAR_PER_FOM)
-                        vc.set_player_value(idx, Position.POS_UTIL, u_val)
-                        hit = True
-                    if pos == Position.POS_MI:
-                        rl = min(vc.get_output(CDT.REP_LEVEL_2B), vc.get_output(CDT.REP_LEVEL_SS))
-                    elif pos == Position.POS_UTIL:
-                        continue
-                    else:
-                        rl = vc.get_output(CDT.pos_to_rep_level().get(pos))
-                    val = (h_points - rl * h_pt) * vc.get_output(CDT.HITTER_DOLLAR_PER_FOM)
-                    vc.set_player_value(idx, pos, val)
-
-                if pos in Position.get_pitching_pos():
-                    if not pitch:
-                        vc.set_player_value(idx, Position.PITCHER, row['Values'])
-                        pitch = True
-                    #This is a difficult nut to crack. Ideally we would reverse engineer a SP and RP rate, but that
-                    #is likely imposible to do without having save/hold information. For now, to make sure we don't miss anyone,
-                    #put them in the db positions and if able check projections to see if they do any starting or relieving
-                    if vc.projection is None or not proj_derive:
-                        vc.set_player_value(idx, pos, row['Values'])
-                    else:
-                        pp = vc.projection.get_player_projection(idx)
-                        if pp is not None:
-                            if pp.get_stat(StatType.GS_PIT) > 0 or pos == Position.POS_SP:
-                                vc.set_player_value(idx, Position.POS_SP, row['Values'])
-                            if pp.get_stat(StatType.G_PIT) > pp.get_stat(StatType.GS_PIT) or pos == Position.POS_RP:
-                                vc.set_player_value(idx, Position.POS_RP, row['Values'])
+        if ScoringFormat.is_points_type(vc.format):
+            if vc.projection is None:
+                # We don't have projections and we don't have points/rates/pt in values. Can't make position-specific determinations
+                for pos in player_services.get_player_positions(player, discrete=False):
+                    vc.set_player_value(idx, pos, row['Values'])
+            elif player.is_two_way():
+                #Not a good way to handle this right now, just print the value again
+                for pos in player_services.get_player_positions(player, discrete=False):
+                    vc.set_player_value(idx, pos, row['Values'])
+            else:
+                for pos in player_services.get_player_positions(player, discrete=True):
+                    if pos in Position.get_offensive_pos():
+                        if not hit:
+                            vc.set_player_value(idx, Position.OFFENSE, row['Values'])
+                            u_val = (h_points - vc.get_output(CDT.REP_LEVEL_UTIL) * h_pt) * vc.get_output(CDT.HITTER_DOLLAR_PER_FOM)
+                            vc.set_player_value(idx, Position.POS_UTIL, u_val)
+                            hit = True
+                        if pos == Position.POS_MI:
+                            rl = min(vc.get_output(CDT.REP_LEVEL_2B), vc.get_output(CDT.REP_LEVEL_SS))
+                        elif pos == Position.POS_UTIL:
+                            continue
                         else:
+                            rl = vc.get_output(CDT.pos_to_rep_level().get(pos))
+                        val = (h_points - rl * h_pt) * vc.get_output(CDT.HITTER_DOLLAR_PER_FOM)
+                        vc.set_player_value(idx, pos, val)
+
+                    if pos in Position.get_pitching_pos():
+                        if not pitch:
+                            vc.set_player_value(idx, Position.PITCHER, row['Values'])
+                            pitch = True
+                        #This is a difficult nut to crack. Ideally we would reverse engineer a SP and RP rate, but that
+                        #is likely imposible to do without having save/hold information. For now, to make sure we don't miss anyone,
+                        #put them in the db positions and if able check projections to see if they do any starting or relieving
+                        if vc.projection is None or not proj_derive:
                             vc.set_player_value(idx, pos, row['Values'])
+                        else:
+                            pp = vc.projection.get_player_projection(idx)
+                            if pp is not None:
+                                if pp.get_stat(StatType.GS_PIT) > 0 or pos == Position.POS_SP:
+                                    vc.set_player_value(idx, Position.POS_SP, row['Values'])
+                                if pp.get_stat(StatType.G_PIT) > pp.get_stat(StatType.GS_PIT) or pos == Position.POS_RP:
+                                    vc.set_player_value(idx, Position.POS_RP, row['Values'])
+                            else:
+                                vc.set_player_value(idx, pos, row['Values'])
+        else:
+            if player.is_two_way():
+                #Not a good way to handle this right now, just print the value again
+                for pos in player_services.get_player_positions(player, discrete=False):
+                    vc.set_player_value(idx, pos, row['Values'])
+            elif vc.get_output(CDT.HITTER_DOLLAR_PER_FOM) == -999:
+                # Don't have replacement levels, just set overall value
+                for pos in player_services.get_player_positions(player, discrete=False):
+                    vc.set_player_value(idx, pos, row['Values'])
+            else:
+                h_points = row['FOM']
+                for pos in player_services.get_player_positions(player, discrete=True):
+                    if pos in Position.get_offensive_pos():
+                        if not hit:
+                            vc.set_player_value(idx, Position.OFFENSE, row['Values'])
+                            u_val = (h_points - vc.get_output(CDT.REP_LEVEL_UTIL)) * vc.get_output(CDT.HITTER_DOLLAR_PER_FOM) + rep_val
+                            vc.set_player_value(idx, Position.POS_UTIL, u_val)
+                            hit = True
+                        if pos == Position.POS_MI:
+                            rl = min(vc.get_output(CDT.REP_LEVEL_2B), vc.get_output(CDT.REP_LEVEL_SS))
+                        elif pos == Position.POS_UTIL:
+                            continue
+                        else:
+                            rl = vc.get_output(CDT.pos_to_rep_level().get(pos))
+                        val = (h_points - rl) * vc.get_output(CDT.HITTER_DOLLAR_PER_FOM) + rep_val
+                        vc.set_player_value(idx, pos, val)
+
+                    if pos in Position.get_pitching_pos():
+                        if not pitch:
+                            vc.set_player_value(idx, Position.PITCHER, row['Values'])
+                            pitch = True
+                        #This is a difficult nut to crack. Ideally we would reverse engineer a SP and RP rate, but that
+                        #is likely imposible to do without having save/hold information. For now, to make sure we don't miss anyone,
+                        #put them in the db positions and if able check projections to see if they do any starting or relieving
+                        vc.set_player_value(idx, pos, row['Values'])
 
     save_calculation(vc)
     return vc
