@@ -435,8 +435,21 @@ class Step1(tk.Frame):
             self.sel_proj.set("No Projection Selected")
 
     def update_game_type(self, event):
-        i=1
-        #TODO: Implement this
+        game_type = ScoringFormat.name_to_enum_map().get(self.game_type.get())
+        if ScoringFormat.is_points_type(game_type):
+            self.hitter_basis_cb['values'] = ('P/G','P/PA')
+            self.pitcher_basis_cb['values'] = ('P/IP','P/G')
+            h_default = 'P/G'
+            p_default = 'P/IP'
+        else:
+            self.hitter_basis_cb['values'] = ('zScore', 'SGP')
+            self.pitcher_basis_cb['values'] = ('zScore', 'SGP')
+            h_default = 'zScore'
+            p_default = 'zScore'
+        if not self.hitter_basis.get() in self.hitter_basis_cb['values']:
+            self.hitter_basis.set(h_default)
+        if not self.pitcher_basis.get() in self.pitcher_basis_cb['values']:
+            self.pitcher_basis.set(p_default)
 
 class Step2(tk.Frame):
     def __init__(self, parent):
@@ -534,6 +547,20 @@ class Step2(tk.Frame):
                 self.pos_rep_lvl_sv[pos].set("--")
             else:
                 self.pos_rep_lvl_sv[pos].set("{:.2f}".format(rl))
+        
+        if ScoringFormat.is_points_type(vc.format):
+            self.hit_dollars_per_fom_lbl.set('Calculated $/PAR')
+            self.pitch_dollars_per_fom_lbl.set('Calculated $/PAR')
+        else:
+            if vc.hitter_basis == RankingBasis.ZSCORE:
+                self.hit_dollars_per_fom_lbl.set('Calculated $/z')
+            else:
+                self.hit_dollars_per_fom_lbl.set('Calculated $/SGP')
+            if vc.pitcher_basis == RankingBasis.ZSCORE:
+                self.pitch_dollars_per_fom_lbl.set('Calculated $/z')
+            else:
+                self.pitch_dollars_per_fom_lbl.set('Calculated $/SGP')
+
         return True
     
     def validate(self):
