@@ -136,7 +136,8 @@ class RankingBasis(Enum):
     PIP  = 2
     ZSCORE = 3
     SGP = 4,
-    FG_AC = 5
+    FG_AC = 5,
+    ZSCORE_PER_G = 6
 
     @classmethod
     def num_to_enum_map(self):
@@ -146,7 +147,8 @@ class RankingBasis(Enum):
             2 : self.PIP,
             3 : self.ZSCORE,
             4 : self.SGP,
-            5 : self.FG_AC
+            5 : self.FG_AC,
+            6 : self.ZSCORE_PER_G
         }
     
     @classmethod
@@ -156,6 +158,7 @@ class RankingBasis(Enum):
             'P/PA' : self.PPPA,
             'P/IP' : self.PIP,
             'zScore' : self.ZSCORE,
+            'zScore/G' : self.ZSCORE_PER_G,
             'SGP' : self.SGP
         }
     
@@ -166,8 +169,10 @@ class RankingBasis(Enum):
             self.PPPA : 'P/PA',
             self.PIP : 'P/IP',
             self.ZSCORE : 'zScore',
+            self.ZSCORE_PER_G : 'zScore/G',
             self.SGP : 'SGP',
             self.FG_AC : 'FG AC'
+            
         }
 
     
