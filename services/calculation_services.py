@@ -432,10 +432,11 @@ def init_outputs_from_upload(vc: ValueCalculation, df : DataFrame, game_type, re
     proj_derive = not has_required_data_for_rl(df, game_type)
     for index, row in sorted.iterrows():
         value = string_util.parse_dollar(row['Values'])
-        if value < rep_level_cost:
-            break
-        total_value += value
-        total_count += 1
+        above_rep = False
+        if value >= rep_level_cost:
+            total_value += value
+            total_count += 1
+            above_rep = True
         if id_type == IdType.OTTONEU:
             player = player_services.get_player_by_ottoneu_id(int(index))
         elif id_type == IdType.FANGRAPHS:
@@ -465,7 +466,7 @@ def init_outputs_from_upload(vc: ValueCalculation, df : DataFrame, game_type, re
                     else:
                         if pp.get_stat(StatType.GS_PIT) > 0:
                             pitch_role_good = False
-                if pitch_role_good:
+                if pitch_role_good and above_rep:
                     sample_list = sample_players.get(positions[0])
                     if sample_list is None:
                         sample_list = []
@@ -479,7 +480,7 @@ def init_outputs_from_upload(vc: ValueCalculation, df : DataFrame, game_type, re
                     else:
                         sample_list.append((value, player.index))
         elif not proj_derive:
-            if len(positions) == 1:
+            if len(positions) == 1 and above_rep:
                 sample_list = sample_players.get(positions[0])
                 if sample_list is None:
                     sample_list = []
@@ -497,14 +498,15 @@ def init_outputs_from_upload(vc: ValueCalculation, df : DataFrame, game_type, re
             if pos in Position.get_discrete_pitching_pos():
                 pitch = True
             if pos in pos_count:
-                pos_count[pos] = pos_count[pos] + 1
+                if above_rep:
+                    pos_count[pos] = pos_count[pos] + 1
             else:
                 pos_count[pos] = 1
-        if hit and pitch:
+        if hit and pitch and above_rep:
             #Two way is hard...we'll split the value in half. It's close enough. It's just fro split anyways
             hit_value += value/2
             total_hit_count += 1
-        elif hit:
+        elif hit and above_rep:
             hit_value += value
             total_hit_count += 1
     
@@ -667,8 +669,8 @@ def save_calculation_from_file(vc : ValueCalculation, df : DataFrame, pd=None, r
                 raise Exception(f'Unhandled pitching basis {vc.pitcher_basis}')
         elif ScoringFormat.is_points_type(vc.format):
             h_points = row['Points']
+            h_pt = row['H_PT']
             if pop_proj:
-                h_pt = row['H_PT']
                 p_pt = row['P_PT']
                 pp = PlayerProjection()
                 pp.player = player
@@ -691,19 +693,20 @@ def save_calculation_from_file(vc : ValueCalculation, df : DataFrame, pd=None, r
                 for pos in player_services.get_player_positions(player, discrete=False):
                     vc.set_player_value(idx, pos, row['Values'])
             else:
+                mi_rl = min(vc.get_output(CDT.REP_LEVEL_2B), vc.get_output(CDT.REP_LEVEL_SS))
                 for pos in player_services.get_player_positions(player, discrete=True):
                     if pos in Position.get_offensive_pos():
                         if not hit:
                             vc.set_player_value(idx, Position.OFFENSE, row['Values'])
                             u_val = (h_points - vc.get_output(CDT.REP_LEVEL_UTIL) * h_pt) * vc.get_output(CDT.HITTER_DOLLAR_PER_FOM)
                             vc.set_player_value(idx, Position.POS_UTIL, u_val)
+                            if player.pos_eligible(Position.POS_MI):
+                                mi_val = (h_points - mi_rl * h_pt) * vc.get_output(CDT.HITTER_DOLLAR_PER_FOM)
+                                vc.set_player_value(idx, Position.POS_MI, mi_val)
                             hit = True
-                        if pos == Position.POS_MI:
-                            rl = min(vc.get_output(CDT.REP_LEVEL_2B), vc.get_output(CDT.REP_LEVEL_SS))
                         elif pos == Position.POS_UTIL:
                             continue
-                        else:
-                            rl = vc.get_output(CDT.pos_to_rep_level().get(pos))
+                        rl = vc.get_output(CDT.pos_to_rep_level().get(pos))
                         val = (h_points - rl * h_pt) * vc.get_output(CDT.HITTER_DOLLAR_PER_FOM)
                         vc.set_player_value(idx, pos, val)
 
@@ -736,6 +739,7 @@ def save_calculation_from_file(vc : ValueCalculation, df : DataFrame, pd=None, r
                     vc.set_player_value(idx, pos, row['Values'])
             else:
                 h_points = row['FOM']
+                mi_rl = min(vc.get_output(CDT.REP_LEVEL_2B), vc.get_output(CDT.REP_LEVEL_SS))
                 for pos in player_services.get_player_positions(player, discrete=True):
                     if pos in Position.get_offensive_pos():
                         if not hit:
@@ -745,13 +749,16 @@ def save_calculation_from_file(vc : ValueCalculation, df : DataFrame, pd=None, r
                             else:
                                 u_val = (h_points - vc.get_output(CDT.REP_LEVEL_UTIL)) * vc.get_output(CDT.HITTER_DOLLAR_PER_FOM) + rep_val
                             vc.set_player_value(idx, Position.POS_UTIL, u_val)
+                            if player.pos_eligible(Position.POS_MI):
+                                if vc.hitter_basis == RankingBasis.ZSCORE_PER_G:
+                                    mi_val = (h_points - mi_rl) * (row['H_PT'] / 150) * vc.get_output(CDT.HITTER_DOLLAR_PER_FOM) + rep_val
+                                else:
+                                    mi_val = (h_points - mi_rl) * vc.get_output(CDT.HITTER_DOLLAR_PER_FOM) + rep_val
+                                vc.set_player_value(idx, Position.POS_MI, mi_val)
                             hit = True
-                        if pos == Position.POS_MI:
-                            rl = min(vc.get_output(CDT.REP_LEVEL_2B), vc.get_output(CDT.REP_LEVEL_SS))
                         elif pos == Position.POS_UTIL:
                             continue
-                        else:
-                            rl = vc.get_output(CDT.pos_to_rep_level().get(pos))
+                        rl = vc.get_output(CDT.pos_to_rep_level().get(pos))
                         if vc.hitter_basis == RankingBasis.ZSCORE_PER_G:
                             val = (h_points - rl) * (row['H_PT'] / 150) * vc.get_output(CDT.HITTER_DOLLAR_PER_FOM) + rep_val
                         else:
