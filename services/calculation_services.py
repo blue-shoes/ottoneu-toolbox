@@ -251,6 +251,10 @@ def normalize_value_upload(df : DataFrame, game_type:ScoringFormat):
                 col_map[col] = 'ERA_FOM'
             if 'K_Z' in col.upper() or 'K_SGP' in col.upper():
                 col_map[col] = 'K_FOM'
+            if 'G' == col.upper() or 'GAME' in col.upper() or 'PA' == col.upper():
+                col_map[col] = 'H_PT'
+            if 'IP' == col.upper() or 'GS' == col.upper():
+                col_map[col] = 'P_PT'
         
         df.rename(columns=col_map, inplace=True)
         validate_msg = ''
@@ -327,7 +331,7 @@ def has_required_data_for_rl(df:DataFrame, game_type:ScoringFormat):
     if ScoringFormat.is_points_type(game_type):
         return set(['Points','H_PT','P_PT']).issubset(df.columns)
     elif game_type == ScoringFormat.OLD_SCHOOL_5X5:
-        return set(['R_FOM','HR_FOM','RBI_FOM','AVG_FOM','SB_FOM','W_FOM','SV_FOM','WHIP_FOM','ERA_FOM','K_FOM'])
+        return set(['R_FOM','HR_FOM','RBI_FOM','AVG_FOM','SB_FOM','W_FOM','SV_FOM','WHIP_FOM','ERA_FOM','K_FOM']).issubset(df.columns)
     else:
         raise Exception(f'ScoringFormat {game_type} not currently implemented')
 
@@ -547,9 +551,9 @@ def init_outputs_from_upload(vc: ValueCalculation, df : DataFrame, game_type, re
                         else:
                             raise Exception(f'Pitcher basis {vc.pitcher_basis.value} not implemented')
             else:
-                hit_dol_per_fom = 0
-                pitch_dol_per_fom = 0
-                vc.set_output(CDT.pos_to_rep_level().get(pos), rl)
+                hit_dol_per_fom = -999
+                pitch_dol_per_fom = -999
+                vc.set_output(CDT.pos_to_rep_level().get(pos), -999)
                 continue
         else:
             if ScoringFormat.is_points_type(game_type):
@@ -587,7 +591,7 @@ def init_outputs_from_upload(vc: ValueCalculation, df : DataFrame, game_type, re
 def calc_rep_levels_from_values(vals, game_type, fom, pt, rep_lvl_dol):
     if len(vals) < 4 or len(fom) < 4:
         raise Exception('calc_rep_levels_from_values requires input lists of at least four entries')
-    if ScoringFormat.is_points_type(game_type):
+    if ScoringFormat.is_points_type(game_type) or (game_type == ScoringFormat.OLD_SCHOOL_5X5 and len(pt) == 4):
         #Calcs done algebraicly from equation (Value1 - Value2) = Dol/FOM * [(Points1 - rl * Games1) - (Points2 - rl * Games2)]
         numer = (vals[0] - vals[1])*(fom[2]-fom[3])-(vals[2]-vals[3])*(fom[0] - fom[1])
         denom = (vals[0] - vals[1])*(pt[2] - pt[3]) - (vals[2] - vals[3])*(pt[0] - pt[1])
@@ -648,6 +652,8 @@ def save_calculation_from_file(vc : ValueCalculation, df : DataFrame, pd=None, r
                 h_pt = pp.get_stat(StatType.G_HIT)
             elif vc.hitter_basis == RankingBasis.PPPA:
                 h_pt = pp.get_stat(StatType.PA)
+            elif not ScoringFormat.is_points_type(vc.format):
+                h_pt = pp.get_stat(StatType.G_HIT)
             else:
                 raise Exception(f'Unhandled hitting basis {vc.hitter_basis}')
             p_points = get_points(pp, Position.PITCHER, sabr)
@@ -655,6 +661,8 @@ def save_calculation_from_file(vc : ValueCalculation, df : DataFrame, pd=None, r
                 p_pt = pp.get_stat(StatType.IP)
             elif vc.pitcher_basis == RankingBasis.PPG:
                 p_pt = pp.get_stat(StatType.G_PIT)
+            elif not ScoringFormat.is_points_type(vc.format):
+                p_pt = pp.get_stat(StatType.IP)
             else:
                 raise Exception(f'Unhandled pitching basis {vc.pitcher_basis}')
         elif ScoringFormat.is_points_type(vc.format):
@@ -732,7 +740,10 @@ def save_calculation_from_file(vc : ValueCalculation, df : DataFrame, pd=None, r
                     if pos in Position.get_offensive_pos():
                         if not hit:
                             vc.set_player_value(idx, Position.OFFENSE, row['Values'])
-                            u_val = (h_points - vc.get_output(CDT.REP_LEVEL_UTIL)) * vc.get_output(CDT.HITTER_DOLLAR_PER_FOM) + rep_val
+                            if vc.hitter_basis == RankingBasis.ZSCORE_PER_G:
+                                u_val = (h_points - vc.get_output(CDT.REP_LEVEL_UTIL)) * (row['H_PT'] / 150) * vc.get_output(CDT.HITTER_DOLLAR_PER_FOM) + rep_val
+                            else:
+                                u_val = (h_points - vc.get_output(CDT.REP_LEVEL_UTIL)) * vc.get_output(CDT.HITTER_DOLLAR_PER_FOM) + rep_val
                             vc.set_player_value(idx, Position.POS_UTIL, u_val)
                             hit = True
                         if pos == Position.POS_MI:
@@ -741,7 +752,10 @@ def save_calculation_from_file(vc : ValueCalculation, df : DataFrame, pd=None, r
                             continue
                         else:
                             rl = vc.get_output(CDT.pos_to_rep_level().get(pos))
-                        val = (h_points - rl) * vc.get_output(CDT.HITTER_DOLLAR_PER_FOM) + rep_val
+                        if vc.hitter_basis == RankingBasis.ZSCORE_PER_G:
+                            val = (h_points - rl) * (row['H_PT'] / 150) * vc.get_output(CDT.HITTER_DOLLAR_PER_FOM) + rep_val
+                        else:
+                            val = (h_points - rl) * vc.get_output(CDT.HITTER_DOLLAR_PER_FOM) + rep_val
                         vc.set_player_value(idx, pos, val)
 
                     if pos in Position.get_pitching_pos():
@@ -760,7 +774,7 @@ def delete_values_by_id(values_id):
     with Session() as session:
         val = session.query(ValueCalculation).filter(ValueCalculation.index == values_id).first()
         proj = None
-        if val.projection.type == ProjectionType.VALUE_DERIVED:
+        if val.projection is not None and val.projection.type == ProjectionType.VALUE_DERIVED:
             proj = val.projection
         session.delete(val)
         if proj is not None:
