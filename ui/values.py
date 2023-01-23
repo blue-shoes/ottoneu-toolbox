@@ -120,6 +120,7 @@ class ValuesCalculation(tk.Frame):
             self.safe_set_input_value(CDT.SP_IP_TO_RANK, self.min_sp_ip, True)
             self.safe_set_input_value(CDT.RP_IP_TO_RANK, self.min_rp_ip, True)
             self.safe_set_input_value(CDT.REP_LEVEL_SCHEME, self.rep_level_scheme, True, RepLevelScheme.STATIC_REP_LEVEL.value)
+            self.update_rep_level_scheme()
             if self.rep_level_scheme.get() == RepLevelScheme.STATIC_REP_LEVEL.value:
                 for pos in Position.get_discrete_offensive_pos() + Position.get_discrete_pitching_pos():
                     self.safe_set_input_value(CDT.pos_to_rep_level().get(pos), self.rep_level_dict[pos.value])
@@ -146,7 +147,7 @@ class ValuesCalculation(tk.Frame):
         
     
     def safe_set_value(self, val, string_var, integer=False, default='--', format='{:.3f}'):
-        if val is None:
+        if val is None or val == -999:
             string_var.set(default)
         elif integer:
             string_var.set(int(val))
