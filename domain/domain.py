@@ -168,6 +168,10 @@ class ValueCalculation(Base):
             player_dict[pv.position] = pv
 
     def set_input(self, data_type, value):
+        if value == '--':
+            value = -999
+        if isinstance(value, str):
+            value = float(value)
         for inp in self.inputs:
             if inp.data_type == data_type:
                 inp.value = value
@@ -184,6 +188,10 @@ class ValueCalculation(Base):
         return default
     
     def set_output(self, data_type, value):
+        if value == '--':
+            value = -999
+        if isinstance(value, str):
+            value = float(value)
         for data in self.data:
             if data.data_type == data_type:
                 data.value = value
