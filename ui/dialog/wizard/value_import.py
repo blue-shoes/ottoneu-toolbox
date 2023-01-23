@@ -113,17 +113,17 @@ class Wizard(wizard.Wizard):
                 self.value = calculation_services.get_values_from_fg_auction_files(self.value, hit_df, pitch_df, int(self.step1_fg.rep_level_value_str.get()),progd)
             else:
                 for pos in Position.get_discrete_offensive_pos() + Position.get_discrete_pitching_pos():
-                    self.value.set_input(CDT.pos_to_rep_level()[pos], float(self.step2.pos_rep_lvl_sv[pos].get()))
-                    self.value.set_output(CDT.pos_to_rep_level()[pos], float(self.step2.pos_rep_lvl_sv[pos].get()))
+                    self.value.set_input(CDT.pos_to_rep_level()[pos], self.step2.pos_rep_lvl_sv[pos].get())
+                    self.value.set_output(CDT.pos_to_rep_level()[pos], self.step2.pos_rep_lvl_sv[pos].get())
                 
-                self.value.set_output(CDT.HITTER_DOLLAR_PER_FOM, float(self.step2.hit_dollars_per_fom_val.get()))
-                self.value.set_output(CDT.PITCHER_DOLLAR_PER_FOM, float(self.step2.pitch_dollars_per_fom_val.get()))
+                self.value.set_output(CDT.HITTER_DOLLAR_PER_FOM, self.step2.hit_dollars_per_fom_val.get())
+                self.value.set_output(CDT.PITCHER_DOLLAR_PER_FOM, self.step2.pitch_dollars_per_fom_val.get())
                 self.value.name = self.step1.name_tv.get()
                 self.value.description = self.step1.desc_tv.get()
                 self.value.set_input(CDT.REP_LEVEL_SCHEME, float(RepLevelScheme.STATIC_REP_LEVEL.value))
                 progd.set_task_title('Uploading')
                 progd.set_completion_percent(15)
-                self.value = calculation_services.save_calculation_from_file(self.value, self.step1.df, progd)
+                self.value = calculation_services.save_calculation_from_file(self.value, self.step1.df, progd, rep_val=int(self.step1.rep_level_value_str.get()))
             progd.set_task_title("Updating")
             progd.set_completion_percent(80)
             self.parent.value = calculation_services.load_calculation(self.value.index)
@@ -377,6 +377,12 @@ class Step1(tk.Frame):
         return file
     
     def on_show(self):
+        if self.parent.step0.value_type.get() == ValueTypeEnum.OTTOVALUES.value:
+            self.hitter_basis.set('P/G')
+            self.hitter_basis_cb.configure(state='disable')
+            self.pitcher_basis.set('P/IP')
+            self.pitcher_basis_cb.configure(state='disable')
+            self.rep_level_value_str.set('2')
         return True
     
     def validate(self):
@@ -442,10 +448,10 @@ class Step1(tk.Frame):
             h_default = 'P/G'
             p_default = 'P/IP'
         else:
-            self.hitter_basis_cb['values'] = ('zScore', 'SGP')
-            self.pitcher_basis_cb['values'] = ('zScore', 'SGP')
-            h_default = 'zScore'
-            p_default = 'zScore'
+            self.hitter_basis_cb['values'] = ('zScore', 'zScore/G', 'SGP')
+            self.pitcher_basis_cb['values'] = ('zScore', 'zScore/G', 'SGP')
+            h_default = 'zScore/G'
+            p_default = 'zScore/G'
         if not self.hitter_basis.get() in self.hitter_basis_cb['values']:
             self.hitter_basis.set(h_default)
         if not self.pitcher_basis.get() in self.pitcher_basis_cb['values']:
@@ -467,6 +473,7 @@ class Step2(tk.Frame):
         row = 2
         self.pos_rostered_sv = {}
         self.pos_rep_lvl_sv = {}
+        self.pos_rep_lvl_entry = {}
         for pos in Position.get_discrete_offensive_pos():
             ttk.Label(self, text=pos.value).grid(row=row, column=0)
             pos_rep = StringVar()
@@ -476,7 +483,9 @@ class Step2(tk.Frame):
             rep_lvl = StringVar()
             rep_lvl.set("--")
             self.pos_rep_lvl_sv[pos] = rep_lvl
-            ttk.Entry(self, textvariable=rep_lvl).grid(row=row, column=2)
+            pos_entry = ttk.Entry(self, textvariable=rep_lvl)
+            pos_entry.grid(row=row, column=2)
+            self.pos_rep_lvl_entry[pos] = pos_entry
             row += 1
         
         self.hit_dollars_per_fom_lbl = StringVar()
@@ -485,7 +494,8 @@ class Step2(tk.Frame):
 
         self.hit_dollars_per_fom_val = StringVar()
         self.hit_dollars_per_fom_val.set('$--')
-        ttk.Entry(self, textvariable=self.hit_dollars_per_fom_val).grid(row=row,column=1)
+        self.hit_dollars_entry = ttk.Entry(self, textvariable=self.hit_dollars_per_fom_val)
+        self.hit_dollars_entry.grid(row=row,column=1)
 
         row += 1
         
@@ -507,7 +517,9 @@ class Step2(tk.Frame):
             rep_lvl = StringVar()
             rep_lvl.set("--")
             self.pos_rep_lvl_sv[pos] = rep_lvl
-            ttk.Entry(self, textvariable=rep_lvl).grid(row=row, column=2)
+            pos_entry = ttk.Entry(self, textvariable=rep_lvl)
+            pos_entry.grid(row=row, column=2)
+            self.pos_rep_lvl_entry[pos] = pos_entry
             row += 1
         
         self.pitch_dollars_per_fom_lbl = StringVar()
@@ -516,16 +528,25 @@ class Step2(tk.Frame):
 
         self.pitch_dollars_per_fom_val = StringVar()
         self.pitch_dollars_per_fom_val.set('$--')
-        ttk.Entry(self, textvariable=self.pitch_dollars_per_fom_val).grid(row=row,column=1)
+        self.pitch_dollars_entry = ttk.Entry(self, textvariable=self.pitch_dollars_per_fom_val)
+        self.pitch_dollars_entry.grid(row=row,column=1)
 
     def on_show(self):
         vc = self.parent.value
         if vc.get_output(CDT.HITTER_DOLLAR_PER_FOM) is None:
-            self.hit_dollars_per_fom_val.set('---')
-            self.pitch_dollars_per_fom_val.set('---')
+            self.hit_dollars_per_fom_val.set('-999')
+            self.pitch_dollars_per_fom_val.set('-999')
         else:
             self.hit_dollars_per_fom_val.set("{:.3f}".format(vc.get_output(CDT.HITTER_DOLLAR_PER_FOM)))
             self.pitch_dollars_per_fom_val.set("{:.3f}".format(vc.get_output(CDT.PITCHER_DOLLAR_PER_FOM)))
+        if self.hit_dollars_per_fom_val.get() == '-999' or vc.get_output(CDT.HITTER_DOLLAR_PER_FOM) == -999:
+            self.hit_dollars_entry.configure(state='disable')
+        else:
+            self.hit_dollars_entry.configure(state='enable')
+        if self.pitch_dollars_per_fom_val.get() == '-999' or vc.get_output(CDT.PITCHER_DOLLAR_PER_FOM) == -999:
+            self.pitch_dollars_entry.configure(state='disable')
+        else:
+            self.pitch_dollars_entry.configure(state='enable')
         hitter_rb = RankingBasis.enum_to_display_dict()[vc.hitter_basis]
         self.bat_rep_level_lbl.set(f"Rep. Level ({hitter_rb})")
         pitcher_rb = RankingBasis.enum_to_display_dict()[vc.pitcher_basis]
@@ -535,18 +556,22 @@ class Step2(tk.Frame):
             if pos != Position.POS_UTIL:   
                 self.pos_rostered_sv[pos].set(int(vc.get_output(CDT.pos_to_num_rostered()[pos])))
             rl = vc.get_output(CDT.pos_to_rep_level()[pos])
-            if rl is None:
+            if rl is None or rl == -999:
                 self.pos_rep_lvl_sv[pos].set("--")
+                self.pos_rep_lvl_entry[pos].configure(state='disable')
             else:
                 self.pos_rep_lvl_sv[pos].set("{:.2f}".format(rl))
+                self.pos_rep_lvl_entry[pos].configure(state='enable')
         
         for pos in Position.get_discrete_pitching_pos():
             self.pos_rostered_sv[pos].set(int(vc.get_output(CDT.pos_to_num_rostered()[pos])))
             rl = vc.get_output(CDT.pos_to_rep_level()[pos])
-            if rl is None:
+            if rl is None or rl == -999:
                 self.pos_rep_lvl_sv[pos].set("--")
+                self.pos_rep_lvl_entry[pos].configure(state='disable')
             else:
                 self.pos_rep_lvl_sv[pos].set("{:.2f}".format(rl))
+                self.pos_rep_lvl_entry[pos].configure(state='enable')
         
         if ScoringFormat.is_points_type(vc.format):
             self.hit_dollars_per_fom_lbl.set('Calculated $/PAR')
@@ -554,10 +579,14 @@ class Step2(tk.Frame):
         else:
             if vc.hitter_basis == RankingBasis.ZSCORE:
                 self.hit_dollars_per_fom_lbl.set('Calculated $/z')
+            elif vc.hitter_basis == RankingBasis.ZSCORE_PER_G:
+                self.hit_dollars_per_fom_lbl.set('Calculated $/(z/G)')
             else:
                 self.hit_dollars_per_fom_lbl.set('Calculated $/SGP')
             if vc.pitcher_basis == RankingBasis.ZSCORE:
                 self.pitch_dollars_per_fom_lbl.set('Calculated $/z')
+            elif vc.pitcher_basis == RankingBasis.ZSCORE_PER_G:
+                self.pitch_dollars_per_fom_lbl.set('Calculated $/(z/G)')
             else:
                 self.pitch_dollars_per_fom_lbl.set('Calculated $/SGP')
 
