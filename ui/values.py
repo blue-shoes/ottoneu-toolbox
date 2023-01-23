@@ -946,6 +946,22 @@ class ValuesCalculation(tk.Frame):
     def has_errors(self):
         errors = []
         bad_rep_level = []
+
+        game_type = ScoringFormat.name_to_enum_map().get(self.game_type.get())
+        if not ScoringFormat.is_points_type(game_type):
+            errors.append(f"Calculations for {self.game_type.get()} not currently supported.")
+        
+        if self.projection is None:
+            errors.append("No projection selected. Please select a projection before calculating.")
+        elif self.projection.type == ProjectionType.VALUE_DERIVED:
+            errors.append(f"Projection created from value upload cannot be used for calculations. Select a different projetion.")
+        elif ScoringFormat.is_points_type(game_type) and not self.projection.valid_points:
+            errors.append(f'Selected projection does not have required columns for points calculations. Please select another projection')
+        elif game_type == ScoringFormat.OLD_SCHOOL_5X5 and not self.projection.valid_5x5:
+            errors.append(f'Selected projection does not have required columns for 5x5 calculations. Please select another projection')
+        elif game_type == ScoringFormat.CLASSIC_4X4 and not self.projection.valid_4x4:
+            errors.append(f'Selected projection does not have required columns for 4x4 calculations. Please select another projection')
+
         if self.rep_level_scheme.get() == RepLevelScheme.NUM_ROSTERED.value:
             for key, value in self.rep_level_dict.items():
                 if not value.get().isnumeric():
