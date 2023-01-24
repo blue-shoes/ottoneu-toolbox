@@ -8,10 +8,9 @@ from io import StringIO
 import datetime
 from decimal import Decimal
 from re import sub
-from domain.enum import ScoringFormat
 
 from scrape import scrape_base
-from domain.exception import OttoneuException
+from scrape.exceptions import OttoneuException
 
 class Scrape_Ottoneu(scrape_base.Scrape_Base):
 
@@ -58,8 +57,9 @@ class Scrape_Ottoneu(scrape_base.Scrape_Base):
     def parse_header(self, row):
         return [str(x.string) for x in row.find_all('th')]
     
-    def get_avg_salary_ds(self, force_download=True, game_type=ScoringFormat.ALL):
-        if game_type == ScoringFormat.ALL:
+    def get_avg_salary_ds(self, game_type : int = None) -> DataFrame:
+        '''Scrapes the average salary page for the given game type (default all game types) and returns a DataFrame with the available data. Index is Ottoneu Id'''
+        if game_type is None or game_type == 0:
             avg_salary_url = 'https://ottoneu.fangraphs.com/averageValues?export=xml'
         else:
             avg_salary_url = f'https://ottoneu.fangraphs.com/averageValues?export=xml&gameType={game_type.value}'
