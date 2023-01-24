@@ -2,6 +2,7 @@ import configparser
 import os
 from os import path
 import pandas as pd
+from pandas import DataFrame
 from scrape import scrape_base
 from selenium.webdriver.common.by import By
 
@@ -13,7 +14,7 @@ class Scrape_Fg(scrape_base.Scrape_Base):
             os.mkdir('data_dirs')
 
 
-    def getLeaderboardDataset(self, page, csv_name, force_download=False, player=True):
+    def getLeaderboardDataset(self, page, csv_name, player=True) -> DataFrame:
         #Create filepath info
         subdir = 'data_dirs/leaderboard'
         dirname = os.path.abspath(os.path.join(os.path.dirname( __file__ ), '..'))
@@ -38,7 +39,8 @@ class Scrape_Fg(scrape_base.Scrape_Base):
             dataframe.index = dataframe.index.astype(str, copy = False)
         return dataframe
 
-    def getProjectionDataset(self, page, csv_name, force_download=False, player=True):
+    def getProjectionDataset(self, url, csv_name, player=True) -> DataFrame:
+        '''Retrieves projection at url from FanGraphs using Selenium and returns as DataFrame.'''
         #Create filepath info
         subdir = 'tmp'
         if not path.exists(subdir):
@@ -49,7 +51,7 @@ class Scrape_Fg(scrape_base.Scrape_Base):
             self.setupDriver()
             self.setup_fg_login()
         #Use driver to get dataset
-        dataframe = self.getDataset(page, 'data-export', filepath, by_type=By.CLASS_NAME)
+        dataframe = self.getDataset(url, 'data-export', filepath, by_type=By.CLASS_NAME)
         os.remove(filepath)
         #If the dataset is player based (not league based), reindex to the FG player id
         if player:
