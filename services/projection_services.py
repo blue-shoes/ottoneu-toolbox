@@ -2,7 +2,7 @@ from pandas import DataFrame
 from domain.domain import PlayerProjection, Projection, ProjectionData
 from scrape import scrape_fg
 from domain.enum import ProjectionType, StatType, IdType
-from domain.exception import FangraphsException, InputException
+from domain.exception import InputException
 from datetime import datetime
 from services import player_services, browser_services
 from dao.session import Session
@@ -46,9 +46,6 @@ def download_projections(projection, ros=False, dc_pt=False, progress=None):
 
     finally:
         fg_scraper.close()
-    
-    if len(pos_proj) == 0 or len(pitch_proj) == 0:
-        raise FangraphsException('Projection set does not exist')
     
     return [pos_proj, pitch_proj]
 

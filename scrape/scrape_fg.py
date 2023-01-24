@@ -4,6 +4,7 @@ from os import path
 import pandas as pd
 from pandas import DataFrame
 from scrape import scrape_base
+from scrape.exceptions import FangraphsException
 from selenium.webdriver.common.by import By
 
 class Scrape_Fg(scrape_base.Scrape_Base):
@@ -52,6 +53,8 @@ class Scrape_Fg(scrape_base.Scrape_Base):
         if player:
             dataframe.set_index("PlayerId", inplace=True)
             dataframe.index = dataframe.index.astype(str, copy = False)
+        if len(dataframe) == 0:
+            raise FangraphsException('Projection does not exist')
         return dataframe
 
     def setup_fg_login(self) -> None:
