@@ -520,7 +520,7 @@ class Preference(str, Enum):
     DOCK_DRAFT_PLAYER_SEARCH = 'dock_draft_player_search',
     DEFAULT_BROWSER = 'default_proj_browser'
 
-class Browsers(str, Enum):
+class Browser(str, Enum):
     CHROME = 'ChromeHTML',
     FIREFOX = 'FirefoxURL',
     EDGE = 'MSEdgeHTM'
