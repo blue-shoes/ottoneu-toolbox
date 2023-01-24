@@ -59,13 +59,7 @@ class DraftTool(tk.Frame):
 
         self.calculate_extra_value()
 
-        pd = progress.ProgressDialog(self, title='Downloading latest salary information...')
-        pd.increment_completion_percent(10)
-
-        format_salary_refresh = salary_services.get_last_refresh(self.controller.league.format)
-        if format_salary_refresh is None or (datetime.now() - format_salary_refresh.last_refresh) > timedelta(days=1):
-            salary_services.update_salary_info(format=self.league.format)
-        pd.complete()
+        self.salary_information_refresh()
 
         self.draft = draft_services.get_draft_by_league(self.controller.league.index)
 
@@ -79,6 +73,15 @@ class DraftTool(tk.Frame):
 
     def leave_page(self):
         return True
+    
+    def salary_information_refresh(self):
+        pd = progress.ProgressDialog(self, title='Downloading latest salary information...')
+        pd.increment_completion_percent(10)
+
+        format_salary_refresh = salary_services.get_last_refresh(self.controller.league.format)
+        if format_salary_refresh is None or (datetime.now() - format_salary_refresh.last_refresh) > timedelta(days=1):
+            salary_services.update_salary_info(format=self.league.format)
+        pd.complete()
 
     def calculate_extra_value(self):
         captured_value = 0
@@ -809,6 +812,7 @@ class DraftTool(tk.Frame):
             self.league = self.controller.league
             self.league_text_var.set(f'League {self.controller.league.name} Draft')
             self.draft = draft_services.get_draft_by_league(self.controller.league.index)
+            self.salary_information_refresh()
             self.initialize_draft(same_values=True)
     
     def value_change(self):
