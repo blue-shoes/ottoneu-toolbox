@@ -54,7 +54,7 @@ class Scrape_Ottoneu(scrape_base.Scrape_Base):
         if game_type is None or game_type == 0:
             avg_salary_url = 'https://ottoneu.fangraphs.com/averageValues?export=xml'
         else:
-            avg_salary_url = f'https://ottoneu.fangraphs.com/averageValues?export=xml&gameType={game_type.value}'
+            avg_salary_url = f'https://ottoneu.fangraphs.com/averageValues?export=xml&gameType={game_type}'
         #response = requests.get(avg_salary_url)
         #salary_soup = Soup(response.text, 'xml')
         salary_soup = self.get_soup(avg_salary_url, True)
