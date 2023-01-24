@@ -3,6 +3,7 @@ import configparser
 import os
 
 from domain.enum import Preference as Pref, Browsers
+from scrape.exceptions import BrowserTypeException
 
 def get_desired_browser():
     preferences = configparser.ConfigParser()
@@ -19,6 +20,6 @@ def get_desired_browser():
         return Browsers.CHROME
     if browser_pref == 'MSEdgeHTM':
         return Browsers.EDGE
-    raise Exception('Unknown browser type. Please use Chrome, Firefox, or Microsoft Edge')
+    raise BrowserTypeException('Unknown browser type. Please use Chrome, Firefox, or Microsoft Edge')
 
     
