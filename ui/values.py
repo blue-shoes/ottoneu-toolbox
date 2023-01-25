@@ -962,6 +962,10 @@ class ValuesCalculation(tk.Frame):
             errors.append(f'Selected projection does not have required columns for 5x5 calculations. Please select another projection')
         elif game_type == ScoringFormat.CLASSIC_4X4 and not self.projection.valid_4x4:
             errors.append(f'Selected projection does not have required columns for 4x4 calculations. Please select another projection')
+        
+        if self.projection is not None:
+            if self.projection.ros and self.rep_level_scheme.get == RepLevelScheme.FILL_GAMES.value:
+                errors.append(f'Fill Games option not currently supported for RoS projection sets. Please pick another replacement level scheme.')
 
         if self.rep_level_scheme.get() == RepLevelScheme.NUM_ROSTERED.value:
             for key, value in self.rep_level_dict.items():
