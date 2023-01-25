@@ -56,6 +56,7 @@ class DraftTool(tk.Frame):
         self.league = self.controller.league
         self.value_calculation = self.controller.value_calculation
         self.league_text_var.set(f'{self.controller.league.name} Draft')
+        self.values_name.set(f'Selected Values: {self.value_calculation.name}')
 
         self.calculate_extra_value()
 
@@ -182,6 +183,7 @@ class DraftTool(tk.Frame):
         tt.add_scrollbar()
     
     def create_search(self):
+        self.values_name = StringVar()
         if self.controller.preferences.getboolean('Draft', Pref.DOCK_DRAFT_PLAYER_SEARCH, fallback=False):
             monitor_frame = ttk.Frame(self)
             monitor_frame.grid(row=1, column=0, columnspan=2)
@@ -237,6 +239,12 @@ class DraftTool(tk.Frame):
 
             self.inflation_lbl = ttk.Label(search_frame, textvariable=self.inflation_str_var)
             self.inflation_lbl.grid(column=0,row=5)
+
+            if self.value_calculation is None:
+                self.values_name.set('No value calculation selected')
+            else:
+                self.values_name.set(f'Selected Values: {self.value_calculation.name}')
+            ttk.Label(search_frame, textvariable=self.values_name).grid(row=6, column=0, sticky=tk.NW)
 
             f = ttk.Frame(self)
             f.grid(column=1,row=1)
@@ -818,6 +826,7 @@ class DraftTool(tk.Frame):
     def value_change(self):
         if self.controller.value_calculation is not None and self.value_calculation != self.controller.value_calculation:
             self.value_calculation = self.controller.value_calculation
+            self.values_name.set(f'Selected Values: {self.value_calculation.name}')
             self.initialize_draft()
 
 def main():
