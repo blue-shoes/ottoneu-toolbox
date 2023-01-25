@@ -304,7 +304,11 @@ class ArmPoint():
 
     def get_pitcher_rep_level(self, df, pos):
         #Filter DataFrame to just the position of interest
-        pitch_df = df.loc[df[f'IP {pos}'] > 0]
+        if pos == 'RP':
+            min_ip = self.min_rp_ip
+        else:
+            min_ip = self.min_sp_ip
+        pitch_df = df.loc[df[f'IP {pos}'] >= min_ip]
         if self.rank_basis == RankingBasis.PIP:
             sort_col = f"P/IP {pos}"
         elif self.rank_basis == RankingBasis.PPG:
