@@ -3,6 +3,7 @@ from tkinter import *
 from tkinter import messagebox as mb
 from tkinter.messagebox import CANCEL, OK 
 import configparser
+import keyring
 
 class Dialog(tk.Toplevel):
 
@@ -52,7 +53,7 @@ class Dialog(tk.Toplevel):
         if not self.preferences.has_section('fangraphs-config'):
             self.preferences.add_section('fangraphs-config')
         self.preferences.set('fangraphs-config', 'username', self.name_tv.get())
-        self.preferences.set('fangraphs-config', 'password', self.password_tv.get())
+        keyring.set_password('ottoneu-draft-tool', self.name_tv.get(), self.password_tv.get())
         with open('conf/fangraphs.conf', 'w') as fd:
             self.preferences.write(fd)
         self.destroy()

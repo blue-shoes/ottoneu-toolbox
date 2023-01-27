@@ -4,6 +4,8 @@ from os import path
 import pandas as pd
 from scrape import scrape_base
 from selenium.webdriver.common.by import By
+import keyring
+from domain.exception import FangraphsException
 
 class Scrape_Fg(scrape_base.Scrape_Base):
 
@@ -64,9 +66,9 @@ class Scrape_Fg(scrape_base.Scrape_Base):
         cparser = configparser.RawConfigParser()
         cparser.read('conf/fangraphs.conf')
         uname = cparser.get('fangraphs-config', 'username', fallback=None)
-        pword = cparser.get('fangraphs-config', 'password', fallback=None)
+        pword = keyring.get_password('ottoneu-draft-tool', uname)
         if uname is None or pword is None:
-            return
+            raise FangraphsException('Missing username and/or password')
         self.driver.get("https://blogs.fangraphs.com/wp-login.php")
         self.driver.find_element(By.ID, "user_login").send_keys(uname)
         self.driver.find_element(By.ID, "user_pass").send_keys(pword)
