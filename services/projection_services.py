@@ -143,6 +143,8 @@ def save_projection(projection, projs, id_type, progress=None):
                             data = ProjectionData()
                             data.stat_type = stat_type
                             data.stat_value = row[col]
+                            if data.stat_value is None or math.isnan(data.stat_value):
+                                data.stat_value = 0
                             player_proj.projection_data.append(data)
                 
                 inc_count += 1
