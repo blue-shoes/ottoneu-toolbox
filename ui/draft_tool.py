@@ -988,14 +988,14 @@ class DraftTool(tk.Frame):
                     k_era_whip = False
                     if self.value_calculation.projection.valid_5x5:
                         k_era_whip = True
-                        row.append(pp.get_stat(StatType.K))
+                        row.append(pp.get_stat(StatType.SO))
                         row.append(pp.get_stat(StatType.ERA))
                         row.append(pp.get_stat(StatType.WHIP))
                         row.append(pp.get_stat(StatType.W))
                         row.append(pp.get_stat(StatType.SV))
                     if self.value_calculation.projection.valid_4x4:
                         if not k_era_whip:
-                            row.append(pp.get_stat(StatType.K))
+                            row.append(pp.get_stat(StatType.SO))
                             row.append(pp.get_stat(StatType.ERA))
                             row.append(pp.get_stat(StatType.WHIP))
                             row.append(0)
