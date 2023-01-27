@@ -132,7 +132,7 @@ class DraftTool(tk.Frame):
 
         overall_frame = ttk.Frame(self.tab_control)
         self.tab_control.add(overall_frame, text='Overall')
-        cols = ('Name','Value','Inf. Cost','Pos','Team','Points','P/G','HP/G','P/PA','P/IP','PP/G', 'Avg. Price', 'L10 Price', 'Roster %')
+        cols = ('Name','Value','Inf. Cost','Pos','Team','Points', 'SABR Pts', 'P/G','HP/G','P/PA','P/IP','SABR PIP','PP/G','SABR PPG', 'Avg. Price', 'L10 Price', 'Roster %')
         widths = {}
         widths['Name'] = 125
         widths['Pos'] = 75
@@ -152,7 +152,7 @@ class DraftTool(tk.Frame):
             if pos in Position.get_offensive_pos():
                 cols = ('Name','Value','Inf. Cost','Pos','Team','Points','P/G', 'P/PA','Avg. Price', 'L10 Price', 'Roster %', 'R', 'HR', 'RBI', 'AVG', 'SB', 'OBP', 'SLG')
             else:
-                cols = ('Name','Value','Inf. Cost','Pos','Team','Points','P/IP','PP/G', 'Avg. Price', 'L10 Price', 'Roster %', 'K', 'ERA', 'WHIP', 'W', 'SV', 'HR/9')
+                cols = ('Name','Value','Inf. Cost','Pos','Team','Points','SABR Pts','P/IP','SABR PIP','PP/G','SABR PPG', 'Avg. Price', 'L10 Price', 'Roster %', 'K', 'ERA', 'WHIP', 'W', 'SV', 'HR/9')
             self.pos_view[pos] = pv = Table(pos_frame, cols,sortable_columns=cols, column_widths=widths, column_alignments=align, init_sort_col='Value')
             pv.grid(column=0)
             pv.set_row_select_method(self.on_select)
@@ -262,7 +262,7 @@ class DraftTool(tk.Frame):
             search_unrostered_btn.state(['!alternate'])
     
     def create_search_table(self, parent, col, row, col_span=1):
-        cols = ('Name','Value','Salary','Inf. Cost','Pos','Team','Points','P/G','HP/G','P/PA','P/IP','PP/G','Roster %')
+        cols = ('Name','Value','Salary','Inf. Cost','Pos','Team','Points','SABR Pts', 'P/G','HP/G','P/PA','P/IP', 'SABR PIP','PP/G', 'SABR PPG', 'Roster %')
         widths = {}
         widths['Name'] = 125
         widths['Pos'] = 75
@@ -488,14 +488,17 @@ class DraftTool(tk.Frame):
             position = pos_df.iat[i, 4]
             team = pos_df.iat[i, 3]
             pts = "{:.1f}".format(pos_df.iat[i, 5])
-            ppg = "{:.2f}".format(pos_df.iat[i, 7])
-            hppg = "{:.2f}".format(pos_df.iat[i, 8])
-            pppa = "{:.2f}".format(pos_df.iat[i, 9])
-            pip = "{:.2f}".format(pos_df.iat[i, 10])
-            pppg = "{:.2f}".format(pos_df.iat[i, 11])
+            sabr_pts = "{:.1f}".format(pos_df.iat[i, 6])
+            ppg = "{:.2f}".format(pos_df.iat[i, 8])
+            hppg = "{:.2f}".format(pos_df.iat[i, 9])
+            pppa = "{:.2f}".format(pos_df.iat[i, 10])
+            pip = "{:.2f}".format(pos_df.iat[i, 11])
+            spip = "{:.2f}".format(pos_df.iat[i, 12])
+            pppg = "{:.2f}".format(pos_df.iat[i, 13])
+            spppg = "{:.2f}".format(pos_df.iat[i, 14])
             sal_tup = self.get_salary_tuple(int(id))
             tags = self.get_row_tags(id)
-            self.overall_view.insert('', tk.END, text=id, values=(name, value, inf_cost, position, team, pts, ppg, hppg, pppa, pip, pppg, sal_tup[0], sal_tup[1], sal_tup[2]), tags=tags)
+            self.overall_view.insert('', tk.END, text=id, values=(name, value, inf_cost, position, team, pts, sabr_pts, ppg, hppg, pppa, pip, spip, pppg, spppg, sal_tup[0], sal_tup[1], sal_tup[2]), tags=tags)
 
     def refresh_pos_table(self, pos):
         if self.show_drafted_players.get() == 1:
@@ -512,11 +515,11 @@ class DraftTool(tk.Frame):
             position = pos_df.iat[i, 4]
             team = pos_df.iat[i, 3]
             pts = "{:.1f}".format(pos_df.iat[i, 5])
-            rate1 = "{:.2f}".format(pos_df.iat[i, 7])
-            rate2 = "{:.2f}".format(pos_df.iat[i, 8])
             sal_tup = self.get_salary_tuple(int(id))
             tags = self.get_row_tags(id)
             if pos in Position.get_offensive_pos():
+                rate1 = "{:.2f}".format(pos_df.iat[i, 7])
+                rate2 = "{:.2f}".format(pos_df.iat[i, 8])
                 runs = "{:.0f}".format(pos_df.iat[i, 9])
                 hr = "{:.0f}".format(pos_df.iat[i, 10])
                 rbi = "{:.0f}".format(pos_df.iat[i, 11])
@@ -526,13 +529,18 @@ class DraftTool(tk.Frame):
                 slg = "{:.3f}".format(pos_df.iat[i, 15])
                 self.pos_view[pos].insert('', tk.END, text=id, values=(name, value, inf_cost, position, team, pts, rate1, rate2, sal_tup[0], sal_tup[1], sal_tup[2], runs, hr, rbi, avg, sb, obp, slg), tags=tags)
             else:
-                k = "{:.0f}".format(pos_df.iat[i, 9])
-                era = "{:.3f}".format(pos_df.iat[i, 10])
-                whip = "{:.3f}".format(pos_df.iat[i, 11])
-                w = "{:.0f}".format(pos_df.iat[i, 12])
-                sv = "{:.0f}".format(pos_df.iat[i, 13])
-                hr_per_9 = "{:.2f}".format(pos_df.iat[i, 14])
-                self.pos_view[pos].insert('', tk.END, text=id, values=(name, value, inf_cost, position, team, pts, rate1, rate2, sal_tup[0], sal_tup[1], sal_tup[2], k, era, whip, w, sv, hr_per_9), tags=tags)
+                sabr_pts = "{:.1f}".format(pos_df.iat[i, 6])
+                rate1 = "{:.2f}".format(pos_df.iat[i, 8])
+                rate2 = "{:.2f}".format(pos_df.iat[i, 9])
+                rate3 = "{:.2f}".format(pos_df.iat[i, 10])
+                rate4 = "{:.2f}".format(pos_df.iat[i, 11])
+                k = "{:.0f}".format(pos_df.iat[i, 12])
+                era = "{:.3f}".format(pos_df.iat[i, 13])
+                whip = "{:.3f}".format(pos_df.iat[i, 14])
+                w = "{:.0f}".format(pos_df.iat[i, 15])
+                sv = "{:.0f}".format(pos_df.iat[i, 16])
+                hr_per_9 = "{:.2f}".format(pos_df.iat[i, 17])
+                self.pos_view[pos].insert('', tk.END, text=id, values=(name, value, inf_cost, position, team, pts,sabr_pts, rate1, rate2, rate3, rate4, sal_tup[0], sal_tup[1], sal_tup[2], k, era, whip, w, sv, hr_per_9), tags=tags)
     def get_salary_tuple(self, playerid):
         si = self.value_calculation.get_player_value(playerid, pos=Position.OVERALL).player.get_salary_info_for_format(self.league.format)
         if si is None:
@@ -594,34 +602,47 @@ class DraftTool(tk.Frame):
                 if pp is not None and self.value_calculation.projection.valid_points:
                     if self.value_calculation.projection.type == ProjectionType.VALUE_DERIVED:
                         pts = pp.get_stat(StatType.POINTS)
+                        spts = pp.get_stat(StatType.POINTS)
                         ppg = pp.get_stat(StatType.PPG)
                         hppg = ppg
                         pppa = '0.00'
                         pip = pp.get_stat(StatType.PIP)
+                        spip = pp.get_stat(StatType.PIP)
                         pppg = '0.00'
+                        spppg = '0.00'
                     else:
                         h_pts = calculation_services.get_points(pp, Position.OFFENSE)
-                        p_pts = calculation_services.get_points(pp, Position.PITCHER, ScoringFormat.is_sabr(self.league.format))
+                        p_pts = calculation_services.get_points(pp, Position.PITCHER, False)
+                        s_p_pts = calculation_services.get_points(pp, Position.PITCHER, True)
                         pts = "{:.1f}".format(h_pts + p_pts)
+                        spts = "{:.1f}".format(h_pts + s_p_pts)
                         ppg = "{:.2f}".format(calculation_services.get_batting_point_rate_from_player_projection(pp))
                         hppg = ppg
                         pppa = "{:.2f}".format(calculation_services.get_batting_point_rate_from_player_projection(pp, basis=RankingBasis.PPPA))
-                        pip = "{:.2f}".format(calculation_services.get_pitching_point_rate_from_player_projection(pp, self.league.format))
-                        pppg = "{:.2f}".format(calculation_services.get_pitching_point_rate_from_player_projection(pp, self.league.format, basis=RankingBasis.PPG))
+                        pip = "{:.2f}".format(calculation_services.get_pitching_point_rate_from_player_projection(pp, ScoringFormat.FG_POINTS))
+                        spip = "{:.2f}".format(calculation_services.get_pitching_point_rate_from_player_projection(pp, ScoringFormat.SABR_POINTS))
+                        pppg = "{:.2f}".format(calculation_services.get_pitching_point_rate_from_player_projection(pp, ScoringFormat.FG_POINTS, basis=RankingBasis.PPG))
+                        spppg = "{:.2f}".format(calculation_services.get_pitching_point_rate_from_player_projection(pp, ScoringFormat.SABR_POINTS, basis=RankingBasis.PPG))
                 else:
                     pts = '0.0'
+                    spts = '0.0'
                     ppg = '0.00'
                     hppg = '0.00'
                     pppa = '0.00'
                     pip = '0.00'
+                    spip = '0.00'
                     pppg = '0.00'
+                    spppg = '0.00'
             else:
                 pts = '0.0'
+                spts = '0.0'
                 ppg = '0.00'
                 hppg = '0.00'
                 pppa = '0.00'
                 pip = '0.00'
+                spip = '0.00'
                 pppg = '0.00'
+                spppg = '0.00'
             
             if si is None:
                 roster_percent = '0.0%'
@@ -629,7 +650,7 @@ class DraftTool(tk.Frame):
                 roster_percent = "{:.1f}".format(si.roster_percentage) + "%"
 
             tags = self.get_row_tags(id)
-            self.search_view.insert('', tk.END, text=str(id), tags=tags, values=(name, value, salary, inf_cost,pos, team, pts, ppg, hppg, pppa, pip, pppg, roster_percent))
+            self.search_view.insert('', tk.END, text=str(id), tags=tags, values=(name, value, salary, inf_cost,pos, team, pts, spts, ppg, hppg, pppa, pip, spip, pppg, spppg, roster_percent))
    
     def refresh_planning_frame(self):
         self.target_table.refresh()
@@ -695,13 +716,18 @@ class DraftTool(tk.Frame):
     def set_visible_columns(self) -> None:
         salary_cols = ('Avg. Price', 'L10 Price', 'Roster %')
         stock_overall = player_cols + salary_cols
-        stock_search = player_cols + ('Roster %',)
+        stock_search = ('Name','Value','Inf. Cost','Salary','Pos','Team')
         if self.value_calculation.projection is None or not self.calc_format_matches_league():
             self.overall_view.set_display_columns(stock_overall)
             for pos in self.pos_view:
                 self.pos_view[pos].set_display_columns(stock_overall)
-            self.search_view.set_display_columns(stock_search)
+            self.search_view.set_display_columns(stock_search + ('Roster %',))
         elif ScoringFormat.is_points_type(self.league.format):
+            sabr = ScoringFormat.is_sabr(self.league.format)
+            if sabr:
+                p_points = ('SABR Pts',)
+            else:
+                p_points = ('Points',)
             if self.value_calculation.hitter_basis == RankingBasis.PPG:
                 if self.value_calculation.pitcher_basis == RankingBasis.PPG:
                     hit_rate = ('HP/G',)
@@ -714,34 +740,40 @@ class DraftTool(tk.Frame):
             else:
                 raise Exception(f"Unhandled hitter_basis {self.value_calculation.hitter_basis}")
             if self.value_calculation.pitcher_basis == RankingBasis.PIP:
-                pitch_rate = ('P/IP',)
+                if sabr:
+                    pitch_rate = ('SABR PIP',)
+                else:
+                    pitch_rate = ('P/IP',)
             elif self.value_calculation.pitcher_basis == RankingBasis.PPG:
-                pitch_rate = ('PP/G',)
+                if sabr:
+                    pitch_rate = ('SABR PPG',)
+                else:
+                    pitch_rate = ('PP/G',)
             else:
                 raise Exception(f"Unhandled pitcher_basis {self.value_calculation.pitcher_basis}")
-            self.overall_view.set_display_columns(player_cols + ('Points',) + hit_rate + pitch_rate + salary_cols)
+            self.overall_view.set_display_columns(player_cols + p_points + hit_rate + pitch_rate + salary_cols)
             for pos in self.pos_view:
                 if pos in Position.get_offensive_pos():
                     self.pos_view[pos].set_display_columns(player_cols + ('Points',) + pos_hit_rate + salary_cols)
                 else:
-                    self.pos_view[pos].set_display_columns(player_cols + ('Points',) + pitch_rate + salary_cols)
-            self.search_view.set_display_columns(player_cols + ('Points',) + hit_rate + pitch_rate + ('Roster %',))
+                    self.pos_view[pos].set_display_columns(player_cols + p_points + pitch_rate + salary_cols)
+            self.search_view.set_display_columns(stock_search + p_points + hit_rate + pitch_rate + ('Roster %',))
         elif self.league.format == ScoringFormat.OLD_SCHOOL_5X5:
-            self.overall_view.set_display_columns(stock_search)
+            self.overall_view.set_display_columns(stock_overall)
             for pos in self.pos_view:
                 if pos in Position.get_offensive_pos():
                     self.pos_view[pos].set_display_columns(player_cols + hit_5x5_cols + salary_cols)
                 else:
                     self.pos_view[pos].set_display_columns(player_cols + pitch_5x5_cols + salary_cols)
-            self.search_view.set_display_columns(stock_search)
+            self.search_view.set_display_columns(stock_search + ('Roster %',))
         elif self.league.format == ScoringFormat.CLASSIC_4X4:
-            self.overall_view.set_display_columns(stock_search)
+            self.overall_view.set_display_columns(stock_overall)
             for pos in self.pos_view:
                 if pos in Position.get_offensive_pos():
                     self.pos_view[pos].set_display_columns(player_cols + hit_4x4_cols + salary_cols)
                 else:
                     self.pos_view[pos].set_display_columns(player_cols + pitch_4x4_cols + salary_cols)
-            self.search_view.set_display_columns(stock_search)
+            self.search_view.set_display_columns(stock_search + ('Roster %',))
         else:
             raise Exception(f"Unknown league type {self.league.format}")
     
@@ -769,7 +801,7 @@ class DraftTool(tk.Frame):
     def create_overall_df_from_vc(self):
         rows = self.get_overall_value_rows()
         self.values = pd.DataFrame(rows)
-        self.values.columns = ['Index', 'OttoneuID', 'Value', 'Name', 'Team', 'Position(s)', 'Points', 'PAR', 'P/G', 'HP/G', 'P/PA', 'P/IP', 'PP/G', 'Search_Name']
+        self.values.columns = ['Index', 'OttoneuID', 'Value', 'Name', 'Team', 'Position(s)', 'Points', 'SABR Pts','PAR', 'P/G', 'HP/G', 'P/PA', 'P/IP', 'SABR PIP', 'PP/G', 'SABR PPG', 'Search_Name']
         self.values.set_index('Index', inplace=True)
     
     def create_offensive_df(self, pos):
@@ -782,7 +814,7 @@ class DraftTool(tk.Frame):
     def create_pitching_df(self, pos):
         rows = self.get_pitching_rows(pos)
         pos_val = pd.DataFrame(rows)
-        pos_val.columns = ['Index', 'OttoneuID', 'Value', 'Name', 'Team', 'Position(s)', 'Points', 'PAR', 'P/IP', 'PP/G', 'K', 'ERA', 'WHIP', 'W', 'SV', 'HR/9']
+        pos_val.columns = ['Index', 'OttoneuID', 'Value', 'Name', 'Team', 'Position(s)', 'Points', 'SABR Pts', 'PAR', 'P/IP', 'SABR PIP', 'PP/G', 'SABR PPG', 'K', 'ERA', 'WHIP', 'W', 'SV', 'HR/9']
         pos_val.set_index('Index', inplace=True)
         return pos_val
     
@@ -800,25 +832,33 @@ class DraftTool(tk.Frame):
                 pp = self.value_calculation.projection.get_player_projection(pv.player.index)
                 if pp is None or not self.value_calculation.projection.valid_points:
                     row.append(0.00) #points
+                    row.append(0.00) #spoints
                     row.append(0.00) #par
                     row.append(0.00) #hit rate
                     row.append(0.00) #hit rate hp/g
                     row.append(0.00) #hit rate p/pa
                     row.append(0.00) #pitch rate p/ip
+                    row.append(0.00) #pitch rate sabr p/ip
                     row.append(0.00) #pitch rate p/g
+                    row.append(0.00) #pitch rate sabr p/g
                 else:
                     if self.value_calculation.projection.type == ProjectionType.VALUE_DERIVED:
+                        row.append(pp.get_stat(StatType.POINTS))
                         row.append(pp.get_stat(StatType.POINTS))
                         row.append(0)
                         row.append(pp.get_stat(StatType.PPG))
                         row.append(pp.get_stat(StatType.PPG))
                         row.append(0)
                         row.append(pp.get_stat(StatType.PIP))
+                        row.append(pp.get_stat(StatType.PIP))
+                        row.append(0)
                         row.append(0)
                     else:
-                        o_points = calculation_services.get_points(pp, Position.OFFENSE,self.league.format == ScoringFormat.SABR_POINTS)
-                        p_points = calculation_services.get_points(pp, Position.PITCHER,self.league.format == ScoringFormat.SABR_POINTS)
+                        o_points = calculation_services.get_points(pp, Position.OFFENSE)
+                        p_points = calculation_services.get_points(pp, Position.PITCHER,False)
+                        s_p_points = calculation_services.get_points(pp, Position.PITCHER,True)
                         row.append(o_points + p_points)
+                        row.append(o_points + s_p_points)
                         # Currently have a 'PAR' column that might be defunct
                         row.append("0")
                         games = pp.get_stat(StatType.G_HIT)
@@ -836,17 +876,24 @@ class DraftTool(tk.Frame):
                         if ip is None or ip == 0 or games is None or games == 0:
                             row.append(0)
                             row.append(0)
+                            row.append(0)
+                            row.append(0)
                         else:
                             row.append(p_points/ip)
+                            row.append(s_p_points/ip)
                             row.append(p_points/games)
+                            row.append(s_p_points/games)
             else:
                 row.append(0.00) #points
+                row.append(0.00) #sabr points
                 row.append(0.00) #par
                 row.append(0.00) #hit rate p/g
                 row.append(0.00) #hit rate hp/g
                 row.append(0.00) #hit rate p/pa
                 row.append(0.00) #pitch rate p/ip
+                row.append(0.00) #pitch rate sabr p/ip
                 row.append(0.00) #pitch rate pp/g
+                row.append(0.00) #pitch rate sabr pp/g
             row.append(util.string_util.normalize(pv.player.name))
             rows.append(row)
         return rows
@@ -964,12 +1011,17 @@ class DraftTool(tk.Frame):
                     if self.value_calculation.projection.valid_points:
                         if self.value_calculation.projection.type == ProjectionType.VALUE_DERIVED:
                             row.append(pp.get_stat(StatType.POINTS))
+                            row.append(pp.get_stat(StatType.POINTS))
                             row.append(0)
                             row.append(pp.get_stat(StatType.PIP))
+                            row.append(pp.get_stat(StatType.PIP))
+                            row.append(0)
                             row.append(0)
                         else:
-                            p_points = calculation_services.get_points(pp, Position.PITCHER,self.league.format == ScoringFormat.SABR_POINTS)
+                            p_points = calculation_services.get_points(pp, Position.PITCHER,True)
+                            s_p_points = calculation_services.get_points(pp, Position.PITCHER,False)
                             row.append(p_points)
+                            row.append(s_p_points)
                             # Currently have a 'PAR' column that might be defunct
                             row.append("0")
                             ip = pp.get_stat(StatType.IP)
@@ -977,14 +1029,21 @@ class DraftTool(tk.Frame):
                             if ip is None or ip == 0 or games is None or games == 0:
                                 row.append(0)
                                 row.append(0)
+                                row.append(0)
+                                row.append(0)
                             else:
                                 row.append(p_points/ip)
+                                row.append(s_p_points/ip)
                                 row.append(p_points/games)
+                                row.append(s_p_points/games)
                     else:
+                        row.append(0.00) # points
                         row.append(0.00) # points
                         row.append(0.00) # par
                         row.append(0.00) # pitch rate pip
+                        row.append(0.00) # pitch rate sabr pip
                         row.append(0.00) # pitch rate ppg
+                        row.append(0.00) # pitch rate sabr ppg
                     k_era_whip = False
                     if self.value_calculation.projection.valid_5x5:
                         k_era_whip = True
@@ -1012,9 +1071,12 @@ class DraftTool(tk.Frame):
                         row.append(0)
                 else:
                     row.append(0.00) # points
+                    row.append(0) # sabr points
                     row.append(0.00) # par
                     row.append(0.00) # pitch rate pip
+                    row.append(0.00) # pitch rate sabr pip
                     row.append(0.00) # pitch rate ppg
+                    row.append(0.00) # pitch rate sabr ppg
                     row.append(0)
                     row.append(0)
                     row.append(0)
@@ -1023,9 +1085,12 @@ class DraftTool(tk.Frame):
                     row.append(0)
             else:
                 row.append(0.00) # points
+                row.append(0.00) # sabr points
                 row.append(0.00) # par
                 row.append(0.00) # pitch rate pip
+                row.append(0.00) # pitch rate sabr pip
                 row.append(0.00) # pitch rate ppg
+                row.append(0.00) # pitch rate sabr ppg
                 row.append(0)
                 row.append(0)
                 row.append(0)
