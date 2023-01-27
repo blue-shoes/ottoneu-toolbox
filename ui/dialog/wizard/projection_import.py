@@ -199,9 +199,9 @@ class Step1(tk.Frame):
                 #Upload proj from files
                 #TODO: need user entry of name/desc and indicate it's RoS
                 self.hitter_df, self.pitcher_df =  projection_services.create_projection_from_upload(self.parent.projection, self.hitter_proj_file.get(), self.pitcher_proj_file.get(), name="User Custom", year=year, progress=pd)
-        except FangraphsException:
+        except FangraphsException as e:
             self.parent.projection = None
-            self.parent.validate_msg = 'The desired projection does not exist.'
+            self.parent.validate_msg = e.validation_msgs
             #mb.showerror('Error retrieving projection',  )
             #self.parent.lift()
             #self.parent.focus_force()
