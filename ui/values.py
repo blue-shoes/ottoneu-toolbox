@@ -474,16 +474,17 @@ class ValuesCalculation(tk.Frame):
                 f_points = calculation_services.get_points(pp, pos, sabr=False)
                 s_points = calculation_services.get_points(pp, pos, sabr=True)
                 ip = pp.get_stat(StatType.IP)
-                if ip is None or ip == 0:
+                games = pp.get_stat(StatType.G_PIT)
+                if ip is None or ip == 0 or games is None or games == 0:
                     val.append("0.00") # p/ip
                     val.append("0.00") # pp/g
                     val.append("0.00") # s_p/ip
                     val.append("0.00") # s_pp/g
                 else:
                     val.append("{:.2f}".format(f_points/ip))
-                    val.append("{:.2f}".format(f_points/pp.get_stat(StatType.G_PIT)))
+                    val.append("{:.2f}".format(f_points/games))
                     val.append("{:.2f}".format(s_points/ip))
-                    val.append("{:.2f}".format(s_points/pp.get_stat(StatType.G_PIT)))
+                    val.append("{:.2f}".format(s_points/games))
         val.append("{:.1f}".format(f_points))
         val.append("{:.1f}".format(s_points))
         if self.projection.type != ProjectionType.VALUE_DERIVED:
