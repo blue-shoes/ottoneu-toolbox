@@ -193,7 +193,6 @@ class ArmPoint():
                         total_ip = rosterable.apply(self.usable_ip_calc, args=("SP", 1), axis=1).sum()
                         total_ip += rosterable.apply(self.usable_ip_calc, args=("RP", 1), axis=1).sum()
                 elif self.rank_basis == RankingBasis.PPG:
-                    #TODO: This method is not tested because it is currently inaccessible from the GUI
                     target_starts = self.num_teams * self.gs_per_week * self.weeks
                     while num_arms != self.target_pitch or abs(sp_g-target_starts) > 10 and (self.replacement_positions['SP'] < self.max_rost_num['SP'] and self.replacement_positions['RP'] < self.max_rost_num['RP']):
                         #Going to do optional capping of relievers. It can get a bit out of control otherwise
