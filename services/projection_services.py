@@ -104,13 +104,16 @@ def save_projection(projection, projs, id_type, progress=None):
         seen_players = {}
         for proj in projs:
             stat_cols = proj.columns
+            print(proj.columns)
             if 'IP' in stat_cols:
                 pitch = True
             else:
                 pitch = False
             inc_div = math.ceil(len(proj)/25)
             inc_count=0
+            print(proj.head())
             for idx, row in proj.iterrows():
+                print(row)
                 if idx in seen_players:
                     player = seen_players[idx]
                     player_proj = projection.get_player_projection(player.index)
@@ -143,6 +146,7 @@ def save_projection(projection, projs, id_type, progress=None):
                             data = ProjectionData()
                             data.stat_type = stat_type
                             data.stat_value = row[col]
+                            print(f'{stat_type} {col}: {row[col]}')
                             if data.stat_value is None or math.isnan(data.stat_value):
                                 data.stat_value = 0
                             player_proj.projection_data.append(data)
