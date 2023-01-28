@@ -616,13 +616,28 @@ class DraftTool(tk.Frame):
                         s_p_pts = calculation_services.get_points(pp, Position.PITCHER, True)
                         pts = "{:.1f}".format(h_pts + p_pts)
                         spts = "{:.1f}".format(h_pts + s_p_pts)
-                        ppg = "{:.2f}".format(calculation_services.get_batting_point_rate_from_player_projection(pp))
-                        hppg = ppg
-                        pppa = "{:.2f}".format(calculation_services.get_batting_point_rate_from_player_projection(pp, basis=RankingBasis.PPPA))
-                        pip = "{:.2f}".format(calculation_services.get_pitching_point_rate_from_player_projection(pp, ScoringFormat.FG_POINTS))
-                        spip = "{:.2f}".format(calculation_services.get_pitching_point_rate_from_player_projection(pp, ScoringFormat.SABR_POINTS))
-                        pppg = "{:.2f}".format(calculation_services.get_pitching_point_rate_from_player_projection(pp, ScoringFormat.FG_POINTS, basis=RankingBasis.PPG))
-                        spppg = "{:.2f}".format(calculation_services.get_pitching_point_rate_from_player_projection(pp, ScoringFormat.SABR_POINTS, basis=RankingBasis.PPG))
+                        h_g = pp.get_stat(StatType.G_HIT)
+                        h_pa = pp.get_stat(StatType.PA)
+                        if h_g is None or h_g == 0 or h_pa is None or h_pa == 0:
+                            ppg = '0.00'
+                            hppg = '0.00'
+                            pppa = '0.00'
+                        else:
+                            ppg = "{:.2f}".format(h_pts/h_g)
+                            hppg = ppg
+                            pppa = "{:.2f}".format(h_pts/h_pa)
+                        p_ip = pp.get_stat(StatType.IP)
+                        p_g = pp.get_stat(StatType.G_PIT)
+                        if p_ip is None or p_ip == 0 or p_g is None or p_g == 0:
+                            pip = '0.00'
+                            spip = pip
+                            pppg = pip
+                            spppg = pip
+                        else:
+                            pip = "{:.2f}".format(p_pts / p_ip)
+                            spip = "{:.2f}".format(s_p_pts / p_ip)
+                            pppg = "{:.2f}".format(p_pts / p_g)
+                            spppg = "{:.2f}".format(s_p_pts / p_g)
                 else:
                     pts = '0.0'
                     spts = '0.0'
