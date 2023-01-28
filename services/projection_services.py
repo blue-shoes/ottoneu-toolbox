@@ -104,13 +104,16 @@ def save_projection(projection, projs, id_type, progress=None):
         seen_players = {}
         for proj in projs:
             stat_cols = proj.columns
+            print(proj.columns)
             if 'IP' in stat_cols:
                 pitch = True
             else:
                 pitch = False
             inc_div = math.ceil(len(proj)/25)
             inc_count=0
+            print(proj.head())
             for idx, row in proj.iterrows():
+                print(row)
                 if idx in seen_players:
                     player = seen_players[idx]
                     player_proj = projection.get_player_projection(player.index)
@@ -134,7 +137,7 @@ def save_projection(projection, projs, id_type, progress=None):
                 player_proj.player = player
                 
                 for col in stat_cols:
-                    if col not in ['Name','Team','-1','playerid']:
+                    if col not in ['Name','Team','-1','PlayerId']:
                         if pitch:
                             stat_type = StatType.pitch_to_enum_dict().get(col)
                         else:
@@ -143,6 +146,7 @@ def save_projection(projection, projs, id_type, progress=None):
                             data = ProjectionData()
                             data.stat_type = stat_type
                             data.stat_value = row[col]
+                            print(f'{stat_type} {col}: {row[col]}')
                             if data.stat_value is None or math.isnan(data.stat_value):
                                 data.stat_value = 0
                             player_proj.projection_data.append(data)
@@ -193,6 +197,8 @@ def normalize_batter_projections(proj: Projection, df: DataFrame):
     found_id = False
     issue_list = []
     for col in df.columns:
+        if '%' in col.upper() or 'INTER' in col.upper():
+            continue
         if 'ID' in col.upper():
             df.set_index(col, inplace=True)
             found_id = True
@@ -200,6 +206,8 @@ def normalize_batter_projections(proj: Projection, df: DataFrame):
             col_map[col] = 'G'
         elif 'PA' in col.upper():
             col_map[col] = 'PA'
+        elif 'BABIP' in col.upper():
+            col_map[col] = 'BABIP'
         elif 'AB' in col.upper():
             col_map[col] = 'AB'
         elif 'H' == col.upper() or 'HIT' in col.upper():
@@ -214,13 +222,13 @@ def normalize_batter_projections(proj: Projection, df: DataFrame):
             col_map[col] = 'R'
         elif 'RBI' in col.upper():
             col_map[col] = 'RBI'
-        elif 'BB' in col.upper() or 'WALK' in col.upper():
+        elif 'BB' == col.upper() or 'WALK' in col.upper():
             col_map[col] = 'BB'
-        elif 'SO' in col.upper() or 'K' == col.upper() or 'STRIKE' in col.upper():
+        elif 'SO' == col.upper() or 'K' == col.upper() or 'STRIKE' in col.upper():
             col_map[col] = 'SO'
         elif 'HBP' in col.upper() or 'BY' in col.upper():
             col_map[col] = 'HBP'
-        elif 'SB' in col.upper() or 'STOLEN' in col.upper():
+        elif 'SB' == col.upper() or 'STOLEN' in col.upper():
             col_map[col] = 'SB'
         elif 'CS' in col.upper() or 'CAUGHT' in col.upper():
             col_map[col] = 'CS'
@@ -277,6 +285,8 @@ def normalize_pitcher_projections(proj: Projection, df: DataFrame):
     found_id = False
     issue_list = []
     for col in df.columns:
+        if '%' in col.upper() or 'INTER' in col.upper():
+            continue
         if 'ID' in col.upper():
             df.set_index(col, inplace=True)
             found_id = True
@@ -290,6 +300,8 @@ def normalize_pitcher_projections(proj: Projection, df: DataFrame):
             col_map[col] = 'FIP'
         elif 'WHIP' in col.upper():
             col_map[col] = 'WHIP'
+        elif 'BABIP' in col.upper():
+            col_map[col] = 'BABIP'
         elif 'IP' in col.upper() or 'INNING' in col.upper():
             col_map[col] = 'IP'
         elif 'W' == col.upper() or 'WIN' in col.upper():
@@ -302,12 +314,16 @@ def normalize_pitcher_projections(proj: Projection, df: DataFrame):
             col_map[col] = 'HLD'
         elif 'HR/9' in col.upper():
             col_map[col] = 'HR/9'
+        elif 'HR/FB' in col.upper():
+            continue
         elif 'HR' in col.upper() or 'HOME' in col.upper():
             col_map[col] = 'HR'
         elif 'HBP' in col.upper() or 'BY' in col.upper():
             col_map[col] = 'HBP'
         elif 'K/9' in col.upper():
             col_map[col] = 'K/9'
+        elif 'K/' in col.upper():
+            continue
         elif 'SO' in col.upper() or 'K' in col.upper():
             col_map[col] = 'SO'
         elif 'ERA' in col.upper():
@@ -318,7 +334,7 @@ def normalize_pitcher_projections(proj: Projection, df: DataFrame):
             col_map[col] = 'BB'
         elif 'H' == col.upper() or 'HIT' in col.upper():
             col_map[col] = 'H'
-        elif 'ER' in col.upper():
+        elif 'ER' == col.upper():
             col_map[col] = 'ER'
 
     if not found_id:
