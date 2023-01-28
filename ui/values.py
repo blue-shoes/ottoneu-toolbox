@@ -780,12 +780,10 @@ class ValuesCalculation(tk.Frame):
                     overall.append("FG Pts")
                     pitch.append("FG Pts")
                 hit.append("FG Pts")
-                print(self.projection.type)
                 if self.projection.type != ProjectionType.VALUE_DERIVED:
-                    print('adding stats')
                     hit.extend(points_hitting_columns)
                     pitch.extend(points_pitching_columns)
-        print(f'setting columns to {overall}')
+
         self.overall_table.set_display_columns(tuple(overall))
         for pos in self.tables:
             if pos in Position.get_offensive_pos():
@@ -1002,7 +1000,6 @@ class ValuesCalculation(tk.Frame):
         return len(errors) != 0
     
     def exit_tasks(self):
-        print('This is inherited')
         return True
 
 def main(preferences):
