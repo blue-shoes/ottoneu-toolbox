@@ -106,7 +106,7 @@ class Step1(tk.Frame):
         id_label.grid(column=0,row=0,pady=5, stick=W)
         id_label.configure(state='disabled')
         self.id_type = StringVar()
-        self.id_type.set(IdType.OTTONEU.value)
+        self.id_type.set(IdType.FANGRAPHS.value)
         id_combo = ttk.Combobox(self.custom_self, textvariable=self.id_type)
         id_combo['values'] = id_map
         id_combo.grid(column=1,row=0,pady=5, columnspan=2)
