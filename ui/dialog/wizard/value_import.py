@@ -321,7 +321,7 @@ class Step1(tk.Frame):
         gt_combo.bind("<<ComboboxSelected>>", self.update_game_type)
         # TODO: Don't hardcode game types, include other types
 
-        gt_combo['values'] = (gt_map[ScoringFormat.FG_POINTS], gt_map[ScoringFormat.SABR_POINTS], gt_map[ScoringFormat.OLD_SCHOOL_5X5])
+        gt_combo['values'] = (gt_map[ScoringFormat.FG_POINTS], gt_map[ScoringFormat.SABR_POINTS], gt_map[ScoringFormat.OLD_SCHOOL_5X5], gt_map[ScoringFormat.CLASSIC_4X4])
         gt_combo.grid(column=1,row=6,pady=5, columnspan=2)
 
         ttk.Label(self, text="Number of Teams:").grid(column=0, row=7,pady=5, stick=W)
