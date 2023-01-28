@@ -2,6 +2,7 @@ from sqlalchemy import Column, ForeignKey, Index
 from sqlalchemy import Integer, String, Boolean, Float, Date, Enum, TIMESTAMP
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
+import re
 from domain.enum import CalculationDataType, ProjectionType, RankingBasis, ScoringFormat, StatType, Position
 
 Base = declarative_base()
@@ -43,6 +44,8 @@ class Player(Base):
                 if p.value in self.position:
                     return True
             return False
+        elif pos == Position.POS_MI:
+            return bool(re.search('2B|SS', self.position))
         elif pos == Position.PITCHER:
             for p in Position.get_discrete_pitching_pos():
                 if p.value in self.position:
@@ -165,6 +168,10 @@ class ValueCalculation(Base):
             player_dict[pv.position] = pv
 
     def set_input(self, data_type, value):
+        if value == '--':
+            value = -999
+        if isinstance(value, str):
+            value = float(value)
         for inp in self.inputs:
             if inp.data_type == data_type:
                 inp.value = value
@@ -181,6 +188,10 @@ class ValueCalculation(Base):
         return default
     
     def set_output(self, data_type, value):
+        if value == '--':
+            value = -999
+        if isinstance(value, str):
+            value = float(value)
         for data in self.data:
             if data.data_type == data_type:
                 data.value = value
@@ -222,7 +233,7 @@ class ValueCalculation(Base):
             #Get all positions
             return self.value_dict[player_id]
         else:
-            return self.value_dict[player_id][pos]
+            return self.value_dict[player_id].get(pos, None)
     
     def get_position_values(self, pos) -> list[PlayerValue]:
         values = []

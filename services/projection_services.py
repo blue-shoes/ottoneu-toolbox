@@ -143,6 +143,8 @@ def save_projection(projection, projs, id_type, progress=None):
                             data = ProjectionData()
                             data.stat_type = stat_type
                             data.stat_value = row[col]
+                            if data.stat_value is None or math.isnan(data.stat_value):
+                                data.stat_value = 0
                             player_proj.projection_data.append(data)
                 
                 inc_count += 1
@@ -493,9 +495,12 @@ def db_rows_to_df(player_proj, columns):
 def get_projections_for_current_year():
     return get_projections_for_year(date_util.get_current_ottoneu_year())
 
-def get_projections_for_year(year):
+def get_projections_for_year(year, inc_hidden=False):
     with Session() as session:
-        projs = session.query(Projection).filter(Projection.season == year).all()
+        if inc_hidden:
+            projs = session.query(Projection).filter(Projection.season == year).all()
+        else:
+            projs = session.query(Projection).filter(Projection.season == year, Projection.hide == False).all()
     return projs
 
 def get_available_seasons():

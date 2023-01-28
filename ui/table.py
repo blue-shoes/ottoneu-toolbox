@@ -45,6 +45,18 @@ class Table(ttk.Treeview):
             self.sort_col = None
         #self.add_scrollbar()
 
+    def get_row_by_text(self, text):
+        if isinstance(text, int):
+            text = str(text)
+        for child in self.get_children():
+            if self.item(child,"text") == text:
+                return child
+        return None
+    
+    def set_tags_by_row_text(self, text, tags):
+        row = self.get_row_by_text(text)
+        if row is not None:
+            self.item(row, tags=tags)
     
     def set_right_click_method(self, rclick_method):
         self.bind('<Button-3>', rclick_method)
@@ -101,6 +113,33 @@ class Table(ttk.Treeview):
     def resort(self):
         if self.sort_col is not None:
             self.treeview_sort_column(self.sort_col, not self.reverse_sort[self.sort_col])
+    
+    def set_display_columns(self, columns):
+        self['displaycolumns'] = columns
+    
+    def hide_columns(self, to_hide):
+        new_dc = self['displaycolumns']
+        if new_dc == ('#all',):
+            new_dc = self['columns']
+        new_dc = list(new_dc)
+        for col in to_hide:
+            if col in new_dc:
+                new_dc.remove(col)
+        self['displaycolumns'] = tuple(new_dc)
+
+    def show_columns(self, to_show: dict):
+        '''Columns to add back to table. Dictionary is column name to desired index'''
+        new_dc = self['displaycolumns']
+        if new_dc == ('#all',):
+            return
+        new_dc = list(new_dc)
+        for col in to_show:
+            if col in new_dc:
+                new_dc.append(to_show[col], col)
+        self['displaycolumns'] = tuple(new_dc)
+    
+    def restore_all_columns(self):
+        self['displaycolumns'] = ('#all',)
 
 def bool_to_table(val):
     if val:
@@ -110,6 +149,8 @@ def bool_to_table(val):
     
 def sort_cmp(t1):
     v1 = t1[0]
+    if len(v1) == 0:
+        return v1
     if v1[0] == '$':
         return float(v1[1:])
     try:

@@ -193,7 +193,6 @@ class ArmPoint():
                         total_ip = rosterable.apply(self.usable_ip_calc, args=("SP", 1), axis=1).sum()
                         total_ip += rosterable.apply(self.usable_ip_calc, args=("RP", 1), axis=1).sum()
                 elif self.rank_basis == RankingBasis.PPG:
-                    #TODO: This method is not tested because it is currently inaccessible from the GUI
                     target_starts = self.num_teams * self.gs_per_week * self.weeks
                     while num_arms != self.target_pitch or abs(sp_g-target_starts) > 10 and (self.replacement_positions['SP'] < self.max_rost_num['SP'] and self.replacement_positions['RP'] < self.max_rost_num['RP']):
                         #Going to do optional capping of relievers. It can get a bit out of control otherwise
@@ -304,7 +303,11 @@ class ArmPoint():
 
     def get_pitcher_rep_level(self, df, pos):
         #Filter DataFrame to just the position of interest
-        pitch_df = df.loc[df[f'IP {pos}'] > 0]
+        if pos == 'RP':
+            min_ip = self.min_rp_ip
+        else:
+            min_ip = self.min_sp_ip
+        pitch_df = df.loc[df[f'IP {pos}'] >= min_ip]
         if self.rank_basis == RankingBasis.PIP:
             sort_col = f"P/IP {pos}"
         elif self.rank_basis == RankingBasis.PPG:
@@ -394,7 +397,7 @@ class ArmPoint():
             return 1.0
         non_top_rank = row['Rank SP Rate'] - 6 * self.num_teams
         factor = non_top_rank // self.num_teams + 1
-        return 1 - factor * 0.05
+        return max(1 - factor * 0.05, 0.5) #TODO: Move 0.15 factor to preference
 
     def rp_multiplier_assignment(self, row):
         #Once you get past 5 RP per team, there are diminishing returns on how many relief innings are actually usable
@@ -402,7 +405,7 @@ class ArmPoint():
             return 1.0
         non_top_rank = row['Rank RP Rate'] - 5 * self.num_teams
         factor = non_top_rank // self.num_teams + 1
-        return 1 - factor * 0.3
+        return max(1 - factor * 0.15, 0.5) #TODO: Move 0.15 factor to preference
 
     def estimate_role_splits(self, df):
         df['IP RP'] = df.apply(self.rp_ip_func, axis=1)

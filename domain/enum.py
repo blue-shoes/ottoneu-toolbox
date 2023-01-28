@@ -8,6 +8,7 @@ class ProjectionType(Enum):
     THE_BAT = 4
     THE_BATX = 5
     CUSTOM = 6
+    VALUE_DERIVED = 7
 
     fg_downloadable = [STEAMER, ZIPS, DEPTH_CHARTS, ATC, THE_BAT, THE_BATX]
 
@@ -20,7 +21,8 @@ class ProjectionType(Enum):
         self.ATC : "ATC",
         self.THE_BAT : "THE BAT",
         self.THE_BATX : "THE BATX",
-        self.CUSTOM : "Custom"
+        self.CUSTOM : "Custom",
+        self.VALUE_DERIVED: "Derived"
     }
 
     @classmethod
@@ -32,7 +34,8 @@ class ProjectionType(Enum):
         "ATC" : self.ATC,
         "THE BAT" : self.THE_BAT,
         "THE BATX" : self.THE_BATX,
-        "Custom" : self.CUSTOM
+        "Custom" : self.CUSTOM,
+        "Derived" : self.VALUE_DERIVED
     }
 
     @classmethod
@@ -132,7 +135,9 @@ class RankingBasis(Enum):
     PPPA = 1
     PIP  = 2
     ZSCORE = 3
-    SGP = 4
+    SGP = 4,
+    FG_AC = 5,
+    ZSCORE_PER_G = 6
 
     @classmethod
     def num_to_enum_map(self):
@@ -141,7 +146,9 @@ class RankingBasis(Enum):
             1 : self.PPPA,
             2 : self.PIP,
             3 : self.ZSCORE,
-            4 : self.SGP
+            4 : self.SGP,
+            5 : self.FG_AC,
+            6 : self.ZSCORE_PER_G
         }
     
     @classmethod
@@ -150,7 +157,8 @@ class RankingBasis(Enum):
             'P/G' : self.PPG,
             'P/PA' : self.PPPA,
             'P/IP' : self.PIP,
-            'z-Score' : self.ZSCORE,
+            'zScore' : self.ZSCORE,
+            'zScore/G' : self.ZSCORE_PER_G,
             'SGP' : self.SGP
         }
     
@@ -160,8 +168,11 @@ class RankingBasis(Enum):
             self.PPG : 'P/G',
             self.PPPA : 'P/PA',
             self.PIP : 'P/IP',
-            self.ZSCORE : 'z-Score',
-            self.SGP : 'SGP'
+            self.ZSCORE : 'zScore',
+            self.ZSCORE_PER_G : 'zScore/G',
+            self.SGP : 'SGP',
+            self.FG_AC : 'FG AC'
+            
         }
 
     
@@ -209,6 +220,9 @@ class StatType(Enum):
     BABIP_H = 40
     BABIP_P = 41
     HR_PER_9 = 42
+    POINTS = 43
+    PPG = 44
+    PIP = 45
 
     @classmethod
     def hit_to_enum_dict(self):
@@ -308,7 +322,10 @@ class StatType(Enum):
         self.ERA : 'ERA',
         self.FIP : 'FIP',
         self.BABIP_P : 'BABIP',
-        self.HR_PER_9 : 'HR/9'
+        self.HR_PER_9 : 'HR/9',
+        self.POINTS: 'Points',
+        self.PPG: 'PPG',
+        self.PIP: 'PIP'
     }
 
     @classmethod
@@ -360,7 +377,10 @@ class StatType(Enum):
             self.FIP : two_decimal,
             self.BABIP_H : three_decimal,
             self.BABIP_P : three_decimal,
-            self.HR_PER_9 : two_decimal
+            self.HR_PER_9 : two_decimal, 
+            self.POINTS: one_decimal,
+            self.PPG: two_decimal,
+            self.PIP: two_decimal
         }
 
 class ScoringFormat(Enum):
@@ -409,6 +429,15 @@ class ScoringFormat(Enum):
                             self.SABR_POINTS: 'SABR',
                             self.H2H_FG_POINTS: 'H2H FGP',
                             self.H2H_SABR_POINTS: 'H2H SABR'}
+    
+    @classmethod 
+    def get_discrete_types(self):
+        return [self.CLASSIC_4X4,
+                self.OLD_SCHOOL_5X5,
+                self.FG_POINTS,
+                self.SABR_POINTS,
+                self.H2H_FG_POINTS,
+                self.H2H_SABR_POINTS] 
 
 class Position(Enum):
     POS_C = 'C'

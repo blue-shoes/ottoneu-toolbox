@@ -43,12 +43,7 @@ class Wizard(tk.Frame):
 
         if self.current_step is not None:
             current_step = self.steps[self.current_step]
-            if not current_step.validate():
-                mb.showwarning('Input Error', self.validate_msg)
-                self.validate_msg = None
-                self.parent.lift()
-                self.parent.focus_force()
-                return
+            
             if not new_step.on_show():
                 mb.showwarning('Error loading page')
                 self.parent.lift()
@@ -69,7 +64,7 @@ class Wizard(tk.Frame):
             self.next_button.pack(side="right")
             self.finish_button.pack_forget()
 
-        elif step == len(self.steps)-1:
+        elif self.is_last_page(step):
             # last step
             self.back_button.pack(side="left")
             self.next_button.pack_forget()
@@ -82,10 +77,26 @@ class Wizard(tk.Frame):
             self.finish_button.pack_forget()
 
     def next(self):
-        self.show_step(self.current_step + 1)
+        current_step = self.steps[self.current_step]
+        if not current_step.validate():
+            mb.showwarning('Input Error', self.validate_msg)
+            self.validate_msg = None
+            self.parent.lift()
+            self.parent.focus_force()
+            return
+        self.show_step(self.determine_next_step())
     
     def back(self):
-        self.show_step(self.current_step - 1)
+        self.show_step(self.determine_previous_step())
+    
+    def determine_next_step(self):
+        return self.current_step + 1
+    
+    def determine_previous_step(self):
+        return self.current_step - 1
+
+    def is_last_page(self, step):
+        return step == len(self.steps)-1
     
     def cancel(self):
         self.parent.destroy()
