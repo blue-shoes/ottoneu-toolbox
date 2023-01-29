@@ -68,7 +68,7 @@ class ValuesCalculation(tk.Frame):
     def refresh_ui(self):
         pd = progress.ProgressDialog(self.parent, 'Updating Value Calculator Window...')
         pd.set_completion_percent(10)
-        if self.value_calc is None:
+        if self.value_calc is None or self.value_calc.format is None:
             self.game_type.set(ScoringFormat.enum_to_full_name_map()[ScoringFormat.FG_POINTS])
             self.sel_proj.set("None")
             self.projection = None
