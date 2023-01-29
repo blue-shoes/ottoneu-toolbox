@@ -14,10 +14,10 @@ import os.path
 from domain.domain import Projection
 from domain.enum import ProjectionType, IdType
 from domain.exception import FangraphsException, InputException
-from services import projection_services
+from services import projection_services, player_services
 from ui.dialog import progress, fg_login
 from ui.dialog.wizard import wizard
-from util import date_util
+from util import date_util, string_util
 
 class Dialog(wizard.Dialog):
     def __init__(self, parent):
@@ -197,8 +197,24 @@ class Step1(tk.Frame):
                 self.hitter_df, self.pitcher_df = projection_services.create_projection_from_download(self.parent.projection, ProjectionType.name_to_enum_dict().get(self.proj_type.get()), self.ros_var.get(), self.dc_var.get(), year=year, progress=pd)
             else:
                 #Upload proj from files
-                #TODO: need user entry of name/desc and indicate it's RoS
                 self.hitter_df, self.pitcher_df =  projection_services.create_projection_from_upload(self.parent.projection, self.hitter_proj_file.get(), self.pitcher_proj_file.get(), name="User Custom", year=year, progress=pd)
+                if 'NAME' in self.hitter_df:
+                    found_player = False
+                    idx = 0
+                    player = None
+                    while not found_player and idx < len(self.hitter_df):                        
+                        id = list(self.hitter_df.index.values)[idx]
+                        if self.id_type.get() == IdType.FANGRAPHS.value:
+                            player = player_services.get_player_by_fg_id(id)
+                        elif self.id_type.get() == IdType.OTTONEU.value:
+                            player = player_services.get_player_by_ottoneu_id(id)
+                        found_player = player is not None
+                        idx = idx + 1
+                    if player is None:
+                        raise InputException(f'The input IdType {self.id_type.get()} appears wrong for this projection set.')
+                    df_name = string_util.normalize(self.hitter_df.at[id, 'NAME'])
+                    if df_name != player.search_name:
+                        raise InputException(f'The input IdType {self.id_type.get()} appears wrong for this projection set.')
         except FangraphsException as e:
             self.parent.projection = None
             self.parent.validate_msg = e.validation_msgs
@@ -208,8 +224,7 @@ class Step1(tk.Frame):
             return False
         except InputException as e:
             self.parent.projection = None
-            msgs = '\n'.join(e.validation_msgs)
-            self.parent.validate_msg = f'{e.args[0]}\n{msgs}'
+            self.parent.validate_msg = e.validation_msgs
             #mb.showerror('Error uploading projections', f'{e.args[0]}\n{msgs}')
             #self.parent.lift()
             #self.parent.focus_force()
