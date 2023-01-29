@@ -33,6 +33,7 @@ class Scrape_Base(object):
     def getDataset(self, page, element_id, filepath, by_type=By.ID):
         #Click the passed element id to download the csv file
         self.driver.get(page)
+        time.sleep(1)
         csvJs = self.driver.find_element(by_type, element_id)
         csvJs.click()
         self.download_wait()
