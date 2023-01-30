@@ -104,7 +104,7 @@ class Main(tk.Tk):
             sql_dir = self.resource_path('scripts')
             for filename in os.listdir(sql_dir):
                 vers = StrictVersion(filename.split('.sql')[0])
-                if vers > StrictVersion(db_strict_vers) and vers <= StrictVersion(v):
+                if vers > db_strict_vers and vers <= StrictVersion(v):
                     to_run.append(os.path.join(sql_dir, filename))
             if len(to_run) > 0:
                 db_update.run_db_updates(to_run)
