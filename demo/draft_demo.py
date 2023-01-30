@@ -65,6 +65,7 @@ def load_player_from_source(results, index, old=False):
         row['Type'] = 'CUT'
     else:
         row['Type'] = 'ADD'
+    print(f'{results["Player Name"].iloc[index]}, {row["Salary"]}')
     return row
 
 def copy_to_recent_trans(loaded, index):
