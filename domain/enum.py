@@ -408,7 +408,7 @@ class ScoringFormat(Enum):
                         'FanGraphs Points': self.FG_POINTS,
                         'SABR Points': self.SABR_POINTS,
                         'H2H FanGraphs Points': self.H2H_FG_POINTS,
-                        'H2H SABR Points': self.H2H_FG_POINTS}
+                        'H2H SABR Points': self.H2H_SABR_POINTS}
     
     @classmethod
     def enum_to_full_name_map(self):
