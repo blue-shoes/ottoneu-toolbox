@@ -8,8 +8,9 @@ from distutils.version import StrictVersion
 from tkinter import messagebox as mb
 import datetime
 import threading
+import requests
 
-from ui.dialog import preferences, progress, league_select, value_select, help
+from ui.dialog import preferences, progress, league_select, value_select, help, update
 from ui.start import Start
 from ui.draft_tool import DraftTool
 from ui.values import ValuesCalculation
@@ -68,7 +69,8 @@ class Main(tk.Tk):
         self.show_start_page()
         self.current_page = Start.__name__
 
-        self.startup_tasks()
+        if self.startup_tasks():
+            exit(0)
 
         self.lift()
         self.focus_force()
@@ -81,7 +83,7 @@ class Main(tk.Tk):
         frame = frame(parent=self.container, controller=self)
         self.frames[page_name] = frame
 
-    def startup_tasks(self):
+    def startup_tasks(self) -> bool:
         progress_dialog = progress.ProgressDialog(self.container, "Startup Tasks")
         db_vers = property_service.get_db_version()
         if db_vers is None:
@@ -111,6 +113,17 @@ class Main(tk.Tk):
             db_vers.value = __version__
             property_service.save_property(db_vers)
         progress_dialog.increment_completion_percent(10)
+        progress_dialog.set_task_title('Checking for updates')
+        #Check if we have the latest version
+        response = requests.get("https://api.github.com/repos/blue-shoes/ottoneu-toolbox/releases/latest")
+        latest_version = response.json()["name"]
+        if 'v' in latest_version:
+            latest_version = latest_version.split('v')[1]
+        if StrictVersion(latest_version) > StrictVersion(v):
+            dialog = update.Dialog(self, response)
+            if dialog.status:
+                progress_dialog.complete()
+                return True
         #Check that database has players in it, and populate if it doesn't
         if not player_services.is_populated():
             progress_dialog.set_task_title("Populating Player Database")
@@ -123,6 +136,7 @@ class Main(tk.Tk):
             progress_dialog.increment_completion_percent(33)
 
         progress_dialog.complete()
+        return False
     
     def get_resource_path(self, resource):
         return self.resource_path(resource)
