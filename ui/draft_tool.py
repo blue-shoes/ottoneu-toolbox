@@ -88,6 +88,8 @@ class DraftTool(tk.Frame):
         format_salary_refresh = salary_services.get_last_refresh(self.controller.league.format)
         if format_salary_refresh is None or (datetime.now() - format_salary_refresh.last_refresh) > timedelta(days=1):
             salary_services.update_salary_info(format=self.league.format)
+            self.controller.value_calculation = calculation_services.load_calculation(self.controller.value_calculation.index)
+            self.value_calculation = self.controller.value_calculation
         pd.complete()
 
     def calculate_extra_value(self):

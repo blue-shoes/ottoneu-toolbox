@@ -28,7 +28,7 @@ exe = EXE(
     a.zipfiles,
     a.datas,
     [],
-    name='ottoneu_tool_box',
+    name='ottoneu_toolbox',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
