@@ -383,6 +383,9 @@ class Step1(tk.Frame):
             self.pitcher_basis.set('P/IP')
             self.pitcher_basis_cb.configure(state='disable')
             self.rep_level_value_str.set('2')
+        else:
+            self.hitter_basis_cb.configure(state='enable')
+            self.pitcher_basis_cb.configure(state='enable')
         return True
     
     def validate(self):
