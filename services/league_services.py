@@ -4,10 +4,13 @@ from dao.session import Session
 from scrape.scrape_ottoneu import Scrape_Ottoneu
 from services import player_services
 from sqlalchemy.orm import joinedload
+from types import List
 
 from datetime import datetime
 
-def refresh_league(league_idx, pd=None):
+def refresh_league(league_idx:int, pd=None) -> League:
+    '''Refreshes the given league id in the database. Checks if the most recent transaction is more recent than the last league refresh. If so, retrieves league rosters
+    and updates Roster_Spots for the league.'''
     lg = get_league(league_idx, rosters=False)
     scraper = Scrape_Ottoneu()
     if pd is not None:
@@ -63,18 +66,21 @@ def refresh_league(league_idx, pd=None):
         pd.set_completion_percent(100)
     return lg
 
-def get_leagues(active):
+def get_leagues(active: bool=True) -> List[League]:
+    '''Returns Leagues from the database. If active is True, only Leagues marked as active are listed.'''
     with Session() as session:
         if active:
             return session.query(League).filter(active).order_by(League.ottoneu_id).all()
         else:
             return session.query(League).order_by(League.ottoneu_id).all()
 
-def get_league_ottoneu_id(league_idx):
+def get_league_ottoneu_id(league_idx:int) -> int:
+    '''Gets the Ottoneu id for the input league index'''
     with Session() as session:
         return session.query(League).filter_by(index = league_idx).first().ottoneu_id
 
-def get_league(league_idx, rosters=True) -> League:
+def get_league(league_idx:int, rosters:bool=True) -> League:
+    '''Retrieves the league from the database for the given index. If rosters is True, the league's teams and roster_spots are populated. Otherwise a shallow load is returned.'''
     with Session() as session:
         if rosters:
             league = (session.query(League)
@@ -88,7 +94,8 @@ def get_league(league_idx, rosters=True) -> League:
             league = (session.query(League).filter_by(index = league_idx).first())
     return league
 
-def create_league(league_ottoneu_id, pd=None):
+def create_league(league_ottoneu_id:int, pd=None) -> League:
+    '''Creates a league in the Toolbox for a given Ottoneu league number. Scrapes the league info and league finances pages to get required information.'''
     if pd is not None:
         pd.set_task_title("Getting league info...")
         pd.increment_completion_percent(10)
@@ -119,7 +126,8 @@ def create_league(league_ottoneu_id, pd=None):
 
     return lg
 
-def save_league(lg, pd=None):
+def save_league(lg:League, pd=None) -> League:
+    '''Updates the league in the database with new league name, team names, and rosters, saves it to the database, and returns the updated League.'''
     with Session() as session:
         old_lg = session.query(League).filter(League.index == lg.index).first()
         if old_lg is None:
@@ -135,12 +143,14 @@ def save_league(lg, pd=None):
         lg_idx = lg.index
     return refresh_league(lg_idx, pd)
 
-def delete_league_by_id(lg_id):
+def delete_league_by_id(lg_id: int) -> None:
+    '''Deletes the league from the database by id.'''
     with Session() as session:
         league = session.query(League).filter(League.index == lg_id).first()
         session.delete(league)
         session.commit()
 
-def league_exists(lg):
+def league_exists(lg:League) -> bool:
+    '''Checks if the given league exists in the database by index.'''
     with Session() as session:
         return session.query(League).filter(League.index == lg.index).first() is not None

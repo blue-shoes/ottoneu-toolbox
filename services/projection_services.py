@@ -10,8 +10,9 @@ from sqlalchemy.orm import joinedload
 import pandas as pd
 import math
 from util import date_util
+from types import List, Tuple
 
-def download_projections(projection, ros=False, dc_pt=False, progress=None):
+def download_projections(projection:str, ros:bool=False, dc_pt:bool=False, progress=None) -> List[DataFrame]:
     """Returns a list of projection dataframes. Item 1 is the batting projections. Item 2 is the pitching projections"""
 
     if ros:
@@ -49,7 +50,7 @@ def download_projections(projection, ros=False, dc_pt=False, progress=None):
     
     return [pos_proj, pitch_proj]
 
-def convertToDcPlayingTime(proj, ros, position, fg_scraper=None):
+def convertToDcPlayingTime(proj:DataFrame, ros:bool, position:bool, fg_scraper:scrape_fg.Scrape_Fg=None) -> DataFrame:
     """Converts a given projection's rate stats to the FanGraph's depth charts playing time projections"""
 
     if ros:
@@ -96,7 +97,8 @@ def convertToDcPlayingTime(proj, ros, position, fg_scraper=None):
             proj[column] = dc_proj[column]
     return proj
 
-def save_projection(projection, projs, id_type, progress=None):
+def save_projection(projection:Projection, projs:List[DataFrame], id_type:IdType, progress=None) -> Projection:
+    '''Saves the input projection and projeciton DataFrames to the database and retursn the populated Projeciton.'''
     with Session() as session:
         seen_players = {}
         for proj in projs:
@@ -155,7 +157,8 @@ def save_projection(projection, projs, id_type, progress=None):
         new_proj = get_projection(projection.index, player_data=False) 
     return new_proj
 
-def create_projection_from_upload(projection, pos_file, pitch_file, name, desc='', ros=False, year=None, progress=None):
+def create_projection_from_upload(projection: Projection, pos_file:str, pitch_file:str, name:str, desc:str='', ros:bool=False, year:int=None, progress=None):
+    '''Creates a new projection from user inputs, saves it to the database, and returns the populated projection.'''
     projection.type = ProjectionType.CUSTOM
 
     projection.name = name
@@ -185,7 +188,8 @@ def create_projection_from_upload(projection, pos_file, pitch_file, name, desc='
     return pos_df, pitch_df
     #return save_projection(projection, [pos_df, pitch_df], progress)
 
-def normalize_batter_projections(proj: Projection, df: DataFrame):
+def normalize_batter_projections(proj: Projection, df: DataFrame) -> List[str]:
+    '''Normalizes and error checks a passed hitter projection DataFrame for later parsing by the Toolbox. Returns a list of errors/issues with the upload.'''
     col_map = {}
     found_id = False
     issue_list = []
@@ -264,18 +268,22 @@ def normalize_batter_projections(proj: Projection, df: DataFrame):
     
     return issue_list
 
-def calc_average(row):
+def calc_average(row) -> float:
+    '''Calculates hitter batting average based on other columns.'''
     return row['H'] / row['AB']
 
-def calc_obp(row):
+def calc_obp(row) -> float:
+    '''Calculates approximation of hitter OBP based on other columns. Does not account for sacrifices or catcher's interferance.'''
     #This is not strictly the formula for OBP, as the denominator should remove sac bunts, catcher's interference, etc.
     #But this is close enough for our purposes.
     return (row['H'] + row['BB'] + row['HBP']) / row['PA']
 
-def calc_slg(row):
+def calc_slg(row) -> float:
+    '''Calculates hitter slugging based on other columns.'''
     return (row['H'] + row['2B'] + 2*row['3B'] + 3*row['HR']) / row['AB']
 
-def normalize_pitcher_projections(proj: Projection, df: DataFrame):
+def normalize_pitcher_projections(proj: Projection, df: DataFrame) -> List[str]:
+    '''Normalizes and error checks a passed pitcher projection DataFrame for later parsing by the Toolbox. Returns a list of errors/issues with the upload.'''
     col_map = {}
     found_id = False
     issue_list = []
@@ -375,28 +383,35 @@ def normalize_pitcher_projections(proj: Projection, df: DataFrame):
     
     return issue_list
 
-def calc_fip(row):
+def calc_fip(row) -> float:
+    '''Approximates pitcher FIP based on other columns. Assums a FIP constant of 3.15.'''
     #Estimated FIP constant of 3.15. This should work well enough for our purposes, which is determining starter/reliever
     #PIP splits
     cfip = 3.15
     return (13*row['HR'] + 3*(row['BB'] + row['HBP']) - 2*row['SO']) / row['IP'] + cfip
 
-def calc_era(row):
+def calc_era(row) -> float:
+    '''Calculates pitcher ERA based on other columns'''
     return row['ER'] / row['IP'] * 9
 
-def calc_whip(row):
+def calc_whip(row) -> float:
+    '''Calculates pitcher WHIP based on other columns'''
     return (row['H'] + row['BB']) / row['IP']
 
-def calc_hr_per_9(row):
+def calc_hr_per_9(row) -> float:
+    '''Calculates pitcher HR/9 based on other columns'''
     return row['HR'] / row['IP'] * 9
 
-def calc_bb_per_9(row):
+def calc_bb_per_9(row) -> float:
+    '''Calculates pitcher BB/9 based on other columns'''
     return row['BB'] / row['IP'] * 9
 
-def calc_k_per_9(row):
+def calc_k_per_9(row) -> float:
+    '''Calculates pitcher K/9 based on other columns'''
     return row['SO'] / row['IP'] * 9
 
-def create_projection_from_download(projection, type, ros=False, dc_pt=False, year=None, progress=None):
+def create_projection_from_download(projection: Projection, type:ProjectionType, ros:bool=False, dc_pt:bool=False, year:int=None, progress=None) -> Tuple(DataFrame, DataFrame):
+    '''Creates a Projection based on automatic download and returns the hitter and pitcher dataframes requested.'''
     projection.type = type
     if ros:
         ros_string = ' RoS'
@@ -430,19 +445,22 @@ def create_projection_from_download(projection, type, ros=False, dc_pt=False, ye
     return projs[0], projs[1]
     #return save_projection(projection, projs, progress)
 
-def projection_check(projs):
+def projection_check(projs) -> None:
+    '''Performs checks for uploaded projections'''
     # Perform checks here, update data as needed
     pitch_proj = projs[1]
     if StatType.enum_to_display_dict()[StatType.HBP_ALLOWED] not in pitch_proj.columns:
         # If HBP allowed is blank, fill with pre-calculated regression vs BB
         pitch_proj[StatType.enum_to_display_dict()[StatType.HBP_ALLOWED]] = pitch_proj[StatType.enum_to_display_dict()[StatType.BB_ALLOWED]].apply(lambda bb: 0.0951*bb+0.4181)
 
-def get_projection_count():
+def get_projection_count() -> int:
+    '''Returns number of Projections in database.'''
     with Session() as session:
         count = session.query(Projection).count()
     return count
 
-def get_projection(proj_id, player_data=True):
+def get_projection(proj_id: int, player_data=True) -> Projection:
+    '''Returns Projection from database by id. Loads PLayer_Projection data if requested.'''
     with Session() as session:
         if player_data:
             proj = (session.query(Projection)
@@ -453,7 +471,8 @@ def get_projection(proj_id, player_data=True):
             proj = session.query(Projection).filter(Projection.index == proj_id).first()
     return proj     
 
-def convert_to_df(proj):
+def convert_to_df(proj:Projection) -> List[DataFrame]:
+    '''Converts input Projection to a list of DataFrames, index 0 for hitter and index 1 for pitcher.'''
     pos_col = []
     pitch_col = []
     #Loop to get the dataframe columns
@@ -505,10 +524,12 @@ def db_rows_to_df(player_proj, columns):
         row.append(player_proj.get_stat(col))
     return row
 
-def get_projections_for_current_year():
+def get_projections_for_current_year() -> List[Projection]:
+    '''Returns list of all projections for the current Ottoneu year.'''
     return get_projections_for_year(date_util.get_current_ottoneu_year())
 
-def get_projections_for_year(year, inc_hidden=False):
+def get_projections_for_year(year:int, inc_hidden:bool=False) -> List[Projection]:
+    '''Returns list of all Projections for the input year.'''
     with Session() as session:
         if inc_hidden:
             projs = session.query(Projection).filter(Projection.season == year).all()
@@ -516,18 +537,21 @@ def get_projections_for_year(year, inc_hidden=False):
             projs = session.query(Projection).filter(Projection.season == year, Projection.hide == False).all()
     return projs
 
-def get_available_seasons():
+def get_available_seasons() -> List[int]:
+    '''Returns list of all seasons that have at least one projection associated with them, sorted in descending order.'''
     with Session() as session:
         seasons = session.query(Projection.season).distinct().all()
     tmp_seasons = [record.season for record in seasons]
     return sorted(tmp_seasons, reverse=True)
 
-def delete_projection_by_id(proj_id):
+def delete_projection_by_id(proj_id: int) -> None:
+    '''Deletes a Projection from the database by index.'''
     with Session() as session:
         proj = session.query(Projection).filter(Projection.index == proj_id).first()
         session.delete(proj)
         session.commit()
 
-def get_player_projection(pp_id):
+def get_player_projection(pp_id: int) -> PlayerProjection:
+    '''Returns a PlayerProjection from the database based on index.'''
     with Session() as session:
         return session.query(PlayerProjection).filter(PlayerProjection.index == pp_id).first()
