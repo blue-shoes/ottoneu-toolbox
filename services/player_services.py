@@ -7,7 +7,7 @@ from scrape.scrape_ottoneu import Scrape_Ottoneu
 from dao.session import Session
 from services import salary_services
 from util import string_util
-from types import List
+from typing import List
 
 def create_player_universe() -> None:
     '''Scrapes the Ottoneu overall Average Salary page to get Ottoverse player infromation and save it to the database, creating Players and SalaryInfos as necessary.'''

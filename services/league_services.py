@@ -4,7 +4,7 @@ from dao.session import Session
 from scrape.scrape_ottoneu import Scrape_Ottoneu
 from services import player_services
 from sqlalchemy.orm import joinedload
-from types import List
+from typing import List
 
 from datetime import datetime
 

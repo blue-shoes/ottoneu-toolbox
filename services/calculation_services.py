@@ -9,7 +9,7 @@ from util import string_util, date_util
 import math
 import logging
 import datetime
-from typing import List, Tuple
+from typing import List, Tuple, Dict
 
 def perform_point_calculation(value_calc : ValueCalculation, pd = None) -> None:
     '''Creates a PointValues object from the ValueCalculation, calculates player values, and stores them in the ValueCalculation'''
@@ -19,14 +19,14 @@ def perform_point_calculation(value_calc : ValueCalculation, pd = None) -> None:
     value_calculation = PointValues(value_calc=value_calc)
     value_calculation.calculate_values(rank_pos=True, progress=pd)
 
-def get_num_rostered_rep_levels(value_calc: ValueCalculation) -> dict:
+def get_num_rostered_rep_levels(value_calc: ValueCalculation) -> Dict[str,float]:
     '''Returns a dictionary of the number of players rostered above replacement level at each discrete position from a ValueCalculation'''
     rl_dict = {}
     for pos in Position.get_discrete_offensive_pos() + Position.get_discrete_pitching_pos():
         rl_dict[pos.value] = value_calc.get_input(CDT.pos_to_num_rostered().get(pos))
     return rl_dict
 
-def get_rep_levels(value_calc: ValueCalculation) -> dict:
+def get_rep_levels(value_calc: ValueCalculation) -> Dict[str,float]:
     '''Returns a dictionary of the replacement level at each discrete position from a ValueCalculation'''
     rl_dict = {}
     for pos in Position.get_discrete_offensive_pos() + Position.get_discrete_pitching_pos():

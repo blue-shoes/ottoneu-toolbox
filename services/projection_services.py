@@ -10,7 +10,7 @@ from sqlalchemy.orm import joinedload
 import pandas as pd
 import math
 from util import date_util
-from types import List, Tuple
+from typing import List, Tuple
 
 def download_projections(projection:str, ros:bool=False, dc_pt:bool=False, progress=None) -> List[DataFrame]:
     """Returns a list of projection dataframes. Item 1 is the batting projections. Item 2 is the pitching projections"""
