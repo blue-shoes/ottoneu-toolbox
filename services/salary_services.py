@@ -9,7 +9,7 @@ from datetime import datetime
 
 def update_salary_info(format=ScoringFormat.ALL, pd=None):
     scraper = Scrape_Ottoneu()
-    salary_df = scraper.get_avg_salary_ds(game_type = format)
+    salary_df = scraper.get_avg_salary_ds(game_type = format.value)
     if pd is not None:
         pd.set_task_title('Refreshing DB...')
         pd.increment_completion_percent(40)

@@ -13,7 +13,8 @@ import os.path
 
 from domain.domain import Projection
 from domain.enum import ProjectionType, IdType
-from domain.exception import FangraphsException, InputException
+from domain.exception import InputException
+from scrape.exceptions import FangraphsException
 from services import projection_services, player_services
 from ui.dialog import progress, fg_login
 from ui.dialog.wizard import wizard
