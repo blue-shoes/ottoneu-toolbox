@@ -17,7 +17,7 @@ def perform_point_calculation(value_calc : ValueCalculation, pd = None) -> None:
         pd.set_task_title("Initializing Value Calculation...")
         pd.increment_completion_percent(5)
     value_calculation = PointValues(value_calc=value_calc)
-    value_calculation.calculate_values(rank_pos=True, progress=pd)
+    value_calculation.calculate_values(progress=pd)
 
 def get_num_rostered_rep_levels(value_calc: ValueCalculation) -> Dict[str,float]:
     '''Returns a dictionary of the number of players rostered above replacement level at each discrete position from a ValueCalculation'''
