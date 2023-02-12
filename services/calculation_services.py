@@ -67,7 +67,7 @@ def get_values_for_year(year:int=None) -> List[ValueCalculation]:
     with Session() as session:
         return session.query(ValueCalculation).filter(ValueCalculation.timestamp > start, ValueCalculation.timestamp < end).all()
 
-def get_points(player_proj: PlayerProjection, pos: Position, sabr:bool=False) -> float:
+def get_points(player_proj: PlayerProjection, pos: Position, sabr:bool=False, no_svh:bool=False) -> float:
     '''Returns the point value for a player projection. Pitcher point values FanGraphs Points by default, but can be changed with sabr flag.'''
     try:
         if pos in Position.get_offensive_pos():
@@ -75,14 +75,18 @@ def get_points(player_proj: PlayerProjection, pos: Position, sabr:bool=False) ->
                 + 5.7*player_proj.get_stat(StatType.TRIPLE) + 9.4*player_proj.get_stat(StatType.HR) +3.0*player_proj.get_stat(StatType.BB) \
                 + 3.0*player_proj.get_stat(StatType.HBP) + 1.9*player_proj.get_stat(StatType.SB) - 2.8*player_proj.get_stat(StatType.CS)
         if pos in Position.get_pitching_pos():
+            if no_svh:
+                svh = 0
+            else:
+                svh = 5.0*player_proj.get_stat(StatType.SV) + 4.0*player_proj.get_stat(StatType.HLD)
             if sabr:
                 return 5.0*player_proj.get_stat(StatType.IP) + 2.0*player_proj.get_stat(StatType.SO) - 3.0*player_proj.get_stat(StatType.BB_ALLOWED) \
                     - 3.0*player_proj.get_stat(StatType.HBP_ALLOWED) - 13.0*player_proj.get_stat(StatType.HR_ALLOWED) \
-                    + 5.0*player_proj.get_stat(StatType.SV) + 4.0*player_proj.get_stat(StatType.HLD)
+                    + svh
             else:
                 return 7.4*player_proj.get_stat(StatType.IP) + 2.0*player_proj.get_stat(StatType.SO) - 2.6*player_proj.get_stat(StatType.H_ALLOWED) \
                     - 3.0*player_proj.get_stat(StatType.BB_ALLOWED) - 3.0*player_proj.get_stat(StatType.HBP_ALLOWED) - 12.3*player_proj.get_stat(StatType.HR_ALLOWED) \
-                    + 5.0*player_proj.get_stat(StatType.SV) + 4.0*player_proj.get_stat(StatType.HLD)
+                    + svh
     except TypeError:
         return 0.0
 

@@ -20,8 +20,8 @@ from util import string_util
 player_columns = ('Value', 'Name', 'Team', 'Pos')
 #fom_columns = ('P/G', 'HP/G', 'P/PA', 'P/IP', 'PP/G', 'Points', 'zScore', 'SGP')
 h_fom_columns = ('P/G', 'HP/G', 'P/PA')
-p_fom_columns = ('P/IP', 'PP/G', 'SABR P/IP', 'SABR PP/G')
-point_cols = ('FG Pts', 'SABR Pts')
+p_fom_columns = ('P/IP', 'PP/G', 'SABR P/IP', 'SABR PP/G', 'NSH P/IP', 'NSH PP/G', 'NSH SABR P/IP', 'NSH SABR PP/G')
+point_cols = ('FG Pts', 'SABR Pts', 'NSH FG Pts', 'NSH SABR Pts')
 points_hitting_columns = ('G', 'PA', 'AB', 'H', '2B', '3B', 'HR', 'BB', 'HBP', 'SB','CS')
 points_pitching_columns = ('G', 'GS', 'IP', 'SO','H','BB','HBP','HR','SV','HLD')
 old_school_hitting_columns = ('G', 'PA', 'AB', 'R', 'HR', 'RBI', 'SB', 'AVG')
@@ -412,9 +412,15 @@ class ValuesCalculation(tk.Frame):
             
             p_points = calculation_services.get_points(pp, Position.PITCHER, sabr=False)
             s_p_points = calculation_services.get_points(pp, Position.PITCHER, sabr=True)
+            nsh_p_points = calculation_services.get_points(pp, Position.PITCHER, sabr=False, no_svh=True)
+            nsh_s_p_points = calculation_services.get_points(pp, Position.PITCHER, sabr=True, no_svh=True)
             ip = pp.get_stat(StatType.IP)
             games = pp.get_stat(StatType.G_PIT)
             if ip is None or ip == 0 or games is None or games == 0:
+                val.append("0.00")
+                val.append("0.00")
+                val.append("0.00")
+                val.append("0.00")
                 val.append("0.00")
                 val.append("0.00")
                 val.append("0.00")
@@ -424,9 +430,15 @@ class ValuesCalculation(tk.Frame):
                 val.append("{:.2f}".format(p_points/games))
                 val.append("{:.2f}".format(s_p_points/ip))
                 val.append("{:.2f}".format(s_p_points/games))
+                val.append("{:.2f}".format(nsh_p_points/ip))
+                val.append("{:.2f}".format(nsh_p_points/games))
+                val.append("{:.2f}".format(nsh_s_p_points/ip))
+                val.append("{:.2f}".format(nsh_s_p_points/games))
 
             val.append("{:.1f}".format(p_points + o_points))
             val.append("{:.1f}".format(s_p_points + o_points))
+            val.append("{:.1f}".format(nsh_p_points + o_points))
+            val.append("{:.1f}".format(nsh_s_p_points + o_points))
         return val
     
     def get_overall_row_no_proj(self, player_id):
@@ -462,9 +474,13 @@ class ValuesCalculation(tk.Frame):
                 val.append(pp.get_stat(StatType.PPG)) # p/pa
                 f_points = pp.get_stat(StatType.POINTS)
                 s_points = f_points
+                nsh_f_points = f_points
+                nsh_s_points = f_points
             else:
                 f_points = calculation_services.get_points(pp, pos, sabr=False)
                 s_points = f_points
+                nsh_f_points = f_points
+                nsh_s_points = f_points
                 games = pp.get_stat(StatType.G_HIT)
                 if games is None or games == 0:
                     val.append("0.00") # p/g
@@ -480,14 +496,26 @@ class ValuesCalculation(tk.Frame):
                 val.append(pp.get_stat(StatType.PIP)) # pp/g
                 val.append(pp.get_stat(StatType.PIP)) # s_p/ip
                 val.append(pp.get_stat(StatType.PIP)) # s_pp/g
+                val.append(pp.get_stat(StatType.PIP)) # p/ip
+                val.append(pp.get_stat(StatType.PIP)) # pp/g
+                val.append(pp.get_stat(StatType.PIP)) # s_p/ip
+                val.append(pp.get_stat(StatType.PIP)) # s_pp/g
                 f_points = pp.get_stat(StatType.POINTS)
                 s_points = f_points
+                nsh_f_points = f_points
+                nsh_s_points = f_points
             else:
                 f_points = calculation_services.get_points(pp, pos, sabr=False)
                 s_points = calculation_services.get_points(pp, pos, sabr=True)
+                nsh_f_points = calculation_services.get_points(pp, pos, sabr=False, no_svh=True)
+                nsh_s_points = calculation_services.get_points(pp, pos, sabr=True, no_svh=True)
                 ip = pp.get_stat(StatType.IP)
                 games = pp.get_stat(StatType.G_PIT)
                 if ip is None or ip == 0 or games is None or games == 0:
+                    val.append("0.00") # p/ip
+                    val.append("0.00") # pp/g
+                    val.append("0.00") # s_p/ip
+                    val.append("0.00") # s_pp/g
                     val.append("0.00") # p/ip
                     val.append("0.00") # pp/g
                     val.append("0.00") # s_p/ip
@@ -497,8 +525,14 @@ class ValuesCalculation(tk.Frame):
                     val.append("{:.2f}".format(f_points/games))
                     val.append("{:.2f}".format(s_points/ip))
                     val.append("{:.2f}".format(s_points/games))
+                    val.append("{:.2f}".format(nsh_f_points/ip))
+                    val.append("{:.2f}".format(nsh_f_points/games))
+                    val.append("{:.2f}".format(nsh_s_points/ip))
+                    val.append("{:.2f}".format(nsh_s_points/games))
         val.append("{:.1f}".format(f_points))
         val.append("{:.1f}".format(s_points))
+        val.append("{:.1f}".format(nsh_f_points))
+        val.append("{:.1f}".format(nsh_s_points))
         if self.projection.type != ProjectionType.VALUE_DERIVED:
             for col in cols:
                 if col in enum_dict:
@@ -761,6 +795,10 @@ class ValuesCalculation(tk.Frame):
             h_basis = RankingBasis.display_to_enum_map().get(self.hitter_basis.get())
             p_basis = RankingBasis.display_to_enum_map().get(self.pitcher_basis.get())
             scoring_format = ScoringFormat.name_to_enum_map().get(self.game_type.get())
+            if self.sv_hld_bv.get():
+                prefix = ''
+            else:
+                prefix = 'NSH '
             if h_basis == RankingBasis.PPG:
                 if p_basis == RankingBasis.PPG:
                     overall.append('HP/G')
@@ -772,25 +810,25 @@ class ValuesCalculation(tk.Frame):
                 hit.append("P/PA")
             if p_basis == RankingBasis.PPG:
                 if ScoringFormat.is_sabr(scoring_format):
-                    overall.append("SABR PP/G")
-                    pitch.append("SABR PP/G")
+                    overall.append(f"{prefix}SABR PP/G")
+                    pitch.append(f"{prefix}SABR PP/G")
                 else:
-                    overall.append("PP/G")
-                    pitch.append("PP/G")
+                    overall.append(f"{prefix}PP/G")
+                    pitch.append(f"{prefix}PP/G")
             elif p_basis == RankingBasis.PIP:
                 if ScoringFormat.is_sabr(scoring_format):
-                    overall.append("SABR P/IP")
-                    pitch.append("SABR P/IP")
+                    overall.append(f"{prefix}SABR P/IP")
+                    pitch.append(f"{prefix}SABR P/IP")
                 else:
-                    overall.append("P/IP")
-                    pitch.append("P/IP")
+                    overall.append(f"{prefix}P/IP")
+                    pitch.append(f"{prefix}P/IP")
             if ScoringFormat.is_points_type(scoring_format):
                 if ScoringFormat.is_sabr(scoring_format):
-                    overall.append("SABR Pts")
-                    pitch.append("SABR Pts")
+                    overall.append(f"{prefix}SABR Pts")
+                    pitch.append(f"{prefix}SABR Pts")
                 else:
-                    overall.append("FG Pts")
-                    pitch.append("FG Pts")
+                    overall.append(f"{prefix}FG Pts")
+                    pitch.append(f"{prefix}FG Pts")
                 hit.append("FG Pts")
                 if self.projection.type != ProjectionType.VALUE_DERIVED:
                     hit.extend(points_hitting_columns)
