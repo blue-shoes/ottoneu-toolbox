@@ -19,8 +19,7 @@ class ArmPoint():
     max_rost_num = {}
 
     def __init__(self, value_calc:ValueCalculation, intermediate_calc=False, target_arm=196, rp_limit=999, 
-        rp_ip_per_team=300, min_sp_ip=70, min_rp_ip=30,
-        gs_per_week=10, est_rp_g_per_week=10):
+        rp_ip_per_team=300, gs_per_week=10, est_rp_g_per_week=10):
         self.intermediate_calculations = intermediate_calc
         self.replacement_positions = deepcopy(self.default_replacement_positions)
         self.replacement_levels = deepcopy(self.default_replacement_levels)
@@ -32,8 +31,8 @@ class ArmPoint():
         self.num_teams = value_calc.get_input(CDT.NUM_TEAMS)
         self.target_innings = 1500.0 * self.num_teams
         self.surplus_pos = deepcopy(self.default_surplus_pos)
-        self.min_sp_ip = min_sp_ip
-        self.min_rp_ip = min_rp_ip
+        self.min_sp_ip = value_calc.get_input(CDT.SP_IP_TO_RANK)
+        self.min_rp_ip = value_calc.get_input(CDT.RP_IP_TO_RANK)
         self.rank_basis = value_calc.pitcher_basis
         self.gs_per_week = gs_per_week
         self.est_rp_g_per_week = est_rp_g_per_week
