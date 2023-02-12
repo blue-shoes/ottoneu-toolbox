@@ -7,7 +7,8 @@ from re import sub
 from services import player_services
 from datetime import datetime
 
-def update_salary_info(format=ScoringFormat.ALL, pd=None):
+def update_salary_info(format=ScoringFormat.ALL, pd=None) -> None:
+    '''Updates the database with the salary information for the input scoring format.'''
     scraper = Scrape_Ottoneu()
     salary_df = scraper.get_avg_salary_ds(game_type = format.value)
     if pd is not None:
@@ -60,7 +61,8 @@ def update_salary_info(format=ScoringFormat.ALL, pd=None):
     #TODO: Might want this to automatically update loaded value calc/rosters
 
 
-def get_format_salary_info(player, format):
+def get_format_salary_info(player: Player, format:ScoringFormat) -> Salary_Info:
+    '''Returns the salary info for the player for the given format. If the salary info doesn't exist, create a new blank one and add it to the Player's list.'''
     for si in player.salary_info:
         if si.format == format:
             return si
@@ -69,7 +71,8 @@ def get_format_salary_info(player, format):
     player.salary_info.append(si)
     return si
 
-def create_salary(row, format, player):
+def create_salary(row, format:ScoringFormat, player:Player) -> None:
+    '''Create a new Salary_Info for the Player in the given ScoringFormat, including setting the specific values. Expects a row from the Ottoneu average salaries dataset.'''
     salary_info = Salary_Info()
     salary_info.player_id=player.index
     salary_info.format = format
@@ -77,7 +80,8 @@ def create_salary(row, format, player):
     update_salary(salary_info, row)
     player.salary_info.append(salary_info)
 
-def update_salary(salary_info, row):
+def update_salary(salary_info, row) -> None:
+    '''Updates the input Salary_Info with avg_salary, last_10, max_salary, med_salary, min_salary, and roster percentage. Expects a row from the Ottoneu average salaries dataset.'''
     salary_info.avg_salary = Decimal(sub(r'[^\d.]', '', row['Avg Salary']))
     salary_info.last_10 = Decimal(sub(r'[^\d.]', '', row['Last 10']))
     salary_info.max_salary = Decimal(sub(r'[^\d.]', '', row['Max Salary']))
@@ -86,13 +90,6 @@ def update_salary(salary_info, row):
     salary_info.roster_percentage = row['Roster %']
 
 def get_last_refresh(scoring_format=ScoringFormat.ALL) -> Salary_Refresh:
+    '''Gets the Salary_Refresh for the input scoring format'''
     with Session() as session:
         return session.query(Salary_Refresh).filter(Salary_Refresh.format == scoring_format).first()
-
-def get_salary_info_for_player_ids(ids, format=ScoringFormat.ALL):
-    with Session() as session:
-        salaries = session.query(Salary_Info).filter_by(Salary_Info.player_id.in__(ids), Salary_Info.format == format).all()
-    salary_map = {}
-    for salary in salary_map:
-        salary_map[salary.player.index] = salary
-    return salary_map

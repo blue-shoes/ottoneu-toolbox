@@ -1,3 +1,4 @@
+from __future__ import annotations
 from sqlalchemy import Column, ForeignKey, Index
 from sqlalchemy import Integer, String, Boolean, Float, Date, Enum, TIMESTAMP
 from sqlalchemy.ext.declarative import declarative_base
@@ -30,13 +31,15 @@ class Player(Base):
 
     __table_args__ = (Index('idx_fg_id','FG MajorLeagueID','FG MinorLeagueID'),)
 
-    def get_fg_id(self):
+    def get_fg_id(self) -> object:
+        '''Returns the FanGraphs Major League id, if available, otherwise returns the FanGraphs Minor League id.'''
         if self.fg_major_id != None:
             return self.fg_major_id
         else:
             return self.fg_minor_id
     
-    def pos_eligible(self, pos: Position):
+    def pos_eligible(self, pos: Position) -> bool:
+        '''Returns if the Player is eligible at the input Position.'''
         if pos == Position.OVERALL:
             return True
         elif pos == Position.OFFENSE or pos == Position.POS_UTIL:
@@ -53,7 +56,8 @@ class Player(Base):
             return False
         return pos.value in self.position
     
-    def is_two_way(self):
+    def is_two_way(self) -> bool:
+        '''Returns if the player is eligible at both hitting and pitching positions.'''
         hit = False
         pitch = False
         for pos in Position.get_discrete_offensive_pos():
@@ -65,7 +69,8 @@ class Player(Base):
                 pitch = True
         return hit and pitch
     
-    def get_salary_info_for_format(self, format=ScoringFormat.ALL):
+    def get_salary_info_for_format(self, format=ScoringFormat.ALL) -> Salary_Info:
+        '''Gets the Player's Salary_Info for the input ScoringFormat'''
         for si in self.salary_info:
             if si.format == format:
                 return si
@@ -159,7 +164,8 @@ class ValueCalculation(Base):
 
     value_dict = {}
 
-    def init_value_dict(self):
+    def init_value_dict(self) -> None:
+        '''Initializes a dictionary that is keyed off of player_id, then off of Position with a value of the PlayerValue'''
         for pv in self.values:
             if pv.player_id not in self.value_dict:
                 player_dict = {}
@@ -167,7 +173,9 @@ class ValueCalculation(Base):
             player_dict = self.value_dict[pv.player_id]
             player_dict[pv.position] = pv
 
-    def set_input(self, data_type, value):
+    def set_input(self, data_type:CalculationDataType, value:object) -> None:
+        '''Sets the CalculationInput. Sanitizes so that the value is always a float. Adds it to the ValueCalculation.inputs list if it doesn't exist, otherwise updates
+        the existing value.'''
         if value == '--':
             value = -999
         if isinstance(value, str):
@@ -181,13 +189,16 @@ class ValueCalculation(Base):
         ci.value = value
         self.inputs.append(ci)
 
-    def get_input(self, data_type, default=None):
+    def get_input(self, data_type:CalculationDataType, default=None) -> CalculationInput:
+        '''Gets the CalculationInput for the given data type. Returns the default if None exists in the calculation.'''
         for inp in self.inputs:
             if inp.data_type == data_type:
                 return inp.value
         return default
     
-    def set_output(self, data_type, value):
+    def set_output(self, data_type:CalculationDataType, value:object):
+        '''Sets the ValueData. Sanitizes so that the value is always a float. Adds it to the ValueCalculation.data list if it doesn't exist, otherwise updates
+        the existing value.'''
         if value == '--':
             value = -999
         if isinstance(value, str):
@@ -201,13 +212,16 @@ class ValueCalculation(Base):
         vd.value = value
         self.data.append(vd)
 
-    def get_output(self, data_type, default=None):
+    def get_output(self, data_type:CalculationDataType, default=None) -> ValueData:
+        '''Gets the ValueData for the given data type. Returns the default if None exists in the calculation.'''
         for data in self.data:
             if data.data_type == data_type:
                 return data.value
         return default
     
-    def set_player_value(self, player_id, pos, value):
+    def set_player_value(self, player_id:int, pos:Position, value:float) -> None:
+        '''Sets the value of the given player at the given position. If the player/position combination doesn't exist, adds it to the ValueCalculation.values list.
+        Otherwise updates the existing value.'''
         for pv in self.values:
             if pv.player_id == player_id and pv.position == pos:
                 pv.value = value
@@ -224,7 +238,8 @@ class ValueCalculation(Base):
         player_dict = self.value_dict[player_id]
         player_dict[pos] = pv
     
-    def get_player_value(self, player_id, pos=None):
+    def get_player_value(self, player_id:int, pos=None) -> PlayerValue:
+        '''Gets the PlayerValue for the given player_id and position.'''
         if player_id not in self.value_dict:
             if pos is None:
                 return {}
@@ -235,7 +250,8 @@ class ValueCalculation(Base):
         else:
             return self.value_dict[player_id].get(pos, None)
     
-    def get_position_values(self, pos) -> list[PlayerValue]:
+    def get_position_values(self, pos:Position) -> list[PlayerValue]:
+        '''Gets all player values at the given position.'''
         values = []
         for pv in self.values:
             if pv.position == pos:
@@ -290,7 +306,8 @@ class Projection(Base):
     player_projections = relationship("PlayerProjection", back_populates="projection", cascade="all, delete")
     calculations = relationship("ValueCalculation", back_populates="projection", cascade="all, delete")
 
-    def get_player_projection(self, player_id):
+    def get_player_projection(self, player_id:int) -> PlayerProjection:
+        '''Gets the PlayerProjection for the given player_id'''
         for pp in self.player_projections:
             if pp.player_id == player_id or pp.player.index == player_id:
                 return pp
@@ -311,7 +328,8 @@ class PlayerProjection(Base):
     pitcher = Column(Boolean)
     two_way = Column(Boolean)
 
-    def get_stat(self, stat_type):
+    def get_stat(self, stat_type:StatType) -> ProjectionData:
+        '''Gets the ProejctionData associated with the input StatType'''
         for pd in self.projection_data:
             if pd.stat_type == stat_type:
                 return pd.stat_value
@@ -345,14 +363,17 @@ class Draft(Base):
 
     year = Column(Integer, nullable=False)
 
-    def get_target_by_player(self, player_id):
+    def get_target_by_player(self, player_id:int) -> Draft_Target:
+        '''Gets the Draft_Target for the input player_id. If none exists, return None'''
         if self.targets is not None:
             for target in self.targets:
                 if target.player.index == player_id:
                     return target
         return None
 
-    def set_target(self, player_id, price=None):
+    def set_target(self, player_id:int, price=None) -> None:
+        '''Sets the Draft_Target for the given player_id and price. If a target exists for the input player, the price is updated. Otherwise a new target is created
+        and added to the Draft.targets list.'''
         target = self.get_target_by_player(player_id)
         if target is None:
             target = Draft_Target()

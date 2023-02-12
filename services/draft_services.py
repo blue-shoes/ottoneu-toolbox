@@ -4,7 +4,8 @@ from dao.session import Session
 from domain.domain import Draft, Draft_Target
 from util import date_util
 
-def get_draft_by_league(lg_id):
+def get_draft_by_league(lg_id:int) -> Draft:
+    '''Loads a Draft object from the database for the input league id. Draft is always from the current year.'''
     year = date_util.get_current_ottoneu_year()
     with Session() as session:
         draft = session.query(Draft)\
@@ -24,7 +25,8 @@ def get_draft_by_league(lg_id):
                 .first()
     return draft
 
-def create_target(draft: Draft, playerid, price):
+def create_target(draft: Draft, playerid: int, price: int) -> Draft_Target:
+    '''Creates a Draft target for the given draft based on player id and prices, saves it to the database, and returns the fully loaded target.'''
     with Session() as session:
         target = Draft_Target()
         target.draft_id = draft.index
@@ -36,13 +38,15 @@ def create_target(draft: Draft, playerid, price):
             .options(joinedload(Draft_Target.player)).first()
     return target
 
-def update_target(target: Draft_Target, price):
+def update_target(target: Draft_Target, price: int) -> None:
+    '''Updates the price of the specified Draft_Target'''
     with Session() as session:
         target = session.query(Draft_Target).filter_by(index = target.index).first()
         target.price = price
         session.commit()
 
-def delete_target(target):
+def delete_target(target:Draft_Target) -> None:
+    '''Deletes the given Draft_Target from the database'''
     with Session() as session:
         session.delete(target)
         session.commit()

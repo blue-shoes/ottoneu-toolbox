@@ -48,7 +48,7 @@ class Scrape_Fg(scrape_base.Scrape_Base):
         if self.driver == None:
             self.setupDriver()
         #Use driver to get dataset
-        dataframe = self.getDataset(page, 'Export Data', filepath, by_type=By.LINK_TEXT)
+        dataframe = self.getDataset(url, 'Export Data', filepath, by_type=By.LINK_TEXT)
         os.remove(filepath)
         #If the dataset is player based (not league based), reindex to the FG player id
         if player:
