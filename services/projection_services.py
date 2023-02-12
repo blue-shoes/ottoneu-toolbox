@@ -410,7 +410,7 @@ def calc_k_per_9(row) -> float:
     '''Calculates pitcher K/9 based on other columns'''
     return row['SO'] / row['IP'] * 9
 
-def create_projection_from_download(projection: Projection, type:ProjectionType, ros:bool=False, dc_pt:bool=False, year:int=None, progress=None) -> Tuple(DataFrame, DataFrame):
+def create_projection_from_download(projection: Projection, type:ProjectionType, ros:bool=False, dc_pt:bool=False, year:int=None, progress=None) -> Tuple[DataFrame, DataFrame]:
     '''Creates a Projection based on automatic download and returns the hitter and pitcher dataframes requested.'''
     projection.type = type
     if ros:
