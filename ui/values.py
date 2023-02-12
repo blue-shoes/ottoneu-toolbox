@@ -978,13 +978,15 @@ class ValuesCalculation(tk.Frame):
                     bad_rep_level.append(key)
         else:
             for key, value in self.rep_level_dict.items():
-                if not value.get().isnumeric():
+                try:
+                    f_val = float(value.get())
+                    if f_val > 10.0:
+                        if self.pitcher_basis.get() == RankingBasis.PPG and key == 'SP' and f_val < 40.0:
+                            continue
+                        bad_rep_level.append(key)
+                except ValueError:
                     bad_rep_level.append(key)
-                elif float(value.get()) > 10.0:
-                    if self.pitcher_basis.get() == RankingBasis.PPG and key == 'SP' and float(value.get()) < 40.0:
-                        continue
-                    bad_rep_level.append(key)
-        
+
         if len(bad_rep_level) > 0:
             errors.append(f'The following positions have bad replacement level inputs (check scheme): {", ".join(bad_rep_level)}')
 
