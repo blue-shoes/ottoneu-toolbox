@@ -13,15 +13,17 @@ normalMap = {'À': 'A', 'Á': 'A', 'Â': 'A', 'Ã': 'A', 'Ä': 'A',
              '§': 'S',  '³': '3', '²': '2', '¹': '1'}
 
 
-def normalize(value):
+def normalize(value:str) -> str:
     """Function that removes most diacritics from strings and returns value in all caps"""
     normalize = str.maketrans(normalMap)
     val = value.translate(normalize)
     return val.upper()
 
-def parse_dollar(value):
+def parse_dollar(value) -> float:
+    '''Returns the float value of the input. If input is float or int, returns the float representation of it. If the input
+    is a string, strips the $ symbol if necessary and returns the float value.'''
     if isinstance(value, float) or isinstance(value, int):
-        return value
+        return float(value)
     if '$' in value:
         vals = value.split['$']
         if len(vals[0]) > 0 and '-' in vals[0]:
@@ -30,7 +32,8 @@ def parse_dollar(value):
             return float(vals[1])
     return float(value)
 
-def int_validation(input):
+def int_validation(input) -> bool:
+    '''Returns true if the value is an integer or blank. False otherwise.'''
     if input.isdigit():
         return True
     if input == "":
