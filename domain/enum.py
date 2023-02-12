@@ -93,7 +93,7 @@ class CalculationDataType(Enum):
     IP_TARGET = 39
     SP_MULTIPLIER = 40
     RP_MULTIPLIER = 41
-    NO_SV_HLD = 42
+    INCLUDE_SVH = 42
     SP_WITH_ALL_IP = 43
     RP_WITH_ALL_IP = 44
 

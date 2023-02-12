@@ -113,6 +113,11 @@ class ValuesCalculation(tk.Frame):
             else:
                 self.manual_split.set(True)
                 self.hitter_allocation.set(int(v.get_input(CDT.HITTER_SPLIT)))
+            include_svh = v.get_input(CDT.INCLUDE_SVH)
+            if include_svh is None or include_svh == 1:
+                self.sv_hld_bv.set(True)
+            else:
+                self.sv_hld_bv.set(False)
             self.safe_set_input_value(CDT.NON_PRODUCTIVE_DOLLARS, self.non_prod_dollars_str, True)
             self.hitter_basis.set(RankingBasis.enum_to_display_dict()[v.hitter_basis])
             self.safe_set_input_value(CDT.PA_TO_RANK, self.min_pa, True)
@@ -245,6 +250,13 @@ class ValuesCalculation(tk.Frame):
         self.min_rp_ip.set("30")
         ttk.Entry(inpf, textvariable=self.min_rp_ip).grid(column=1,row=11, pady=5)
         self.input_svs.append(self.min_rp_ip)
+
+        self.sv_hld_lbl = ttk.Label(inpf, text="Include SV/HLD?")
+        self.sv_hld_lbl.grid(column=0, row=12, pady=5)
+        self.sv_hld_bv = BooleanVar()
+        self.sv_hld_bv.set(True)
+        self.sv_hld_entry = ttk.Checkbutton(inpf, variable=self.sv_hld_bv, command=self.set_display_columns)
+        self.sv_hld_entry.grid(column=1, row=12, pady=5)
         
         # This is its own method to make the __init__ more readable
         row = self.set_replacement_level_ui(inpf, start_row=13)
@@ -853,6 +865,7 @@ class ValuesCalculation(tk.Frame):
         self.value_calc.pitcher_basis = RankingBasis.display_to_enum_map()[self.pitcher_basis.get()]
         self.value_calc.set_input(CDT.SP_IP_TO_RANK, float(self.min_sp_ip.get()))
         self.value_calc.set_input(CDT.RP_IP_TO_RANK, float(self.min_rp_ip.get()))
+        self.value_calc.set_input(CDT.INCLUDE_SVH, float(self.sv_hld_bv.get()))
         self.value_calc.set_input(CDT.REP_LEVEL_SCHEME, float(self.rep_level_scheme.get()))
         if self.rep_level_scheme.get() == RepLevelScheme.STATIC_REP_LEVEL.value:
             for pos in Position.get_discrete_offensive_pos() + Position.get_discrete_pitching_pos():

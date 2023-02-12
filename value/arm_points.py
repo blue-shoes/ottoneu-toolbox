@@ -36,6 +36,8 @@ class ArmPoint():
         self.scoring_format = value_calc.format
         self.gs_per_week = gs_per_week
         self.est_rp_g_per_week = est_rp_g_per_week
+        self.no_sv_hld = value_calc.get_input(CDT.INCLUDE_SVH) == 0
+        print(self.no_sv_hld)
         if intermediate_calc:
             self.dirname = os.path.abspath(os.path.join(os.path.dirname( __file__ ), '..'))
             self.intermed_subdirpath = os.path.join(self.dirname, 'data_dirs','intermediate')
@@ -302,11 +304,15 @@ class ArmPoint():
         if row['G'] == 0:
             return -1
         if row[f'IP {role}'] == 0: return -1
+        if self.no_sv_hld:
+            prefix = 'No SVH '
+        else:
+            prefix = ''
         if self.rank_basis == RankingBasis.PIP:
-            rate = row[f'P/IP {role}'] - rep_level
+            rate = row[f'{prefix}P/IP {role}'] - rep_level
             return rate * row[f'IP {role}']
         elif self.rank_basis == RankingBasis.PPG:
-            rate = row[f'PPG {role}'] - rep_level
+            rate = row[f'{prefix}PPG {role}'] - rep_level
             if role == 'SP':
                 return rate * row['GS']
             else:
@@ -330,10 +336,14 @@ class ArmPoint():
         else:
             min_ip = self.min_sp_ip
         pitch_df = df.loc[df[f'IP {pos}'] >= min_ip]
+        if self.no_sv_hld:
+            prefix = 'No SVH '
+        else:
+            prefix = ''
         if self.rank_basis == RankingBasis.PIP:
-            sort_col = f"P/IP {pos}"
+            sort_col = f"{prefix}P/IP {pos}"
         elif self.rank_basis == RankingBasis.PPG:
-            sort_col = f"PPG {pos}"
+            sort_col = f"{prefix}PPG {pos}"
         pitch_df = pitch_df.sort_values(sort_col, ascending=False)
         #Get the nth value (here the # of players rostered at the position - 1 for 0 index) from the sorted data
         return pitch_df.iloc[self.replacement_positions[pos] - 1][sort_col]
@@ -408,6 +418,24 @@ class ArmPoint():
         rp_pip = self.rp_pip_calc(row)
         rp_points = rp_pip * row['IP RP']
         return rp_points / (row['G'] - row['GS'])
+    
+    def rp_no_svh_ppg_calc(self, row) -> float:
+        '''Estimates the pitcher points per game in relieving role based off of calculated RP PIP values and IP/GR. Does
+        not include saves or holds'''
+        if row['G'] == row['GS']:
+            return 0
+        rp_pip = self.rp_no_svh_pip_calc(row)
+        rp_points = rp_pip * row['IP RP']
+        return rp_points / (row['G'] - row['GS'])
+    
+    def rp_no_svh_pip_calc(self, row) -> float:
+        '''Estimates pitcher points per inning in relieving role based off of difference between overall FIP and RP FIP
+        using a linear regression. Does not include saves or holds'''
+        if row['IP RP'] == 0: return 0
+        if row['IP SP'] == 0: return row['No SVH P/IP']
+        fip_diff = row['FIP RP'] - row['FIP']
+        no_svh_pip = row['No SVH P/IP'] - 1.3274*fip_diff 
+        return (no_svh_pip * row['IP RP'])/row['IP RP'] 
 
     def rp_pip_calc(self, row) -> float:
         '''Estimates pitcher points per inning in relieving role based off of difference between overall FIP and RP FIP
@@ -463,8 +491,15 @@ class ArmPoint():
             df['P/IP SP'] = df.apply(self.sp_pip_calc, axis=1)
             df['P/IP RP'] = df.apply(self.rp_pip_calc, axis=1)
 
-            df['Rank SP Rate'] = df['P/IP SP'].rank(ascending=False)
-            df['Rank RP Rate'] = df['P/IP RP'].rank(ascending=False)
+            df['No SVH P/IP SP'] = df['P/IP SP']
+            df['No SVH P/IP RP'] = df.apply(self.rp_no_svh_pip_calc, axis=1)
+
+            if self.no_sv_hld:
+                df['Rank SP Rate'] = df['No SVH P/IP SP'].rank(ascending=False)
+                df['Rank RP Rate'] = df['No SVH P/IP RP'].rank(ascending=False)
+            else:
+                df['Rank SP Rate'] = df['P/IP SP'].rank(ascending=False)
+                df['Rank RP Rate'] = df['P/IP RP'].rank(ascending=False)
 
             df['SP Multiplier'] = df.apply(self.sp_multiplier_assignment, axis=1)
             df['RP Multiplier'] = df.apply(self.rp_multiplier_assignment, axis=1)
@@ -473,8 +508,15 @@ class ArmPoint():
             df['PPG SP'] = df.apply(self.sp_ppg_calc, axis=1)
             df['PPG RP'] = df.apply(self.rp_ppg_calc, axis=1)
 
-            df['Rank SP Rate'] = df['PPG SP'].rank(ascending=False)
-            df['Rank RP Rate'] = df['PPG RP'].rank(ascending=False)
+            df['No SVH PPG SP'] = df['PPG SP']
+            df['No SVH PPG RP'] = df.apply(self.rp_no_svh_ppg_calc, axis=1)
+
+            if self.no_sv_hld:
+                df['Rank SP Rate'] = df['No SVH PPG SP'].rank(ascending=False)
+                df['Rank RP Rate'] = df['No SVH PPG RP'].rank(ascending=False)
+            else:
+                df['Rank SP Rate'] = df['PPG SP'].rank(ascending=False)
+                df['Rank RP Rate'] = df['PPG RP'].rank(ascending=False)
 
             df['SP Multiplier'] = 1
             df['RP Multiplier'] = 1
