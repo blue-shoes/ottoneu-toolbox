@@ -11,7 +11,6 @@ pd.options.mode.chained_assignment = None # from https://stackoverflow.com/a/206
 
 class ArmPoint():
 
-    pitch_pos = ['SP','RP']
     default_replacement_positions = {"SP":60,"RP":30}
     default_replacement_levels = {}
     default_surplus_pos = {"SP": 0, "RP": 0}
@@ -34,6 +33,7 @@ class ArmPoint():
         self.min_sp_ip = value_calc.get_input(CDT.SP_IP_TO_RANK)
         self.min_rp_ip = value_calc.get_input(CDT.RP_IP_TO_RANK)
         self.rank_basis = value_calc.pitcher_basis
+        self.scoring_format = value_calc.format
         self.gs_per_week = gs_per_week
         self.est_rp_g_per_week = est_rp_g_per_week
         if intermediate_calc:
@@ -121,7 +121,7 @@ class ArmPoint():
             rp_g = rosterable.apply(self.usable_rp_g_calc, axis=1).sum()
 
             if self.rep_level_scheme == RepLevelScheme.FILL_GAMES:
-                if self.rank_basis == RankingBasis.PIP:
+                if not ScoringFormat.is_h2h(self.scoring_format):
                     while sp_ip < self.num_teams * (1500-self.rp_ip_per_team) and self.replacement_positions['SP'] < self.max_rost_num['SP']:
                         self.replacement_positions['SP'] = self.replacement_positions['SP'] + 1
                         self.get_pitcher_par_calc(df)
@@ -132,7 +132,7 @@ class ArmPoint():
                         self.get_pitcher_par_calc(df)
                         rosterable = df.loc[df['PAR'] >= 0]
                         rp_ip = rosterable.apply(self.usable_ip_calc, args=("RP",), axis=1).sum()
-                elif self.rank_basis == RankingBasis.PPG:
+                else:
                     while sp_g < self.num_teams * self.gs_per_week * self.weeks and self.replacement_positions['SP'] < self.max_rost_num['SP']:
                         self.replacement_positions['SP'] = self.replacement_positions['SP'] + 1
                         self.get_pitcher_par_calc(df)

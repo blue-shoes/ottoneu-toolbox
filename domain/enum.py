@@ -1,3 +1,4 @@
+from __future__ import annotations
 from enum import Enum
 
 class ProjectionType(Enum):
@@ -408,6 +409,10 @@ class ScoringFormat(Enum):
     @classmethod
     def is_sabr(self, format):
         return format in [self.SABR_POINTS, self.H2H_SABR_POINTS]
+    
+    @classmethod
+    def is_h2h(self, format:ScoringFormat) -> bool:
+        return format in [self.H2H_FG_POINTS, self.H2H_SABR_POINTS]
 
     @classmethod
     def name_to_enum_map(self):
