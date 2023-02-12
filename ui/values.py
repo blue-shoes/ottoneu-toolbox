@@ -10,11 +10,12 @@ from pathlib import Path
 import pandas as pd
 
 from ui.table import Table
-from domain.domain import ValueCalculation, PlayerProjection
+from domain.domain import ValueCalculation
 from domain.enum import CalculationDataType as CDT, RankingBasis, RepLevelScheme, StatType, Position, ProjectionType, ScoringFormat
 from services import projection_services, calculation_services
 from ui.dialog import projection_select, progress, name_desc
 from ui.dialog.wizard import projection_import
+from ui.tool.tooltip import CreateToolTip
 from util import string_util
 
 player_columns = ('Value', 'Name', 'Team', 'Pos')
@@ -75,7 +76,7 @@ class ValuesCalculation(tk.Frame):
             self.num_teams_str.set("12")
             self.manual_split.set(False)
             self.hitter_allocation.set("60")
-            self.non_prod_dollars_str.set("48")
+            self.non_prod_dollars_str.set("300")
             self.hitter_basis.set('P/G')
             self.min_pa.set("150")
             self.pitcher_basis.set('P/IP')
@@ -181,7 +182,7 @@ class ValuesCalculation(tk.Frame):
         gt_combo.bind("<<ComboboxSelected>>", self.update_game_type)
         # TODO: Don't hardcode game types, include other types
 
-        gt_combo['values'] = (gt_map[ScoringFormat.FG_POINTS], gt_map[ScoringFormat.SABR_POINTS])
+        gt_combo['values'] = (gt_map[ScoringFormat.FG_POINTS], gt_map[ScoringFormat.SABR_POINTS], gt_map[ScoringFormat.H2H_FG_POINTS], gt_map[ScoringFormat.H2H_SABR_POINTS])
         gt_combo.grid(column=1,row=2,pady=5)
 
         ttk.Label(inpf, text="Number of Teams:").grid(column=0, row=3,pady=5)
@@ -192,7 +193,7 @@ class ValuesCalculation(tk.Frame):
         team_entry.config(validate="key", validatecommand=(validation, '%P'))
         self.input_svs.append(self.num_teams_str)
 
-        ttk.Label(inpf, text="Manually assign hitter/pitcher split?").grid(column=0, row=4,pady=5)
+        ttk.Label(inpf, text="Manual hitter/pitcher split?").grid(column=0, row=4,pady=5)
         self.manual_split = BooleanVar()
         self.manual_split.set(False)
         ttk.Checkbutton(inpf, variable=self.manual_split, command=self.toggle_manual_split).grid(column=1, row=4, pady=5)
@@ -209,7 +210,7 @@ class ValuesCalculation(tk.Frame):
 
         ttk.Label(inpf, text="Non-productive salaries (e.g. prospects):").grid(column=0, row=6,pady=5)
         self.non_prod_dollars_str = StringVar()
-        self.non_prod_dollars_str.set("48")
+        self.non_prod_dollars_str.set("300")
         non_prod = ttk.Entry(inpf, textvariable=self.non_prod_dollars_str)
         non_prod.grid(column=1,row=6,pady=5)
         non_prod.config(validate="key", validatecommand=(validation, '%P'))
