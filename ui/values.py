@@ -247,9 +247,9 @@ class ValuesCalculation(tk.Frame):
         self.input_svs.append(self.min_rp_ip)
         
         # This is its own method to make the __init__ more readable
-        self.set_replacement_level_ui(inpf)
+        row = self.set_replacement_level_ui(inpf, start_row=13)
 
-        ttk.Button(inpf, text="Calculate", command=self.calculate_values).grid(row=24, column=0)
+        ttk.Button(inpf, text="Calculate", command=self.calculate_values).grid(row=row, column=0)
 
         inpf.update()
 
@@ -791,64 +791,34 @@ class ValuesCalculation(tk.Frame):
             elif pos in Position.get_pitching_pos():
                 self.tables[pos].set_display_columns(tuple(pitch))
     
-    def set_replacement_level_ui(self, inpf):
-        ttk.Label(inpf, text="Select Replacement Level Scheme").grid(column=0,row=12,columnspan=2,pady=5)
+    def set_replacement_level_ui(self, inpf, start_row:int):
+        row = start_row
+        ttk.Label(inpf, text="Select Replacement Level Scheme").grid(column=0,row=row,columnspan=3,pady=5)
 
         self.rep_level_scheme = IntVar()
         self.rep_level_scheme.set(RepLevelScheme.NUM_ROSTERED.value)
-
-        ttk.Radiobutton(inpf, text="Number Rostered", value=RepLevelScheme.NUM_ROSTERED.value, command=self.update_rep_level_scheme, variable=self.rep_level_scheme).grid(column=0,row=13,pady=5)
-        ttk.Radiobutton(inpf, text="Replacment Level", value=RepLevelScheme.STATIC_REP_LEVEL.value, command=self.update_rep_level_scheme, variable=self.rep_level_scheme).grid(column=1,row=13,pady=5)
-        ttk.Radiobutton(inpf, text="Fill Games", value=RepLevelScheme.FILL_GAMES.value, command=self.update_rep_level_scheme, variable=self.rep_level_scheme).grid(column=2,row=13,pady=5)
+        row = row+1
+        ttk.Radiobutton(inpf, text="Number Rostered", value=RepLevelScheme.NUM_ROSTERED.value, command=self.update_rep_level_scheme, variable=self.rep_level_scheme).grid(column=0,row=row,pady=5)
+        ttk.Radiobutton(inpf, text="Replacment Level", value=RepLevelScheme.STATIC_REP_LEVEL.value, command=self.update_rep_level_scheme, variable=self.rep_level_scheme).grid(column=1,row=row,pady=5)
+        ttk.Radiobutton(inpf, text="Fill Games", value=RepLevelScheme.FILL_GAMES.value, command=self.update_rep_level_scheme, variable=self.rep_level_scheme).grid(column=2,row=row,pady=5)
     
+        row = row+1
         self.rep_level_txt = StringVar()
         self.rep_level_txt.set("Set number of rostered players at each position:")
-        ttk.Label(inpf, textvariable=self.rep_level_txt).grid(column=0, row=14, columnspan=2, pady=5)
+        ttk.Label(inpf, textvariable=self.rep_level_txt).grid(column=0, row=row, columnspan=3, pady=5)
         
-        ttk.Label(inpf, text="C").grid(row=15, column=0)
-        self.rep_level_dict["C"] = StringVar()
-        self.rep_level_dict["C"].set("24")
-        ttk.Entry(inpf, textvariable=self.rep_level_dict["C"]).grid(row=15,column=1)
+        row = row+1
 
-        ttk.Label(inpf, text="1B").grid(row=16, column=0)
-        self.rep_level_dict["1B"] = StringVar()
-        self.rep_level_dict["1B"].set("40")
-        ttk.Entry(inpf, textvariable=self.rep_level_dict["1B"]).grid(row=16,column=1)
+        for pos in Position.get_discrete_offensive_pos() + Position.get_discrete_pitching_pos():
+            ttk.Label(inpf, text=pos.value).grid(row=row, column=0)
+            self.rep_level_dict[pos.value] = StringVar()
+            #self.rep_level_dict[pos.value].set("24")
+            ttk.Entry(inpf, textvariable=self.rep_level_dict[pos.value]).grid(row=row,column=1)
+            row = row+1
+        
+        self.update_rep_level_scheme()
 
-        ttk.Label(inpf, text="2B").grid(row=17, column=0)
-        self.rep_level_dict["2B"] = StringVar()
-        self.rep_level_dict["2B"].set("38")
-        ttk.Entry(inpf, textvariable=self.rep_level_dict["2B"]).grid(row=17,column=1)
-
-        ttk.Label(inpf, text="SS").grid(row=18, column=0)
-        self.rep_level_dict["SS"] = StringVar()
-        self.rep_level_dict["SS"].set("42")
-        ttk.Entry(inpf, textvariable=self.rep_level_dict["SS"]).grid(row=18,column=1)
-
-        ttk.Label(inpf, text="3B").grid(row=19, column=0)
-        self.rep_level_dict["3B"] = StringVar()
-        self.rep_level_dict["3B"].set("24")
-        ttk.Entry(inpf, textvariable=self.rep_level_dict["3B"]).grid(row=19,column=1)
-
-        ttk.Label(inpf, text="OF").grid(row=20, column=0)
-        self.rep_level_dict["OF"] = StringVar()
-        self.rep_level_dict["OF"].set("95")
-        ttk.Entry(inpf, textvariable=self.rep_level_dict["OF"]).grid(row=20,column=1)
-
-        ttk.Label(inpf, text="Util").grid(row=21, column=0)
-        self.rep_level_dict["Util"] = StringVar()
-        self.rep_level_dict["Util"].set("200")
-        ttk.Entry(inpf, textvariable=self.rep_level_dict["Util"]).grid(row=21,column=1)
-
-        ttk.Label(inpf, text="SP").grid(row=22, column=0)
-        self.rep_level_dict["SP"] = StringVar()
-        self.rep_level_dict["SP"].set("85")
-        ttk.Entry(inpf, textvariable=self.rep_level_dict["SP"]).grid(row=22,column=1)
-
-        ttk.Label(inpf, text="RP").grid(row=23, column=0)
-        self.rep_level_dict["RP"] = StringVar()
-        self.rep_level_dict["RP"].set("70")
-        ttk.Entry(inpf, textvariable=self.rep_level_dict["RP"]).grid(row=23,column=1)
+        return row
     
     def update_rep_level_scheme(self):
         if self.rep_level_scheme.get() == RepLevelScheme.NUM_ROSTERED.value:
