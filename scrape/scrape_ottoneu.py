@@ -8,6 +8,7 @@ from io import StringIO
 import datetime
 from decimal import Decimal
 from re import sub
+import time
 
 from scrape import scrape_base
 from scrape.exceptions import OttoneuException
@@ -265,6 +266,7 @@ class Scrape_Ottoneu(scrape_base.Scrape_Base):
 
         self.setupDriver()
         self.driver.get(url)
+        time.sleep(5)
         html = self.driver.page_source
         self.driver.quit()
         browse_soup = Soup(html, 'html.parser')
