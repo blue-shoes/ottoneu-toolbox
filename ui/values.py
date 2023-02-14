@@ -13,7 +13,7 @@ from ui.table import Table
 from domain.domain import ValueCalculation
 from domain.enum import CalculationDataType as CDT, RankingBasis, RepLevelScheme, StatType, Position, ProjectionType, ScoringFormat
 from services import projection_services, calculation_services
-from ui.dialog import projection_select, progress, name_desc
+from ui.dialog import projection_select, progress, name_desc, advanced_calc
 from ui.dialog.wizard import projection_import
 from ui.tool.tooltip import CreateToolTip
 from util import string_util
@@ -208,7 +208,9 @@ class ValuesCalculation(tk.Frame):
         self.hitter_aloc_entry.configure(state='disable')
         self.input_svs.append(self.hitter_allocation)
 
-        ttk.Label(inpf, text="Non-productive salaries (e.g. prospects):").grid(column=0, row=6,pady=5)
+        lbl = ttk.Label(inpf, text="Excess salaries:")
+        lbl.grid(column=0, row=6,pady=5)
+        CreateToolTip(lbl, text='Cap space set aside for below replacement level player salaries, such as prospects, or unspent cap space.')
         self.non_prod_dollars_str = StringVar()
         self.non_prod_dollars_str.set("300")
         non_prod = ttk.Entry(inpf, textvariable=self.non_prod_dollars_str)
@@ -263,6 +265,9 @@ class ValuesCalculation(tk.Frame):
         row = self.set_replacement_level_ui(inpf, start_row=13)
 
         ttk.Button(inpf, text="Calculate", command=self.calculate_values).grid(row=row, column=0)
+        self.advanced_btn = ttk.Button(inpf, text='Advanced', command=self.advanced_options)
+        self.advanced_btn['state'] = DISABLED
+        self.advanced_btn.grid(row=row, column=1)
 
         inpf.update()
 
@@ -331,6 +336,7 @@ class ValuesCalculation(tk.Frame):
 
     def update_game_type(self, event: Event):
         self.set_display_columns()
+        self.set_advanced_button_status()
 
     def select_projection(self):
         count = projection_services.get_projection_count()
@@ -863,11 +869,8 @@ class ValuesCalculation(tk.Frame):
         for pos in Position.get_discrete_offensive_pos() + Position.get_discrete_pitching_pos():
             ttk.Label(inpf, text=pos.value).grid(row=row, column=0)
             self.rep_level_dict[pos.value] = StringVar()
-            #self.rep_level_dict[pos.value].set("24")
             ttk.Entry(inpf, textvariable=self.rep_level_dict[pos.value]).grid(row=row,column=1)
             row = row+1
-        
-        self.update_rep_level_scheme()
 
         return row
     
@@ -881,7 +884,12 @@ class ValuesCalculation(tk.Frame):
         else:
             self.rep_level_txt.set("Set number of rostered players beyond games filled for each position:")
             self.set_default_rep_level(RepLevelScheme.FILL_GAMES)
+        self.set_advanced_button_status()
     
+    def advanced_options(self):
+        advanced_calc.Dialog(self, ScoringFormat.name_to_enum_map()[self.game_type.get()], RepLevelScheme.num_to_enum_map()[self.rep_level_scheme.get()],
+        RankingBasis._value2member_map_.get(self.hitter_basis.get()), RankingBasis._value2member_map_.get(self.pitcher_basis.get()))
+
     def calculate_values(self):
         try:
             if self.has_errors():
@@ -964,7 +972,15 @@ class ValuesCalculation(tk.Frame):
                 else:
                     table.set(index, 0, "${:.1f}".format(pv.value))
             table.resort()
-        
+    
+    def set_advanced_button_status(self):
+        if self.rep_level_scheme.get() == RepLevelScheme.FILL_GAMES.value:
+            self.advanced_btn.configure(state='enable')
+        elif self.game_type.get() == ScoringFormat.CLASSIC_4X4.value or self.game_type.get() == ScoringFormat.OLD_SCHOOL_5X5.value:
+            self.advanced_btn.configure(state='enable')
+        else:
+            self.advanced_btn.configure(state='disable')
+
     def has_errors(self):
         errors = []
         bad_rep_level = []
@@ -985,7 +1001,7 @@ class ValuesCalculation(tk.Frame):
             errors.append(f'Selected projection does not have required columns for 4x4 calculations. Please select another projection')
         
         if self.projection is not None:
-            if self.projection.ros and self.rep_level_scheme.get == RepLevelScheme.FILL_GAMES.value:
+            if self.projection.ros and self.rep_level_scheme.get() == RepLevelScheme.FILL_GAMES.value:
                 errors.append(f'Fill Games option not currently supported for RoS projection sets. Please pick another replacement level scheme.')
 
         if self.rep_level_scheme.get() == RepLevelScheme.NUM_ROSTERED.value:
