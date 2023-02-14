@@ -393,3 +393,8 @@ class Draft_Target(Base):
 
     price = Column(Integer, nullable=True)
 
+class Adv_Calc_Option(Base):
+    '''Class to hold advanced calculation inputs'''
+    __tablename__ = 'adv_calc_option'
+    index = Column(Enum(CalculationDataType), primary_key=True)
+    value = Column(Float)

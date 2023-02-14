@@ -96,6 +96,7 @@ class CalculationDataType(Enum):
     INCLUDE_SVH = 42
     SP_WITH_ALL_IP = 43
     RP_WITH_ALL_IP = 44
+    BATTER_G_TARGET = 45
 
     @classmethod
     def pos_to_num_rostered(self):
