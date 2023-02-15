@@ -54,9 +54,10 @@ league inflation rate.
 
 ## Work in Progress
 Potential feature expansions for the Ottoneu Toolbox include:
-- Addition of 4x4 and 5x5 formats for values and draft tool
+- Addition of 4x4 and 5x5 formats for value calculations
 - Ability to view stats/projections for individual players on-demand
 - Expansion to in-season league analysis of rosters, trades, free agents, etc.
+- Addition of Davenport Projections
 
 ## Framework details
 The Toolbox is backed by a SQLite database using SQLAlchemy ORM mappings. Graphics provided via Tkinter. Web scraping with BeautifulSoup and Selenium.
