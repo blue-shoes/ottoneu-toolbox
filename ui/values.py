@@ -12,7 +12,7 @@ import pandas as pd
 from ui.table import Table
 from domain.domain import ValueCalculation
 from domain.enum import CalculationDataType as CDT, RankingBasis, RepLevelScheme, StatType, Position, ProjectionType, ScoringFormat
-from services import projection_services, calculation_services
+from services import projection_services, calculation_services, adv_calc_services
 from ui.dialog import projection_select, progress, name_desc, advanced_calc
 from ui.dialog.wizard import projection_import
 from ui.tool.tooltip import CreateToolTip
@@ -133,6 +133,10 @@ class ValuesCalculation(tk.Frame):
             else:
                 for pos in Position.get_discrete_offensive_pos() + Position.get_discrete_pitching_pos():
                     self.safe_set_input_value(CDT.pos_to_num_rostered().get(pos), self.rep_level_dict[pos.value], True)
+            for adv_inp in CDT.get_adv_inputs():
+                inp = self.value_calc.get_input(adv_inp)
+                if inp is not None:
+                    adv_calc_services.set_advanced_option(adv_inp, inp.value)
             self.update_calc_output_frame()
         pd.set_completion_percent(33)
         if len(self.tables) > 0:
@@ -920,6 +924,7 @@ class ValuesCalculation(tk.Frame):
         else:
             for pos in Position.get_discrete_offensive_pos() + Position.get_discrete_pitching_pos():
                 self.value_calc.set_input(CDT.pos_to_num_rostered().get(pos), int(self.rep_level_dict[pos.value].get()))
+        self.get_advanced_inputs()
         
         logging.debug("About to perform point_calc")
         pd = progress.ProgressDialog(self, title='Performing Calculation')
@@ -934,6 +939,21 @@ class ValuesCalculation(tk.Frame):
             mb.showerror('Error creating player values',  'See log for details')
         finally:
             pd.complete()
+    
+    def set_advanced_input(self):
+        if not ScoringFormat.is_points_type(self.value_calc.format):
+            #TODO: SGP info
+            ...
+        if self.value_calc.get_input(CDT.REP_LEVEL_SCHEME) == RepLevelScheme.FILL_GAMES:
+            self.value_calc.set_input(CDT.BATTER_G_TARGET, adv_calc_services.get_advanced_option(CDT.BATTER_G_TARGET))
+            if ScoringFormat.is_h2h(self.value_calc.format):
+                ##Fill Games
+                self.value_calc.set_input(CDT.GS_LIMIT, adv_calc_services.get_advanced_option(CDT.GS_LIMIT))
+                self.value_calc.set_input(CDT.RP_G_TARGET, adv_calc_services.get_advanced_option(CDT.RP_G_TARGET))
+            else:
+                #Fill IP
+                self.value_calc.set_input(CDT.IP_TARGET, adv_calc_services.get_advanced_option(CDT.IP_TARGET))
+                self.value_calc.set_input(CDT.RP_IP_TARGET, adv_calc_services.get_advanced_option(CDT.RP_IP_TARGET))
     
     def set_default_rep_level(self, scheme):
         if scheme == RepLevelScheme.NUM_ROSTERED:
