@@ -17,8 +17,7 @@ class ArmPoint():
     weeks = 26
     max_rost_num = {}
 
-    def __init__(self, value_calc:ValueCalculation, intermediate_calc=False, target_arm=196, rp_limit=999, 
-        rp_ip_per_team=300, gs_per_week=10, est_rp_g_per_week=10):
+    def __init__(self, value_calc:ValueCalculation, intermediate_calc=False, target_arm=196, rp_limit=999):
         self.intermediate_calculations = intermediate_calc
         self.replacement_positions = deepcopy(self.default_replacement_positions)
         self.replacement_levels = deepcopy(self.default_replacement_levels)
@@ -26,18 +25,23 @@ class ArmPoint():
         self.SABR = ScoringFormat.is_sabr(value_calc.format)
         self.rp_limit = rp_limit
         self.rep_level_scheme = RepLevelScheme._value2member_map_[int(value_calc.get_input(CDT.REP_LEVEL_SCHEME))]
-        self.rp_ip_per_team = rp_ip_per_team
         self.num_teams = value_calc.get_input(CDT.NUM_TEAMS)
-        self.target_innings = 1500.0 * self.num_teams
         self.surplus_pos = deepcopy(self.default_surplus_pos)
         self.min_sp_ip = value_calc.get_input(CDT.SP_IP_TO_RANK)
         self.min_rp_ip = value_calc.get_input(CDT.RP_IP_TO_RANK)
         self.rank_basis = value_calc.pitcher_basis
         self.scoring_format = value_calc.format
-        self.gs_per_week = gs_per_week
-        self.est_rp_g_per_week = est_rp_g_per_week
+        
         self.no_sv_hld = value_calc.get_input(CDT.INCLUDE_SVH) == 0
-        print(self.no_sv_hld)
+        
+        if ScoringFormat.is_h2h(self.scoring_format):
+            self.gs_per_week = value_calc.get_input(CDT.GS_LIMIT)
+            self.est_rp_g_per_week = value_calc.get_input(CDT.RP_G_TARGET)
+        else:
+            self.target_innings = value_calc.get_input(CDT.IP_TARGET) * self.num_teams
+            self.ip_per_team = value_calc.get_input(CDT.IP_TARGET)
+            self.rp_ip_per_team = value_calc.get_input(CDT.RP_IP_TARGET)
+
         if intermediate_calc:
             self.dirname = os.path.abspath(os.path.join(os.path.dirname( __file__ ), '..'))
             self.intermed_subdirpath = os.path.join(self.dirname, 'data_dirs','intermediate')
@@ -114,7 +118,6 @@ class ArmPoint():
             self.get_pitcher_par_calc(df)
 
             rosterable = df.loc[df['PAR'] >= 0]
-            #I had to put the 1 in the args because otherwise it treats "SP" like two arguments "S" and "P" for some reason
             sp_ip = rosterable.apply(self.usable_ip_calc, args=("SP",), axis=1).sum()
             rp_ip = rosterable.apply(self.usable_ip_calc, args=("RP",), axis=1).sum()
             total_ip = sp_ip + rp_ip
@@ -124,7 +127,7 @@ class ArmPoint():
 
             if self.rep_level_scheme == RepLevelScheme.FILL_GAMES:
                 if not ScoringFormat.is_h2h(self.scoring_format):
-                    while sp_ip < self.num_teams * (1500-self.rp_ip_per_team) and self.replacement_positions['SP'] < self.max_rost_num['SP']:
+                    while sp_ip < self.num_teams * (self.ip_per_team-self.rp_ip_per_team) and self.replacement_positions['SP'] < self.max_rost_num['SP']:
                         self.replacement_positions['SP'] = self.replacement_positions['SP'] + 1
                         self.get_pitcher_par_calc(df)
                         rosterable = df.loc[df['PAR'] >= 0]
