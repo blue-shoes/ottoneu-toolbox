@@ -1,5 +1,6 @@
 from __future__ import annotations
 from enum import Enum
+from typing import List
 
 class ProjectionType(Enum):
     STEAMER = 0
@@ -125,6 +126,20 @@ class CalculationDataType(Enum):
             Position.POS_SP : self.REP_LEVEL_SP,
             Position.POS_RP : self.REP_LEVEL_RP
         }
+    
+    @classmethod
+    def get_adv_inputs(self) -> List[CalculationDataType]:
+        return [
+            self.BATTER_G_TARGET,
+            self.GS_LIMIT,
+            self.RP_G_TARGET,
+            self.RP_IP_TARGET,
+            self.IP_TARGET,
+            self.SP_MULTIPLIER,
+            self.RP_MULTIPLIER,
+            self.SP_WITH_ALL_IP,
+            self.RP_WITH_ALL_IP
+        ]
 
 class RepLevelScheme(Enum):
     NUM_ROSTERED = 0
