@@ -30,6 +30,7 @@ class BatPoint():
         self.surplus_pos = deepcopy(self.default_surplus_pos)
         self.total_games = {}
         self.games_filled = {}
+        self.target_games = value_calc.get_input(CDT.BATTER_G_TARGET)
         if intermediate_calc:
             self.dirname = os.path.abspath(os.path.join(os.path.dirname( __file__ ), '..'))
             self.intermed_subdirpath = os.path.join(self.dirname, 'data_dirs', 'intermediate')
@@ -116,22 +117,22 @@ class BatPoint():
     def are_games_filled(self, num_teams:int=12) -> bool:
         '''Returns true if all positions have at least the minimum required games filled above replacement level for the league.'''
         filled_games = True
-        if self.total_games['C'] < num_teams * 162 and self.max_rost_num['C'] > self.replacement_positions['C']:
+        if self.total_games['C'] < num_teams * self.target_games and self.max_rost_num['C'] > self.replacement_positions['C']:
             self.games_filled['C'] = False
             filled_games = False
         else:
             self.games_filled['C'] = True
-        if self.total_games['1B'] < num_teams * 162 and self.max_rost_num['1B'] > self.replacement_positions['1B']:
+        if self.total_games['1B'] < num_teams * self.target_games and self.max_rost_num['1B'] > self.replacement_positions['1B']:
             self.games_filled['1B'] = False
             filled_games = False
         else:
             self.games_filled['1B'] = True
-        if self.total_games['3B'] < num_teams * 162 and self.max_rost_num['3B'] > self.replacement_positions['3B']:
+        if self.total_games['3B'] < num_teams * self.target_games and self.max_rost_num['3B'] > self.replacement_positions['3B']:
             self.games_filled['3B'] = False
             filled_games = False
         else:
             self.games_filled['3B'] = True
-        if self.total_games['SS'] + self.total_games['2B'] < 3*num_teams * 162:
+        if self.total_games['SS'] + self.total_games['2B'] < 3*num_teams * self.target_games:
             if self.max_rost_num['SS'] > self.replacement_positions['SS']:
                 self.games_filled['SS'] = False
             if self.max_rost_num['2B'] > self.replacement_positions['2B']:
@@ -141,7 +142,7 @@ class BatPoint():
         else:
             self.games_filled['SS'] = True
             self.games_filled['2B'] = True
-        if self.total_games['OF'] < num_teams * 162 * 5 and self.max_rost_num['OF'] > self.replacement_positions['OF']:
+        if self.total_games['OF'] < num_teams * self.target_games * 5 and self.max_rost_num['OF'] > self.replacement_positions['OF']:
             self.games_filled['OF'] = False
             filled_games = False
         else:
@@ -155,9 +156,9 @@ class BatPoint():
         return filled_games
     
     def are_util_games_filled(self, num_teams:int=12) -> bool:
-        '''Determins if other position excesses are enough to fill Util games. Catcher games are not included in calculation.'''
+        '''Determines if other position excesses are enough to fill Util games. Catcher games are not included in calculation.'''
         #judgement call that you aren't using C to fill Util
-        return self.total_games['1B'] - 162*num_teams +  self.total_games['3B'] - 162*num_teams + (self.total_games['2B'] + self.total_games['SS'] - 3*162*num_teams) + self.total_games['OF']-5*162*num_teams + self.total_games['Util'] >= num_teams*162 and self.max_rost_num['Util'] > self.replacement_positions['Util']
+        return self.total_games['1B'] - self.target_games*num_teams +  self.total_games['3B'] - self.target_games*num_teams + (self.total_games['2B'] + self.total_games['SS'] - 3*self.target_games*num_teams) + self.total_games['OF']-5*self.target_games*num_teams + self.total_games['Util'] >= num_teams*self.target_games and self.max_rost_num['Util'] > self.replacement_positions['Util']
 
     def get_position_par(self, df:DataFrame) -> None:
         '''Determines all player PAR values and popluates them in-place in the DataFrame.'''
