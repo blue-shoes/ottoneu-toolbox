@@ -940,20 +940,20 @@ class ValuesCalculation(tk.Frame):
         finally:
             pd.complete()
     
-    def set_advanced_input(self):
+    def get_advanced_inputs(self):
         if not ScoringFormat.is_points_type(self.value_calc.format):
             #TODO: SGP info
             ...
-        if self.value_calc.get_input(CDT.REP_LEVEL_SCHEME) == RepLevelScheme.FILL_GAMES:
-            self.value_calc.set_input(CDT.BATTER_G_TARGET, adv_calc_services.get_advanced_option(CDT.BATTER_G_TARGET))
+        if self.value_calc.get_input(CDT.REP_LEVEL_SCHEME) == RepLevelScheme.FILL_GAMES.value:
+            self.value_calc.set_input(CDT.BATTER_G_TARGET, adv_calc_services.get_advanced_option(CDT.BATTER_G_TARGET).value)
             if ScoringFormat.is_h2h(self.value_calc.format):
                 ##Fill Games
-                self.value_calc.set_input(CDT.GS_LIMIT, adv_calc_services.get_advanced_option(CDT.GS_LIMIT))
-                self.value_calc.set_input(CDT.RP_G_TARGET, adv_calc_services.get_advanced_option(CDT.RP_G_TARGET))
+                self.value_calc.set_input(CDT.GS_LIMIT, adv_calc_services.get_advanced_option(CDT.GS_LIMIT).value)
+                self.value_calc.set_input(CDT.RP_G_TARGET, adv_calc_services.get_advanced_option(CDT.RP_G_TARGET).value)
             else:
                 #Fill IP
-                self.value_calc.set_input(CDT.IP_TARGET, adv_calc_services.get_advanced_option(CDT.IP_TARGET))
-                self.value_calc.set_input(CDT.RP_IP_TARGET, adv_calc_services.get_advanced_option(CDT.RP_IP_TARGET))
+                self.value_calc.set_input(CDT.IP_TARGET, adv_calc_services.get_advanced_option(CDT.IP_TARGET).value)
+                self.value_calc.set_input(CDT.RP_IP_TARGET, adv_calc_services.get_advanced_option(CDT.RP_IP_TARGET).value)
     
     def set_default_rep_level(self, scheme):
         if scheme == RepLevelScheme.NUM_ROSTERED:
