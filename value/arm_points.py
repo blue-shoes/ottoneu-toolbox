@@ -524,8 +524,8 @@ class ArmPoint():
             df['SP Multiplier'] = 1
             df['RP Multiplier'] = 1
         
-        self.max_rost_num['SP'] = len(df.loc[df['IP SP'] > 0])
-        self.max_rost_num['RP'] = len(df.loc[df['IP RP'] > 0])
+        self.max_rost_num['SP'] = len(df.loc[df[f'IP SP'] >= self.min_sp_ip])
+        self.max_rost_num['RP'] = len(df.loc[df['IP RP'] >= self.min_rp_ip])
 
     def calc_par(self, df:DataFrame) -> DataFrame:
         '''Returns a populated DataFrame with all required PAR information for all players above the minimum IP at all positions.'''
