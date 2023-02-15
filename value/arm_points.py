@@ -130,23 +130,23 @@ class ArmPoint():
                     while sp_ip < self.num_teams * (self.ip_per_team-self.rp_ip_per_team) and self.replacement_positions['SP'] < self.max_rost_num['SP']:
                         self.replacement_positions['SP'] = self.replacement_positions['SP'] + 1
                         self.get_pitcher_par_calc(df)
-                        rosterable = df.loc[df['PAR'] >= 0]
+                        rosterable = df.loc[df['PAR SP'] >= 0]
                         sp_ip = rosterable.apply(self.usable_ip_calc, args=("SP",), axis=1).sum()
                     while rp_ip < self.num_teams * self.rp_ip_per_team and self.replacement_positions['RP'] < self.max_rost_num['RP']:
                         self.replacement_positions['RP'] = self.replacement_positions['RP'] + 1
                         self.get_pitcher_par_calc(df)
-                        rosterable = df.loc[df['PAR'] >= 0]
+                        rosterable = df.loc[df['PAR RP'] >= 0]
                         rp_ip = rosterable.apply(self.usable_ip_calc, args=("RP",), axis=1).sum()
                 else:
                     while sp_g < self.num_teams * self.gs_per_week * self.weeks and self.replacement_positions['SP'] < self.max_rost_num['SP']:
                         self.replacement_positions['SP'] = self.replacement_positions['SP'] + 1
                         self.get_pitcher_par_calc(df)
-                        rosterable = df.loc[df['PAR'] >= 0]
+                        rosterable = df.loc[df['PAR SP'] >= 0]
                         sp_g = rosterable.apply(self.usable_gs_calc, axis=1).sum()
                     while rp_g < self.num_teams * self.est_rp_g_per_week * self.weeks and self.replacement_positions['RP'] < self.max_rost_num['RP']:
                         self.replacement_positions['RP'] = self.replacement_positions['RP'] + 1
                         self.get_pitcher_par_calc(df)
-                        rosterable = df.loc[df['PAR'] >= 0]
+                        rosterable = df.loc[df['PAR RP'] >= 0]
                         rp_g = rosterable.apply(self.usable_rp_g_calc, axis=1).sum()
                 self.replacement_positions['SP'] = min(self.replacement_positions['SP'] + self.surplus_pos['SP'], self.max_rost_num['SP'])
                 self.replacement_positions['RP'] = min(self.replacement_positions['RP'] + self.surplus_pos['RP'], self.max_rost_num['RP'])
