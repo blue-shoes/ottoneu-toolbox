@@ -1,4 +1,6 @@
+from __future__ import annotations
 from enum import Enum
+from typing import List
 
 class ProjectionType(Enum):
     STEAMER = 0
@@ -86,6 +88,16 @@ class CalculationDataType(Enum):
     TOTAL_GAMES_PLAYED = 33
     TOTAL_INNINGS_PITCHED = 34
     TOTAL_FOM_ABOVE_REPLACEMENT = 35
+    GS_LIMIT = 36
+    RP_G_TARGET = 37
+    RP_IP_TARGET = 38
+    IP_TARGET = 39
+    SP_MULTIPLIER = 40
+    RP_MULTIPLIER = 41
+    INCLUDE_SVH = 42
+    SP_WITH_ALL_IP = 43
+    RP_WITH_ALL_IP = 44
+    BATTER_G_TARGET = 45
 
     @classmethod
     def pos_to_num_rostered(self):
@@ -114,6 +126,20 @@ class CalculationDataType(Enum):
             Position.POS_SP : self.REP_LEVEL_SP,
             Position.POS_RP : self.REP_LEVEL_RP
         }
+    
+    @classmethod
+    def get_adv_inputs(self) -> List[CalculationDataType]:
+        return [
+            self.BATTER_G_TARGET,
+            self.GS_LIMIT,
+            self.RP_G_TARGET,
+            self.RP_IP_TARGET,
+            self.IP_TARGET,
+            self.SP_MULTIPLIER,
+            self.RP_MULTIPLIER,
+            self.SP_WITH_ALL_IP,
+            self.RP_WITH_ALL_IP
+        ]
 
 class RepLevelScheme(Enum):
     NUM_ROSTERED = 0
@@ -399,6 +425,10 @@ class ScoringFormat(Enum):
     @classmethod
     def is_sabr(self, format):
         return format in [self.SABR_POINTS, self.H2H_SABR_POINTS]
+    
+    @classmethod
+    def is_h2h(self, format:ScoringFormat) -> bool:
+        return format in [self.H2H_FG_POINTS, self.H2H_SABR_POINTS]
 
     @classmethod
     def name_to_enum_map(self):

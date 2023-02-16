@@ -189,8 +189,8 @@ class ValueCalculation(Base):
         ci.value = value
         self.inputs.append(ci)
 
-    def get_input(self, data_type:CalculationDataType, default=None) -> CalculationInput:
-        '''Gets the CalculationInput for the given data type. Returns the default if None exists in the calculation.'''
+    def get_input(self, data_type:CalculationDataType, default:float=None) -> float:
+        '''Gets the value for the given data type. Returns the default if None exists in the calculation.'''
         for inp in self.inputs:
             if inp.data_type == data_type:
                 return inp.value
@@ -393,3 +393,8 @@ class Draft_Target(Base):
 
     price = Column(Integer, nullable=True)
 
+class Adv_Calc_Option(Base):
+    '''Class to hold advanced calculation inputs'''
+    __tablename__ = 'adv_calc_option'
+    index = Column(Enum(CalculationDataType), primary_key=True)
+    value = Column(Float)

@@ -11,16 +11,13 @@ pd.options.mode.chained_assignment = None # from https://stackoverflow.com/a/206
 
 class ArmPoint():
 
-    pitch_pos = ['SP','RP']
     default_replacement_positions = {"SP":60,"RP":30}
     default_replacement_levels = {}
     default_surplus_pos = {"SP": 0, "RP": 0}
     weeks = 26
     max_rost_num = {}
 
-    def __init__(self, value_calc:ValueCalculation, intermediate_calc=False, target_arm=196, rp_limit=999, 
-        rp_ip_per_team=300, min_sp_ip=70, min_rp_ip=30,
-        gs_per_week=10, est_rp_g_per_week=10):
+    def __init__(self, value_calc:ValueCalculation, intermediate_calc=False, target_arm=196, rp_limit=999):
         self.intermediate_calculations = intermediate_calc
         self.replacement_positions = deepcopy(self.default_replacement_positions)
         self.replacement_levels = deepcopy(self.default_replacement_levels)
@@ -28,15 +25,23 @@ class ArmPoint():
         self.SABR = ScoringFormat.is_sabr(value_calc.format)
         self.rp_limit = rp_limit
         self.rep_level_scheme = RepLevelScheme._value2member_map_[int(value_calc.get_input(CDT.REP_LEVEL_SCHEME))]
-        self.rp_ip_per_team = rp_ip_per_team
         self.num_teams = value_calc.get_input(CDT.NUM_TEAMS)
-        self.target_innings = 1500.0 * self.num_teams
         self.surplus_pos = deepcopy(self.default_surplus_pos)
-        self.min_sp_ip = min_sp_ip
-        self.min_rp_ip = min_rp_ip
+        self.min_sp_ip = value_calc.get_input(CDT.SP_IP_TO_RANK)
+        self.min_rp_ip = value_calc.get_input(CDT.RP_IP_TO_RANK)
         self.rank_basis = value_calc.pitcher_basis
-        self.gs_per_week = gs_per_week
-        self.est_rp_g_per_week = est_rp_g_per_week
+        self.scoring_format = value_calc.format
+        
+        self.no_sv_hld = value_calc.get_input(CDT.INCLUDE_SVH) == 0
+        
+        if ScoringFormat.is_h2h(self.scoring_format):
+            self.gs_per_week = value_calc.get_input(CDT.GS_LIMIT)
+            self.est_rp_g_per_week = value_calc.get_input(CDT.RP_G_TARGET)
+        else:
+            self.target_innings = value_calc.get_input(CDT.IP_TARGET) * self.num_teams
+            self.ip_per_team = value_calc.get_input(CDT.IP_TARGET)
+            self.rp_ip_per_team = value_calc.get_input(CDT.RP_IP_TARGET)
+
         if intermediate_calc:
             self.dirname = os.path.abspath(os.path.join(os.path.dirname( __file__ ), '..'))
             self.intermed_subdirpath = os.path.join(self.dirname, 'data_dirs','intermediate')
@@ -113,7 +118,6 @@ class ArmPoint():
             self.get_pitcher_par_calc(df)
 
             rosterable = df.loc[df['PAR'] >= 0]
-            #I had to put the 1 in the args because otherwise it treats "SP" like two arguments "S" and "P" for some reason
             sp_ip = rosterable.apply(self.usable_ip_calc, args=("SP",), axis=1).sum()
             rp_ip = rosterable.apply(self.usable_ip_calc, args=("RP",), axis=1).sum()
             total_ip = sp_ip + rp_ip
@@ -122,27 +126,27 @@ class ArmPoint():
             rp_g = rosterable.apply(self.usable_rp_g_calc, axis=1).sum()
 
             if self.rep_level_scheme == RepLevelScheme.FILL_GAMES:
-                if self.rank_basis == RankingBasis.PIP:
-                    while sp_ip < self.num_teams * (1500-self.rp_ip_per_team) and self.replacement_positions['SP'] < self.max_rost_num['SP']:
+                if not ScoringFormat.is_h2h(self.scoring_format):
+                    while sp_ip < self.num_teams * (self.ip_per_team-self.rp_ip_per_team) and self.replacement_positions['SP'] < self.max_rost_num['SP']:
                         self.replacement_positions['SP'] = self.replacement_positions['SP'] + 1
                         self.get_pitcher_par_calc(df)
-                        rosterable = df.loc[df['PAR'] >= 0]
+                        rosterable = df.loc[df['PAR SP'] >= 0]
                         sp_ip = rosterable.apply(self.usable_ip_calc, args=("SP",), axis=1).sum()
                     while rp_ip < self.num_teams * self.rp_ip_per_team and self.replacement_positions['RP'] < self.max_rost_num['RP']:
                         self.replacement_positions['RP'] = self.replacement_positions['RP'] + 1
                         self.get_pitcher_par_calc(df)
-                        rosterable = df.loc[df['PAR'] >= 0]
+                        rosterable = df.loc[df['PAR RP'] >= 0]
                         rp_ip = rosterable.apply(self.usable_ip_calc, args=("RP",), axis=1).sum()
-                elif self.rank_basis == RankingBasis.PPG:
+                else:
                     while sp_g < self.num_teams * self.gs_per_week * self.weeks and self.replacement_positions['SP'] < self.max_rost_num['SP']:
                         self.replacement_positions['SP'] = self.replacement_positions['SP'] + 1
                         self.get_pitcher_par_calc(df)
-                        rosterable = df.loc[df['PAR'] >= 0]
+                        rosterable = df.loc[df['PAR SP'] >= 0]
                         sp_g = rosterable.apply(self.usable_gs_calc, axis=1).sum()
                     while rp_g < self.num_teams * self.est_rp_g_per_week * self.weeks and self.replacement_positions['RP'] < self.max_rost_num['RP']:
                         self.replacement_positions['RP'] = self.replacement_positions['RP'] + 1
                         self.get_pitcher_par_calc(df)
-                        rosterable = df.loc[df['PAR'] >= 0]
+                        rosterable = df.loc[df['PAR RP'] >= 0]
                         rp_g = rosterable.apply(self.usable_rp_g_calc, axis=1).sum()
                 self.replacement_positions['SP'] = min(self.replacement_positions['SP'] + self.surplus_pos['SP'], self.max_rost_num['SP'])
                 self.replacement_positions['RP'] = min(self.replacement_positions['RP'] + self.surplus_pos['RP'], self.max_rost_num['RP'])
@@ -303,11 +307,15 @@ class ArmPoint():
         if row['G'] == 0:
             return -1
         if row[f'IP {role}'] == 0: return -1
+        if self.no_sv_hld:
+            prefix = 'No SVH '
+        else:
+            prefix = ''
         if self.rank_basis == RankingBasis.PIP:
-            rate = row[f'P/IP {role}'] - rep_level
+            rate = row[f'{prefix}P/IP {role}'] - rep_level
             return rate * row[f'IP {role}']
         elif self.rank_basis == RankingBasis.PPG:
-            rate = row[f'PPG {role}'] - rep_level
+            rate = row[f'{prefix}PPG {role}'] - rep_level
             if role == 'SP':
                 return rate * row['GS']
             else:
@@ -331,10 +339,14 @@ class ArmPoint():
         else:
             min_ip = self.min_sp_ip
         pitch_df = df.loc[df[f'IP {pos}'] >= min_ip]
+        if self.no_sv_hld:
+            prefix = 'No SVH '
+        else:
+            prefix = ''
         if self.rank_basis == RankingBasis.PIP:
-            sort_col = f"P/IP {pos}"
+            sort_col = f"{prefix}P/IP {pos}"
         elif self.rank_basis == RankingBasis.PPG:
-            sort_col = f"PPG {pos}"
+            sort_col = f"{prefix}PPG {pos}"
         pitch_df = pitch_df.sort_values(sort_col, ascending=False)
         #Get the nth value (here the # of players rostered at the position - 1 for 0 index) from the sorted data
         return pitch_df.iloc[self.replacement_positions[pos] - 1][sort_col]
@@ -409,6 +421,24 @@ class ArmPoint():
         rp_pip = self.rp_pip_calc(row)
         rp_points = rp_pip * row['IP RP']
         return rp_points / (row['G'] - row['GS'])
+    
+    def rp_no_svh_ppg_calc(self, row) -> float:
+        '''Estimates the pitcher points per game in relieving role based off of calculated RP PIP values and IP/GR. Does
+        not include saves or holds'''
+        if row['G'] == row['GS']:
+            return 0
+        rp_pip = self.rp_no_svh_pip_calc(row)
+        rp_points = rp_pip * row['IP RP']
+        return rp_points / (row['G'] - row['GS'])
+    
+    def rp_no_svh_pip_calc(self, row) -> float:
+        '''Estimates pitcher points per inning in relieving role based off of difference between overall FIP and RP FIP
+        using a linear regression. Does not include saves or holds'''
+        if row['IP RP'] == 0: return 0
+        if row['IP SP'] == 0: return row['No SVH P/IP']
+        fip_diff = row['FIP RP'] - row['FIP']
+        no_svh_pip = row['No SVH P/IP'] - 1.3274*fip_diff 
+        return (no_svh_pip * row['IP RP'])/row['IP RP'] 
 
     def rp_pip_calc(self, row) -> float:
         '''Estimates pitcher points per inning in relieving role based off of difference between overall FIP and RP FIP
@@ -464,8 +494,15 @@ class ArmPoint():
             df['P/IP SP'] = df.apply(self.sp_pip_calc, axis=1)
             df['P/IP RP'] = df.apply(self.rp_pip_calc, axis=1)
 
-            df['Rank SP Rate'] = df['P/IP SP'].rank(ascending=False)
-            df['Rank RP Rate'] = df['P/IP RP'].rank(ascending=False)
+            df['No SVH P/IP SP'] = df['P/IP SP']
+            df['No SVH P/IP RP'] = df.apply(self.rp_no_svh_pip_calc, axis=1)
+
+            if self.no_sv_hld:
+                df['Rank SP Rate'] = df['No SVH P/IP SP'].rank(ascending=False)
+                df['Rank RP Rate'] = df['No SVH P/IP RP'].rank(ascending=False)
+            else:
+                df['Rank SP Rate'] = df['P/IP SP'].rank(ascending=False)
+                df['Rank RP Rate'] = df['P/IP RP'].rank(ascending=False)
 
             df['SP Multiplier'] = df.apply(self.sp_multiplier_assignment, axis=1)
             df['RP Multiplier'] = df.apply(self.rp_multiplier_assignment, axis=1)
@@ -474,14 +511,21 @@ class ArmPoint():
             df['PPG SP'] = df.apply(self.sp_ppg_calc, axis=1)
             df['PPG RP'] = df.apply(self.rp_ppg_calc, axis=1)
 
-            df['Rank SP Rate'] = df['PPG SP'].rank(ascending=False)
-            df['Rank RP Rate'] = df['PPG RP'].rank(ascending=False)
+            df['No SVH PPG SP'] = df['PPG SP']
+            df['No SVH PPG RP'] = df.apply(self.rp_no_svh_ppg_calc, axis=1)
+
+            if self.no_sv_hld:
+                df['Rank SP Rate'] = df['No SVH PPG SP'].rank(ascending=False)
+                df['Rank RP Rate'] = df['No SVH PPG RP'].rank(ascending=False)
+            else:
+                df['Rank SP Rate'] = df['PPG SP'].rank(ascending=False)
+                df['Rank RP Rate'] = df['PPG RP'].rank(ascending=False)
 
             df['SP Multiplier'] = 1
             df['RP Multiplier'] = 1
         
-        self.max_rost_num['SP'] = len(df.loc[df['IP SP'] > 0])
-        self.max_rost_num['RP'] = len(df.loc[df['IP RP'] > 0])
+        self.max_rost_num['SP'] = len(df.loc[df[f'IP SP'] >= self.min_sp_ip])
+        self.max_rost_num['RP'] = len(df.loc[df['IP RP'] >= self.min_rp_ip])
 
     def calc_par(self, df:DataFrame) -> DataFrame:
         '''Returns a populated DataFrame with all required PAR information for all players above the minimum IP at all positions.'''
