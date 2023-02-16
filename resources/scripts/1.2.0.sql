@@ -1,4 +1,3 @@
-ALTER TABLE draft ADD couchmanagers_id INTEGER;
 INSERT INTO adv_calc_option VALUES ('BATTER_G_TARGET', 162);
 INSERT INTO adv_calc_option VALUES ('GS_LIMIT', 10);
 INSERT INTO adv_calc_option VALUES ('RP_G_TARGET', 10);

@@ -358,9 +358,9 @@ class Draft(Base):
     index = Column(Integer, primary_key=True)
     league_id = Column(Integer, ForeignKey("league.index"))
     league = relationship("League")
-    couchmanagers_id = Column(Integer)
 
     targets = relationship("Draft_Target", back_populates="draft", cascade="all, delete")
+    cm_draft = relationship("CouchManagers_Draft", back_populates='draft', cascade="all, delete")
 
     year = Column(Integer, nullable=False)
 
@@ -393,6 +393,27 @@ class Draft_Target(Base):
     player = relationship("Player", lazy="joined")
 
     price = Column(Integer, nullable=True)
+
+class CouchManagers_Draft(Base):
+    '''Class to hold CouchManagers Draft Data'''
+    __tablename__ = 'cm_draft'
+    index = Column(Integer, primary_key=True)
+    cm_draft_id = Column(Integer, nullable=False)
+    draft_id = Column(Integer, ForeignKey("draft.index"), nullable=False)
+    draft = relationship("Draft", back_populates='cm_draft')
+    setup = Column(Boolean)
+
+    teams = relationship("CouchManagers_Teams", back_populates="cm_draft", cascade="all, delete")
+
+class CouchManagers_Team(Base):
+    '''Class that maps CouchManagers draft team numbers'''
+    __tablename__ = 'cm_teams'
+    index = Column(Integer, primary_key=True)
+    cm_draft_id = Column(Integer, ForeignKey("cm_draft.index"), nullable=False)
+    cm_draft = relationship("CouchManagers_Draft", back_populates='teams')
+
+    cm_team_id = Column(Integer, nullable=False)
+    ottoneu_team_id = Column(Integer, nullable=False)
 
 class Adv_Calc_Option(Base):
     '''Class to hold advanced calculation inputs'''
