@@ -18,14 +18,6 @@ from scrape.exceptions import OttoneuException
 class Scrape_Ottoneu(scrape_base.Scrape_Base):
     '''Implementation of Scrape_Base class for scraping information from Ottoneu website.'''
 
-    def __get_soup(self, url:str, xml:bool=False) -> Soup:
-        '''Convenience method to return Soup object from url.'''
-        response = requests.get(url)
-        if xml:
-            return Soup(response.text, 'xml')
-        else:
-            return Soup(response.text, 'html.parser')
-
     def __init__(self, browser:str=None):
         super().__init__(browser)
         #Initialize directory for output calc files if required
@@ -60,7 +52,7 @@ class Scrape_Ottoneu(scrape_base.Scrape_Base):
             avg_salary_url = f'https://ottoneu.fangraphs.com/averageValues?export=xml&gameType={game_type}'
         #response = requests.get(avg_salary_url)
         #salary_soup = Soup(response.text, 'xml')
-        salary_soup = self.__get_soup(avg_salary_url, True)
+        salary_soup = self._get_soup(avg_salary_url, True)
         rows = salary_soup.find_all('player')
         parsed_rows = [self.__parse_avg_salary_row(row) for row in rows]
         df = DataFrame(parsed_rows)
@@ -119,7 +111,7 @@ class Scrape_Ottoneu(scrape_base.Scrape_Base):
         roster_export_url = f'https://ottoneu.fangraphs.com/{lg_id}/rosterexport'
         #response = requests.get(roster_export_url)
         #rost_soup = Soup(response.text, 'html.parser')
-        rost_soup = self.__get_soup(roster_export_url)
+        rost_soup = self._get_soup(roster_export_url)
         df = pd.read_csv(StringIO(rost_soup.contents[0]))
         df.set_index("ottoneu ID", inplace=True)
         df.index = df.index.astype(str, copy = False)
@@ -149,7 +141,7 @@ class Scrape_Ottoneu(scrape_base.Scrape_Base):
         transactions_url = f'https://ottoneu.fangraphs.com/{lg_id}/transactions'
         #response = requests.get(transactions_url)
         #trans_soup = Soup(response.text, 'html.parser')
-        trans_soup = self.__get_soup(transactions_url)
+        trans_soup = self._get_soup(transactions_url)
         table = trans_soup.find_all('table')[0]
         rows = table.find_all('tr')
         parsed_rows = [self.__parse_trans_row(row) for row in rows[1:]]
@@ -161,7 +153,7 @@ class Scrape_Ottoneu(scrape_base.Scrape_Base):
     def scrape_recent_trans_api(self, lg_id:int) -> DataFrame:
         ''''Scrapes the recent transactions api page to return a DataFrame of the recent transactions information. Index is Ottoneu Id'''
         rec_trans_url = f'https://ottoneu.fangraphs.com/api/recent_transactions?leagueID={lg_id}'
-        trans_soup = self.__get_soup(rec_trans_url, True)
+        trans_soup = self._get_soup(rec_trans_url, True)
         if trans_soup.find('transactions') is None:
             raise OttoneuException('League Inactive')
         rows = trans_soup.find_all('transaction')
@@ -191,7 +183,7 @@ class Scrape_Ottoneu(scrape_base.Scrape_Base):
         prod_url = f'https://ottoneu.fangraphs.com/{lg_id}/teamproduction?teamID={team_id}'
         #response = requests.get(prod_url)
         #prod_soup = Soup(response.text, 'html.parser')
-        prod_soup = self.__get_soup(prod_url)
+        prod_soup = self._get_soup(prod_url)
         sections = prod_soup.find_all('section')
         pos_df = self.__parse_prod_table(sections[0])
         if pos_df.empty:
@@ -220,7 +212,7 @@ class Scrape_Ottoneu(scrape_base.Scrape_Base):
         prod_url = f'https://ottoneu.fangraphs.com/{lg_id}/teamproduction'
         #response = requests.get(prod_url)
         #prod_soup = Soup(response.text, 'html.parser')
-        prod_soup = self.__get_soup(prod_url)
+        prod_soup = self._get_soup(prod_url)
         select = prod_soup.find_all('select')[0]
         team_opts = select.find_all('option')
         league_bat = []
@@ -339,7 +331,7 @@ class Scrape_Ottoneu(scrape_base.Scrape_Base):
         lg_data = {}
         lg_data['ID'] = lg_id
         url = f'https://ottoneu.fangraphs.com/{lg_id}/settings'
-        info_soup = self.__get_soup(url)
+        info_soup = self._get_soup(url)
         body = info_soup.find_all('body')[0]
         lg_data['Name'] = body.find_all('h1')[1].string
         tbody = info_soup.find_all('tbody')[0]
@@ -350,7 +342,7 @@ class Scrape_Ottoneu(scrape_base.Scrape_Base):
     def scrape_finances_page(self, lg_id:int) -> DataFrame:
         '''Returns contents of the Financial Overview table for the league as a DataFrame. Index is Team Id'''
         url = f'https://ottoneu.fangraphs.com/{lg_id}/tools'
-        fin_soup = self.__get_soup(url)
+        fin_soup = self._get_soup(url)
         fin_tbl_rows = fin_soup.find(id='finances').find_all('tbody')[0].find_all('tr')
         depth_tbl_rows = fin_soup.find_all('table')[1].find_all('tbody')[0].find_all('tr')
         team_rows = [self.__parse_finance_rows(row, depth_tbl_rows) for row in fin_tbl_rows[:]]
@@ -387,7 +379,7 @@ class Scrape_Ottoneu(scrape_base.Scrape_Base):
     def get_player_from_player_page(self, player_id:int, league_id:int) -> Tuple[int,str, str, str, str]:
         '''Access the Ottoneu player page for the given player and league. Returns a tuple of (Ottoneu_Id, Name, Team, Position(s), FanGraphs_Id)'''
         url = f'https://ottoneu.fangraphs.com/{league_id}/playercard?id={player_id}'
-        player_soup = self.__get_soup(url)
+        player_soup = self._get_soup(url)
         header = player_soup.findAll('div', {'class': 'page-header__primary'})[0]
         name = header.find('h1').contents[0].string.strip()
         org_info = header.find('h1').find('span', {'class':'strong tinytext'}).contents[0].string.split()
@@ -400,7 +392,7 @@ class Scrape_Ottoneu(scrape_base.Scrape_Base):
         '''Gets the standings page for the input league for the input year. Returns results as a tuple of two DataFrames. First DataFrame represents the league 'Statistics'\
         table. The second DataFrame represents the 'Rankings' table, if one exists. If not, a None is returned for the second DF. DataFrames are indexed by team id.'''
         url = f'https://ottoneu.fangraphs.com/{lg_id}/standings?=date={year}-10-31'
-        soup = self.__get_soup(url)
+        soup = self._get_soup(url)
         table_sects = soup.find_all('section', {'class':'section-container'})
         stat_df = self.__parse_standings_stats_table(table_sects)
         rank_df = self.__parse_standings_rank_table(table_sects)
