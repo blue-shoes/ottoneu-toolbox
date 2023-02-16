@@ -1,7 +1,10 @@
 from sqlalchemy.orm import joinedload
+from pandas import DataFrame
+from typing import List, Tuple
 
 from dao.session import Session
 from domain.domain import Draft, Draft_Target
+from scrape.scrape_couchmanagers import Scrape_CouchManagers
 from util import date_util
 
 def get_draft_by_league(lg_id:int) -> Draft:
@@ -51,3 +54,12 @@ def delete_target(target:Draft_Target) -> None:
         session.delete(target)
         session.commit()
             
+def get_couchmanagers_teams(cm_draft_id:str) -> List[Tuple[int, str]]:
+    '''Gets a list of tuples containing CouchManagers draft team id and team name'''
+    scraper = Scrape_CouchManagers()
+    return scraper.get_draft_info(cm_draft_id)
+
+def get_couchmanagers_draft_dataframe(cm_draft_id:int) -> DataFrame:
+    '''Gets the dataframe from the CouchManagers draft with no further processing. DataFrame indexed by Ottoneu Player Id'''
+    scraper = Scrape_CouchManagers()
+    return scraper.get_draft_results(cm_draft_id)
