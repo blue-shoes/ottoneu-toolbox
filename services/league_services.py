@@ -1,4 +1,4 @@
-from domain.domain import League, Team, Roster_Spot, Player
+from domain.domain import League, Team, Roster_Spot, Player, Draft
 from domain.enum import ScoringFormat
 from dao.session import Session
 from scrape.scrape_ottoneu import Scrape_Ottoneu
@@ -154,3 +154,9 @@ def league_exists(lg:League) -> bool:
     '''Checks if the given league exists in the database by index.'''
     with Session() as session:
         return session.query(League).filter(League.index == lg.index).first() is not None
+
+def get_league_by_draft(draft:Draft, fill_rosters:bool=False) -> League:
+    '''Returns the populated league by Draft'''
+    with Session() as session:
+        league = session.query(Draft).options(joinedload(Draft.league)).filter(Draft.index == draft.index).first().league
+        return get_league(league.index, fill_rosters)
