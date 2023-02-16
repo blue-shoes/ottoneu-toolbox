@@ -18,3 +18,8 @@ class OttoneuException(Exception):
     def __init__(self, validation_msgs, *args: object) -> None:
         super().__init__(*args)
         self.validation_msgs = validation_msgs
+class CouchManagersException(Exception):
+    '''Exceptions related to scraping CouchManagers data.'''
+    def __init__(self, validation_msgs, *args: object) -> None:
+        super().__init__(*args)
+        self.validation_msgs = validation_msgs
