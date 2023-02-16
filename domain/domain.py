@@ -358,6 +358,7 @@ class Draft(Base):
     index = Column(Integer, primary_key=True)
     league_id = Column(Integer, ForeignKey("league.index"))
     league = relationship("League")
+    couchmanagers_id = Column(Integer)
 
     targets = relationship("Draft_Target", back_populates="draft", cascade="all, delete")
 
