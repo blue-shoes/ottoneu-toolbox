@@ -403,7 +403,7 @@ class CouchManagers_Draft(Base):
     draft = relationship("Draft", back_populates='cm_draft')
     setup = Column(Boolean)
 
-    teams = relationship("CouchManagers_Teams", back_populates="cm_draft", cascade="all, delete")
+    teams = relationship("CouchManagers_Team", back_populates="cm_draft", cascade="all, delete")
 
 class CouchManagers_Team(Base):
     '''Class that maps CouchManagers draft team numbers'''
@@ -413,6 +413,7 @@ class CouchManagers_Team(Base):
     cm_draft = relationship("CouchManagers_Draft", back_populates='teams')
 
     cm_team_id = Column(Integer, nullable=False)
+    cm_team_name = Column(String)
     ottoneu_team_id = Column(Integer, nullable=False)
 
 class Adv_Calc_Option(Base):
