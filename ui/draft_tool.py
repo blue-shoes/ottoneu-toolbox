@@ -17,6 +17,7 @@ from scrape.scrape_ottoneu import Scrape_Ottoneu
 from domain.enum import Position, ScoringFormat, StatType, Preference as Pref, AvgSalaryFom, RankingBasis, ProjectionType
 from ui.table import Table
 from ui.dialog import progress, draft_target
+from ui.dialog.wizard import couchmanagers_import
 from services import salary_services, league_services, calculation_services, player_services, draft_services
 from demo import draft_demo
 
@@ -199,6 +200,7 @@ class DraftTool(tk.Frame):
             self.monitor_status_lbl = tk.Label(monitor_frame, textvariable=self.monitor_status, fg='red')
             self.monitor_status_lbl.grid(column=2,row=0)
             self.stop_monitor = ttk.Button(monitor_frame, text="Stop Draft", command=self.stop_draft_monitor).grid(column=1,row=0)
+            ttk.Button(monitor_frame, text="Link CouchManagers", command=self.link_couchmanagers).grid(column=2, row=0)
 
             self.inflation_str_var = tk.StringVar()
 
@@ -240,17 +242,18 @@ class DraftTool(tk.Frame):
             self.monitor_status_lbl = tk.Label(search_frame, textvariable=self.monitor_status, fg='red')
             self.monitor_status_lbl.grid(column=1,row=3)
             self.stop_monitor = ttk.Button(search_frame, text="Stop Draft Monitor", command=self.stop_draft_monitor).grid(column=0,row=4)
+            ttk.Button(search_frame, text="Link CouchManagers", command=self.link_couchmanagers).grid(column=0, row=5)
 
             self.inflation_str_var = tk.StringVar()
 
             self.inflation_lbl = ttk.Label(search_frame, textvariable=self.inflation_str_var)
-            self.inflation_lbl.grid(column=0,row=5)
+            self.inflation_lbl.grid(column=0,row=6)
 
             if self.value_calculation is None:
                 self.values_name.set('No value calculation selected')
             else:
                 self.values_name.set(f'Selected Values: {self.value_calculation.name}')
-            ttk.Label(search_frame, textvariable=self.values_name).grid(row=6, column=0, sticky=tk.NW)
+            ttk.Label(search_frame, textvariable=self.values_name).grid(row=7, column=0, sticky=tk.NW)
 
             f = ttk.Frame(self)
             f.grid(column=1,row=1)
@@ -401,6 +404,9 @@ class DraftTool(tk.Frame):
         self.monitor_status.set('Draft stopped')
         self.monitor_status_lbl.config(fg='red')
         self.parent.update_idletasks()
+    
+    def link_couchmanagers(self):
+        dialog = couchmanagers_import.Dialog(self.master, self.draft)
     
     def add_trans_to_rosters(self, last_trans, index, player):
         row=last_trans.iloc[index]
