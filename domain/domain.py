@@ -359,8 +359,8 @@ class Draft(Base):
     league_id = Column(Integer, ForeignKey("league.index"))
     league = relationship("League")
 
-    targets = relationship("Draft_Target", back_populates="draft", cascade="all, delete")
-    cm_draft = relationship("CouchManagers_Draft", back_populates='draft', cascade="all, delete")
+    targets = relationship("Draft_Target", back_populates="draft", cascade="all, delete", lazy="joined")
+    cm_draft = relationship("CouchManagers_Draft", uselist=False, back_populates='draft', cascade="all, delete", lazy="joined")
 
     year = Column(Integer, nullable=False)
 
@@ -403,7 +403,7 @@ class CouchManagers_Draft(Base):
     draft = relationship("Draft", back_populates='cm_draft')
     setup = Column(Boolean)
 
-    teams = relationship("CouchManagers_Team", back_populates="cm_draft", cascade="all, delete")
+    teams = relationship("CouchManagers_Team", back_populates="cm_draft", cascade="all, delete", lazy="joined")
 
 class CouchManagers_Team(Base):
     '''Class that maps CouchManagers draft team numbers'''

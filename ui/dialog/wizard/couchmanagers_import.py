@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import *              
 from tkinter import ttk 
 from tkinter import messagebox as mb
+from typing import Dict
 
 from domain.domain import Draft, CouchManagers_Draft, CouchManagers_Team
 from scrape.exceptions import CouchManagersException
@@ -23,6 +24,10 @@ class Dialog(wizard.Dialog):
         return self.wizard
 
 class Wizard(wizard.Wizard):
+
+    parent:Dialog
+    cm_draft: CouchManagers_Draft
+
     def __init__(self, parent):
         super().__init__(parent)
         self.parent = parent
@@ -41,9 +46,16 @@ class Wizard(wizard.Wizard):
     
     def finish(self):
         self.parent.validate_msg = None
+        for team in self.cm_draft.teams:
+            name = self.step2.team_sv_dict[team].get()
+            team.ottoneu_team_id = self.step2.o_team_map.get(name)
+        self.parent.draft = draft_services.add_couchmanagers_draft(self.parent.draft, self.cm_draft)
         super().finish()
 
 class Step1(tk.Frame):
+
+    parent: Wizard
+
     def __init__(self, parent):
         super().__init__(parent)
         self.parent = parent
@@ -63,9 +75,11 @@ class Step1(tk.Frame):
             self.parent.cm_draft = cm_draft = CouchManagers_Draft()
             cm_draft.cm_draft_id = int(self.league_num_entry.get())
             cm_draft.teams = []
+            cm_draft.setup = True
             for team in teams:
                 if len(team[1]) == 0:
                     # Team not claimed yet
+                    cm_draft.setup = False
                     continue
                 cm_team = CouchManagers_Team()
                 cm_team.cm_team_id = team[0]
@@ -80,6 +94,8 @@ class Step1(tk.Frame):
         return True
 
 class Step2(tk.Frame):
+    parent:Wizard
+    team_sv_dict:Dict[CouchManagers_Draft,str]
     def __init__(self, parent):
         super().__init__(parent)
         self.parent = parent
@@ -92,9 +108,11 @@ class Step2(tk.Frame):
         for item in self.team_frm.winfo_children():
             item.destroy()
         o_team_names = []
+        self.o_team_map = {}
         league = league_services.get_league_by_draft(self.parent.draft, fill_rosters=True)
         for team in league.teams:
             o_team_names.append(team.name)
+            self.o_team_map[team.name] = team.index
         self.team_sv_dict = {}
         row = 0
         ttk.Label(self.team_frm, text='CM Team Name').grid(row=row, column=0)

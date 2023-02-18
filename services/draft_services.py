@@ -3,7 +3,7 @@ from pandas import DataFrame
 from typing import List, Tuple
 
 from dao.session import Session
-from domain.domain import Draft, Draft_Target
+from domain.domain import Draft, Draft_Target, CouchManagers_Draft
 from scrape.scrape_couchmanagers import Scrape_CouchManagers
 from util import date_util
 
@@ -12,7 +12,6 @@ def get_draft_by_league(lg_id:int) -> Draft:
     year = date_util.get_current_ottoneu_year()
     with Session() as session:
         draft = session.query(Draft)\
-            .options(joinedload(Draft.targets))\
             .filter_by(league_id = lg_id, year = year)\
             .first()
         if draft is None:
@@ -23,7 +22,6 @@ def get_draft_by_league(lg_id:int) -> Draft:
             session.add(draft)
             session.commit()
             draft = session.query(Draft)\
-                .options(joinedload(Draft.targets))\
                 .filter_by(league_id = lg_id, year = year)\
                 .first()
     return draft
@@ -63,3 +61,12 @@ def get_couchmanagers_draft_dataframe(cm_draft_id:int) -> DataFrame:
     '''Gets the dataframe from the CouchManagers draft with no further processing. DataFrame indexed by Ottoneu Player Id'''
     scraper = Scrape_CouchManagers()
     return scraper.get_draft_results(cm_draft_id)
+
+def add_couchmanagers_draft(draft:Draft, cm_draft:CouchManagers_Draft) -> Draft:
+    '''Saves the CouchManagers_Draft to the input draft'''
+    with Session() as session:
+        old_draft = session.query(Draft).filter_by(index = draft.index).first()
+        old_draft.cm_draft = cm_draft
+        session.commit()
+        return old_draft
+
