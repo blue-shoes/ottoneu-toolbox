@@ -13,7 +13,7 @@ class Scrape_CouchManagers(scrape_base.Scrape_Base):
     def __init__(self, browser:str=None):
         super().__init__(browser)
 
-    def get_draft_results(self, cm_id:int) -> DataFrame:
+    def get_draft_results(self, cm_id:int, reindex:bool=True) -> DataFrame:
         '''Retrieves the CouchManagers draft results as a DataFrame with an index of Ottoneu Player Id'''
         tmp_filepath = 'tmp/cm_auction.csv'
         url = f'https://www.couchmanagers.com/auctions/csv/download.php?auction_id={cm_id}'
@@ -25,7 +25,8 @@ class Scrape_CouchManagers(scrape_base.Scrape_Base):
             f.write(response.content)
             f.close()
         df = pd.read_csv(tmp_filepath)
-        df.set_index('ottid', inplace=True)
+        if reindex:
+            df.set_index('ottid', inplace=True)
         os.remove(tmp_filepath)
         return df
     
