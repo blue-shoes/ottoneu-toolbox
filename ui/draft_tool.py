@@ -407,6 +407,42 @@ class DraftTool(tk.Frame):
     
     def link_couchmanagers(self):
         dialog = couchmanagers_import.Dialog(self.master, self.draft)
+        if dialog.draft is not None:
+            self.draft = dialog.draft
+            if self.draft.cm_draft.setup:
+                self.resolve_cm_draft_with_rosters()
+                
+    def resolve_cm_draft_with_rosters(self):
+        prog = progress.ProgressDialog(self.parent, 'Updating Slow Draft Results...')
+        prog.set_task_title('Getting CouchManagers Results...')
+        prog.increment_completion_percent(15)
+        cm_rosters_df = draft_services.get_couchmanagers_draft_dataframe(self.draft.cm_draft.cm_draft_id)
+        if len(cm_rosters_df) == 0:
+            #No results yet
+            prog.complete()
+            return
+        prog.set_task_title('Resolving rosters...')
+        prog.increment_completion_percent(50)
+        rows = []
+        for idx, cm_player in cm_rosters_df.iterrows():
+            if cm_player['ottid'] == 0:
+                self.extra_value = self.extra_value + cm_player['Amount']
+                continue
+            found = False
+            if cm_player['ottid'] in set(self.rosters['ottoneu ID']):
+                continue
+            if not found:
+                row = []
+                row.append(player_services.get_player_by_ottoneu_id(cm_player['ottid']).index)
+                row.append(self.draft.cm_draft.get_toolbox_team_index_by_cm_team_id(cm_player['Team Number']))
+                row.append(cm_player['ottid'])
+                row.append(cm_player['Amount'])
+                rows.append(row)
+        df = pd.DataFrame(rows)
+        df.columns = ['index', 'TeamID', 'ottoneu ID', 'Salary']
+        df.set_index('index', inplace=True)
+        self.rosters = pd.concat([self.rosters, df])
+        prog.complete()
     
     def add_trans_to_rosters(self, last_trans, index, player):
         row=last_trans.iloc[index]
@@ -721,6 +757,12 @@ class DraftTool(tk.Frame):
                 self.pos_values[pos].drop('Salary', axis=1, inplace=True)
                 pd.increment_completion_percent(5)
 
+        if self.draft.cm_draft is not None:
+            if self.draft.cm_draft.setup:
+                self.resolve_cm_draft_with_rosters()
+            else:
+                #TODO: Assign further teams somehow
+                ...
         pd.set_task_title('Updating available players...')
         self.update_rostered_players()
         pd.increment_completion_percent(5)

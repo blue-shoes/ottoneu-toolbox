@@ -41,7 +41,7 @@ class Wizard(wizard.Wizard):
         self.show_step(0)
     
     def cancel(self):
-        self.league = None
+        self.parent.draft = None
         super().cancel()
     
     def finish(self):
