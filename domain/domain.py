@@ -74,7 +74,15 @@ class Player(Base):
         for si in self.salary_info:
             if si.format == format:
                 return si
-        return None
+        si = Salary_Info()
+        si.format = format
+        si.avg_salary = 0.0
+        si.last_10 = 0.0
+        si.max_salary = 0.0
+        si.min_salary = 0.0
+        si.med_salary = 0.0
+        si.roster_percentage = 0.0
+        return si
 
 class League(Base):
     __tablename__ = "league"
