@@ -63,7 +63,10 @@ def get_player_by_fg_id(player_id) -> Player:
 def get_player_by_ottoneu_id(ottoneu_id:int) -> Player:
     '''Returns player from database based on input Ottoneu player id.'''
     with Session() as session:
-        return session.query(Player).filter(Player.ottoneu_id == ottoneu_id).first()
+        player = session.query(Player).filter(Player.ottoneu_id == ottoneu_id).first()
+    if player is None:
+        player = get_player_from_ottoneu_player_page(ottoneu_id, 1)
+    return player
 
 def is_populated() -> bool:
     '''Checks if the player universe has been initially populated.'''
