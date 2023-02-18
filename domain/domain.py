@@ -413,6 +413,13 @@ class CouchManagers_Draft(Base):
 
     teams = relationship("CouchManagers_Team", back_populates="cm_draft", cascade="all, delete", lazy="joined")
 
+    def get_toolbox_team_index_by_cm_team_id(self, cm_team_id:int) -> int:
+        '''Gets the linked Ottoneu Toolbox Team index associated with the input CouchManagers team id'''
+        for team in self.teams:
+            if team.cm_draft_id == cm_team_id:
+                return team.ottoneu_team_id
+        return 0
+
 class CouchManagers_Team(Base):
     '''Class that maps CouchManagers draft team numbers'''
     __tablename__ = 'cm_teams'
