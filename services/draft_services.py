@@ -5,6 +5,7 @@ from typing import List, Tuple
 from dao.session import Session
 from domain.domain import Draft, Draft_Target, CouchManagers_Draft
 from scrape.scrape_couchmanagers import Scrape_CouchManagers
+from services import player_services
 from util import date_util
 
 def get_draft_by_league(lg_id:int) -> Draft:
@@ -58,9 +59,19 @@ def get_couchmanagers_teams(cm_draft_id:str) -> List[Tuple[int, str]]:
     return scraper.get_draft_info(cm_draft_id)
 
 def get_couchmanagers_draft_dataframe(cm_draft_id:int) -> DataFrame:
-    '''Gets the dataframe from the CouchManagers draft with no further processing. DataFrame indexed by Ottoneu Player Id'''
+    '''Gets the dataframe from the CouchManagers draft with no further processing. DataFrame autoindexed with column
+    "ottid" as the Ottoneu Player Id. "ottid" of 0 is attempted to be resolved by doing a name lookup in the database and
+    taking the highest rostered player that matches.'''
     scraper = Scrape_CouchManagers()
-    return scraper.get_draft_results(cm_draft_id)
+    df = scraper.get_draft_results(cm_draft_id, reindex=False)
+    for idx, row in df.iterrows():
+        if row['ottid'] == 0:
+            name = f"{row['First Name']} {row['Last Name']}".upper()
+            players = player_services.search_by_name(name).sort(reverse=True, key=lambda p: p.get_salary_info_for_format().roster_percentage)
+            if players is not None and len(players) > 0:
+                row['ottid'] = players[0].ottoneu_id
+    return df
+            
 
 def add_couchmanagers_draft(draft:Draft, cm_draft:CouchManagers_Draft) -> Draft:
     '''Saves the CouchManagers_Draft to the input draft'''
