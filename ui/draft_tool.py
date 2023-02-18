@@ -624,7 +624,7 @@ class DraftTool(tk.Frame):
             players = player_services.search_by_name(text)
         for player in players:
             si = player.get_salary_info_for_format(self.league.format)
-            if si is None and not self.search_unrostered_bv.get():
+            if (si is None or si.roster_percentage == 0) and not self.search_unrostered_bv.get():
                 continue
             id = player.index
             name = player.name
