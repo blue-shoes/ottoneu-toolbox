@@ -45,11 +45,17 @@ class Wizard(wizard.Wizard):
         super().cancel()
     
     def finish(self):
-        self.parent.validate_msg = None
+        self.validate_msg = None
+        assigned_names = []
         for team in self.cm_draft.teams:
             name = self.step2.team_sv_dict[team].get()
+            if name in assigned_names:
+                self.validate_msg = 'Ottoneu Team names used more than once. Please recheck.'
+                break
+            assigned_names.append(name)
             team.ottoneu_team_id = self.step2.o_team_map.get(name)
-        self.parent.draft = draft_services.add_couchmanagers_draft(self.parent.draft, self.cm_draft)
+        if self.validate_msg is None or len(self.validate_msg) == 0:
+            self.parent.draft = draft_services.add_couchmanagers_draft(self.parent.draft, self.cm_draft)
         super().finish()
 
 class Step1(tk.Frame):
