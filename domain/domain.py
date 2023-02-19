@@ -74,7 +74,15 @@ class Player(Base):
         for si in self.salary_info:
             if si.format == format:
                 return si
-        return None
+        si = Salary_Info()
+        si.format = format
+        si.avg_salary = 0.0
+        si.last_10 = 0.0
+        si.max_salary = 0.0
+        si.min_salary = 0.0
+        si.med_salary = 0.0
+        si.roster_percentage = 0.0
+        return si
 
 class League(Base):
     __tablename__ = "league"
@@ -359,7 +367,8 @@ class Draft(Base):
     league_id = Column(Integer, ForeignKey("league.index"))
     league = relationship("League")
 
-    targets = relationship("Draft_Target", back_populates="draft", cascade="all, delete")
+    targets = relationship("Draft_Target", back_populates="draft", cascade="all, delete", lazy="joined")
+    cm_draft = relationship("CouchManagers_Draft", uselist=False, back_populates='draft', cascade="all, delete", lazy="joined")
 
     year = Column(Integer, nullable=False)
 
@@ -392,6 +401,35 @@ class Draft_Target(Base):
     player = relationship("Player", lazy="joined")
 
     price = Column(Integer, nullable=True)
+
+class CouchManagers_Draft(Base):
+    '''Class to hold CouchManagers Draft Data'''
+    __tablename__ = 'cm_draft'
+    index = Column(Integer, primary_key=True)
+    cm_draft_id = Column(Integer, nullable=False)
+    draft_id = Column(Integer, ForeignKey("draft.index"), nullable=False)
+    draft = relationship("Draft", back_populates='cm_draft')
+    setup = Column(Boolean)
+
+    teams = relationship("CouchManagers_Team", back_populates="cm_draft", cascade="all, delete", lazy="joined")
+
+    def get_toolbox_team_index_by_cm_team_id(self, cm_team_id:int) -> int:
+        '''Gets the linked Ottoneu Toolbox Team index associated with the input CouchManagers team id'''
+        for team in self.teams:
+            if team.cm_team_id == cm_team_id:
+                return team.ottoneu_team_id
+        return 0
+
+class CouchManagers_Team(Base):
+    '''Class that maps CouchManagers draft team numbers'''
+    __tablename__ = 'cm_teams'
+    index = Column(Integer, primary_key=True)
+    cm_draft_id = Column(Integer, ForeignKey("cm_draft.index"), nullable=False)
+    cm_draft = relationship("CouchManagers_Draft", back_populates='teams')
+
+    cm_team_id = Column(Integer, nullable=False)
+    cm_team_name = Column(String)
+    ottoneu_team_id = Column(Integer, nullable=False)
 
 class Adv_Calc_Option(Base):
     '''Class to hold advanced calculation inputs'''

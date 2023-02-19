@@ -11,12 +11,15 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
 
+from bs4 import BeautifulSoup as Soup
+
 import shutil
 import pandas as pd
 from pandas import DataFrame
 import os
 import time
 import logging
+import requests
 
 from scrape.exceptions import BrowserTypeException, DownloadException
 
@@ -33,6 +36,13 @@ class Scrape_Base(object):
         for f in os.listdir(dir):
             os.remove(os.path.join(dir, f))
         
+    def _get_soup(self, url:str, xml:bool=False) -> Soup:
+        '''Convenience method to return Soup object from url.'''
+        response = requests.get(url)
+        if xml:
+            return Soup(response.text, 'xml')
+        else:
+            return Soup(response.text, 'html.parser')
 
     def close(self) -> None:
         '''Quits the internal driver once it is no longer needed'''
