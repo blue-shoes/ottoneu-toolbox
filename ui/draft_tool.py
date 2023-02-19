@@ -1,6 +1,7 @@
 import tkinter as tk     
 from tkinter import *              
 from tkinter import ttk 
+import tkinter.messagebox as mb
 from tkinter.messagebox import OK
 import os
 import os.path
@@ -47,6 +48,8 @@ class DraftTool(tk.Frame):
         self.removed_players = []
         self.league = None
         self.value_calculation = None
+        self.cm_text = StringVar()
+        self.cm_text.set('Link CouchManagers')
 
         self.create_main()
     
@@ -200,7 +203,7 @@ class DraftTool(tk.Frame):
             self.monitor_status_lbl = tk.Label(monitor_frame, textvariable=self.monitor_status, fg='red')
             self.monitor_status_lbl.grid(column=2,row=0)
             self.stop_monitor = ttk.Button(monitor_frame, text="Stop Draft", command=self.stop_draft_monitor).grid(column=1,row=0)
-            ttk.Button(monitor_frame, text="Link CouchManagers", command=self.link_couchmanagers).grid(column=2, row=0)
+            ttk.Button(monitor_frame, textvariable=self.cm_text, command=self.toggle_couchmanagers).grid(column=2, row=0)
 
             self.inflation_str_var = tk.StringVar()
 
@@ -242,7 +245,7 @@ class DraftTool(tk.Frame):
             self.monitor_status_lbl = tk.Label(search_frame, textvariable=self.monitor_status, fg='red')
             self.monitor_status_lbl.grid(column=1,row=3)
             self.stop_monitor = ttk.Button(search_frame, text="Stop Draft Monitor", command=self.stop_draft_monitor).grid(column=0,row=4)
-            ttk.Button(search_frame, text="Link CouchManagers", command=self.link_couchmanagers).grid(column=0, row=5)
+            ttk.Button(search_frame, textvariable=self.cm_text, command=self.toggle_couchmanagers).grid(column=0, row=5)
 
             self.inflation_str_var = tk.StringVar()
 
@@ -405,12 +408,22 @@ class DraftTool(tk.Frame):
         self.monitor_status_lbl.config(fg='red')
         self.parent.update_idletasks()
     
-    def link_couchmanagers(self):
-        dialog = couchmanagers_import.Dialog(self.master, self.draft)
-        if dialog.draft is not None and dialog.draft.cm_draft is not None:
-            self.draft = dialog.draft
-            if self.draft.cm_draft.setup:
-                self.resolve_cm_draft_with_rosters(init=False)
+    def toggle_couchmanagers(self):
+        if self.draft.cm_draft is not None:
+            if mb.askyesno('Unlink CouchManagers?', 'This will delete the CouchManagers information for this draft. Continue?'):
+                setup = self.draft.cm_draft.setup
+                draft_services.delete_couchmanagers_draft(self.draft.cm_draft)
+                self.draft.cm_draft = None
+                self.cm_text.set('Link CouchManagers')
+                if setup:
+                    self.initialize_draft(same_values=True)
+        else:
+            dialog = couchmanagers_import.Dialog(self.master, self.draft)
+            if dialog.draft is not None and dialog.draft.cm_draft is not None:
+                self.draft = dialog.draft
+                self.cm_text.set(f'Unlink CouchManagers ({self.draft.cm_draft.cm_draft_id})')
+                if self.draft.cm_draft.setup:
+                    self.resolve_cm_draft_with_rosters(init=False)
                 
     def resolve_cm_draft_with_rosters(self, init:bool=True):
         prog = progress.ProgressDialog(self.parent, 'Updating Slow Draft Results...')
@@ -768,6 +781,7 @@ class DraftTool(tk.Frame):
                 pd.increment_completion_percent(5)
 
         if self.draft.cm_draft is not None:
+            self.cm_text.set(f'Unlink CouchManagers ({self.draft.cm_draft.cm_draft_id})')
             if self.draft.cm_draft.setup:
                 self.resolve_cm_draft_with_rosters()
             else:

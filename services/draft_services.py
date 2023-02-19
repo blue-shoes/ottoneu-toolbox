@@ -90,3 +90,9 @@ def update_couchmanger_teams(draft_index:int, new_teams:List[CouchManagers_Team]
             db_cm_draft.teams.append(cm_team)
         session.commit()
         return session.query(CouchManagers_Draft).filter_by(index = draft_index).first()
+
+def delete_couchmanagers_draft(cm_draft:CouchManagers_Draft) -> None:
+    '''Deletes the input CouchManagers_Draft'''
+    with Session() as session:
+        session.delete(cm_draft)
+        session.commit()
