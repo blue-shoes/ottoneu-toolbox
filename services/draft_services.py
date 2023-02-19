@@ -3,7 +3,7 @@ from pandas import DataFrame
 from typing import List, Tuple
 
 from dao.session import Session
-from domain.domain import Draft, Draft_Target, CouchManagers_Draft
+from domain.domain import Draft, Draft_Target, CouchManagers_Draft, CouchManagers_Team
 from scrape.scrape_couchmanagers import Scrape_CouchManagers
 from services import player_services
 from util import date_util
@@ -79,5 +79,14 @@ def add_couchmanagers_draft(draft:Draft, cm_draft:CouchManagers_Draft) -> Draft:
         old_draft = session.query(Draft).filter_by(index = draft.index).first()
         old_draft.cm_draft = cm_draft
         session.commit()
-        return old_draft
+        return session.query(Draft).filter_by(index = draft.index).first()
 
+def update_couchmanger_teams(draft_index:int, new_teams:List[CouchManagers_Team], set_up:bool) -> CouchManagers_Draft:
+    '''Updates the team mappings from CouchManagers to Ottoneu Toolbox'''
+    with Session() as session:
+        db_cm_draft = session.query(CouchManagers_Draft).filter_by(index = draft_index).first()
+        db_cm_draft.setup = set_up
+        for cm_team in new_teams:
+            db_cm_draft.teams.append(cm_team)
+        session.commit()
+        return session.query(CouchManagers_Draft).filter_by(index = draft_index).first()
