@@ -105,5 +105,7 @@ class Wizard(tk.Frame):
         if self.validate_msg is not None and len(self.validate_msg) > 0:
             mb.showwarning('Input Error', self.validate_msg)
             self.validate_msg = None
+            self.lift()
+            self.focus_force()
             return
         self.parent.destroy()
