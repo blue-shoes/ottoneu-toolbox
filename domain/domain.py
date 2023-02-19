@@ -416,7 +416,7 @@ class CouchManagers_Draft(Base):
     def get_toolbox_team_index_by_cm_team_id(self, cm_team_id:int) -> int:
         '''Gets the linked Ottoneu Toolbox Team index associated with the input CouchManagers team id'''
         for team in self.teams:
-            if team.cm_draft_id == cm_team_id:
+            if team.cm_team_id == cm_team_id:
                 return team.ottoneu_team_id
         return 0
 
