@@ -16,7 +16,7 @@ from datetime import datetime, timedelta
 from scrape.scrape_ottoneu import Scrape_Ottoneu 
 from domain.enum import Position, ScoringFormat, StatType, Preference as Pref, AvgSalaryFom, RankingBasis, ProjectionType
 from ui.table import Table
-from ui.dialog import progress, draft_target
+from ui.dialog import progress, draft_target, cm_team_assignment
 from ui.dialog.wizard import couchmanagers_import
 from services import salary_services, league_services, calculation_services, player_services, draft_services
 from demo import draft_demo
@@ -407,12 +407,12 @@ class DraftTool(tk.Frame):
     
     def link_couchmanagers(self):
         dialog = couchmanagers_import.Dialog(self.master, self.draft)
-        if dialog.draft is not None:
+        if dialog.draft is not None and dialog.draft.cm_draft is not None:
             self.draft = dialog.draft
             if self.draft.cm_draft.setup:
-                self.resolve_cm_draft_with_rosters()
+                self.resolve_cm_draft_with_rosters(init=False)
                 
-    def resolve_cm_draft_with_rosters(self):
+    def resolve_cm_draft_with_rosters(self, init:bool=True):
         prog = progress.ProgressDialog(self.parent, 'Updating Slow Draft Results...')
         prog.set_task_title('Getting CouchManagers Results...')
         prog.increment_completion_percent(15)
@@ -433,15 +433,25 @@ class DraftTool(tk.Frame):
                 continue
             if not found:
                 row = []
-                row.append(player_services.get_player_by_ottoneu_id(cm_player['ottid']).index)
+                player = player_services.get_player_by_ottoneu_id(cm_player['ottid'])
+                row.append(player.index)
                 row.append(self.draft.cm_draft.get_toolbox_team_index_by_cm_team_id(cm_player['Team Number']))
                 row.append(cm_player['ottid'])
-                row.append(cm_player['Amount'])
+                salary = cm_player['Amount']
+                row.append(salary)
                 rows.append(row)
+                if not init:
+                    if player.index in self.values.index:
+                        self.values.at[player.index, 'Salary'] = salary
+                        pos = player_services.get_player_positions(player)
+                        for p in pos:                                    
+                            self.pos_values[p].at[player.index, 'Salary'] = salary
         df = pd.DataFrame(rows)
         df.columns = ['index', 'TeamID', 'ottoneu ID', 'Salary']
         df.set_index('index', inplace=True)
         self.rosters = pd.concat([self.rosters, df])
+        if not init:
+            self.refresh_views()
         prog.complete()
     
     def add_trans_to_rosters(self, last_trans, index, player):
@@ -488,7 +498,7 @@ class DraftTool(tk.Frame):
                             index -= 1
                             continue
                         pos = player_services.get_player_positions(player)
-                        update_pos = np.append(update_pos, pos)
+                        update_pos.append(pos)
                         if last_trans.iloc[index]['Type'].upper() == 'ADD':
                             salary = int(last_trans.iloc[index]['Salary'].split('$')[1])
                             self.values.at[player.index, 'Salary'] = salary
@@ -761,8 +771,26 @@ class DraftTool(tk.Frame):
             if self.draft.cm_draft.setup:
                 self.resolve_cm_draft_with_rosters()
             else:
-                #TODO: Assign further teams somehow
-                ...
+                cm_teams = draft_services.get_couchmanagers_teams(self.draft.cm_draft.cm_draft_id)
+                new_teams = []
+                new_claims = False
+                for team in cm_teams:
+                    found = False
+                    for team2 in self.draft.cm_draft.teams:
+                        if team[0] == team2.cm_team_id:
+                            found = True
+                            break
+                    if not found:
+                        if team[1] != '':
+                            new_claims = True
+                        new_teams.append(team)
+                if new_claims:
+                    dialog = cm_team_assignment.Dialog(self, self.draft, new_teams)
+                    if dialog.status == OK:
+                        self.draft = dialog.draft
+                        if self.draft.cm_draft.setup:
+                            self.resolve_cm_draft_with_rosters()
+                
         pd.set_task_title('Updating available players...')
         self.update_rostered_players()
         pd.increment_completion_percent(5)
