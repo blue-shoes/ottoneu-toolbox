@@ -41,7 +41,9 @@ class Scrape_CouchManagers(scrape_base.Scrape_Base):
         for div in team_divs:
             team = div.find('div', {'class':'teams_notonline'})
             if team is None:
-                team = div.find('div', {'class':'teams_online'})
+                team = div.find('div', {'class':'teams_isonline'})
+            if team is None:
+                continue
             id = int(team.get('id').split('_')[1])
             name = team.find('div', {'class': 'teams_teamname'}).contents[0].strip()
             teams.append((id, name))
