@@ -4,7 +4,7 @@ from sqlalchemy import Integer, String, Boolean, Float, Date, Enum, TIMESTAMP
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 import re
-from domain.enum import CalculationDataType, ProjectionType, RankingBasis, ScoringFormat, StatType, Position
+from domain.enum import CalculationDataType, ProjectionType, RankingBasis, ScoringFormat, StatType, Position, IdType
 
 Base = declarative_base()
 
@@ -314,11 +314,27 @@ class Projection(Base):
     player_projections = relationship("PlayerProjection", back_populates="projection", cascade="all, delete")
     calculations = relationship("ValueCalculation", back_populates="projection", cascade="all, delete")
 
-    def get_player_projection(self, player_id:int) -> PlayerProjection:
+    def get_player_projection(self, player_id:int, idx:str=None, id_type:IdType=IdType.FANGRAPHS) -> PlayerProjection:
         '''Gets the PlayerProjection for the given player_id'''
-        for pp in self.player_projections:
-            if pp.player_id == player_id or pp.player.index == player_id:
-                return pp
+        if player_id is None:
+            for pp in self.player_projections:
+                if id_type == IdType.FANGRAPHS:
+                    if idx.isnumeric():
+                        for pp in self.player_projections:
+                            if pp.player.fg_major_id == idx:
+                                return pp
+                    else:
+                        for pp in self.player_projections:
+                            if pp.player.fg_minor_id == idx:
+                                return pp
+                else:
+                    for pp in self.player_projections:
+                        if pp.player.ottoneu_id == idx:
+                            return pp
+        else:
+            for pp in self.player_projections:
+                if pp.player_id == player_id or pp.player.index == player_id:
+                    return pp
         return None
         
 class PlayerProjection(Base):
