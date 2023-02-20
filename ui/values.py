@@ -10,18 +10,19 @@ from pathlib import Path
 import pandas as pd
 
 from ui.table import Table
-from domain.domain import ValueCalculation, PlayerProjection
+from domain.domain import ValueCalculation
 from domain.enum import CalculationDataType as CDT, RankingBasis, RepLevelScheme, StatType, Position, ProjectionType, ScoringFormat
-from services import projection_services, calculation_services
-from ui.dialog import projection_select, progress, name_desc
+from services import projection_services, calculation_services, adv_calc_services
+from ui.dialog import projection_select, progress, name_desc, advanced_calc
 from ui.dialog.wizard import projection_import
+from ui.tool.tooltip import CreateToolTip
 from util import string_util
 
 player_columns = ('Value', 'Name', 'Team', 'Pos')
 #fom_columns = ('P/G', 'HP/G', 'P/PA', 'P/IP', 'PP/G', 'Points', 'zScore', 'SGP')
 h_fom_columns = ('P/G', 'HP/G', 'P/PA')
-p_fom_columns = ('P/IP', 'PP/G', 'SABR P/IP', 'SABR PP/G')
-point_cols = ('FG Pts', 'SABR Pts')
+p_fom_columns = ('P/IP', 'PP/G', 'SABR P/IP', 'SABR PP/G', 'NSH P/IP', 'NSH PP/G', 'NSH SABR P/IP', 'NSH SABR PP/G')
+point_cols = ('FG Pts', 'SABR Pts', 'NSH FG Pts', 'NSH SABR Pts')
 points_hitting_columns = ('G', 'PA', 'AB', 'H', '2B', '3B', 'HR', 'BB', 'HBP', 'SB','CS')
 points_pitching_columns = ('G', 'GS', 'IP', 'SO','H','BB','HBP','HR','SV','HLD')
 old_school_hitting_columns = ('G', 'PA', 'AB', 'R', 'HR', 'RBI', 'SB', 'AVG')
@@ -75,7 +76,7 @@ class ValuesCalculation(tk.Frame):
             self.num_teams_str.set("12")
             self.manual_split.set(False)
             self.hitter_allocation.set("60")
-            self.non_prod_dollars_str.set("48")
+            self.non_prod_dollars_str.set("300")
             self.hitter_basis.set('P/G')
             self.min_pa.set("150")
             self.pitcher_basis.set('P/IP')
@@ -113,6 +114,11 @@ class ValuesCalculation(tk.Frame):
             else:
                 self.manual_split.set(True)
                 self.hitter_allocation.set(int(v.get_input(CDT.HITTER_SPLIT)))
+            include_svh = v.get_input(CDT.INCLUDE_SVH)
+            if include_svh is None or include_svh == 1:
+                self.sv_hld_bv.set(True)
+            else:
+                self.sv_hld_bv.set(False)
             self.safe_set_input_value(CDT.NON_PRODUCTIVE_DOLLARS, self.non_prod_dollars_str, True)
             self.hitter_basis.set(RankingBasis.enum_to_display_dict()[v.hitter_basis])
             self.safe_set_input_value(CDT.PA_TO_RANK, self.min_pa, True)
@@ -127,6 +133,10 @@ class ValuesCalculation(tk.Frame):
             else:
                 for pos in Position.get_discrete_offensive_pos() + Position.get_discrete_pitching_pos():
                     self.safe_set_input_value(CDT.pos_to_num_rostered().get(pos), self.rep_level_dict[pos.value], True)
+            for adv_inp in CDT.get_adv_inputs():
+                inp = self.value_calc.get_input(adv_inp)
+                if inp is not None:
+                    adv_calc_services.set_advanced_option(adv_inp, inp.value)
             self.update_calc_output_frame()
         pd.set_completion_percent(33)
         if len(self.tables) > 0:
@@ -166,7 +176,9 @@ class ValuesCalculation(tk.Frame):
         self.sel_proj.set("None")
         self.projection = None
         ttk.Label(inpf, textvariable=self.sel_proj).grid(column=1,row=0)
-        ttk.Button(inpf, text="Select...", command=self.select_projection).grid(column=2,row=0)
+        btn = ttk.Button(inpf, text="Select...", command=self.select_projection)
+        btn.grid(column=2,row=0)
+        CreateToolTip(btn, "Select a stored projection to use for value calculations or import a new one.")
 
         gt_map = ScoringFormat.enum_to_full_name_map()
         ttk.Label(inpf, text="Game Type:").grid(column=0,row=2,pady=5)
@@ -176,7 +188,7 @@ class ValuesCalculation(tk.Frame):
         gt_combo.bind("<<ComboboxSelected>>", self.update_game_type)
         # TODO: Don't hardcode game types, include other types
 
-        gt_combo['values'] = (gt_map[ScoringFormat.FG_POINTS], gt_map[ScoringFormat.SABR_POINTS])
+        gt_combo['values'] = (gt_map[ScoringFormat.FG_POINTS], gt_map[ScoringFormat.SABR_POINTS], gt_map[ScoringFormat.H2H_FG_POINTS], gt_map[ScoringFormat.H2H_SABR_POINTS])
         gt_combo.grid(column=1,row=2,pady=5)
 
         ttk.Label(inpf, text="Number of Teams:").grid(column=0, row=3,pady=5)
@@ -187,10 +199,14 @@ class ValuesCalculation(tk.Frame):
         team_entry.config(validate="key", validatecommand=(validation, '%P'))
         self.input_svs.append(self.num_teams_str)
 
-        ttk.Label(inpf, text="Manually assign hitter/pitcher split?").grid(column=0, row=4,pady=5)
+        lbl = ttk.Label(inpf, text="Manual hitter/pitcher split?")
+        lbl.grid(column=0, row=4,pady=5)
+        CreateToolTip(lbl, 'Indicate if value calculations should calculate hitter/pitcher value\nabove replacement intrinsically or by user percentage.')
         self.manual_split = BooleanVar()
         self.manual_split.set(False)
-        ttk.Checkbutton(inpf, variable=self.manual_split, command=self.toggle_manual_split).grid(column=1, row=4, pady=5)
+        cb = ttk.Checkbutton(inpf, variable=self.manual_split, command=self.toggle_manual_split)
+        cb.grid(column=1, row=4, pady=5)
+        CreateToolTip(cb, 'Indicate if value calculations should calculate hitter/pitcher value\nabove replacement intrinsically or by user percentage.')
 
         self.hitter_aloc_lbl = ttk.Label(inpf, text="Hitter allocation (%):")
         self.hitter_aloc_lbl.grid(column=0, row=5,pady=5)
@@ -202,12 +218,15 @@ class ValuesCalculation(tk.Frame):
         self.hitter_aloc_entry.configure(state='disable')
         self.input_svs.append(self.hitter_allocation)
 
-        ttk.Label(inpf, text="Non-productive salaries (e.g. prospects):").grid(column=0, row=6,pady=5)
+        lbl = ttk.Label(inpf, text="Excess salaries:")
+        lbl.grid(column=0, row=6,pady=5)
+        CreateToolTip(lbl, text='Cap space set aside for below replacement level player salaries, such as prospects, or unspent cap space.')
         self.non_prod_dollars_str = StringVar()
-        self.non_prod_dollars_str.set("48")
+        self.non_prod_dollars_str.set("300")
         non_prod = ttk.Entry(inpf, textvariable=self.non_prod_dollars_str)
         non_prod.grid(column=1,row=6,pady=5)
         non_prod.config(validate="key", validatecommand=(validation, '%P'))
+        CreateToolTip(non_prod, text='Cap space set aside for below replacement level player salaries, such as prospects, or unspent cap space.')
         self.input_svs.append(self.non_prod_dollars_str)
 
         ttk.Label(inpf, text="Hitter Value Basis:").grid(column=0,row=7,pady=5)
@@ -224,6 +243,7 @@ class ValuesCalculation(tk.Frame):
         pa_entry = ttk.Entry(inpf, textvariable=self.min_pa)
         pa_entry.grid(column=1,row=8, pady=5)
         pa_entry.config(validate="key", validatecommand=(validation, '%P'))
+        CreateToolTip(pa_entry, 'The minimum number of plate appearances required to be considered for valuation.')
         self.input_svs.append(self.min_pa)
         
         ttk.Label(inpf, text="Pitcher Value Basis:").grid(column=0,row=9,pady=5)
@@ -237,19 +257,36 @@ class ValuesCalculation(tk.Frame):
         ttk.Label(inpf, text="Min SP IP to Rank:").grid(column=0, row= 10, pady=5)
         self.min_sp_ip = StringVar()
         self.min_sp_ip.set("70")
-        ttk.Entry(inpf, textvariable=self.min_sp_ip).grid(column=1,row=10, pady=5)
+        entry = ttk.Entry(inpf, textvariable=self.min_sp_ip)
+        entry.grid(column=1,row=10, pady=5)
+        CreateToolTip(entry, 'The minimum number of innings required by a full-time starter to be considered for valuation.')
         self.input_svs.append(self.min_sp_ip)
 
         ttk.Label(inpf, text="Min RP IP to Rank:").grid(column=0, row= 11, pady=5)
         self.min_rp_ip = StringVar()
         self.min_rp_ip.set("30")
-        ttk.Entry(inpf, textvariable=self.min_rp_ip).grid(column=1,row=11, pady=5)
+        entry = ttk.Entry(inpf, textvariable=self.min_rp_ip)
+        entry.grid(column=1,row=11, pady=5)
+        CreateToolTip(entry, 'The minimum number of innings required by a full-time reliever to be considered for valuation.')
         self.input_svs.append(self.min_rp_ip)
+
+        self.sv_hld_lbl = ttk.Label(inpf, text="Include SV/HLD?")
+        self.sv_hld_lbl.grid(column=0, row=12, pady=5)
+        CreateToolTip(self.sv_hld_lbl, 'Calculate reliever values with or without projected save and hold values.')
+        self.sv_hld_bv = BooleanVar()
+        self.sv_hld_bv.set(True)
+        self.sv_hld_entry = ttk.Checkbutton(inpf, variable=self.sv_hld_bv, command=self.set_display_columns)
+        self.sv_hld_entry.grid(column=1, row=12, pady=5)
+        CreateToolTip(self.sv_hld_entry, 'Calculate reliever values with or without projected save and hold values.')
         
         # This is its own method to make the __init__ more readable
-        self.set_replacement_level_ui(inpf)
+        row = self.set_replacement_level_ui(inpf, start_row=13)
 
-        ttk.Button(inpf, text="Calculate", command=self.calculate_values).grid(row=24, column=0)
+        ttk.Button(inpf, text="Calculate", command=self.calculate_values).grid(row=row, column=0)
+        self.advanced_btn = ttk.Button(inpf, text='Advanced', command=self.advanced_options)
+        CreateToolTip(self.advanced_btn, 'Set advanced input options for the Value Calculation.')
+        self.advanced_btn['state'] = DISABLED
+        self.advanced_btn.grid(row=row, column=1)
 
         inpf.update()
 
@@ -318,6 +355,7 @@ class ValuesCalculation(tk.Frame):
 
     def update_game_type(self, event: Event):
         self.set_display_columns()
+        self.set_advanced_button_status()
 
     def select_projection(self):
         count = projection_services.get_projection_count()
@@ -400,9 +438,15 @@ class ValuesCalculation(tk.Frame):
             
             p_points = calculation_services.get_points(pp, Position.PITCHER, sabr=False)
             s_p_points = calculation_services.get_points(pp, Position.PITCHER, sabr=True)
+            nsh_p_points = calculation_services.get_points(pp, Position.PITCHER, sabr=False, no_svh=True)
+            nsh_s_p_points = calculation_services.get_points(pp, Position.PITCHER, sabr=True, no_svh=True)
             ip = pp.get_stat(StatType.IP)
             games = pp.get_stat(StatType.G_PIT)
             if ip is None or ip == 0 or games is None or games == 0:
+                val.append("0.00")
+                val.append("0.00")
+                val.append("0.00")
+                val.append("0.00")
                 val.append("0.00")
                 val.append("0.00")
                 val.append("0.00")
@@ -412,9 +456,15 @@ class ValuesCalculation(tk.Frame):
                 val.append("{:.2f}".format(p_points/games))
                 val.append("{:.2f}".format(s_p_points/ip))
                 val.append("{:.2f}".format(s_p_points/games))
+                val.append("{:.2f}".format(nsh_p_points/ip))
+                val.append("{:.2f}".format(nsh_p_points/games))
+                val.append("{:.2f}".format(nsh_s_p_points/ip))
+                val.append("{:.2f}".format(nsh_s_p_points/games))
 
             val.append("{:.1f}".format(p_points + o_points))
             val.append("{:.1f}".format(s_p_points + o_points))
+            val.append("{:.1f}".format(nsh_p_points + o_points))
+            val.append("{:.1f}".format(nsh_s_p_points + o_points))
         return val
     
     def get_overall_row_no_proj(self, player_id):
@@ -450,9 +500,13 @@ class ValuesCalculation(tk.Frame):
                 val.append(pp.get_stat(StatType.PPG)) # p/pa
                 f_points = pp.get_stat(StatType.POINTS)
                 s_points = f_points
+                nsh_f_points = f_points
+                nsh_s_points = f_points
             else:
                 f_points = calculation_services.get_points(pp, pos, sabr=False)
                 s_points = f_points
+                nsh_f_points = f_points
+                nsh_s_points = f_points
                 games = pp.get_stat(StatType.G_HIT)
                 if games is None or games == 0:
                     val.append("0.00") # p/g
@@ -468,14 +522,26 @@ class ValuesCalculation(tk.Frame):
                 val.append(pp.get_stat(StatType.PIP)) # pp/g
                 val.append(pp.get_stat(StatType.PIP)) # s_p/ip
                 val.append(pp.get_stat(StatType.PIP)) # s_pp/g
+                val.append(pp.get_stat(StatType.PIP)) # p/ip
+                val.append(pp.get_stat(StatType.PIP)) # pp/g
+                val.append(pp.get_stat(StatType.PIP)) # s_p/ip
+                val.append(pp.get_stat(StatType.PIP)) # s_pp/g
                 f_points = pp.get_stat(StatType.POINTS)
                 s_points = f_points
+                nsh_f_points = f_points
+                nsh_s_points = f_points
             else:
                 f_points = calculation_services.get_points(pp, pos, sabr=False)
                 s_points = calculation_services.get_points(pp, pos, sabr=True)
+                nsh_f_points = calculation_services.get_points(pp, pos, sabr=False, no_svh=True)
+                nsh_s_points = calculation_services.get_points(pp, pos, sabr=True, no_svh=True)
                 ip = pp.get_stat(StatType.IP)
                 games = pp.get_stat(StatType.G_PIT)
                 if ip is None or ip == 0 or games is None or games == 0:
+                    val.append("0.00") # p/ip
+                    val.append("0.00") # pp/g
+                    val.append("0.00") # s_p/ip
+                    val.append("0.00") # s_pp/g
                     val.append("0.00") # p/ip
                     val.append("0.00") # pp/g
                     val.append("0.00") # s_p/ip
@@ -485,8 +551,14 @@ class ValuesCalculation(tk.Frame):
                     val.append("{:.2f}".format(f_points/games))
                     val.append("{:.2f}".format(s_points/ip))
                     val.append("{:.2f}".format(s_points/games))
+                    val.append("{:.2f}".format(nsh_f_points/ip))
+                    val.append("{:.2f}".format(nsh_f_points/games))
+                    val.append("{:.2f}".format(nsh_s_points/ip))
+                    val.append("{:.2f}".format(nsh_s_points/games))
         val.append("{:.1f}".format(f_points))
         val.append("{:.1f}".format(s_points))
+        val.append("{:.1f}".format(nsh_f_points))
+        val.append("{:.1f}".format(nsh_s_points))
         if self.projection.type != ProjectionType.VALUE_DERIVED:
             for col in cols:
                 if col in enum_dict:
@@ -651,10 +723,12 @@ class ValuesCalculation(tk.Frame):
         self.save_btn = sb = ttk.Button(outf, text="Save Values", command=self.save_values)
         sb.grid(row=row, column=0)
         sb['state'] = DISABLED
+        CreateToolTip(sb, 'Save the last set of calculated values to the database.')
 
         self.export_btn = eb = ttk.Button(outf, text="Export Values", command=self.export_values)
         eb.grid(row=row, column=1)
         eb['state'] = DISABLED
+        CreateToolTip(eb, 'Export the last set of calculated values to a csv ro xlsx file.')
 
     def update_calc_output_frame(self):
         self.output_title.set("Value Calculation Results")
@@ -749,6 +823,10 @@ class ValuesCalculation(tk.Frame):
             h_basis = RankingBasis.display_to_enum_map().get(self.hitter_basis.get())
             p_basis = RankingBasis.display_to_enum_map().get(self.pitcher_basis.get())
             scoring_format = ScoringFormat.name_to_enum_map().get(self.game_type.get())
+            if self.sv_hld_bv.get():
+                prefix = ''
+            else:
+                prefix = 'NSH '
             if h_basis == RankingBasis.PPG:
                 if p_basis == RankingBasis.PPG:
                     overall.append('HP/G')
@@ -760,25 +838,25 @@ class ValuesCalculation(tk.Frame):
                 hit.append("P/PA")
             if p_basis == RankingBasis.PPG:
                 if ScoringFormat.is_sabr(scoring_format):
-                    overall.append("SABR PP/G")
-                    pitch.append("SABR PP/G")
+                    overall.append(f"{prefix}SABR PP/G")
+                    pitch.append(f"{prefix}SABR PP/G")
                 else:
-                    overall.append("PP/G")
-                    pitch.append("PP/G")
+                    overall.append(f"{prefix}PP/G")
+                    pitch.append(f"{prefix}PP/G")
             elif p_basis == RankingBasis.PIP:
                 if ScoringFormat.is_sabr(scoring_format):
-                    overall.append("SABR P/IP")
-                    pitch.append("SABR P/IP")
+                    overall.append(f"{prefix}SABR P/IP")
+                    pitch.append(f"{prefix}SABR P/IP")
                 else:
-                    overall.append("P/IP")
-                    pitch.append("P/IP")
+                    overall.append(f"{prefix}P/IP")
+                    pitch.append(f"{prefix}P/IP")
             if ScoringFormat.is_points_type(scoring_format):
                 if ScoringFormat.is_sabr(scoring_format):
-                    overall.append("SABR Pts")
-                    pitch.append("SABR Pts")
+                    overall.append(f"{prefix}SABR Pts")
+                    pitch.append(f"{prefix}SABR Pts")
                 else:
-                    overall.append("FG Pts")
-                    pitch.append("FG Pts")
+                    overall.append(f"{prefix}FG Pts")
+                    pitch.append(f"{prefix}FG Pts")
                 hit.append("FG Pts")
                 if self.projection.type != ProjectionType.VALUE_DERIVED:
                     hit.extend(points_hitting_columns)
@@ -791,64 +869,37 @@ class ValuesCalculation(tk.Frame):
             elif pos in Position.get_pitching_pos():
                 self.tables[pos].set_display_columns(tuple(pitch))
     
-    def set_replacement_level_ui(self, inpf):
-        ttk.Label(inpf, text="Select Replacement Level Scheme").grid(column=0,row=12,columnspan=2,pady=5)
+    def set_replacement_level_ui(self, inpf, start_row:int):
+        row = start_row
+        ttk.Label(inpf, text="Select Replacement Level Scheme").grid(column=0,row=row,columnspan=3,pady=5)
 
         self.rep_level_scheme = IntVar()
         self.rep_level_scheme.set(RepLevelScheme.NUM_ROSTERED.value)
-
-        ttk.Radiobutton(inpf, text="Number Rostered", value=RepLevelScheme.NUM_ROSTERED.value, command=self.update_rep_level_scheme, variable=self.rep_level_scheme).grid(column=0,row=13,pady=5)
-        ttk.Radiobutton(inpf, text="Replacment Level", value=RepLevelScheme.STATIC_REP_LEVEL.value, command=self.update_rep_level_scheme, variable=self.rep_level_scheme).grid(column=1,row=13,pady=5)
-        ttk.Radiobutton(inpf, text="Fill Games", value=RepLevelScheme.FILL_GAMES.value, command=self.update_rep_level_scheme, variable=self.rep_level_scheme).grid(column=2,row=13,pady=5)
+        row = row+1
+        btn = ttk.Radiobutton(inpf, text="Number Rostered", value=RepLevelScheme.NUM_ROSTERED.value, command=self.update_rep_level_scheme, variable=self.rep_level_scheme)
+        btn.grid(column=0,row=row,pady=5)
+        CreateToolTip(btn, 'Sets the number of players eligible at the given position that are at or above replacement level.')
+        btn = ttk.Radiobutton(inpf, text="Replacment Level", value=RepLevelScheme.STATIC_REP_LEVEL.value, command=self.update_rep_level_scheme, variable=self.rep_level_scheme)
+        btn.grid(column=1,row=row,pady=5)
+        CreateToolTip(btn, 'Sets the static replacement level value (in units corresponding to the selected basis) to use for calculations.')
+        btn = ttk.Radiobutton(inpf, text="Fill Games", value=RepLevelScheme.FILL_GAMES.value, command=self.update_rep_level_scheme, variable=self.rep_level_scheme)
+        btn.grid(column=2,row=row,pady=5)
+        CreateToolTip(btn, 'Determines the number of players required to be rostered at each position to reach game\nand inning thresholds and adds or subtracts the user-entered number from that positon.\nSee "Advanced" for more inputs.')
     
+        row = row+1
         self.rep_level_txt = StringVar()
         self.rep_level_txt.set("Set number of rostered players at each position:")
-        ttk.Label(inpf, textvariable=self.rep_level_txt).grid(column=0, row=14, columnspan=2, pady=5)
+        ttk.Label(inpf, textvariable=self.rep_level_txt).grid(column=0, row=row, columnspan=3, pady=5)
         
-        ttk.Label(inpf, text="C").grid(row=15, column=0)
-        self.rep_level_dict["C"] = StringVar()
-        self.rep_level_dict["C"].set("24")
-        ttk.Entry(inpf, textvariable=self.rep_level_dict["C"]).grid(row=15,column=1)
+        row = row+1
 
-        ttk.Label(inpf, text="1B").grid(row=16, column=0)
-        self.rep_level_dict["1B"] = StringVar()
-        self.rep_level_dict["1B"].set("40")
-        ttk.Entry(inpf, textvariable=self.rep_level_dict["1B"]).grid(row=16,column=1)
+        for pos in Position.get_discrete_offensive_pos() + Position.get_discrete_pitching_pos():
+            ttk.Label(inpf, text=pos.value).grid(row=row, column=0)
+            self.rep_level_dict[pos.value] = StringVar()
+            ttk.Entry(inpf, textvariable=self.rep_level_dict[pos.value]).grid(row=row,column=1)
+            row = row+1
 
-        ttk.Label(inpf, text="2B").grid(row=17, column=0)
-        self.rep_level_dict["2B"] = StringVar()
-        self.rep_level_dict["2B"].set("38")
-        ttk.Entry(inpf, textvariable=self.rep_level_dict["2B"]).grid(row=17,column=1)
-
-        ttk.Label(inpf, text="SS").grid(row=18, column=0)
-        self.rep_level_dict["SS"] = StringVar()
-        self.rep_level_dict["SS"].set("42")
-        ttk.Entry(inpf, textvariable=self.rep_level_dict["SS"]).grid(row=18,column=1)
-
-        ttk.Label(inpf, text="3B").grid(row=19, column=0)
-        self.rep_level_dict["3B"] = StringVar()
-        self.rep_level_dict["3B"].set("24")
-        ttk.Entry(inpf, textvariable=self.rep_level_dict["3B"]).grid(row=19,column=1)
-
-        ttk.Label(inpf, text="OF").grid(row=20, column=0)
-        self.rep_level_dict["OF"] = StringVar()
-        self.rep_level_dict["OF"].set("95")
-        ttk.Entry(inpf, textvariable=self.rep_level_dict["OF"]).grid(row=20,column=1)
-
-        ttk.Label(inpf, text="Util").grid(row=21, column=0)
-        self.rep_level_dict["Util"] = StringVar()
-        self.rep_level_dict["Util"].set("200")
-        ttk.Entry(inpf, textvariable=self.rep_level_dict["Util"]).grid(row=21,column=1)
-
-        ttk.Label(inpf, text="SP").grid(row=22, column=0)
-        self.rep_level_dict["SP"] = StringVar()
-        self.rep_level_dict["SP"].set("85")
-        ttk.Entry(inpf, textvariable=self.rep_level_dict["SP"]).grid(row=22,column=1)
-
-        ttk.Label(inpf, text="RP").grid(row=23, column=0)
-        self.rep_level_dict["RP"] = StringVar()
-        self.rep_level_dict["RP"].set("70")
-        ttk.Entry(inpf, textvariable=self.rep_level_dict["RP"]).grid(row=23,column=1)
+        return row
     
     def update_rep_level_scheme(self):
         if self.rep_level_scheme.get() == RepLevelScheme.NUM_ROSTERED.value:
@@ -860,7 +911,12 @@ class ValuesCalculation(tk.Frame):
         else:
             self.rep_level_txt.set("Set number of rostered players beyond games filled for each position:")
             self.set_default_rep_level(RepLevelScheme.FILL_GAMES)
+        self.set_advanced_button_status()
     
+    def advanced_options(self):
+        advanced_calc.Dialog(self, ScoringFormat.name_to_enum_map()[self.game_type.get()], RepLevelScheme.num_to_enum_map()[self.rep_level_scheme.get()],
+        RankingBasis._value2member_map_.get(self.hitter_basis.get()), RankingBasis._value2member_map_.get(self.pitcher_basis.get()))
+
     def calculate_values(self):
         try:
             if self.has_errors():
@@ -883,6 +939,7 @@ class ValuesCalculation(tk.Frame):
         self.value_calc.pitcher_basis = RankingBasis.display_to_enum_map()[self.pitcher_basis.get()]
         self.value_calc.set_input(CDT.SP_IP_TO_RANK, float(self.min_sp_ip.get()))
         self.value_calc.set_input(CDT.RP_IP_TO_RANK, float(self.min_rp_ip.get()))
+        self.value_calc.set_input(CDT.INCLUDE_SVH, float(self.sv_hld_bv.get()))
         self.value_calc.set_input(CDT.REP_LEVEL_SCHEME, float(self.rep_level_scheme.get()))
         if self.rep_level_scheme.get() == RepLevelScheme.STATIC_REP_LEVEL.value:
             for pos in Position.get_discrete_offensive_pos() + Position.get_discrete_pitching_pos():
@@ -890,6 +947,7 @@ class ValuesCalculation(tk.Frame):
         else:
             for pos in Position.get_discrete_offensive_pos() + Position.get_discrete_pitching_pos():
                 self.value_calc.set_input(CDT.pos_to_num_rostered().get(pos), int(self.rep_level_dict[pos.value].get()))
+        self.get_advanced_inputs()
         
         logging.debug("About to perform point_calc")
         pd = progress.ProgressDialog(self, title='Performing Calculation')
@@ -904,6 +962,21 @@ class ValuesCalculation(tk.Frame):
             mb.showerror('Error creating player values',  'See log for details')
         finally:
             pd.complete()
+    
+    def get_advanced_inputs(self):
+        if not ScoringFormat.is_points_type(self.value_calc.format):
+            #TODO: SGP info
+            ...
+        if self.value_calc.get_input(CDT.REP_LEVEL_SCHEME) == RepLevelScheme.FILL_GAMES.value:
+            self.value_calc.set_input(CDT.BATTER_G_TARGET, adv_calc_services.get_advanced_option(CDT.BATTER_G_TARGET).value)
+            if ScoringFormat.is_h2h(self.value_calc.format):
+                ##Fill Games
+                self.value_calc.set_input(CDT.GS_LIMIT, adv_calc_services.get_advanced_option(CDT.GS_LIMIT).value)
+                self.value_calc.set_input(CDT.RP_G_TARGET, adv_calc_services.get_advanced_option(CDT.RP_G_TARGET).value)
+            else:
+                #Fill IP
+                self.value_calc.set_input(CDT.IP_TARGET, adv_calc_services.get_advanced_option(CDT.IP_TARGET).value)
+                self.value_calc.set_input(CDT.RP_IP_TARGET, adv_calc_services.get_advanced_option(CDT.RP_IP_TARGET).value)
     
     def set_default_rep_level(self, scheme):
         if scheme == RepLevelScheme.NUM_ROSTERED:
@@ -942,7 +1015,15 @@ class ValuesCalculation(tk.Frame):
                 else:
                     table.set(index, 0, "${:.1f}".format(pv.value))
             table.resort()
-        
+    
+    def set_advanced_button_status(self):
+        if self.rep_level_scheme.get() == RepLevelScheme.FILL_GAMES.value:
+            self.advanced_btn.configure(state='enable')
+        elif self.game_type.get() == ScoringFormat.CLASSIC_4X4.value or self.game_type.get() == ScoringFormat.OLD_SCHOOL_5X5.value:
+            self.advanced_btn.configure(state='enable')
+        else:
+            self.advanced_btn.configure(state='disable')
+
     def has_errors(self):
         errors = []
         bad_rep_level = []
@@ -963,7 +1044,7 @@ class ValuesCalculation(tk.Frame):
             errors.append(f'Selected projection does not have required columns for 4x4 calculations. Please select another projection')
         
         if self.projection is not None:
-            if self.projection.ros and self.rep_level_scheme.get == RepLevelScheme.FILL_GAMES.value:
+            if self.projection.ros and self.rep_level_scheme.get() == RepLevelScheme.FILL_GAMES.value:
                 errors.append(f'Fill Games option not currently supported for RoS projection sets. Please pick another replacement level scheme.')
 
         if self.rep_level_scheme.get() == RepLevelScheme.NUM_ROSTERED.value:
@@ -978,13 +1059,15 @@ class ValuesCalculation(tk.Frame):
                     bad_rep_level.append(key)
         else:
             for key, value in self.rep_level_dict.items():
-                if not value.get().isnumeric():
+                try:
+                    f_val = float(value.get())
+                    if f_val > 10.0:
+                        if self.pitcher_basis.get() == RankingBasis.PPG and key == 'SP' and f_val < 40.0:
+                            continue
+                        bad_rep_level.append(key)
+                except ValueError:
                     bad_rep_level.append(key)
-                elif float(value.get()) > 10.0:
-                    if self.pitcher_basis.get() == RankingBasis.PPG and key == 'SP' and float(value.get()) < 40.0:
-                        continue
-                    bad_rep_level.append(key)
-        
+
         if len(bad_rep_level) > 0:
             errors.append(f'The following positions have bad replacement level inputs (check scheme): {", ".join(bad_rep_level)}')
 

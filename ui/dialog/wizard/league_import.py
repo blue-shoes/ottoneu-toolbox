@@ -5,6 +5,7 @@ from domain.enum import ScoringFormat
 from services import league_services
 from ui.dialog import progress
 from ui.dialog.wizard import wizard
+from ui.tool.tooltip import CreateToolTip
 import logging
 from tkinter import messagebox as mb
 
@@ -57,6 +58,8 @@ class Step1(tk.Frame):
         self.league_num_entry = ttk.Entry(self, width = 10)
         self.league_num_entry.grid(column=1,row=0, sticky=tk.W, padx=5)
 
+        CreateToolTip(self.league_num_entry, 'The Ottoneu league id (find it in the league URL)')
+
         self.pack()
 
     def on_show(self):
@@ -86,10 +89,11 @@ class Step2(tk.Frame):
         self.lg_name_sv.set('--')
         ttk.Label(self, textvariable=self.lg_name_sv).grid(column=1, row=1, pady=5, sticky=tk.W)
 
-        ttk.Label(self, text="Users Team", font='bold').grid(column=0, row=2,sticky=tk.E, pady=5)
+        ttk.Label(self, text="User's Team", font='bold').grid(column=0, row=2,sticky=tk.E, pady=5)
         self.users_team_name = StringVar()
         self.users_team_name.set('None Selected')
         self.users_team_cb = utcb = ttk.Combobox(self, textvariable=self.users_team_name)
+        CreateToolTip(self.users_team_cb, "Select the user's team in the league to enable additional functionality.")
         utcb['values'] = ('None Available')
         utcb.grid(column=1,row=2,pady=5)
 

@@ -2,12 +2,14 @@ import configparser
 import os
 from os import path
 import pandas as pd
+from pandas import DataFrame
 from scrape import scrape_base
+from scrape.exceptions import FangraphsException
 from selenium.webdriver.common.by import By
 import keyring
-from domain.exception import FangraphsException
 
 class Scrape_Fg(scrape_base.Scrape_Base):
+    '''Implementation of Scrape_Base class for scraping information from FanGraphs website.'''
 
     def __init__(self, browser):
         super().__init__(browser)
@@ -15,7 +17,8 @@ class Scrape_Fg(scrape_base.Scrape_Base):
             os.mkdir('data_dirs')
 
 
-    def getLeaderboardDataset(self, page, csv_name, force_download=False, player=True):
+    def getLeaderboardDataset(self, page, csv_name, player=True) -> DataFrame:
+        '''Retrieves player leaderboard data at url from FanGraphs using Selenium and returns as a DataFrame'''
         #Create filepath info
         subdir = 'data_dirs/leaderboard'
         dirname = os.path.abspath(os.path.join(os.path.dirname( __file__ ), '..'))
@@ -23,24 +26,19 @@ class Scrape_Fg(scrape_base.Scrape_Base):
         if not path.exists(subdirpath):
             os.mkdir(subdirpath)
         filepath = os.path.join(subdirpath, csv_name)
-        #If we have the file and didn't request a redownload, just load what we have
-        if path.exists(filepath) and not force_download:
-            dataframe = pd.read_csv(filepath)
-            dataframe = dataframe.loc[:, ~dataframe.columns.str.startswith('-1')]
-        else:
-            #If we haven't used the web yet, initialize the driver
-            if self.driver == None:
-                self.setupDriver()
-                self.setup_fg_login()
-            #Use driver to get dataset
-            dataframe = self.getDataset(page, 'LeaderBoard1_cmdCSV', filepath, player)
+        #If we haven't used the web yet, initialize the driver
+        if self.driver == None:
+            self.setupDriver()
+        #Use driver to get dataset
+        dataframe = self.getDataset(page, 'LeaderBoard1_cmdCSV', filepath, player)
         #If the dataset is player based (not league based), reindex to the FG player id
         if player:
             dataframe.set_index("playerid", inplace=True)
             dataframe.index = dataframe.index.astype(str, copy = False)
         return dataframe
 
-    def getProjectionDataset(self, page, csv_name, force_download=False, player=True):
+    def getProjectionDataset(self, url, csv_name, player=True) -> DataFrame:
+        '''Retrieves projection at url from FanGraphs using Selenium and returns as DataFrame.'''
         #Create filepath info
         subdir = 'tmp'
         if not path.exists(subdir):
@@ -49,18 +47,19 @@ class Scrape_Fg(scrape_base.Scrape_Base):
         #If we haven't used the web yet, initialize the driver
         if self.driver == None:
             self.setupDriver()
-            self.setup_fg_login()
         #Use driver to get dataset
-        dataframe = self.getDataset(page, 'Export Data', filepath, by_type=By.LINK_TEXT)
+        dataframe = self.getDataset(url, 'Export Data', filepath, by_type=By.LINK_TEXT)
         os.remove(filepath)
         #If the dataset is player based (not league based), reindex to the FG player id
         if player:
             dataframe.set_index("PlayerId", inplace=True)
             dataframe.index = dataframe.index.astype(str, copy = False)
+        if len(dataframe) == 0:
+            raise FangraphsException('Projection does not exist')
         return dataframe
 
-    def setup_fg_login(self):
-        #FG login to get rid of ads
+    def setup_fg_login(self) -> None:
+        '''Logs user in to FanGraphs using stored credentials. Required for Projection download.'''
         if not os.path.exists('conf/fangraphs.conf'):
             return
         cparser = configparser.RawConfigParser()
@@ -74,38 +73,9 @@ class Scrape_Fg(scrape_base.Scrape_Base):
         self.driver.find_element(By.ID, "user_pass").send_keys(pword)
         self.driver.find_element(By.ID, "wp-submit").click()
 
-    def setupDriver(self):
+    def setupDriver(self) -> None:
+        '''Creates the Selenium driver for the scraping event. Logs in to FanGraphs if conf/fangraphs.conf present.'''
         driver = super().setupDriver()
-        if os.path.exists('conf/fangraphs-config.txt'):
-            self.setup_fg_login()
+        self.setup_fg_login()
         return driver
-
-    def test(self):
-        import datetime
-        import urllib.request
-        from bs4 import BeautifulSoup as Soup
-        from selenium import webdriver
-        from webdriver_manager.chrome import ChromeDriverManager
-        votto_url = f'https://www.fangraphs.com/players/joey-votto/4314/stats'
-        options = webdriver.ChromeOptions()
-        options.add_argument('--headless')
-        driver = webdriver.Chrome(ChromeDriverManager().install(), options=options)
-        driver.get("https://blogs.fangraphs.com/wp-login.php")
-        cparser = configparser.RawConfigParser()
-        cparser.read('conf/fangraphs-config.txt')
-        uname = cparser.get('fangraphs-config', 'username')
-        pword = cparser.get('fangraphs-config', 'password')
-        driver.find_element_by_id("user_login").send_keys(uname)
-        driver.find_element_by_id("user_pass").send_keys(pword)
-        driver.find_element_by_id("wp-submit").click()
-        start = datetime.datetime.now()
-        driver.get(votto_url)
-        print(f'load time was {datetime.datetime.now() - start}')
-        stat_soup = Soup(driver.page_source, 'html.parser')
-        tables = stat_soup.find_all('table')
-        print(len(tables))
-        #print(tables[7])
-
-#scraper = Scrape_Fg()
-#scraper.getProjectionDataset(f"https://www.fangraphs.com/projections.aspx?pos=all&stats=bat&type=steamer&team=0&lg=all&players=0", 'steamer_pos.csv', True)
 

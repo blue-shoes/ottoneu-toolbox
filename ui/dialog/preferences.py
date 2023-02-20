@@ -6,7 +6,7 @@ from tkinter import messagebox as mb
 from tkinter.messagebox import OK
 import logging
 
-from domain.enum import Preference as Pref, AvgSalaryFom, Browsers
+from domain.enum import Preference as Pref, AvgSalaryFom, Browser
 from services import salary_services, browser_services
 from ui.dialog import progress, fg_login
 from util import string_util
@@ -55,12 +55,12 @@ class Dialog(tk.Toplevel):
         
         try:
             browser = browser_services.get_desired_browser()
-            self.browser_type.set(Browsers.get_display(browser))
+            self.browser_type.set(Browser.get_display(browser))
         except:
             logging.warning('Bad browser attempted to load in preferences')
         
         browser_combo = ttk.Combobox(value_frame, textvariable=self.browser_type)
-        browser_combo['values'] = (Browsers.get_display(Browsers.CHROME), Browsers.get_display(Browsers.FIREFOX), Browsers.get_display(Browsers.EDGE))
+        browser_combo['values'] = (Browser.get_display(Browser.CHROME), Browser.get_display(Browser.FIREFOX), Browser.get_display(Browser.EDGE))
         browser_combo.grid(column=1, row=1)
 
         self.fg_auth = fg_auth = StringVar()
@@ -114,7 +114,7 @@ class Dialog(tk.Toplevel):
         changed = False
         changed = self.set_and_check_changed('General', Pref.SALARY_REFRESH_FREQUENCY, self.sal_ref_days_tv.get()) or changed
         changed = self.set_and_check_changed('General', Pref.AVG_SALARY_FOM, self.avg_type.get()) or changed
-        self.set_and_check_changed('Player_Values', Pref.DEFAULT_BROWSER, Browsers.get_enum_from_display(self.browser_type.get()).value)
+        self.set_and_check_changed('Player_Values', Pref.DEFAULT_BROWSER, Browser.get_enum_from_display(self.browser_type.get()).value)
         changed = self.set_and_check_changed('Draft', Pref.DOCK_DRAFT_TARGETS, self.get_str_for_boolean_var(self.stack_targets_bv)) or changed
         changed = self.set_and_check_changed('Draft', Pref.DOCK_DRAFT_PLAYER_SEARCH, self.get_str_for_boolean_var(self.stack_search_bv)) or changed
 

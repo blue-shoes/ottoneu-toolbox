@@ -1,6 +1,7 @@
 import tkinter as tk     
 from tkinter import *              
 from tkinter import ttk 
+import tkinter.messagebox as mb
 from tkinter.messagebox import OK
 import os
 import os.path
@@ -16,7 +17,9 @@ from datetime import datetime, timedelta
 from scrape.scrape_ottoneu import Scrape_Ottoneu 
 from domain.enum import Position, ScoringFormat, StatType, Preference as Pref, AvgSalaryFom, RankingBasis, ProjectionType
 from ui.table import Table
-from ui.dialog import progress, draft_target
+from ui.dialog import progress, draft_target, cm_team_assignment
+from ui.dialog.wizard import couchmanagers_import
+from ui.tool.tooltip import CreateToolTip
 from services import salary_services, league_services, calculation_services, player_services, draft_services
 from demo import draft_demo
 
@@ -46,6 +49,12 @@ class DraftTool(tk.Frame):
         self.removed_players = []
         self.league = None
         self.value_calculation = None
+        self.cm_text = StringVar()
+        self.cm_text.set('Link CouchManagers')
+        self.start_draft_sv = StringVar()
+        self.start_draft_sv.set('Start Draft Monitor')
+        self.stop_draft_sv = StringVar()
+        self.stop_draft_sv.set('Stop Draft Monitor')
 
         self.create_main()
     
@@ -193,12 +202,19 @@ class DraftTool(tk.Frame):
         if self.controller.preferences.getboolean('Draft', Pref.DOCK_DRAFT_PLAYER_SEARCH, fallback=False):
             monitor_frame = ttk.Frame(self)
             monitor_frame.grid(row=1, column=0, columnspan=2)
-            self.start_monitor = ttk.Button(monitor_frame, text='Start Draft', command=self.start_draft_monitor).grid(column=0,row=0)
+            self.start_monitor = ttk.Button(monitor_frame, textvariable=self.start_draft_sv, command=self.start_draft_monitor)
+            self.start_monitor.grid(column=0,row=0)
+            CreateToolTip(self.start_monitor, 'Begin watching league for new draft results')
             self.monitor_status = tk.StringVar()
             self.monitor_status.set('Not started')
             self.monitor_status_lbl = tk.Label(monitor_frame, textvariable=self.monitor_status, fg='red')
             self.monitor_status_lbl.grid(column=2,row=0)
-            self.stop_monitor = ttk.Button(monitor_frame, text="Stop Draft", command=self.stop_draft_monitor).grid(column=1,row=0)
+            self.stop_monitor = ttk.Button(monitor_frame, textvariable=self.stop_draft_sv, command=self.stop_draft_monitor)
+            self.stop_monitor.grid(column=1,row=0)
+            CreateToolTip(self.stop_monitor, 'Stop watching league for new draft results')
+            btn = ttk.Button(monitor_frame, textvariable=self.cm_text, command=self.link_couchmanagers)
+            btn.grid(column=2, row=0)
+            CreateToolTip(btn, 'Link a CouchManagers draft to this league.')
 
             self.inflation_str_var = tk.StringVar()
 
@@ -223,6 +239,7 @@ class DraftTool(tk.Frame):
             search_unrostered_btn = ttk.Checkbutton(search_frame, text="Search 0% Rostered?", variable=self.search_unrostered_bv, command=self.search_view.refresh)
             search_unrostered_btn.grid(row=0, column=2, sticky=tk.NW, pady=5)
             search_unrostered_btn.state(['!alternate'])
+            CreateToolTip(search_unrostered_btn, 'Include 0% rostered players in the search results')
         
         else:
 
@@ -234,23 +251,30 @@ class DraftTool(tk.Frame):
             ss.trace("w", lambda name, index, mode, sv=ss: self.search_view.refresh())
             ttk.Entry(search_frame, textvariable=ss).grid(column=1,row=1)
 
-            self.start_monitor = ttk.Button(search_frame, text='Start Draft Monitor', command=self.start_draft_monitor).grid(column=0,row=3)
+            self.start_monitor = ttk.Button(search_frame, textvariable=self.start_draft_sv, command=self.start_draft_monitor)
+            self.start_monitor.grid(column=0,row=3)
+            CreateToolTip(self.start_monitor, 'Begin watching league for new draft results')
             self.monitor_status = tk.StringVar()
             self.monitor_status.set('Monitor not started')
             self.monitor_status_lbl = tk.Label(search_frame, textvariable=self.monitor_status, fg='red')
             self.monitor_status_lbl.grid(column=1,row=3)
-            self.stop_monitor = ttk.Button(search_frame, text="Stop Draft Monitor", command=self.stop_draft_monitor).grid(column=0,row=4)
+            self.stop_monitor = ttk.Button(search_frame, textvariable=self.stop_draft_sv, command=self.stop_draft_monitor)
+            self.stop_monitor.grid(column=0,row=4)
+            CreateToolTip(self.stop_monitor, 'Stop watching league for new draft results')
+            btn = ttk.Button(search_frame, textvariable=self.cm_text, command=self.link_couchmanagers)
+            btn.grid(column=0, row=5)
+            CreateToolTip(btn, 'Link a CouchManagers draft to this league.')
 
             self.inflation_str_var = tk.StringVar()
 
             self.inflation_lbl = ttk.Label(search_frame, textvariable=self.inflation_str_var)
-            self.inflation_lbl.grid(column=0,row=5)
+            self.inflation_lbl.grid(column=0,row=6)
 
             if self.value_calculation is None:
                 self.values_name.set('No value calculation selected')
             else:
                 self.values_name.set(f'Selected Values: {self.value_calculation.name}')
-            ttk.Label(search_frame, textvariable=self.values_name).grid(row=6, column=0, sticky=tk.NW)
+            ttk.Label(search_frame, textvariable=self.values_name).grid(row=7, column=0, sticky=tk.NW)
 
             f = ttk.Frame(self)
             f.grid(column=1,row=1)
@@ -262,6 +286,7 @@ class DraftTool(tk.Frame):
             search_unrostered_btn = ttk.Checkbutton(search_frame, text="Search 0% Rostered?", variable=self.search_unrostered_bv, command=self.search_view.refresh)
             search_unrostered_btn.grid(row=2, column=1, sticky=tk.NW, pady=5)
             search_unrostered_btn.state(['!alternate'])
+            CreateToolTip(search_unrostered_btn, 'Include 0% rostered players in the search results')
     
     def create_search_table(self, parent, col, row, col_span=1):
         cols = ('Name','Value','Salary','Inf. Cost','Pos','Team','Points','SABR Pts', 'P/G','HP/G','P/PA','P/IP', 'SABR PIP','PP/G', 'SABR PPG', 'Roster %')
@@ -370,21 +395,26 @@ class DraftTool(tk.Frame):
         return (val, rost)
 
     def start_draft_monitor(self):
-        logging.info('---Starting Draft Monitor---')
-        self.run_event.set()
-        self.monitor_thread = threading.Thread(target = self.refresh_thread)
-        self.monitor_thread.daemon = True
-        self.monitor_thread.start()
-        self.monitor_status.set('Draft Started')
-        self.monitor_status_lbl.config(fg='green')
-        self.parent.update_idletasks()
-        self.parent.after(1000, self.update_ui)
+        if self.draft.cm_draft is None:
+            logging.info('---Starting Draft Monitor---')
+            self.run_event.set()
+            self.monitor_thread = threading.Thread(target = self.refresh_thread)
+            self.monitor_thread.daemon = True
+            self.monitor_thread.start()
+            self.monitor_status.set('Draft Started')
+            self.monitor_status_lbl.config(fg='green')
+            self.parent.update_idletasks()
+            self.parent.after(1000, self.update_ui)
 
-        if self.demo_source:
-            self.demo_thread = threading.Thread(target=draft_demo.demo_draft, args=(self.league, self.run_event))
-            self.demo_thread.daemon = True
-            self.demo_thread.start()
-
+            if self.demo_source:
+                self.demo_thread = threading.Thread(target=draft_demo.demo_draft, args=(self.league, self.run_event))
+                self.demo_thread.daemon = True
+                self.demo_thread.start()
+        else:
+            if self.draft.cm_draft.setup:
+                self.resolve_cm_draft_with_rosters(init=False)
+            else:
+                self.check_new_cm_teams()
 
     def update_ui(self):
         if not self.run_event.is_set and self.queue.empty():
@@ -396,11 +426,123 @@ class DraftTool(tk.Frame):
         self.parent.after(1000, self.update_ui)
     
     def stop_draft_monitor(self):
-        logging.info('!!!Stopping Draft Monitor!!!')
-        self.run_event.clear()
-        self.monitor_status.set('Draft stopped')
-        self.monitor_status_lbl.config(fg='red')
-        self.parent.update_idletasks()
+        if self.draft.cm_draft is None:
+            logging.info('!!!Stopping Draft Monitor!!!')
+            self.run_event.clear()
+            self.monitor_status.set('Draft stopped')
+            self.monitor_status_lbl.config(fg='red')
+            self.parent.update_idletasks()
+        else:
+            self.unlink_couchmanagers()
+    
+    def link_couchmanagers(self):
+        if self.draft.cm_draft is not None:
+            if not self.unlink_couchmanagers():
+                return
+        dialog = couchmanagers_import.Dialog(self.master, self.draft)
+        if dialog.draft is not None and dialog.draft.cm_draft is not None:
+            self.draft = dialog.draft
+            if self.draft.cm_draft.setup:
+                self.monitor_status.set(f'Using CM Draft {self.draft.cm_draft.cm_draft_id}')
+                self.monitor_status_lbl.config(fg='green')
+            else:
+                self.monitor_status.set(f'Using CM Draft {self.draft.cm_draft.cm_draft_id} (not full)')
+                self.monitor_status_lbl.config(fg='red')
+            self.start_draft_sv.set('Refresh CM Draft')
+            CreateToolTip(self.start_monitor, 'Gets the latest CouchManager draft results and applies them.')
+            self.stop_draft_sv.set('Unlink CM Draft')
+            CreateToolTip(self.stop_monitor, 'Removes the connection to the CouchManagers draft for the league and reverts to the Ottoneu-only rosters.')
+            if self.draft.cm_draft.setup:
+                self.resolve_cm_draft_with_rosters(init=False)
+            else:
+                self.check_new_cm_teams()
+
+    def unlink_couchmanagers(self):
+        if mb.askyesno('Link New CouchManagers?', 'This will delete the current CouchManagers information for this draft. Continue?'):
+            setup = self.draft.cm_draft.setup
+            draft_services.delete_couchmanagers_draft(self.draft.cm_draft)
+            self.draft.cm_draft = None
+            if setup:
+                self.initialize_draft(same_values=True)
+            self.monitor_status.set('Not started')
+            self.monitor_status_lbl.config(fg='red')
+            self.start_draft_sv.set('Start Draft Monitor')
+            CreateToolTip(self.start_monitor, 'Begin watching league for new draft results')
+            self.stop_draft_sv.set('Stop Draft Monitor')
+            CreateToolTip(self.stop_monitor, 'Stop watching league for new draft results')
+            return True
+        return False
+    
+    def check_new_cm_teams(self):
+        prog = progress.ProgressDialog(self, 'Getting CM Draft Info...')
+        prog.set_completion_percent(33)
+        cm_teams = draft_services.get_couchmanagers_teams(self.draft.cm_draft.cm_draft_id)
+        new_teams = []
+        new_claims = False
+        for team in cm_teams:
+            found = False
+            for team2 in self.draft.cm_draft.teams:
+                if team[0] == team2.cm_team_id:
+                    found = True
+                    break
+            if not found:
+                if team[1] != '':
+                    new_claims = True
+                new_teams.append(team)
+        prog.complete()
+        if new_claims:
+            dialog = cm_team_assignment.Dialog(self, self.draft, new_teams)
+            if dialog.status == OK:
+                self.draft = dialog.draft
+                if self.draft.cm_draft.setup:
+                    self.resolve_cm_draft_with_rosters()
+                    self.monitor_status.set(f'Using CM Draft {self.draft.cm_draft.cm_draft_id}')
+                    self.monitor_status_lbl.config(fg='green')
+                
+    def resolve_cm_draft_with_rosters(self, init:bool=True):
+        prog = progress.ProgressDialog(self.parent, 'Updating Slow Draft Results...')
+        prog.set_task_title('Getting CouchManagers Results...')
+        prog.increment_completion_percent(15)
+        cm_rosters_df = draft_services.get_couchmanagers_draft_dataframe(self.draft.cm_draft.cm_draft_id)
+        if len(cm_rosters_df) == 0:
+            #No results yet
+            prog.complete()
+            return
+        prog.set_task_title('Resolving rosters...')
+        prog.increment_completion_percent(50)
+        rows = []
+        for idx, cm_player in cm_rosters_df.iterrows():
+            if cm_player['ottid'] == 0:
+                self.extra_value = self.extra_value + cm_player['Amount']
+                continue
+            found = False
+            if cm_player['ottid'] in set(self.rosters['ottoneu ID']):
+                continue
+            if not found:
+                row = []
+                player = player_services.get_player_by_ottoneu_id(cm_player['ottid'])
+                row.append(player.index)
+                row.append(self.draft.cm_draft.get_toolbox_team_index_by_cm_team_id(cm_player['Team Number']))
+                row.append(cm_player['ottid'])
+                salary = cm_player['Amount']
+                row.append(salary)
+                rows.append(row)
+                if not init:
+                    if player.index in self.values.index:
+                        self.values.at[player.index, 'Salary'] = salary
+                        pos = player_services.get_player_positions(player)
+                        for p in pos:                                    
+                            self.pos_values[p].at[player.index, 'Salary'] = salary
+        if rows is None or len(rows) == 0:
+            prog.complete()
+            return
+        df = pd.DataFrame(rows)
+        df.columns = ['index', 'TeamID', 'ottoneu ID', 'Salary']
+        df.set_index('index', inplace=True)
+        self.rosters = pd.concat([self.rosters, df])
+        if not init:
+            self.refresh_views()
+        prog.complete()
     
     def add_trans_to_rosters(self, last_trans, index, player):
         row=last_trans.iloc[index]
@@ -446,7 +588,7 @@ class DraftTool(tk.Frame):
                             index -= 1
                             continue
                         pos = player_services.get_player_positions(player)
-                        update_pos = np.append(update_pos, pos)
+                        update_pos.append(pos)
                         if last_trans.iloc[index]['Type'].upper() == 'ADD':
                             salary = int(last_trans.iloc[index]['Salary'].split('$')[1])
                             self.values.at[player.index, 'Salary'] = salary
@@ -582,7 +724,7 @@ class DraftTool(tk.Frame):
             players = player_services.search_by_name(text)
         for player in players:
             si = player.get_salary_info_for_format(self.league.format)
-            if si is None and not self.search_unrostered_bv.get():
+            if (si is None or si.roster_percentage == 0) and not self.search_unrostered_bv.get():
                 continue
             id = player.index
             name = player.name
@@ -715,6 +857,18 @@ class DraftTool(tk.Frame):
                 self.pos_values[pos].drop('Salary', axis=1, inplace=True)
                 pd.increment_completion_percent(5)
 
+        if self.draft.cm_draft is not None:
+            self.monitor_status.set(f'Using CM Draft {self.draft.cm_draft.cm_draft_id}')
+            self.monitor_status_lbl.config(fg='green')
+            self.start_draft_sv.set('Refresh CM Draft')
+            CreateToolTip(self.start_monitor, 'Gets the latest CouchManager draft results and applies them.')
+            self.stop_draft_sv.set('Unlink CM Draft')
+            CreateToolTip(self.stop_monitor, 'Removes the connection to the CouchManagers draft for the league and reverts to the Ottoneu-only rosters.')
+            if self.draft.cm_draft.setup:
+                self.resolve_cm_draft_with_rosters()
+            else:
+                self.check_new_cm_teams()
+                
         pd.set_task_title('Updating available players...')
         self.update_rostered_players()
         pd.increment_completion_percent(5)

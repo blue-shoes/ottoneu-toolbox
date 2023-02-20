@@ -11,13 +11,20 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
 
+from bs4 import BeautifulSoup as Soup
+
 import shutil
 import pandas as pd
+from pandas import DataFrame
 import os
 import time
 import logging
+import requests
+
+from scrape.exceptions import BrowserTypeException, DownloadException
 
 class Scrape_Base(object):
+    '''Abstract scraper class'''
     def __init__(self, browser):
         self.driver = None
         self.browser = browser
@@ -29,12 +36,21 @@ class Scrape_Base(object):
         for f in os.listdir(dir):
             os.remove(os.path.join(dir, f))
         
+    def _get_soup(self, url:str, xml:bool=False) -> Soup:
+        '''Convenience method to return Soup object from url.'''
+        response = requests.get(url)
+        if xml:
+            return Soup(response.text, 'xml')
+        else:
+            return Soup(response.text, 'html.parser')
 
-    def close(self):
+    def close(self) -> None:
+        '''Quits the internal driver once it is no longer needed'''
         if self.driver != None:
             self.driver.quit()
 
-    def getDataset(self, page, element_id, filepath, by_type=By.ID):
+    def getDataset(self, page, element_id, filepath, by_type=By.ID) -> DataFrame:
+        '''Navigates on webpage with Selenium to find an click the input element id, waits for download, and then parses and returns the DataFrame.'''
         #Click the passed element id to download the csv file
         self.driver.get(page)
         try:
@@ -60,15 +76,13 @@ class Scrape_Base(object):
         return self.getDatasetFromDownloads(filepath)
         
     
-    def getDatasetAtAddress(self, page, filepath):
-        """If you can just hit a URL to download the file, use this one"""
-        self.driver.get(page)
+    def getDatasetAtAddress(self, url, filepath) -> DataFrame:
+        """Allows download of file separate from Selenium if accessing a URL directly starts download"""
+        self.driver.get(url)
         return self.getDatasetFromDownloads(filepath)
 
-    def getDatasetFromDownloads(self, filepath):
-        #Move to Chrome downloads page and get list of download URLs
-        #This doesn't work for headless clients. Need to create your own downloads dir
-        #url = self.every_downloads_chrome()
+    def getDatasetFromDownloads(self, filepath) -> DataFrame:
+        '''Accesses file from dowload location, moves it to the input location, reads the csv file, and returns the DataFrame'''
         #Get the latest download path
         download_path = os.path.join(self.download_dir, os.listdir(self.download_dir)[0])
         #Move the file to the requested location
@@ -79,7 +93,8 @@ class Scrape_Base(object):
         dataframe = dataframe.loc[:, ~dataframe.columns.str.startswith('-1')]
         return dataframe
 
-    def download_wait(self):
+    def download_wait(self) -> int:
+        '''Waits up to 20 seconds while checking if the desired file has been downloaded.'''
         seconds = 0
         dl_wait = True
         while dl_wait and seconds < 5:
@@ -96,17 +111,8 @@ class Scrape_Base(object):
             seconds += 1
         return dl_wait
     
-    def every_downloads_chrome(self):
-        if not self.driver.current_url.startswith("chrome://downloads"):
-            self.driver.get("chrome://downloads/")
-        return self.driver.execute_script("""
-            return document.querySelector('downloads-manager')
-            .shadowRoot.querySelector('#downloadsList')
-            .items.filter(e => e.state === 'COMPLETE')
-            .map(e => e.filePath || e.file_path || e.fileUrl || e.file_url);
-            """)
-    
     def setupDriver(self):
+        '''Sets up the driver based on the established browser type. Currently supports Chrome, Firefox, Microsoft Edge.'''
         if self.browser == 'ChromeHTML':
             options = webdriver.ChromeOptions()
             #options.add_argument('--headless')
@@ -139,5 +145,5 @@ class Scrape_Base(object):
             service.creationflags = CREATE_NO_WINDOW
             self.driver = webdriver.Firefox(service=service, options=options)
         else:
-            raise Exception('Unknown browser type. Please use Chrome, Firefox, or Microsoft Edge')
+            raise BrowserTypeException('Unknown browser type. Please use Chrome, Firefox, or Microsoft Edge')
         

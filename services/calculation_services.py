@@ -9,38 +9,41 @@ from util import string_util, date_util
 import math
 import logging
 import datetime
+from typing import List, Tuple, Dict
 
-def perform_point_calculation(value_calc, pd = None):
+def perform_point_calculation(value_calc : ValueCalculation, pd = None) -> None:
+    '''Creates a PointValues object from the ValueCalculation, calculates player values, and stores them in the ValueCalculation'''
     if pd is not None:
         pd.set_task_title("Initializing Value Calculation...")
         pd.increment_completion_percent(5)
     value_calculation = PointValues(value_calc=value_calc)
-    value_calculation.calculate_values(rank_pos=True, progress=pd)
+    value_calculation.calculate_values(progress=pd)
 
-def get_num_rostered_rep_levels(value_calc):
+def get_num_rostered_rep_levels(value_calc: ValueCalculation) -> Dict[str,float]:
+    '''Returns a dictionary of the number of players rostered above replacement level at each discrete position from a ValueCalculation'''
     rl_dict = {}
     for pos in Position.get_discrete_offensive_pos() + Position.get_discrete_pitching_pos():
         rl_dict[pos.value] = value_calc.get_input(CDT.pos_to_num_rostered().get(pos))
     return rl_dict
 
-def get_rep_levels(value_calc):
+def get_rep_levels(value_calc: ValueCalculation) -> Dict[str,float]:
+    '''Returns a dictionary of the replacement level at each discrete position from a ValueCalculation'''
     rl_dict = {}
     for pos in Position.get_discrete_offensive_pos() + Position.get_discrete_pitching_pos():
         rl_dict[pos.value] = value_calc.get_input(CDT.pos_to_rep_level().get(pos))
     return rl_dict
 
-def save_calculation(value_calc):
+def save_calculation(value_calc: ValueCalculation) -> ValueCalculation:
+    '''Saves the ValueCalculation to the database and returns a fully loaded version of the now saved ValueCalculation'''
     with Session() as session:
         session.add(value_calc)
         session.commit()
         saved = load_calculation(value_calc.index)
     return saved
 
-def load_calculation(calc_index):
+def load_calculation(calc_index: int) -> ValueCalculation:
+    '''Returns a ValueCalculation loaded with player values and player projections, as well as an internally populated player value dictionary'''
     with Session() as session:
-        #query = (session.query(ValueCalculation)
-        #        .filter_by(index = calc_index))
-        #print(query)
         value_calc = (session.query(ValueCalculation)
                 .filter_by(index = calc_index)
                 #.options(joinedload(ValueCalculation.values))
@@ -55,7 +58,8 @@ def load_calculation(calc_index):
     value_calc.init_value_dict()
     return value_calc
 
-def get_values_for_year(year=None):
+def get_values_for_year(year:int=None) -> List[ValueCalculation]:
+    '''Returns shallow list of ValueCalculations for the input year (current year by default). Year breakpoints are October 1 to correspond to Ottoneu season.'''
     if year is None:
         year = date_util.get_current_ottoneu_year()
     end = datetime.datetime(year, 10, 1)
@@ -63,25 +67,31 @@ def get_values_for_year(year=None):
     with Session() as session:
         return session.query(ValueCalculation).filter(ValueCalculation.timestamp > start, ValueCalculation.timestamp < end).all()
 
-def get_points(player_proj, pos, sabr=False):
+def get_points(player_proj: PlayerProjection, pos: Position, sabr:bool=False, no_svh:bool=False) -> float:
+    '''Returns the point value for a player projection. Pitcher point values FanGraphs Points by default, but can be changed with sabr flag.'''
     try:
         if pos in Position.get_offensive_pos():
             return -1.0*player_proj.get_stat(StatType.AB) + 5.6*player_proj.get_stat(StatType.H) + 2.9*player_proj.get_stat(StatType.DOUBLE) \
                 + 5.7*player_proj.get_stat(StatType.TRIPLE) + 9.4*player_proj.get_stat(StatType.HR) +3.0*player_proj.get_stat(StatType.BB) \
                 + 3.0*player_proj.get_stat(StatType.HBP) + 1.9*player_proj.get_stat(StatType.SB) - 2.8*player_proj.get_stat(StatType.CS)
         if pos in Position.get_pitching_pos():
+            if no_svh:
+                svh = 0
+            else:
+                svh = 5.0*player_proj.get_stat(StatType.SV) + 4.0*player_proj.get_stat(StatType.HLD)
             if sabr:
                 return 5.0*player_proj.get_stat(StatType.IP) + 2.0*player_proj.get_stat(StatType.SO) - 3.0*player_proj.get_stat(StatType.BB_ALLOWED) \
                     - 3.0*player_proj.get_stat(StatType.HBP_ALLOWED) - 13.0*player_proj.get_stat(StatType.HR_ALLOWED) \
-                    + 5.0*player_proj.get_stat(StatType.SV) + 4.0*player_proj.get_stat(StatType.HLD)
+                    + svh
             else:
                 return 7.4*player_proj.get_stat(StatType.IP) + 2.0*player_proj.get_stat(StatType.SO) - 2.6*player_proj.get_stat(StatType.H_ALLOWED) \
                     - 3.0*player_proj.get_stat(StatType.BB_ALLOWED) - 3.0*player_proj.get_stat(StatType.HBP_ALLOWED) - 12.3*player_proj.get_stat(StatType.HR_ALLOWED) \
-                    + 5.0*player_proj.get_stat(StatType.SV) + 4.0*player_proj.get_stat(StatType.HLD)
+                    + svh
     except TypeError:
         return 0.0
 
-def get_batting_point_rate_from_player_projection(player_proj: PlayerProjection, basis=RankingBasis.PPG):
+def get_batting_point_rate_from_player_projection(player_proj: PlayerProjection, basis:RankingBasis=RankingBasis.PPG) -> float:
+    '''Returns the point rate for the input batter PlayerProjection based on the requested rate basis'''
     points = get_points(player_proj, Position.OFFENSE)
     if basis == RankingBasis.PPG:
         games = player_proj.get_stat(StatType.G_HIT)
@@ -95,7 +105,8 @@ def get_batting_point_rate_from_player_projection(player_proj: PlayerProjection,
         return points / pa
     return 0
 
-def get_pitching_point_rate_from_player_projection(player_proj: PlayerProjection, format: ScoringFormat, basis=RankingBasis.PIP):
+def get_pitching_point_rate_from_player_projection(player_proj: PlayerProjection, format: ScoringFormat, basis:RankingBasis=RankingBasis.PIP) -> float:
+    '''Returns the point rate for the input pitcher PlayerProjection based on the requested rate basis and scoring format'''
     points = get_points(player_proj, Position.PITCHER, ScoringFormat.is_sabr(format))
     if basis == RankingBasis.PPG:
         games = player_proj.get_stat(StatType.G_PIT)
@@ -109,8 +120,9 @@ def get_pitching_point_rate_from_player_projection(player_proj: PlayerProjection
         return points / ip
     return 0
 
-def get_dataframe_with_values(value_calc : ValueCalculation, pos, text_values=True):
-    assert isinstance(value_calc, ValueCalculation)
+def get_dataframe_with_values(value_calc : ValueCalculation, pos: Position, text_values=True) -> DataFrame:
+    '''Resolves the input ValueCalculation into a DataFrame that only includes players that qualify at the input Position'''
+    #assert isinstance(value_calc, ValueCalculation)
     if pos == Position.OVERALL:
         rows = []
         for pv in value_calc.get_position_values(pos):
@@ -159,7 +171,8 @@ def get_dataframe_with_values(value_calc : ValueCalculation, pos, text_values=Tr
         df.set_index('Ottoneu Id', inplace=True)
         return df
 
-def normalize_value_upload(df : DataFrame, game_type:ScoringFormat):
+def normalize_value_upload(df : DataFrame, game_type:ScoringFormat) -> List[str]:
+    '''Normalizes and error checks the input value dataframe for use by the system later. Returns a list of errors if any were encountered.'''
     if ScoringFormat.is_points_type(game_type):
         id_col = None
         value_col = None
@@ -309,46 +322,54 @@ def normalize_value_upload(df : DataFrame, game_type:ScoringFormat):
 
     return validate_msg
 
-def fill_df_hit_columns(df:DataFrame):
+def fill_df_hit_columns(df:DataFrame) -> None:
+    '''Calculates the Hit_Rate or H_PT columns of the dataset in-place based on other columns in the DataFrame'''
     if 'Hit_Rate' not in df.columns:
         df['Hit_Rate'] = df.apply(calc_hit_rate, axis=1)
     elif 'H_PT' not in df.columns:
         df['H_PT'] = df.apply(calc_hit_pt, axis=1)
 
-def calc_points(row):
+def calc_points(row) -> float:
+    '''Calculates player points based off of rate and playing time columns'''
     return row['H_PT'] * row['Hit_Rate'] + row['P_PT'] * row['Pitch_Rate']
 
-def calc_hit_rate(row):
+def calc_hit_rate(row) -> float:
+    '''Calculates the hitter point rate based on the H_PT and Points columns'''
     pt = row['H_PT']
     if pt == 0:
         return 0
     return row['Points']/pt
 
-def calc_hit_pt(row):
+def calc_hit_pt(row) -> float:
+    '''Calculates the hitter playing time based on the Hit_Rate and Points columns'''
     rate = row['Hit_Rate']
     if rate == 0:
         return 0
     return row['Points'] / rate
 
-def fill_df_pitch_columns(df:DataFrame):
+def fill_df_pitch_columns(df:DataFrame) -> None:
+    '''Calculates the Pitch_Rate or P_PT columns of the dataset in-place based on other columns in the DataFrame'''
     if 'Pitch_Rate' not in df.columns:
         df['Pitch_Rate'] = df.apply(calc_pitch_rate, axis=1)
     elif 'P_PT' not in df.columns:
         df['P_PT'] = df.apply(calc_pitch_pt, axis=1)
 
-def calc_pitch_rate(row):
+def calc_pitch_rate(row) -> float:
+    '''Calculates the pitcher point rate based on the P_PT and Points columns'''
     pt = row['P_PT']
     if pt == 0:
         return 0
     return row['Points']/pt
 
-def calc_pitch_pt(row):
+def calc_pitch_pt(row) -> float:
+    '''Calculates the pitcher playing time based on the Pitch_Rate and Points columns'''
     rate = row['Pitch_Rate']
     if rate == 0:
         return 0
     return row['Points'] / rate
 
-def convert_vals(value):
+def convert_vals(value) -> float:
+    '''Sanitizes NA, --, or NaN values to 0, and string values to a float'''
     if value == 'NA' or value == '--' or math.isnan(value):
         return float(0)
     elif type(value) == float:
@@ -356,22 +377,26 @@ def convert_vals(value):
     else:
         return float(value)
 
-def calc_old_school_fom(row):
+def calc_old_school_fom(row) -> float:
+    '''Calculates the sum of the figure of merit columns for uploaded 5x5 value data sets for a given row'''
     return na_to_0(row['R_FOM']) + na_to_0(row['HR_FOM']) + na_to_0(row['RBI_FOM']) + na_to_0(row['AVG_FOM']) + na_to_0(row['SB_FOM']) \
             + na_to_0(row['W_FOM']) + na_to_0(row['SV_FOM']) + na_to_0(row['WHIP_FOM']) + na_to_0(row['ERA_FOM']) + na_to_0(row['K_FOM'])
 
-def calc_classic_fom(row):
+def calc_classic_fom(row) -> float:
+    '''Calculates the sum of the figure of merit columns for uploaded 5x5 value data sets for a given row'''
     return na_to_0(row['R_FOM']) + na_to_0(row['HR_FOM']) + na_to_0(row['OBP_FOM']) + na_to_0(row['SLG_FOM'])  \
             + na_to_0(row['HR9_FOM']) + na_to_0(row['WHIP_FOM']) + na_to_0(row['ERA_FOM']) + na_to_0(row['K_FOM'])
 
 
-def na_to_0(value):
+def na_to_0(value) -> float:
+    '''Sanitizes NA and NaN values to 0'''
     if value == 'NA' or math.isnan(value):
         return 0
     else:
         return value
 
-def has_required_data_for_rl(df:DataFrame, game_type:ScoringFormat):
+def has_required_data_for_rl(df:DataFrame, game_type:ScoringFormat) -> bool:
+    '''Checks if the input DataFrame has the required columns to perform the replacement level back-calculations based on the ScoringFormat. True if yes, False if no.'''
     if ScoringFormat.is_points_type(game_type):
         return set(['Points','H_PT','P_PT']).issubset(df.columns)
     elif game_type == ScoringFormat.OLD_SCHOOL_5X5:
@@ -381,7 +406,8 @@ def has_required_data_for_rl(df:DataFrame, game_type:ScoringFormat):
     else:
         raise InputException(f'ScoringFormat {game_type} not currently implemented')
 
-def get_values_from_fg_auction_files(vc: ValueCalculation, hit_df : DataFrame, pitch_df : DataFrame, rep_lvl_dol, pd=None):
+def get_values_from_fg_auction_files(vc: ValueCalculation, hit_df : DataFrame, pitch_df : DataFrame, rep_lvl_dol, pd=None) -> ValueCalculation:
+    '''Specialized method to parse FanGraphs AuctionCalculator outputs to perform replacement level calculations and save the resulting ValueCalculation'''
     if pd is not None:
         pd.set_task_title("Determining replacement levels...")
         pd.increment_completion_percent(33)
@@ -464,7 +490,9 @@ def get_values_from_fg_auction_files(vc: ValueCalculation, hit_df : DataFrame, p
         pd.increment_completion_percent(33)
     return save_calculation(vc)
 
-def init_outputs_from_upload(vc: ValueCalculation, df : DataFrame, game_type, rep_level_cost=1, id_type=IdType.OTTONEU, pd=None):
+def init_outputs_from_upload(vc: ValueCalculation, df : DataFrame, game_type:ScoringFormat, rep_level_cost:int=1, id_type:IdType=IdType.OTTONEU, pd=None) -> None:
+    '''Accepts user inputs and performed preliminary calculations to find replacement levels and dollars per figure of merit if possible, which are populated into the input
+    Value Calculation.'''
     if pd is not None:
         pd.set_task_title("Determining replacement levels...")
         pd.increment_completion_percent(33)
@@ -636,7 +664,9 @@ def init_outputs_from_upload(vc: ValueCalculation, df : DataFrame, game_type, re
     vc.set_output(CDT.HITTER_DOLLAR_PER_FOM, hit_dol_per_fom)
     vc.set_output(CDT.PITCHER_DOLLAR_PER_FOM, pitch_dol_per_fom)
 
-def calc_rep_levels_from_values(vals, game_type, fom, pt, rep_lvl_dol):
+def calc_rep_levels_from_values(vals:List[float], game_type:ScoringFormat, fom:List[float], pt:List[float], rep_lvl_dol:int) -> Tuple[list[float], float]:
+    '''Based on the array of values and associated figures of merit and potentially playing time, algebraically determine the value per fom and replacement level
+    that created those values.'''
     if len(vals) < 4 or len(fom) < 4:
         raise Exception('calc_rep_levels_from_values requires input lists of at least four entries')
     if ScoringFormat.is_points_type(game_type) or ((game_type == ScoringFormat.OLD_SCHOOL_5X5 or game_type == ScoringFormat.CLASSIC_4X4) and len(pt) == 4):
@@ -653,7 +683,8 @@ def calc_rep_levels_from_values(vals, game_type, fom, pt, rep_lvl_dol):
     else:
         raise Exception(f'Unsupported game type {game_type}')
 
-def save_calculation_from_file(vc : ValueCalculation, df : DataFrame, pd=None, rep_val=1):
+def save_calculation_from_file(vc : ValueCalculation, df : DataFrame, pd=None, rep_val:int=1) -> ValueCalculation:
+    '''Saves and returns the ValueCalculation per user input. Creates position-specific values if replacement-level information was previously provided to the ValueCalculation.'''
     df.set_index('OTB_Idx', inplace=True)
     pd.set_task_title('Creating position values...')
     remaining = (80 - pd.progress)
@@ -823,7 +854,8 @@ def save_calculation_from_file(vc : ValueCalculation, df : DataFrame, pd=None, r
     save_calculation(vc)
     return vc
 
-def delete_values_by_id(values_id):
+def delete_values_by_id(values_id:int) -> None:
+    '''Deletes a ValueCalculation from the database according to its ID'''
     with Session() as session:
         val = session.query(ValueCalculation).filter(ValueCalculation.index == values_id).first()
         proj = None
@@ -834,7 +866,7 @@ def delete_values_by_id(values_id):
             session.delete(proj)
         session.commit()
 
-def get_values_with_projection_id(proj_id):
+def get_values_with_projection_id(proj_id) -> List[ValueCalculation]:
     '''Gets all ValueCalculations in the databse with the input projection id'''
     with Session() as session:
         return session.query(ValueCalculation).join(ValueCalculation.projection).filter(Projection.index == proj_id).all()
