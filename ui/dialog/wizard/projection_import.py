@@ -18,6 +18,7 @@ from scrape.exceptions import FangraphsException
 from services import projection_services, player_services
 from ui.dialog import progress, fg_login
 from ui.dialog.wizard import wizard
+from ui.tool.tooltip import CreateToolTip
 from util import date_util, string_util
 
 class Dialog(wizard.Dialog):
@@ -74,7 +75,9 @@ class Step1(tk.Frame):
         self.source_var = tk.BooleanVar()
         
         tk.Radiobutton(self, text="FanGraphs", value=True, variable=self.source_var, command=self.toggle_fg_proj).grid(column=1,row=1)
-        tk.Radiobutton(self, text="Custom",value=False,variable=self.source_var, command=self.toggle_custom_proj).grid(column=2,row=1)
+        btn = tk.Radiobutton(self, text="Custom",value=False,variable=self.source_var, command=self.toggle_custom_proj)
+        btn.grid(column=2,row=1)
+        CreateToolTip(btn, "Upload a valid set of csv files with projection data from user's computer.")
         self.source_var.set(True)
 
         self.fg_self = tk.Frame(self, borderwidth=4)
@@ -93,11 +96,15 @@ class Step1(tk.Frame):
 
         self.dc_var = tk.BooleanVar()
         self.dc_var.set(False)
-        ttk.Checkbutton(self.fg_self, text="DC Playing Time?", variable=self.dc_var).grid(column=1,row=1)
+        btn = ttk.Checkbutton(self.fg_self, text="DC Playing Time?", variable=self.dc_var)
+        btn.grid(column=1,row=1)
+        CreateToolTip(btn, 'Re-scale stats to FanGraphs Depth Charts playing time?')
 
         self.ros_var = tk.BooleanVar()
         self.ros_var.set(False)
-        ttk.Checkbutton(self.fg_self, text="RoS Projection?", variable=self.ros_var).grid(column=1,row=2)
+        btn = ttk.Checkbutton(self.fg_self, text="RoS Projection?", variable=self.ros_var)
+        btn.grid(column=1,row=2)
+        CreateToolTip(btn, 'Use a Rest-of-Season projection?')
 
         self.custom_self = tk.Frame(self, borderwidth=4)
         self.custom_self.grid(row=3,column=0,columnspan=3)
@@ -112,6 +119,7 @@ class Step1(tk.Frame):
         id_combo['values'] = id_map
         id_combo.grid(column=1,row=0,pady=5, columnspan=2)
         id_combo.configure(state='disabled')
+        CreateToolTip(id_combo, 'Select the type of player id used in the uploaded files.')
 
         hitter_label = ttk.Label(self.custom_self, text = "Hitter Projections File (csv):")
         hitter_label.grid(column=0,row=1, pady=5, stick=tk.E)
