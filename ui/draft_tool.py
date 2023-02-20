@@ -50,6 +50,10 @@ class DraftTool(tk.Frame):
         self.value_calculation = None
         self.cm_text = StringVar()
         self.cm_text.set('Link CouchManagers')
+        self.start_draft_sv = StringVar()
+        self.start_draft_sv.set('Start Draft Monitor')
+        self.stop_draft_sv = StringVar()
+        self.stop_draft_sv.set('Stop Draft Monitor')
 
         self.create_main()
     
@@ -197,13 +201,13 @@ class DraftTool(tk.Frame):
         if self.controller.preferences.getboolean('Draft', Pref.DOCK_DRAFT_PLAYER_SEARCH, fallback=False):
             monitor_frame = ttk.Frame(self)
             monitor_frame.grid(row=1, column=0, columnspan=2)
-            self.start_monitor = ttk.Button(monitor_frame, text='Start Draft', command=self.start_draft_monitor).grid(column=0,row=0)
+            self.start_monitor = ttk.Button(monitor_frame, textvariable=self.start_draft_sv, command=self.start_draft_monitor).grid(column=0,row=0)
             self.monitor_status = tk.StringVar()
             self.monitor_status.set('Not started')
             self.monitor_status_lbl = tk.Label(monitor_frame, textvariable=self.monitor_status, fg='red')
             self.monitor_status_lbl.grid(column=2,row=0)
-            self.stop_monitor = ttk.Button(monitor_frame, text="Stop Draft", command=self.stop_draft_monitor).grid(column=1,row=0)
-            ttk.Button(monitor_frame, textvariable=self.cm_text, command=self.toggle_couchmanagers).grid(column=2, row=0)
+            self.stop_monitor = ttk.Button(monitor_frame, textvariable=self.stop_draft_sv, command=self.stop_draft_monitor).grid(column=1,row=0)
+            ttk.Button(monitor_frame, textvariable=self.cm_text, command=self.link_couchmanagers).grid(column=2, row=0)
 
             self.inflation_str_var = tk.StringVar()
 
@@ -239,13 +243,13 @@ class DraftTool(tk.Frame):
             ss.trace("w", lambda name, index, mode, sv=ss: self.search_view.refresh())
             ttk.Entry(search_frame, textvariable=ss).grid(column=1,row=1)
 
-            self.start_monitor = ttk.Button(search_frame, text='Start Draft Monitor', command=self.start_draft_monitor).grid(column=0,row=3)
+            self.start_monitor = ttk.Button(search_frame, textvariable=self.start_draft_sv, command=self.start_draft_monitor).grid(column=0,row=3)
             self.monitor_status = tk.StringVar()
             self.monitor_status.set('Monitor not started')
             self.monitor_status_lbl = tk.Label(search_frame, textvariable=self.monitor_status, fg='red')
             self.monitor_status_lbl.grid(column=1,row=3)
-            self.stop_monitor = ttk.Button(search_frame, text="Stop Draft Monitor", command=self.stop_draft_monitor).grid(column=0,row=4)
-            ttk.Button(search_frame, textvariable=self.cm_text, command=self.toggle_couchmanagers).grid(column=0, row=5)
+            self.stop_monitor = ttk.Button(search_frame, textvariable=self.stop_draft_sv, command=self.stop_draft_monitor).grid(column=0,row=4)
+            ttk.Button(search_frame, textvariable=self.cm_text, command=self.link_couchmanagers).grid(column=0, row=5)
 
             self.inflation_str_var = tk.StringVar()
 
@@ -376,21 +380,26 @@ class DraftTool(tk.Frame):
         return (val, rost)
 
     def start_draft_monitor(self):
-        logging.info('---Starting Draft Monitor---')
-        self.run_event.set()
-        self.monitor_thread = threading.Thread(target = self.refresh_thread)
-        self.monitor_thread.daemon = True
-        self.monitor_thread.start()
-        self.monitor_status.set('Draft Started')
-        self.monitor_status_lbl.config(fg='green')
-        self.parent.update_idletasks()
-        self.parent.after(1000, self.update_ui)
+        if self.draft.cm_draft is None:
+            logging.info('---Starting Draft Monitor---')
+            self.run_event.set()
+            self.monitor_thread = threading.Thread(target = self.refresh_thread)
+            self.monitor_thread.daemon = True
+            self.monitor_thread.start()
+            self.monitor_status.set('Draft Started')
+            self.monitor_status_lbl.config(fg='green')
+            self.parent.update_idletasks()
+            self.parent.after(1000, self.update_ui)
 
-        if self.demo_source:
-            self.demo_thread = threading.Thread(target=draft_demo.demo_draft, args=(self.league, self.run_event))
-            self.demo_thread.daemon = True
-            self.demo_thread.start()
-
+            if self.demo_source:
+                self.demo_thread = threading.Thread(target=draft_demo.demo_draft, args=(self.league, self.run_event))
+                self.demo_thread.daemon = True
+                self.demo_thread.start()
+        else:
+            if self.draft.cm_draft.setup:
+                self.resolve_cm_draft_with_rosters(init=False)
+            else:
+                self.check_new_cm_teams()
 
     def update_ui(self):
         if not self.run_event.is_set and self.queue.empty():
@@ -402,28 +411,74 @@ class DraftTool(tk.Frame):
         self.parent.after(1000, self.update_ui)
     
     def stop_draft_monitor(self):
-        logging.info('!!!Stopping Draft Monitor!!!')
-        self.run_event.clear()
-        self.monitor_status.set('Draft stopped')
-        self.monitor_status_lbl.config(fg='red')
-        self.parent.update_idletasks()
-    
-    def toggle_couchmanagers(self):
-        if self.draft.cm_draft is not None:
-            if mb.askyesno('Unlink CouchManagers?', 'This will delete the CouchManagers information for this draft. Continue?'):
-                setup = self.draft.cm_draft.setup
-                draft_services.delete_couchmanagers_draft(self.draft.cm_draft)
-                self.draft.cm_draft = None
-                self.cm_text.set('Link CouchManagers')
-                if setup:
-                    self.initialize_draft(same_values=True)
+        if self.draft.cm_draft is None:
+            logging.info('!!!Stopping Draft Monitor!!!')
+            self.run_event.clear()
+            self.monitor_status.set('Draft stopped')
+            self.monitor_status_lbl.config(fg='red')
+            self.parent.update_idletasks()
         else:
-            dialog = couchmanagers_import.Dialog(self.master, self.draft)
-            if dialog.draft is not None and dialog.draft.cm_draft is not None:
+            self.unlink_couchmanagers()
+    
+    def link_couchmanagers(self):
+        if self.draft.cm_draft is not None:
+            if not self.unlink_couchmanagers():
+                return
+        dialog = couchmanagers_import.Dialog(self.master, self.draft)
+        if dialog.draft is not None and dialog.draft.cm_draft is not None:
+            self.draft = dialog.draft
+            if self.draft.cm_draft.setup:
+                self.monitor_status.set(f'Using CM Draft {self.draft.cm_draft.cm_draft_id}')
+                self.monitor_status_lbl.config(fg='green')
+            else:
+                self.monitor_status.set(f'Using CM Draft {self.draft.cm_draft.cm_draft_id} (not full)')
+                self.monitor_status_lbl.config(fg='red')
+            self.start_draft_sv.set('Refresh CM Draft')
+            self.stop_draft_sv.set('Unlink CM Draft')
+            if self.draft.cm_draft.setup:
+                self.resolve_cm_draft_with_rosters(init=False)
+            else:
+                self.check_new_cm_teams()
+
+    def unlink_couchmanagers(self):
+        if mb.askyesno('Link New CouchManagers?', 'This will delete the current CouchManagers information for this draft. Continue?'):
+            setup = self.draft.cm_draft.setup
+            draft_services.delete_couchmanagers_draft(self.draft.cm_draft)
+            self.draft.cm_draft = None
+            if setup:
+                self.initialize_draft(same_values=True)
+            self.monitor_status.set('Not started')
+            self.monitor_status_lbl.config(fg='red')
+            self.start_draft_sv.set('Start Draft Monitor')
+            self.stop_draft_sv.set('Stop Draft Monitor')
+            return True
+        return False
+    
+    def check_new_cm_teams(self):
+        prog = progress.ProgressDialog(self, 'Getting CM Draft Info...')
+        prog.set_completion_percent(33)
+        cm_teams = draft_services.get_couchmanagers_teams(self.draft.cm_draft.cm_draft_id)
+        new_teams = []
+        new_claims = False
+        for team in cm_teams:
+            found = False
+            for team2 in self.draft.cm_draft.teams:
+                if team[0] == team2.cm_team_id:
+                    found = True
+                    break
+            if not found:
+                if team[1] != '':
+                    new_claims = True
+                new_teams.append(team)
+        prog.complete()
+        if new_claims:
+            dialog = cm_team_assignment.Dialog(self, self.draft, new_teams)
+            if dialog.status == OK:
                 self.draft = dialog.draft
-                self.cm_text.set(f'Unlink CouchManagers ({self.draft.cm_draft.cm_draft_id})')
                 if self.draft.cm_draft.setup:
-                    self.resolve_cm_draft_with_rosters(init=False)
+                    self.resolve_cm_draft_with_rosters()
+                    self.monitor_status.set(f'Using CM Draft {self.draft.cm_draft.cm_draft_id}')
+                    self.monitor_status_lbl.config(fg='green')
                 
     def resolve_cm_draft_with_rosters(self, init:bool=True):
         prog = progress.ProgressDialog(self.parent, 'Updating Slow Draft Results...')
@@ -459,6 +514,9 @@ class DraftTool(tk.Frame):
                         pos = player_services.get_player_positions(player)
                         for p in pos:                                    
                             self.pos_values[p].at[player.index, 'Salary'] = salary
+        if rows is None or len(rows) == 0:
+            prog.complete()
+            return
         df = pd.DataFrame(rows)
         df.columns = ['index', 'TeamID', 'ottoneu ID', 'Salary']
         df.set_index('index', inplace=True)
@@ -781,29 +839,14 @@ class DraftTool(tk.Frame):
                 pd.increment_completion_percent(5)
 
         if self.draft.cm_draft is not None:
-            self.cm_text.set(f'Unlink CouchManagers ({self.draft.cm_draft.cm_draft_id})')
+            self.monitor_status.set(f'Using CM Draft {self.draft.cm_draft.cm_draft_id}')
+            self.monitor_status_lbl.config(fg='green')
+            self.start_draft_sv.set('Refresh CM Draft')
+            self.stop_draft_sv.set('Unlink CM Draft')
             if self.draft.cm_draft.setup:
                 self.resolve_cm_draft_with_rosters()
             else:
-                cm_teams = draft_services.get_couchmanagers_teams(self.draft.cm_draft.cm_draft_id)
-                new_teams = []
-                new_claims = False
-                for team in cm_teams:
-                    found = False
-                    for team2 in self.draft.cm_draft.teams:
-                        if team[0] == team2.cm_team_id:
-                            found = True
-                            break
-                    if not found:
-                        if team[1] != '':
-                            new_claims = True
-                        new_teams.append(team)
-                if new_claims:
-                    dialog = cm_team_assignment.Dialog(self, self.draft, new_teams)
-                    if dialog.status == OK:
-                        self.draft = dialog.draft
-                        if self.draft.cm_draft.setup:
-                            self.resolve_cm_draft_with_rosters()
+                self.check_new_cm_teams()
                 
         pd.set_task_title('Updating available players...')
         self.update_rostered_players()
