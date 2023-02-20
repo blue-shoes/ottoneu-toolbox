@@ -19,6 +19,7 @@ from domain.enum import Position, ScoringFormat, StatType, Preference as Pref, A
 from ui.table import Table
 from ui.dialog import progress, draft_target, cm_team_assignment
 from ui.dialog.wizard import couchmanagers_import
+from ui.tool.tooltip import CreateToolTip
 from services import salary_services, league_services, calculation_services, player_services, draft_services
 from demo import draft_demo
 
@@ -201,13 +202,19 @@ class DraftTool(tk.Frame):
         if self.controller.preferences.getboolean('Draft', Pref.DOCK_DRAFT_PLAYER_SEARCH, fallback=False):
             monitor_frame = ttk.Frame(self)
             monitor_frame.grid(row=1, column=0, columnspan=2)
-            self.start_monitor = ttk.Button(monitor_frame, textvariable=self.start_draft_sv, command=self.start_draft_monitor).grid(column=0,row=0)
+            self.start_monitor = ttk.Button(monitor_frame, textvariable=self.start_draft_sv, command=self.start_draft_monitor)
+            self.start_monitor.grid(column=0,row=0)
+            CreateToolTip(self.start_monitor, 'Begin watching league for new draft results')
             self.monitor_status = tk.StringVar()
             self.monitor_status.set('Not started')
             self.monitor_status_lbl = tk.Label(monitor_frame, textvariable=self.monitor_status, fg='red')
             self.monitor_status_lbl.grid(column=2,row=0)
-            self.stop_monitor = ttk.Button(monitor_frame, textvariable=self.stop_draft_sv, command=self.stop_draft_monitor).grid(column=1,row=0)
-            ttk.Button(monitor_frame, textvariable=self.cm_text, command=self.link_couchmanagers).grid(column=2, row=0)
+            self.stop_monitor = ttk.Button(monitor_frame, textvariable=self.stop_draft_sv, command=self.stop_draft_monitor)
+            self.stop_monitor.grid(column=1,row=0)
+            CreateToolTip(self.stop_monitor, 'Stop watching league for new draft results')
+            btn = ttk.Button(monitor_frame, textvariable=self.cm_text, command=self.link_couchmanagers)
+            btn.grid(column=2, row=0)
+            CreateToolTip(btn, 'Link a CouchManagers draft to this league.')
 
             self.inflation_str_var = tk.StringVar()
 
@@ -232,6 +239,7 @@ class DraftTool(tk.Frame):
             search_unrostered_btn = ttk.Checkbutton(search_frame, text="Search 0% Rostered?", variable=self.search_unrostered_bv, command=self.search_view.refresh)
             search_unrostered_btn.grid(row=0, column=2, sticky=tk.NW, pady=5)
             search_unrostered_btn.state(['!alternate'])
+            CreateToolTip(search_unrostered_btn, 'Include 0% rostered players in the search results')
         
         else:
 
@@ -243,13 +251,19 @@ class DraftTool(tk.Frame):
             ss.trace("w", lambda name, index, mode, sv=ss: self.search_view.refresh())
             ttk.Entry(search_frame, textvariable=ss).grid(column=1,row=1)
 
-            self.start_monitor = ttk.Button(search_frame, textvariable=self.start_draft_sv, command=self.start_draft_monitor).grid(column=0,row=3)
+            self.start_monitor = ttk.Button(search_frame, textvariable=self.start_draft_sv, command=self.start_draft_monitor)
+            self.start_monitor.grid(column=0,row=3)
+            CreateToolTip(self.start_monitor, 'Begin watching league for new draft results')
             self.monitor_status = tk.StringVar()
             self.monitor_status.set('Monitor not started')
             self.monitor_status_lbl = tk.Label(search_frame, textvariable=self.monitor_status, fg='red')
             self.monitor_status_lbl.grid(column=1,row=3)
-            self.stop_monitor = ttk.Button(search_frame, textvariable=self.stop_draft_sv, command=self.stop_draft_monitor).grid(column=0,row=4)
-            ttk.Button(search_frame, textvariable=self.cm_text, command=self.link_couchmanagers).grid(column=0, row=5)
+            self.stop_monitor = ttk.Button(search_frame, textvariable=self.stop_draft_sv, command=self.stop_draft_monitor)
+            self.stop_monitor.grid(column=0,row=4)
+            CreateToolTip(self.stop_monitor, 'Stop watching league for new draft results')
+            btn = ttk.Button(search_frame, textvariable=self.cm_text, command=self.link_couchmanagers)
+            btn.grid(column=0, row=5)
+            CreateToolTip(btn, 'Link a CouchManagers draft to this league.')
 
             self.inflation_str_var = tk.StringVar()
 
@@ -272,6 +286,7 @@ class DraftTool(tk.Frame):
             search_unrostered_btn = ttk.Checkbutton(search_frame, text="Search 0% Rostered?", variable=self.search_unrostered_bv, command=self.search_view.refresh)
             search_unrostered_btn.grid(row=2, column=1, sticky=tk.NW, pady=5)
             search_unrostered_btn.state(['!alternate'])
+            CreateToolTip(search_unrostered_btn, 'Include 0% rostered players in the search results')
     
     def create_search_table(self, parent, col, row, col_span=1):
         cols = ('Name','Value','Salary','Inf. Cost','Pos','Team','Points','SABR Pts', 'P/G','HP/G','P/PA','P/IP', 'SABR PIP','PP/G', 'SABR PPG', 'Roster %')
@@ -434,7 +449,9 @@ class DraftTool(tk.Frame):
                 self.monitor_status.set(f'Using CM Draft {self.draft.cm_draft.cm_draft_id} (not full)')
                 self.monitor_status_lbl.config(fg='red')
             self.start_draft_sv.set('Refresh CM Draft')
+            CreateToolTip(self.start_monitor, 'Gets the latest CouchManager draft results and applies them.')
             self.stop_draft_sv.set('Unlink CM Draft')
+            CreateToolTip(self.stop_monitor, 'Removes the connection to the CouchManagers draft for the league and reverts to the Ottoneu-only rosters.')
             if self.draft.cm_draft.setup:
                 self.resolve_cm_draft_with_rosters(init=False)
             else:
@@ -450,7 +467,9 @@ class DraftTool(tk.Frame):
             self.monitor_status.set('Not started')
             self.monitor_status_lbl.config(fg='red')
             self.start_draft_sv.set('Start Draft Monitor')
+            CreateToolTip(self.start_monitor, 'Begin watching league for new draft results')
             self.stop_draft_sv.set('Stop Draft Monitor')
+            CreateToolTip(self.stop_monitor, 'Stop watching league for new draft results')
             return True
         return False
     
@@ -842,7 +861,9 @@ class DraftTool(tk.Frame):
             self.monitor_status.set(f'Using CM Draft {self.draft.cm_draft.cm_draft_id}')
             self.monitor_status_lbl.config(fg='green')
             self.start_draft_sv.set('Refresh CM Draft')
+            CreateToolTip(self.start_monitor, 'Gets the latest CouchManager draft results and applies them.')
             self.stop_draft_sv.set('Unlink CM Draft')
+            CreateToolTip(self.stop_monitor, 'Removes the connection to the CouchManagers draft for the league and reverts to the Ottoneu-only rosters.')
             if self.draft.cm_draft.setup:
                 self.resolve_cm_draft_with_rosters()
             else:
