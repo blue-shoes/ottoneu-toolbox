@@ -176,7 +176,9 @@ class ValuesCalculation(tk.Frame):
         self.sel_proj.set("None")
         self.projection = None
         ttk.Label(inpf, textvariable=self.sel_proj).grid(column=1,row=0)
-        ttk.Button(inpf, text="Select...", command=self.select_projection).grid(column=2,row=0)
+        btn = ttk.Button(inpf, text="Select...", command=self.select_projection)
+        btn.grid(column=2,row=0)
+        CreateToolTip(btn, "Select a stored projection to use for value calculations or import a new one.")
 
         gt_map = ScoringFormat.enum_to_full_name_map()
         ttk.Label(inpf, text="Game Type:").grid(column=0,row=2,pady=5)
@@ -197,10 +199,14 @@ class ValuesCalculation(tk.Frame):
         team_entry.config(validate="key", validatecommand=(validation, '%P'))
         self.input_svs.append(self.num_teams_str)
 
-        ttk.Label(inpf, text="Manual hitter/pitcher split?").grid(column=0, row=4,pady=5)
+        lbl = ttk.Label(inpf, text="Manual hitter/pitcher split?")
+        lbl.grid(column=0, row=4,pady=5)
+        CreateToolTip(lbl, 'Indicate if value calculations should calculate hitter/pitcher value\nabove replacement intrinsically or by user percentage.')
         self.manual_split = BooleanVar()
         self.manual_split.set(False)
-        ttk.Checkbutton(inpf, variable=self.manual_split, command=self.toggle_manual_split).grid(column=1, row=4, pady=5)
+        cb = ttk.Checkbutton(inpf, variable=self.manual_split, command=self.toggle_manual_split)
+        cb.grid(column=1, row=4, pady=5)
+        CreateToolTip(cb, 'Indicate if value calculations should calculate hitter/pitcher value\nabove replacement intrinsically or by user percentage.')
 
         self.hitter_aloc_lbl = ttk.Label(inpf, text="Hitter allocation (%):")
         self.hitter_aloc_lbl.grid(column=0, row=5,pady=5)
@@ -220,6 +226,7 @@ class ValuesCalculation(tk.Frame):
         non_prod = ttk.Entry(inpf, textvariable=self.non_prod_dollars_str)
         non_prod.grid(column=1,row=6,pady=5)
         non_prod.config(validate="key", validatecommand=(validation, '%P'))
+        CreateToolTip(non_prod, text='Cap space set aside for below replacement level player salaries, such as prospects, or unspent cap space.')
         self.input_svs.append(self.non_prod_dollars_str)
 
         ttk.Label(inpf, text="Hitter Value Basis:").grid(column=0,row=7,pady=5)
@@ -236,6 +243,7 @@ class ValuesCalculation(tk.Frame):
         pa_entry = ttk.Entry(inpf, textvariable=self.min_pa)
         pa_entry.grid(column=1,row=8, pady=5)
         pa_entry.config(validate="key", validatecommand=(validation, '%P'))
+        CreateToolTip(pa_entry, 'The minimum number of plate appearances required to be considered for valuation.')
         self.input_svs.append(self.min_pa)
         
         ttk.Label(inpf, text="Pitcher Value Basis:").grid(column=0,row=9,pady=5)
@@ -249,27 +257,34 @@ class ValuesCalculation(tk.Frame):
         ttk.Label(inpf, text="Min SP IP to Rank:").grid(column=0, row= 10, pady=5)
         self.min_sp_ip = StringVar()
         self.min_sp_ip.set("70")
-        ttk.Entry(inpf, textvariable=self.min_sp_ip).grid(column=1,row=10, pady=5)
+        entry = ttk.Entry(inpf, textvariable=self.min_sp_ip)
+        entry.grid(column=1,row=10, pady=5)
+        CreateToolTip(entry, 'The minimum number of innings required by a full-time starter to be considered for valuation.')
         self.input_svs.append(self.min_sp_ip)
 
         ttk.Label(inpf, text="Min RP IP to Rank:").grid(column=0, row= 11, pady=5)
         self.min_rp_ip = StringVar()
         self.min_rp_ip.set("30")
-        ttk.Entry(inpf, textvariable=self.min_rp_ip).grid(column=1,row=11, pady=5)
+        entry = ttk.Entry(inpf, textvariable=self.min_rp_ip)
+        entry.grid(column=1,row=11, pady=5)
+        CreateToolTip(entry, 'The minimum number of innings required by a full-time reliever to be considered for valuation.')
         self.input_svs.append(self.min_rp_ip)
 
         self.sv_hld_lbl = ttk.Label(inpf, text="Include SV/HLD?")
         self.sv_hld_lbl.grid(column=0, row=12, pady=5)
+        CreateToolTip(self.sv_hld_lbl, 'Calculate reliever values with or without projected save and hold values.')
         self.sv_hld_bv = BooleanVar()
         self.sv_hld_bv.set(True)
         self.sv_hld_entry = ttk.Checkbutton(inpf, variable=self.sv_hld_bv, command=self.set_display_columns)
         self.sv_hld_entry.grid(column=1, row=12, pady=5)
+        CreateToolTip(self.sv_hld_entry, 'Calculate reliever values with or without projected save and hold values.')
         
         # This is its own method to make the __init__ more readable
         row = self.set_replacement_level_ui(inpf, start_row=13)
 
         ttk.Button(inpf, text="Calculate", command=self.calculate_values).grid(row=row, column=0)
         self.advanced_btn = ttk.Button(inpf, text='Advanced', command=self.advanced_options)
+        CreateToolTip(self.advanced_btn, 'Set advanced input options for the Value Calculation.')
         self.advanced_btn['state'] = DISABLED
         self.advanced_btn.grid(row=row, column=1)
 
@@ -708,10 +723,12 @@ class ValuesCalculation(tk.Frame):
         self.save_btn = sb = ttk.Button(outf, text="Save Values", command=self.save_values)
         sb.grid(row=row, column=0)
         sb['state'] = DISABLED
+        CreateToolTip(sb, 'Save the last set of calculated values to the database.')
 
         self.export_btn = eb = ttk.Button(outf, text="Export Values", command=self.export_values)
         eb.grid(row=row, column=1)
         eb['state'] = DISABLED
+        CreateToolTip(eb, 'Export the last set of calculated values to a csv ro xlsx file.')
 
     def update_calc_output_frame(self):
         self.output_title.set("Value Calculation Results")
@@ -859,9 +876,15 @@ class ValuesCalculation(tk.Frame):
         self.rep_level_scheme = IntVar()
         self.rep_level_scheme.set(RepLevelScheme.NUM_ROSTERED.value)
         row = row+1
-        ttk.Radiobutton(inpf, text="Number Rostered", value=RepLevelScheme.NUM_ROSTERED.value, command=self.update_rep_level_scheme, variable=self.rep_level_scheme).grid(column=0,row=row,pady=5)
-        ttk.Radiobutton(inpf, text="Replacment Level", value=RepLevelScheme.STATIC_REP_LEVEL.value, command=self.update_rep_level_scheme, variable=self.rep_level_scheme).grid(column=1,row=row,pady=5)
-        ttk.Radiobutton(inpf, text="Fill Games", value=RepLevelScheme.FILL_GAMES.value, command=self.update_rep_level_scheme, variable=self.rep_level_scheme).grid(column=2,row=row,pady=5)
+        btn = ttk.Radiobutton(inpf, text="Number Rostered", value=RepLevelScheme.NUM_ROSTERED.value, command=self.update_rep_level_scheme, variable=self.rep_level_scheme)
+        btn.grid(column=0,row=row,pady=5)
+        CreateToolTip(btn, 'Sets the number of players eligible at the given position that are at or above replacement level.')
+        btn = ttk.Radiobutton(inpf, text="Replacment Level", value=RepLevelScheme.STATIC_REP_LEVEL.value, command=self.update_rep_level_scheme, variable=self.rep_level_scheme)
+        btn.grid(column=1,row=row,pady=5)
+        CreateToolTip(btn, 'Sets the static replacement level value (in units corresponding to the selected basis) to use for calculations.')
+        btn = ttk.Radiobutton(inpf, text="Fill Games", value=RepLevelScheme.FILL_GAMES.value, command=self.update_rep_level_scheme, variable=self.rep_level_scheme)
+        btn.grid(column=2,row=row,pady=5)
+        CreateToolTip(btn, 'Determines the number of players required to be rostered at each position to reach game\nand inning thresholds and adds or subtracts the user-entered number from that positon.\nSee "Advanced" for more inputs.')
     
         row = row+1
         self.rep_level_txt = StringVar()
