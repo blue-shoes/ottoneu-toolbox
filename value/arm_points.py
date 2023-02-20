@@ -34,13 +34,14 @@ class ArmPoint():
         
         self.no_sv_hld = value_calc.get_input(CDT.INCLUDE_SVH) == 0
         
-        if ScoringFormat.is_h2h(self.scoring_format):
-            self.gs_per_week = value_calc.get_input(CDT.GS_LIMIT)
-            self.est_rp_g_per_week = value_calc.get_input(CDT.RP_G_TARGET)
-        else:
-            self.target_innings = value_calc.get_input(CDT.IP_TARGET) * self.num_teams
-            self.ip_per_team = value_calc.get_input(CDT.IP_TARGET)
-            self.rp_ip_per_team = value_calc.get_input(CDT.RP_IP_TARGET)
+        if self.rep_level_scheme == RepLevelScheme.FILL_GAMES:
+            if ScoringFormat.is_h2h(self.scoring_format):
+                self.gs_per_week = value_calc.get_input(CDT.GS_LIMIT)
+                self.est_rp_g_per_week = value_calc.get_input(CDT.RP_G_TARGET)
+            else:
+                self.target_innings = value_calc.get_input(CDT.IP_TARGET) * self.num_teams
+                self.ip_per_team = value_calc.get_input(CDT.IP_TARGET)
+                self.rp_ip_per_team = value_calc.get_input(CDT.RP_IP_TARGET)
 
         if intermediate_calc:
             self.dirname = os.path.abspath(os.path.join(os.path.dirname( __file__ ), '..'))
