@@ -2,8 +2,8 @@ import logging
 import pandas as pd
 import os
 from os import path
-import value.bat_points
-import value.arm_points
+import value.bat_values
+import value.arm_values
 
 from services import projection_services, calculation_services
 from domain.domain import ValueCalculation
@@ -12,14 +12,6 @@ from domain.enum import CalculationDataType, Position, RepLevelScheme, ScoringFo
 pd.options.mode.chained_assignment = None # from https://stackoverflow.com/a/20627316
 
 class PointValues():
-
-    bat_pos = ['C','1B','2B','3B','SS','MI','OF','Util']
-    pitch_pos = ['SP','RP']
-    target_innings = 1500.0*12.0
-    #replacement_positions = {"C":24,"1B":40,"2B":38,"3B":40,"SS":42,"OF":95,"Util":200,"SP":85,"RP":70}
-    #These are essentially minimums for the positions. I would really not expect to go below these. C and Util are unaffected by the algorithm
-    replacement_positions = {"C":24,"1B":12,"2B":18,"3B":12,"SS":18,"OF":60,"Util":200,"SP":60,"RP":60}
-    replacement_levels = {}
 
     def __init__(self, value_calc:ValueCalculation, debug=False, rostered_hitters=244, rostered_pitchers=196,
                     rp_limit=999):
@@ -45,10 +37,7 @@ class PointValues():
         self.pos_proj = projs[0]
         self.pitch_proj = projs[1]
         rep_level_scheme = RepLevelScheme._value2member_map_[int(self.value_calc.get_input(CalculationDataType.REP_LEVEL_SCHEME))]
-        hitter_rank_basis = self.value_calc.hitter_basis
-        pitcher_rank_basis = self.value_calc.pitcher_basis
         num_teams = int(self.value_calc.get_input(CalculationDataType.NUM_TEAMS))
-        sabr = self.value_calc.format == ScoringFormat.SABR_POINTS or self.value_calc.format == ScoringFormat.H2H_SABR_POINTS
         non_prod_salary = self.value_calc.get_input(CalculationDataType.NON_PRODUCTIVE_DOLLARS)
         rep_nums = None
         rep_levels = None
@@ -60,57 +49,54 @@ class PointValues():
         elif rep_level_scheme == RepLevelScheme.FILL_GAMES:
             surplus_pos = calculation_services.get_num_rostered_rep_levels(self.value_calc)
         logging.debug(f'rep_level_scheme = {rep_level_scheme.value}')
-        min_sp_ip = self.value_calc.get_input(CalculationDataType.SP_IP_TO_RANK)
-        min_rp_ip = self.value_calc.get_input(CalculationDataType.RP_IP_TO_RANK)
         
         progress.set_task_title('Calculating Batters')
         progress.increment_completion_percent(10)
 
-        pos_points = value.bat_points.BatPoint(
+        pos_values = value.bat_values.BatValues(
             self.value_calc,
             intermediate_calc=self.intermediate_calculations
         )
         if rep_nums is not None:
-            pos_points.replacement_positions = rep_nums
+            pos_values.replacement_positions = rep_nums
         if rep_levels is not None:
-            pos_points.replacement_levels = rep_levels
+            pos_values.replacement_levels = rep_levels
         if surplus_pos is not None:
-            pos_points.surplus_pos = surplus_pos
-        pos_min_pa = pos_points.calc_par(self.pos_proj, self.value_calc.get_input(CalculationDataType.PA_TO_RANK))
+            pos_values.surplus_pos = surplus_pos
+        pos_min_pa = pos_values.calc_fom(self.pos_proj, self.value_calc.get_input(CalculationDataType.PA_TO_RANK))
 
         progress.set_task_title('Calculating pitchers')
         progress.increment_completion_percent(40)
-        #TODO Might need to add usable RP innings as argument
-        pitch_points = value.arm_points.ArmPoint(
+        
+        pitch_values = value.arm_values.ArmValues(
             self.value_calc,
             intermediate_calc=self.intermediate_calculations
             )
         if rep_nums is not None:
-            pitch_points.replacement_positions = rep_nums
+            pitch_values.replacement_positions = rep_nums
         if rep_levels is not None:
-            pitch_points.replacement_levels = rep_levels
+            pitch_values.replacement_levels = rep_levels
         if surplus_pos is not None:
-            pitch_points.surplus_pos = surplus_pos
+            pitch_values.surplus_pos = surplus_pos
             
-        real_pitchers = pitch_points.calc_par(self.pitch_proj)
+        real_pitchers = pitch_values.calc_fom(self.pitch_proj)
 
-        #TODO: write replacement level info to ValueCalculation.data
         for pos in Position.get_discrete_offensive_pos():
-            self.value_calc.set_output(CalculationDataType.pos_to_rep_level().get(pos), pos_points.replacement_levels[pos.value])
-            self.value_calc.set_output(CalculationDataType.pos_to_num_rostered().get(pos), pos_points.replacement_positions[pos.value])
+            self.value_calc.set_output(CalculationDataType.pos_to_rep_level().get(pos), pos_values.replacement_levels[pos.value])
+            self.value_calc.set_output(CalculationDataType.pos_to_num_rostered().get(pos), pos_values.replacement_positions[pos.value])
         for pos in Position.get_discrete_pitching_pos():
-            self.value_calc.set_output(CalculationDataType.pos_to_rep_level().get(pos), pitch_points.replacement_levels[pos.value])
-            self.value_calc.set_output(CalculationDataType.pos_to_num_rostered().get(pos), pitch_points.replacement_positions[pos.value])
+            self.value_calc.set_output(CalculationDataType.pos_to_rep_level().get(pos), pitch_values.replacement_levels[pos.value])
+            self.value_calc.set_output(CalculationDataType.pos_to_num_rostered().get(pos), pitch_values.replacement_positions[pos.value])
 
         progress.set_task_title('Calculating $/FOM and applying')
         progress.increment_completion_percent(30)
         rosterable_pos = pos_min_pa.loc[pos_min_pa['Max FOM'] >= 0]
         rosterable_pitch = real_pitchers.loc[real_pitchers['FOM'] >= 0]
 
-        bat_par = rosterable_pos['Max FOM'].sum()
-        total_par = bat_par + rosterable_pitch['FOM'].sum()
-        arm_par = rosterable_pitch.apply(pitch_points.usable_par_calc, args=('SP',), axis=1).sum() + rosterable_pitch.apply(pitch_points.usable_par_calc, args=('RP',), axis=1).sum()
-        total_usable_par = bat_par + arm_par
+        bat_fom = rosterable_pos['Max FOM'].sum()
+        total_fom = bat_fom + rosterable_pitch['FOM'].sum()
+        arm_fom = rosterable_pitch.apply(pitch_values.usable_fom_calc, args=('SP',), axis=1).sum() + rosterable_pitch.apply(pitch_values.usable_fom_calc, args=('RP',), axis=1).sum()
+        total_usable_fom = bat_fom + arm_fom
         total_players = len(rosterable_pos) + len(rosterable_pitch)
         self.value_calc.set_output(CalculationDataType.TOTAL_HITTERS_ROSTERED, len(rosterable_pos))
         self.value_calc.set_output(CalculationDataType.TOTAL_PITCHERS_ROSTERED, len(rosterable_pitch))
@@ -118,18 +104,18 @@ class PointValues():
         dollars = 400*num_teams
         dollars -= non_prod_salary
         dollars -= num_teams*40 #remove a dollar per player at or above replacement
-        self.dol_per_par = dollars / total_usable_par
+        self.dol_per_fom = dollars / total_usable_fom
 
         self.value_calc.set_output(CalculationDataType.TOTAL_GAMES_PLAYED, rosterable_pos['G'].sum())
         self.value_calc.set_output(CalculationDataType.TOTAL_INNINGS_PITCHED, rosterable_pitch['IP'].sum())
-        self.value_calc.set_output(CalculationDataType.TOTAL_FOM_ABOVE_REPLACEMENT, total_usable_par)
-        self.value_calc.set_output(CalculationDataType.DOLLARS_PER_FOM, self.dol_per_par)
+        self.value_calc.set_output(CalculationDataType.TOTAL_FOM_ABOVE_REPLACEMENT, total_usable_fom)
+        self.value_calc.set_output(CalculationDataType.DOLLARS_PER_FOM, self.dol_per_fom)
 
         if self.value_calc.get_input(CalculationDataType.HITTER_SPLIT) is not None:
             bat_dollars = dollars * self.value_calc.get_input(CalculationDataType.HITTER_SPLIT) / 100
             arm_dollars = dollars - bat_dollars
-            self.bat_dol_per_fom = bat_dollars / bat_par
-            self.arm_dol_per_fom = arm_dollars / arm_par
+            self.bat_dol_per_fom = bat_dollars / bat_fom
+            self.arm_dol_per_fom = arm_dollars / arm_fom
             self.value_calc.set_output(CalculationDataType.HITTER_DOLLAR_PER_FOM, self.bat_dol_per_fom)
             self.value_calc.set_output(CalculationDataType.PITCHER_DOLLAR_PER_FOM, self.arm_dol_per_fom)
         else:
@@ -138,8 +124,10 @@ class PointValues():
 
         self.value_calc.values = [] 
 
-        for pos in self.bat_pos:
-            if pos == 'MI':
+        for pos in Position.get_offensive_pos():
+            if pos == Position.OFFENSE:
+                continue
+            elif pos == 'MI':
                 pos_value = pd.DataFrame(pos_min_pa.loc[pos_min_pa['Position(s)'].str.contains("2B|SS", case=False, regex=True)])
             elif pos == 'Util':
                 pos_value = pd.DataFrame(pos_min_pa)
@@ -148,7 +136,7 @@ class PointValues():
             if self.bat_dol_per_fom > 0:
                 pos_value['Value'] = pos_value[f'{pos}_FOM'].apply(lambda x: x*self.bat_dol_per_fom + 1.0 if x >= 0 else 0)
             else:
-                pos_value['Value'] = pos_value[f'{pos}_FOM'].apply(lambda x: x*self.dol_per_par + 1.0 if x >= 0 else 0)
+                pos_value['Value'] = pos_value[f'{pos}_FOM'].apply(lambda x: x*self.dol_per_fom + 1.0 if x >= 0 else 0)
             pos_value.sort_values(by=['Value','P/G'], inplace=True, ascending=[False,False])
             pos_value['Dol_Value'] = pos_value['Value'].apply(lambda x : "${:.0f}".format(x))
             if self.value_calc is None:
@@ -160,15 +148,15 @@ class PointValues():
         if self.bat_dol_per_fom > 0:
             pos_min_pa['Value'] = pos_min_pa['Max FOM'].apply(lambda x: x*self.bat_dol_per_fom + 1.0 if x >= 0 else 0)
         else:
-            pos_min_pa['Value'] = pos_min_pa['Max FOM'].apply(lambda x: x*self.dol_per_par + 1.0 if x >= 0 else 0)
+            pos_min_pa['Value'] = pos_min_pa['Max FOM'].apply(lambda x: x*self.dol_per_fom + 1.0 if x >= 0 else 0)
         pos_min_pa.sort_values('Max FOM', inplace=True)
 
-        for pos in self.pitch_pos:
+        for pos in Position.get_discrete_pitching_pos():
             pos_value = pd.DataFrame(real_pitchers.loc[real_pitchers[f'IP {pos}'] > 0])
             if self.arm_dol_per_fom > 0:
                 pos_value['Value'] = pos_value[f'FOM {pos}'].apply(lambda x: x*self.arm_dol_per_fom + 1.0 if x >= 0 else 0)
             else:
-                pos_value['Value'] = pos_value[f'FOM {pos}'].apply(lambda x: x*self.dol_per_par + 1.0 if x >= 0 else 0)
+                pos_value['Value'] = pos_value[f'FOM {pos}'].apply(lambda x: x*self.dol_per_fom + 1.0 if x >= 0 else 0)
             pos_value.sort_values(by=['Value','P/IP'], inplace=True, ascending=[False,False])
             pos_value['Dol_Value'] = pos_value['Value'].apply(lambda x : "${:.0f}".format(x))
             
@@ -181,7 +169,7 @@ class PointValues():
         if self.arm_dol_per_fom > 0:
             real_pitchers['Value'] = real_pitchers['FOM'].apply(lambda x: x*self.arm_dol_per_fom + 1.0 if x >= 0 else 0)
         else:
-            real_pitchers['Value'] = real_pitchers['FOM'].apply(lambda x: x*self.dol_per_par + 1.0 if x >= 0 else 0)
+            real_pitchers['Value'] = real_pitchers['FOM'].apply(lambda x: x*self.dol_per_fom + 1.0 if x >= 0 else 0)
         real_pitchers.sort_values('FOM', inplace=True)
 
         if self.intermediate_calculations:

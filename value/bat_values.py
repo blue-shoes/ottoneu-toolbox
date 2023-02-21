@@ -6,12 +6,12 @@ from copy import deepcopy
 import logging
 
 from domain.domain import ValueCalculation
-from domain.enum import RankingBasis, RepLevelScheme, CalculationDataType as CDT, Position
+from domain.enum import RankingBasis, RepLevelScheme, CalculationDataType as CDT, Position, ScoringFormat
 from domain.exception import InputException
 
 pd.options.mode.chained_assignment = None # from https://stackoverflow.com/a/20627316
 
-class BatPoint():
+class BatValues():
 
     default_replacement_positions = {"C":24,"1B":12,"2B":18,"3B":12,"SS":18,"OF":60,"Util":150}
     default_surplus_pos = {"C":0,"1B":0,"2B":0,"3B":0,"SS":0,"OF":0,"Util":0}
@@ -19,6 +19,7 @@ class BatPoint():
     max_rost_num = {}
 
     def __init__(self, value_calc:ValueCalculation, intermediate_calc=False, target_bat=244, max_pos_value=True):
+        self.format = value_calc.format
         self.intermediate_calculations = intermediate_calc
         self.rank_basis = RankingBasis.enum_to_display_dict()[value_calc.hitter_basis]
         self.replacement_positions = deepcopy(self.default_replacement_positions)
@@ -160,7 +161,7 @@ class BatPoint():
         #judgement call that you aren't using C to fill Util
         return self.total_games['1B'] - self.target_games*num_teams +  self.total_games['3B'] - self.target_games*num_teams + (self.total_games['2B'] + self.total_games['SS'] - 3*self.target_games*num_teams) + self.total_games['OF']-5*self.target_games*num_teams + self.total_games['Util'] >= num_teams*self.target_games and self.max_rost_num['Util'] > self.replacement_positions['Util']
 
-    def get_position_par(self, df:DataFrame) -> None:
+    def get_position_fom(self, df:DataFrame) -> None:
         '''Determines all player FOM values and popluates them in-place in the DataFrame.'''
         self.rank_position_players(df)
 
@@ -174,17 +175,17 @@ class BatPoint():
         if self.rep_level_scheme == RepLevelScheme.STATIC_REP_LEVEL:
             for pos in Position.get_discrete_offensive_pos():
                 self.set_num_rostered_from_rep_level(df, pos)
-                self.get_par_from_rep_level(df, pos)
-            df['Max FOM'] = df.apply(self.calc_max_par, axis=1)
+                self.get_fom_from_rep_level(df, pos)
+            df['Max FOM'] = df.apply(self.calc_max_fom, axis=1)
         else:
             for pos in Position.get_discrete_offensive_pos():
                 if self.replacement_positions[pos.value] > self.max_rost_num[pos.value]:
                     self.replacement_positions[pos.value] = self.max_rost_num[pos.value]
-                self.get_position_par_calc(df, pos)
+                self.get_position_fom_calc(df, pos)
 
             if self.rep_level_scheme == RepLevelScheme.FILL_GAMES:
                 #Set maximum FOM value for each player to determine how many are rosterable
-                df['Max FOM'] = df.apply(self.calc_max_par, axis=1)
+                df['Max FOM'] = df.apply(self.calc_max_fom, axis=1)
                 self.calc_total_games(df)
                 while not self.are_games_filled(self.num_teams):
                     max_rep_lvl = 0.0
@@ -201,16 +202,16 @@ class BatPoint():
                                 max_pos = pos
                     self.replacement_positions[max_pos] = self.replacement_positions[max_pos] + 1
                     #Recalcluate FOM for the position given the new replacement level
-                    self.get_position_par_calc(df, Position._value2member_map_.get(max_pos))
-                    self.get_position_par_calc(df, Position.POS_UTIL)
+                    self.get_position_fom_calc(df, Position._value2member_map_.get(max_pos))
+                    self.get_position_fom_calc(df, Position.POS_UTIL)
                     #Set maximum FOM value for each player to determine how many are rosterable
-                    df['Max FOM'] = df.apply(self.calc_max_par, axis=1)
+                    df['Max FOM'] = df.apply(self.calc_max_fom, axis=1)
                     self.calc_total_games(df)
                 #Augment the replacement levels by the input surpluses to get the final numbers
                 for pos in self.replacement_positions:
                     self.replacement_positions[pos] = min(self.replacement_positions[pos] + self.surplus_pos[pos], self.max_rost_num[pos])
-                    self.get_position_par_calc(df, Position._value2member_map_.get(pos))
-                df['Max FOM'] = df.apply(self.calc_max_par, axis=1)
+                    self.get_position_fom_calc(df, Position._value2member_map_.get(pos))
+                df['Max FOM'] = df.apply(self.calc_max_fom, axis=1)
             elif self.rep_level_scheme == RepLevelScheme.TOTAL_ROSTERED:
                 maxed_out = False
                 while num_bats != self.target_bat and not maxed_out:
@@ -224,7 +225,7 @@ class BatPoint():
                                 min_pos = pos
                         self.replacement_positions[min_pos] = self.replacement_positions[min_pos]-1
                         #Recalcluate FOM for the position given the new replacement level
-                        self.get_position_par_calc(df, min_pos)
+                        self.get_position_fom_calc(df, min_pos)
                     else:
                         #Too few players, find the current maximum replacement level and bump that replacement_position up by 1
                         max_rep_lvl = 0.0
@@ -243,26 +244,26 @@ class BatPoint():
                         else:
                             self.replacement_positions[max_pos] = self.replacement_positions[max_pos] + 1
                             #Recalcluate FOM for the position given the new replacement level
-                            self.get_position_par_calc(df, max_pos)
-                            self.get_position_par_calc(df, 'Util')
+                            self.get_position_fom_calc(df, max_pos)
+                            self.get_position_fom_calc(df, 'Util')
                     #Set maximum FOM value for each player to determine how many are rosterable
-                    df['Max FOM'] = df.apply(self.calc_max_par, axis=1)
+                    df['Max FOM'] = df.apply(self.calc_max_fom, axis=1)
                     #FOM is how many bats with a non-negative max FOM
                     num_bats = len(df.loc[df['Max FOM'] >= 0])
             elif self.rep_level_scheme == RepLevelScheme.NUM_ROSTERED:
-                df['Max FOM'] = df.apply(self.calc_max_par, axis=1)
+                df['Max FOM'] = df.apply(self.calc_max_fom, axis=1)
             else:
                 #shouldn't get here
                 logging.error(f'Inappropriate Replacement Level Scheme {self.rep_level_scheme}')
                 raise InputException(f"Inappropriate Replacement Level Scheme {self.rep_level_scheme}")
 
-    def get_position_par_calc(self, df:DataFrame, pos:Position) -> None:
+    def get_position_fom_calc(self, df:DataFrame, pos:Position) -> None:
         '''Calculate the FOM for each player eligible at a position based on the current replacement level.'''
         rep_level = self.get_position_rep_level(df, pos)
         self.replacement_levels[pos.value] = rep_level
-        self.get_par_from_rep_level(df, pos)
+        self.get_fom_from_rep_level(df, pos)
 
-    def calc_bat_par(self, row, rep_level:float, pos:Position) -> float:
+    def calc_bat_fom(self, row, rep_level:float, pos:Position) -> float:
         '''Calculates FOM for the given player at the input position with the provided replacement level. If the player is
         not eligible at the position, FOM set to -999.9'''
         if pos.value in row['Position(s)'] or pos == Position.POS_UTIL or (pos.value == 'MI' and ('SS' in row['Position(s)'] or '2B' in row['Position(s)'])):
@@ -276,7 +277,7 @@ class BatPoint():
         #If the position doesn't apply, set FOM to -999.9 to differentiate from the replacement player
         return -999.9
 
-    def calc_max_par(self, row) -> float:
+    def calc_max_fom(self, row) -> float:
         '''Returns the max FOM value for the player'''
         #Find the max FOM for player across all positions
         #TODO: Confirm max works here instead of np.max
@@ -300,13 +301,13 @@ class BatPoint():
         #Set number rostered at position to index + 1 (for zero index)
         self.replacement_positions[pos.value] = index + 1
 
-    def get_par_from_rep_level(self, df:DataFrame, pos:Position) -> None:
+    def get_fom_from_rep_level(self, df:DataFrame, pos:Position) -> None:
         '''Calculates the current FOM for all players for the given position.'''
         col = pos.value + "_FOM"
-        df[col] = df.apply(self.calc_bat_par, args=(self.replacement_levels[pos.value], pos), axis=1)
+        df[col] = df.apply(self.calc_bat_fom, args=(self.replacement_levels[pos.value], pos), axis=1)
         if pos.value in ["SS", "2B"]:
             rep_level = min(self.get_position_rep_level(df, Position.POS_SS), self.get_position_rep_level(df, Position.POS_2B))
-            df['MI_FOM'] = df.apply(self.calc_bat_par, args=(rep_level, Position.POS_MI), axis=1)
+            df['MI_FOM'] = df.apply(self.calc_bat_fom, args=(rep_level, Position.POS_MI), axis=1)
     
     def get_position_rep_level(self, df:DataFrame, pos:Position) -> float:
         '''Based on the number of players to roster above replacement level, return the corresponding replacment level
@@ -326,7 +327,7 @@ class BatPoint():
                     max_rep_lvl = rep_level
             return max_rep_lvl
 
-    def calc_par(self, pos_proj: DataFrame, min_pa:int) -> DataFrame:
+    def calc_fom(self, pos_proj: DataFrame, min_pa:int) -> DataFrame:
         '''Returns a populated DataFrame with all required FOM information for all players above the minimum PA at all positions.'''
         pos_proj['Points'] = pos_proj.apply(self.calc_bat_points, axis=1)
         pos_proj['P/G'] = pos_proj.apply(self.calc_ppg, axis=1)
@@ -335,5 +336,5 @@ class BatPoint():
         #Filter to players projected to a baseline amount of playing time
         pos_min_pa = pos_proj.loc[pos_proj['PA'] >= min_pa]
 
-        self.get_position_par(pos_min_pa)
+        self.get_position_fom(pos_min_pa)
         return pos_min_pa
