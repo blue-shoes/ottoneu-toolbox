@@ -198,9 +198,15 @@ class RankingBasis(Enum):
             self.ZSCORE_PER_G : 'zScore/G',
             self.SGP : 'SGP',
             self.FG_AC : 'FG AC'
-            
         }
 
+    @classmethod
+    def is_zscore(self, basis:RankingBasis):
+        return basis in [self.ZSCORE, self.ZSCORE_PER_G]
+    
+    @classmethod
+    def is_per_game(self, basis:RankingBasis):
+        return basis in [self.ZSCORE_PER_G]
     
 class StatType(Enum):
     G_HIT = 0
