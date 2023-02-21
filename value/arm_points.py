@@ -118,7 +118,7 @@ class ArmPoint():
             total_ip = 0
             self.get_pitcher_par_calc(df)
 
-            rosterable = df.loc[df['PAR'] >= 0]
+            rosterable = df.loc[df['FOM'] >= 0]
             sp_ip = rosterable.apply(self.usable_ip_calc, args=("SP",), axis=1).sum()
             rp_ip = rosterable.apply(self.usable_ip_calc, args=("RP",), axis=1).sum()
             total_ip = sp_ip + rp_ip
@@ -131,23 +131,23 @@ class ArmPoint():
                     while sp_ip < self.num_teams * (self.ip_per_team-self.rp_ip_per_team) and self.replacement_positions['SP'] < self.max_rost_num['SP']:
                         self.replacement_positions['SP'] = self.replacement_positions['SP'] + 1
                         self.get_pitcher_par_calc(df)
-                        rosterable = df.loc[df['PAR SP'] >= 0]
+                        rosterable = df.loc[df['FOM SP'] >= 0]
                         sp_ip = rosterable.apply(self.usable_ip_calc, args=("SP",), axis=1).sum()
                     while rp_ip < self.num_teams * self.rp_ip_per_team and self.replacement_positions['RP'] < self.max_rost_num['RP']:
                         self.replacement_positions['RP'] = self.replacement_positions['RP'] + 1
                         self.get_pitcher_par_calc(df)
-                        rosterable = df.loc[df['PAR RP'] >= 0]
+                        rosterable = df.loc[df['FOM RP'] >= 0]
                         rp_ip = rosterable.apply(self.usable_ip_calc, args=("RP",), axis=1).sum()
                 else:
                     while sp_g < self.num_teams * self.gs_per_week * self.weeks and self.replacement_positions['SP'] < self.max_rost_num['SP']:
                         self.replacement_positions['SP'] = self.replacement_positions['SP'] + 1
                         self.get_pitcher_par_calc(df)
-                        rosterable = df.loc[df['PAR SP'] >= 0]
+                        rosterable = df.loc[df['FOM SP'] >= 0]
                         sp_g = rosterable.apply(self.usable_gs_calc, axis=1).sum()
                     while rp_g < self.num_teams * self.est_rp_g_per_week * self.weeks and self.replacement_positions['RP'] < self.max_rost_num['RP']:
                         self.replacement_positions['RP'] = self.replacement_positions['RP'] + 1
                         self.get_pitcher_par_calc(df)
-                        rosterable = df.loc[df['PAR RP'] >= 0]
+                        rosterable = df.loc[df['FOM RP'] >= 0]
                         rp_g = rosterable.apply(self.usable_rp_g_calc, axis=1).sum()
                 self.replacement_positions['SP'] = min(self.replacement_positions['SP'] + self.surplus_pos['SP'], self.max_rost_num['SP'])
                 self.replacement_positions['RP'] = min(self.replacement_positions['RP'] + self.surplus_pos['RP'], self.max_rost_num['RP'])
@@ -198,8 +198,8 @@ class ArmPoint():
                                 #Probably not, but just in case
                                 self.replacement_positions['RP'] = self.replacement_positions['RP'] - 1
                         self.get_pitcher_par_calc(df)
-                        #FOM is how many arms with a non-negative PAR...
-                        rosterable = df.loc[df['PAR'] >= 0]
+                        #FOM is how many arms with a non-negative FOM...
+                        rosterable = df.loc[df['FOM'] >= 0]
                         num_arms = len(rosterable)
                         #...and how many total innings are pitched
                         total_ip = rosterable.apply(self.usable_ip_calc, args=("SP",), axis=1).sum()
@@ -242,8 +242,8 @@ class ArmPoint():
                             else:
                                 self.replacement_positions['RP'] = self.replacement_positions['RP'] - 1
                         self.get_pitcher_par_calc(df)
-                        #FOM is how many arms with a non-negative PAR...
-                        rosterable = df.loc[df['PAR'] >= 0]
+                        #FOM is how many arms with a non-negative FOM...
+                        rosterable = df.loc[df['FOM'] >= 0]
                         num_arms = len(rosterable)
                         #...and how many GS
                         sp_g = rosterable.apply(self.usable_gs_calc, axis=1).sum()
@@ -265,8 +265,8 @@ class ArmPoint():
         return row[f'IP {role}'] * row[f'{role} Multiplier']
 
     def usable_par_calc(self, row, role) -> float:
-        '''Returns an estimated usable number of pitching PAR based on the projection and pitcher ranking'''
-        return row[f'PAR {role}'] * row[f'{role} Multiplier']
+        '''Returns an estimated usable number of pitching FOM based on the projection and pitcher ranking'''
+        return row[f'FOM {role}'] * row[f'{role} Multiplier']
 
     def usable_gs_calc(self, row) -> float:
         '''Returns an estimated usable number of games started based on the projection and pitcher ranking'''
@@ -277,7 +277,7 @@ class ArmPoint():
         return (row['G'] - row['GS']) * row['RP Multiplier']
 
     def get_pitcher_par_calc(self, df:DataFrame) -> None:
-        '''Sets replacement levels for the current iteration and populates PAR figures for all pitchers and roles'''
+        '''Sets replacement levels for the current iteration and populates FOM figures for all pitchers and roles'''
         sp_rep_level = self.get_pitcher_rep_level(df, 'SP')
         self.replacement_levels['SP'] = sp_rep_level
         rp_rep_level = self.get_pitcher_rep_level(df, 'RP')
@@ -285,17 +285,17 @@ class ArmPoint():
         self.get_par(df)
 
     def get_par(self, df:DataFrame) -> None:
-        '''Calculates role PARs and overall PAR for each pitcher in-place'''
-        df['PAR SP'] = df.apply(self.calc_pitch_par_role, args=('SP', self.replacement_levels['SP']), axis=1)
-        df['PAR RP'] = df.apply(self.calc_pitch_par_role, args=('RP', self.replacement_levels['RP']), axis=1)
-        df['PAR'] = df.apply(self.sum_role_par, axis=1)
+        '''Calculates role FOMs and overall FOM for each pitcher in-place'''
+        df['FOM SP'] = df.apply(self.calc_pitch_par_role, args=('SP', self.replacement_levels['SP']), axis=1)
+        df['FOM RP'] = df.apply(self.calc_pitch_par_role, args=('RP', self.replacement_levels['RP']), axis=1)
+        df['FOM'] = df.apply(self.sum_role_par, axis=1)
     
     def set_number_rostered(self, df:DataFrame) -> None:
         '''Determines what number pitcher represents replacement level for all roles and sets it in the internal dict'''
         sp_count = 0
         rp_count = 0
         for idx, row in df.iterrows():
-            if row['PAR'] > 0:
+            if row['FOM'] > 0:
                 if 'SP' in row['Position(s)']:
                     sp_count += 1
                 if 'RP' in row['Position(s)']:
@@ -304,7 +304,7 @@ class ArmPoint():
         self.replacement_positions['RP'] = rp_count
 
     def calc_pitch_par_role(self, row, role:str, rep_level:float) -> float:
-        '''Returns the PAR accumulated by the pitcher in the given role at the given replacement level.'''
+        '''Returns the FOM accumulated by the pitcher in the given role at the given replacement level.'''
         if row['G'] == 0:
             return -1
         if row[f'IP {role}'] == 0: return -1
@@ -323,11 +323,11 @@ class ArmPoint():
                 return rate * (row['G'] - row['GS'])
 
     def sum_role_par(self, row) -> float:
-        '''Sums the pitcher's SP and RP PAR values'''
-        sp_par = row['PAR SP']
+        '''Sums the pitcher's SP and RP FOM values'''
+        sp_par = row['FOM SP']
         if row['IP SP'] == 0:
             sp_par = 0
-        rp_par = row['PAR RP']
+        rp_par = row['FOM RP']
         if row['IP RP'] == 0:
             rp_par = 0
         return sp_par + rp_par
@@ -529,7 +529,7 @@ class ArmPoint():
         self.max_rost_num['RP'] = len(df.loc[df['IP RP'] >= self.min_rp_ip])
 
     def calc_par(self, df:DataFrame) -> DataFrame:
-        '''Returns a populated DataFrame with all required PAR information for all players above the minimum IP at all positions.'''
+        '''Returns a populated DataFrame with all required FOM information for all players above the minimum IP at all positions.'''
         df['Points'] = df.apply(self.calc_pitch_points, axis=1)
         df['No SVH Points'] = df.apply(self.calc_pitch_points_no_svh, axis=1)
 

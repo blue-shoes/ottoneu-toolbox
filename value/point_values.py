@@ -102,13 +102,13 @@ class PointValues():
             self.value_calc.set_output(CalculationDataType.pos_to_rep_level().get(pos), pitch_points.replacement_levels[pos.value])
             self.value_calc.set_output(CalculationDataType.pos_to_num_rostered().get(pos), pitch_points.replacement_positions[pos.value])
 
-        progress.set_task_title('Calculating $/PAR and applying')
+        progress.set_task_title('Calculating $/FOM and applying')
         progress.increment_completion_percent(30)
-        rosterable_pos = pos_min_pa.loc[pos_min_pa['Max PAR'] >= 0]
-        rosterable_pitch = real_pitchers.loc[real_pitchers['PAR'] >= 0]
+        rosterable_pos = pos_min_pa.loc[pos_min_pa['Max FOM'] >= 0]
+        rosterable_pitch = real_pitchers.loc[real_pitchers['FOM'] >= 0]
 
-        bat_par = rosterable_pos['Max PAR'].sum()
-        total_par = bat_par + rosterable_pitch['PAR'].sum()
+        bat_par = rosterable_pos['Max FOM'].sum()
+        total_par = bat_par + rosterable_pitch['FOM'].sum()
         arm_par = rosterable_pitch.apply(pitch_points.usable_par_calc, args=('SP',), axis=1).sum() + rosterable_pitch.apply(pitch_points.usable_par_calc, args=('RP',), axis=1).sum()
         total_usable_par = bat_par + arm_par
         total_players = len(rosterable_pos) + len(rosterable_pitch)
@@ -128,13 +128,13 @@ class PointValues():
         if self.value_calc.get_input(CalculationDataType.HITTER_SPLIT) is not None:
             bat_dollars = dollars * self.value_calc.get_input(CalculationDataType.HITTER_SPLIT) / 100
             arm_dollars = dollars - bat_dollars
-            self.bat_dol_per_par = bat_dollars / bat_par
-            self.arm_dol_per_par = arm_dollars / arm_par
-            self.value_calc.set_output(CalculationDataType.HITTER_DOLLAR_PER_FOM, self.bat_dol_per_par)
-            self.value_calc.set_output(CalculationDataType.PITCHER_DOLLAR_PER_FOM, self.arm_dol_per_par)
+            self.bat_dol_per_fom = bat_dollars / bat_par
+            self.arm_dol_per_fom = arm_dollars / arm_par
+            self.value_calc.set_output(CalculationDataType.HITTER_DOLLAR_PER_FOM, self.bat_dol_per_fom)
+            self.value_calc.set_output(CalculationDataType.PITCHER_DOLLAR_PER_FOM, self.arm_dol_per_fom)
         else:
-            self.bat_dol_per_par = 0
-            self.arm_dol_per_par = 0
+            self.bat_dol_per_fom = 0
+            self.arm_dol_per_fom = 0
 
         self.value_calc.values = [] 
 
@@ -145,44 +145,44 @@ class PointValues():
                 pos_value = pd.DataFrame(pos_min_pa)
             else:
                 pos_value = pd.DataFrame(pos_min_pa.loc[pos_min_pa['Position(s)'].str.contains(pos)])
-            if self.bat_dol_per_par > 0:
-                pos_value['Value'] = pos_value[f'{pos}_PAR'].apply(lambda x: x*self.bat_dol_per_par + 1.0 if x >= 0 else 0)
+            if self.bat_dol_per_fom > 0:
+                pos_value['Value'] = pos_value[f'{pos}_FOM'].apply(lambda x: x*self.bat_dol_per_fom + 1.0 if x >= 0 else 0)
             else:
-                pos_value['Value'] = pos_value[f'{pos}_PAR'].apply(lambda x: x*self.dol_per_par + 1.0 if x >= 0 else 0)
+                pos_value['Value'] = pos_value[f'{pos}_FOM'].apply(lambda x: x*self.dol_per_par + 1.0 if x >= 0 else 0)
             pos_value.sort_values(by=['Value','P/G'], inplace=True, ascending=[False,False])
             pos_value['Dol_Value'] = pos_value['Value'].apply(lambda x : "${:.0f}".format(x))
             if self.value_calc is None:
-                pos_value = pos_value[['OttoneuID', 'Dol_Value', 'Name','Team','Position(s)','Points',f'{pos}_PAR','P/G']]
+                pos_value = pos_value[['OttoneuID', 'Dol_Value', 'Name','Team','Position(s)','Points',f'{pos}_FOM','P/G']]
                 pos_value.to_csv(f"C:\\Users\\adam.scharf\\Documents\\Personal\\FFB\\Staging\\{pos}_values.csv", encoding='utf-8-sig')
             else:
                 for index, row in pos_value.iterrows():
                     self.value_calc.set_player_value(index, Position._value2member_map_[pos], row['Value'])
-        if self.bat_dol_per_par > 0:
-            pos_min_pa['Value'] = pos_min_pa['Max PAR'].apply(lambda x: x*self.bat_dol_per_par + 1.0 if x >= 0 else 0)
+        if self.bat_dol_per_fom > 0:
+            pos_min_pa['Value'] = pos_min_pa['Max FOM'].apply(lambda x: x*self.bat_dol_per_fom + 1.0 if x >= 0 else 0)
         else:
-            pos_min_pa['Value'] = pos_min_pa['Max PAR'].apply(lambda x: x*self.dol_per_par + 1.0 if x >= 0 else 0)
-        pos_min_pa.sort_values('Max PAR', inplace=True)
+            pos_min_pa['Value'] = pos_min_pa['Max FOM'].apply(lambda x: x*self.dol_per_par + 1.0 if x >= 0 else 0)
+        pos_min_pa.sort_values('Max FOM', inplace=True)
 
         for pos in self.pitch_pos:
             pos_value = pd.DataFrame(real_pitchers.loc[real_pitchers[f'IP {pos}'] > 0])
-            if self.arm_dol_per_par > 0:
-                pos_value['Value'] = pos_value[f'PAR {pos}'].apply(lambda x: x*self.arm_dol_per_par + 1.0 if x >= 0 else 0)
+            if self.arm_dol_per_fom > 0:
+                pos_value['Value'] = pos_value[f'FOM {pos}'].apply(lambda x: x*self.arm_dol_per_fom + 1.0 if x >= 0 else 0)
             else:
-                pos_value['Value'] = pos_value[f'PAR {pos}'].apply(lambda x: x*self.dol_per_par + 1.0 if x >= 0 else 0)
+                pos_value['Value'] = pos_value[f'FOM {pos}'].apply(lambda x: x*self.dol_per_par + 1.0 if x >= 0 else 0)
             pos_value.sort_values(by=['Value','P/IP'], inplace=True, ascending=[False,False])
             pos_value['Dol_Value'] = pos_value['Value'].apply(lambda x : "${:.0f}".format(x))
             
             if self.value_calc is None:
-                pos_value = pos_value[['OttoneuID', 'Dol_Value', 'Name','Team','Position(s)','Points',f'PAR {pos}','P/IP']]
+                pos_value = pos_value[['OttoneuID', 'Dol_Value', 'Name','Team','Position(s)','Points',f'FOM {pos}','P/IP']]
                 pos_value.to_csv(f"C:\\Users\\adam.scharf\\Documents\\Personal\\FFB\\Staging\\{pos}_values.csv", encoding='utf-8-sig')
             else:
                 for index, row in pos_value.iterrows():
                     self.value_calc.set_player_value(index, Position._value2member_map_[pos], row['Value'])
-        if self.arm_dol_per_par > 0:
-            real_pitchers['Value'] = real_pitchers['PAR'].apply(lambda x: x*self.arm_dol_per_par + 1.0 if x >= 0 else 0)
+        if self.arm_dol_per_fom > 0:
+            real_pitchers['Value'] = real_pitchers['FOM'].apply(lambda x: x*self.arm_dol_per_fom + 1.0 if x >= 0 else 0)
         else:
-            real_pitchers['Value'] = real_pitchers['PAR'].apply(lambda x: x*self.dol_per_par + 1.0 if x >= 0 else 0)
-        real_pitchers.sort_values('PAR', inplace=True)
+            real_pitchers['Value'] = real_pitchers['FOM'].apply(lambda x: x*self.dol_per_par + 1.0 if x >= 0 else 0)
+        real_pitchers.sort_values('FOM', inplace=True)
 
         if self.intermediate_calculations:
             filepath = os.path.join(self.intermed_subdirpath, f"pos_value_detail.csv")
@@ -190,7 +190,7 @@ class PointValues():
             filepath = os.path.join(self.intermed_subdirpath, f"pitch_value_detail.csv")
             real_pitchers.to_csv(filepath, encoding='utf-8-sig')
         
-        pos_min_pa.rename(columns={'Max PAR':'PAR'}, inplace=True)
+        pos_min_pa.rename(columns={'Max FOM':'FOM'}, inplace=True)
         for index, row in pos_min_pa.iterrows():
             self.value_calc.set_player_value(index, Position.OFFENSE, row['Value'])
 
@@ -208,7 +208,7 @@ class PointValues():
         for index in intersect:
             results.loc[index, 'Value'] = results.loc[index]['Value'] + pitch_results.loc[index]['Value']
             results.loc[index, 'Points'] = results.loc[index]['Points'] + pitch_results.loc[index]['Points']
-            results.loc[index, 'PAR'] = results.loc[index]['PAR'] + pitch_results.loc[index]['PAR']
+            results.loc[index, 'FOM'] = results.loc[index]['FOM'] + pitch_results.loc[index]['FOM']
             results.loc[index, 'P/IP'] = pitch_results.loc[index]['P/IP']
             pitch_results = pitch_results.drop(index=index)
 
