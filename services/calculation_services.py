@@ -744,7 +744,7 @@ def save_calculation_from_file(vc : ValueCalculation, df : DataFrame, pd=None, r
                 p_pt = pp.get_stat(StatType.IP)
             else:
                 raise Exception(f'Unhandled pitching basis {vc.pitcher_basis}')
-        elif ScoringFormat.is_points_type(vc.format):
+        elif not proj_derive and ScoringFormat.is_points_type(vc.format):
             h_points = row['Points']
             h_pt = row['H_PT']
             if pop_proj:
