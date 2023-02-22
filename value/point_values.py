@@ -127,24 +127,22 @@ class PointValues():
         for pos in Position.get_offensive_pos():
             if pos == Position.OFFENSE:
                 continue
-            elif pos == 'MI':
+            elif pos == Position.POS_MI:
                 pos_value = pd.DataFrame(pos_min_pa.loc[pos_min_pa['Position(s)'].str.contains("2B|SS", case=False, regex=True)])
-            elif pos == 'Util':
+            elif pos == Position.POS_UTIL:
                 pos_value = pd.DataFrame(pos_min_pa)
             else:
-                pos_value = pd.DataFrame(pos_min_pa.loc[pos_min_pa['Position(s)'].str.contains(pos)])
+                pos_value = pd.DataFrame(pos_min_pa.loc[pos_min_pa['Position(s)'].str.contains(pos.value)])
             if self.bat_dol_per_fom > 0:
-                pos_value['Value'] = pos_value[f'{pos}_FOM'].apply(lambda x: x*self.bat_dol_per_fom + 1.0 if x >= 0 else 0)
+                pos_value['Value'] = pos_value[f'{pos.value}_FOM'].apply(lambda x: x*self.bat_dol_per_fom + 1.0 if x >= 0 else 0)
             else:
-                pos_value['Value'] = pos_value[f'{pos}_FOM'].apply(lambda x: x*self.dol_per_fom + 1.0 if x >= 0 else 0)
+                pos_value['Value'] = pos_value[f'{pos.value}_FOM'].apply(lambda x: x*self.dol_per_fom + 1.0 if x >= 0 else 0)
             pos_value.sort_values(by=['Value','P/G'], inplace=True, ascending=[False,False])
             pos_value['Dol_Value'] = pos_value['Value'].apply(lambda x : "${:.0f}".format(x))
-            if self.value_calc is None:
-                pos_value = pos_value[['OttoneuID', 'Dol_Value', 'Name','Team','Position(s)','Points',f'{pos}_FOM','P/G']]
-                pos_value.to_csv(f"C:\\Users\\adam.scharf\\Documents\\Personal\\FFB\\Staging\\{pos}_values.csv", encoding='utf-8-sig')
-            else:
-                for index, row in pos_value.iterrows():
-                    self.value_calc.set_player_value(index, Position._value2member_map_[pos], row['Value'])
+
+            for index, row in pos_value.iterrows():
+                self.value_calc.set_player_value(index, pos, row['Value'])
+
         if self.bat_dol_per_fom > 0:
             pos_min_pa['Value'] = pos_min_pa['Max FOM'].apply(lambda x: x*self.bat_dol_per_fom + 1.0 if x >= 0 else 0)
         else:
@@ -152,20 +150,17 @@ class PointValues():
         pos_min_pa.sort_values('Max FOM', inplace=True)
 
         for pos in Position.get_discrete_pitching_pos():
-            pos_value = pd.DataFrame(real_pitchers.loc[real_pitchers[f'IP {pos}'] > 0])
+            pos_value = pd.DataFrame(real_pitchers.loc[real_pitchers[f'IP {pos.value}'] > 0])
             if self.arm_dol_per_fom > 0:
-                pos_value['Value'] = pos_value[f'FOM {pos}'].apply(lambda x: x*self.arm_dol_per_fom + 1.0 if x >= 0 else 0)
+                pos_value['Value'] = pos_value[f'FOM {pos.value}'].apply(lambda x: x*self.arm_dol_per_fom + 1.0 if x >= 0 else 0)
             else:
-                pos_value['Value'] = pos_value[f'FOM {pos}'].apply(lambda x: x*self.dol_per_fom + 1.0 if x >= 0 else 0)
+                pos_value['Value'] = pos_value[f'FOM {pos.value}'].apply(lambda x: x*self.dol_per_fom + 1.0 if x >= 0 else 0)
             pos_value.sort_values(by=['Value','P/IP'], inplace=True, ascending=[False,False])
             pos_value['Dol_Value'] = pos_value['Value'].apply(lambda x : "${:.0f}".format(x))
-            
-            if self.value_calc is None:
-                pos_value = pos_value[['OttoneuID', 'Dol_Value', 'Name','Team','Position(s)','Points',f'FOM {pos}','P/IP']]
-                pos_value.to_csv(f"C:\\Users\\adam.scharf\\Documents\\Personal\\FFB\\Staging\\{pos}_values.csv", encoding='utf-8-sig')
-            else:
-                for index, row in pos_value.iterrows():
-                    self.value_calc.set_player_value(index, Position._value2member_map_[pos], row['Value'])
+
+            for index, row in pos_value.iterrows():
+                self.value_calc.set_player_value(index, pos, row['Value'])
+
         if self.arm_dol_per_fom > 0:
             real_pitchers['Value'] = real_pitchers['FOM'].apply(lambda x: x*self.arm_dol_per_fom + 1.0 if x >= 0 else 0)
         else:
