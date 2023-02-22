@@ -1,12 +1,13 @@
 import pandas as pd
-from pandas import DataFrame
+from pandas import DataFrame, Series
 import os
 from os import path
 from copy import deepcopy
 import logging
+from typing import List
 
 from domain.domain import ValueCalculation
-from domain.enum import RankingBasis, RepLevelScheme, CalculationDataType as CDT, Position, ScoringFormat
+from domain.enum import RankingBasis, RepLevelScheme, CalculationDataType as CDT, Position, ScoringFormat, StatType
 from domain.exception import InputException
 
 pd.options.mode.chained_assignment = None # from https://stackoverflow.com/a/20627316
@@ -31,6 +32,8 @@ class BatValues():
         self.surplus_pos = deepcopy(self.default_surplus_pos)
         self.total_games = {}
         self.games_filled = {}
+        self.stat_avg = {}
+        self.stat_std = {}
         self.target_games = value_calc.get_input(CDT.BATTER_G_TARGET)
         if intermediate_calc:
             self.dirname = os.path.abspath(os.path.join(os.path.dirname( __file__ ), '..'))
@@ -55,21 +58,23 @@ class BatValues():
             return 0
         return row['Points'] / row['PA']
 
-    def rank_position_players(self, df:DataFrame) -> None:
+    def rank_position_players(self, df:DataFrame, rank_col:str=None) -> None:
         '''Ranks all players eligible at each discrete position according to the RankingBasis per the DataFrame columns'''
+        if rank_col is None:
+            rank_col = self.rank_basis
         for pos in Position.get_discrete_offensive_pos():
             col = f"Rank {pos.value} Rate"
             g_col = f"{pos.value} Games"
             df[g_col] = 0
             if pos == Position.POS_UTIL:
-                df[col] = df[self.rank_basis].rank(ascending=False)
+                df[col] = df[rank_col].rank(ascending=False)
                 self.max_rost_num['Util'] = len(df)
             else:
-                df[col] = df.loc[df['Position(s)'].str.contains(pos.value)][self.rank_basis].rank(ascending=False)
+                df[col] = df.loc[df['Position(s)'].str.contains(pos.value)][rank_col].rank(ascending=False)
                 df[col].fillna(-999, inplace=True)
                 self.max_rost_num[pos.value] = len(df.loc[df['Position(s)'].str.contains(pos.value)])
         col = "Rank MI Rate"
-        df[col] = df.loc[df['Position(s)'].str.contains("2B|SS", case=False, regex=True)][self.rank_basis].rank(ascending=False)
+        df[col] = df.loc[df['Position(s)'].str.contains("2B|SS", case=False, regex=True)][rank_col].rank(ascending=False)
         df[col].fillna(-999, inplace=True)
         df['MI Games'] = 0
     
@@ -115,7 +120,8 @@ class BatValues():
             #TODO: Finish this. this is tricky and involves splitting multi-position guys up
             return 0
 
-    def are_games_filled(self, num_teams:int=12) -> bool:
+    def are_games_filled(self) -> bool:
+        num_teams = self.num_teams
         '''Returns true if all positions have at least the minimum required games filled above replacement level for the league.'''
         filled_games = True
         if self.total_games['C'] < num_teams * self.target_games and self.max_rost_num['C'] > self.replacement_positions['C']:
@@ -187,7 +193,7 @@ class BatValues():
                 #Set maximum FOM value for each player to determine how many are rosterable
                 df['Max FOM'] = df.apply(self.calc_max_fom, axis=1)
                 self.calc_total_games(df)
-                while not self.are_games_filled(self.num_teams):
+                while not self.are_games_filled():
                     max_rep_lvl = 0.0
                     for pos, rep_lvl in self.replacement_levels.items():
                         if pos == 'Util': continue
@@ -201,12 +207,23 @@ class BatValues():
                                 max_rep_lvl = rep_lvl
                                 max_pos = pos
                     self.replacement_positions[max_pos] = self.replacement_positions[max_pos] + 1
+                    if not ScoringFormat.is_points_type(self.format):
+                        self.calculate_roto_bases(df)
                     #Recalcluate FOM for the position given the new replacement level
-                    self.get_position_fom_calc(df, Position._value2member_map_.get(max_pos))
-                    self.get_position_fom_calc(df, Position.POS_UTIL)
+                    if ScoringFormat.is_points_type(self.format):
+                        self.get_position_fom_calc(df, Position._value2member_map_.get(max_pos))
+                        self.get_position_fom_calc(df, Position.POS_UTIL)
+                    else:
+                        for pos in Position.get_discrete_offensive_pos():
+                            if self.replacement_positions[pos.value] > self.max_rost_num[pos.value]:
+                                self.replacement_positions[pos.value] = self.max_rost_num[pos.value]
+                            self.get_position_fom_calc(df, pos)
                     #Set maximum FOM value for each player to determine how many are rosterable
                     df['Max FOM'] = df.apply(self.calc_max_fom, axis=1)
                     self.calc_total_games(df)
+                    if not ScoringFormat.is_points_type(self.format) and self.are_games_filled():
+                        sigma = self.iterate_roto(df)
+                        self.calc_total_games(df)
                 #Augment the replacement levels by the input surpluses to get the final numbers
                 for pos in self.replacement_positions:
                     self.replacement_positions[pos] = min(self.replacement_positions[pos] + self.surplus_pos[pos], self.max_rost_num[pos])
@@ -224,6 +241,8 @@ class BatValues():
                                 min_rep_lvl = rep_lvl
                                 min_pos = pos
                         self.replacement_positions[min_pos] = self.replacement_positions[min_pos]-1
+                        if not ScoringFormat.is_points_type(self.format):
+                            self.calculate_roto_bases(df)
                         #Recalcluate FOM for the position given the new replacement level
                         self.get_position_fom_calc(df, min_pos)
                     else:
@@ -243,6 +262,8 @@ class BatValues():
                             maxed_out = True
                         else:
                             self.replacement_positions[max_pos] = self.replacement_positions[max_pos] + 1
+                            if not ScoringFormat.is_points_type(self.format):
+                                self.calculate_roto_bases(df)
                             #Recalcluate FOM for the position given the new replacement level
                             self.get_position_fom_calc(df, max_pos)
                             self.get_position_fom_calc(df, 'Util')
@@ -251,11 +272,30 @@ class BatValues():
                     #FOM is how many bats with a non-negative max FOM
                     num_bats = len(df.loc[df['Max FOM'] >= 0])
             elif self.rep_level_scheme == RepLevelScheme.NUM_ROSTERED:
-                df['Max FOM'] = df.apply(self.calc_max_fom, axis=1)
+                if not ScoringFormat.is_points_type(self.format):
+                    sigma = self.iterate_roto(df)
+                else:
+                    df['Max FOM'] = df.apply(self.calc_max_fom, axis=1)
             else:
                 #shouldn't get here
                 logging.error(f'Inappropriate Replacement Level Scheme {self.rep_level_scheme}')
                 raise InputException(f"Inappropriate Replacement Level Scheme {self.rep_level_scheme}")
+
+    def iterate_roto(self, df:DataFrame) -> float:
+        df['Max FOM'] = df.apply(self.calc_max_fom, axis=1)
+        sigma = 999
+        orig = df['Max FOM'].sum()
+        while abs(sigma) > 2:
+            self.calculate_roto_bases(df)
+            for pos in Position.get_discrete_offensive_pos():
+                if self.replacement_positions[pos.value] > self.max_rost_num[pos.value]:
+                    self.replacement_positions[pos.value] = self.max_rost_num[pos.value]
+                self.get_position_fom_calc(df, pos)
+            df['Max FOM'] = df.apply(self.calc_max_fom, axis=1)
+            updated = df['Max FOM'].sum()
+            sigma = orig - updated
+            orig = updated
+        return sigma
 
     def get_position_fom_calc(self, df:DataFrame, pos:Position) -> None:
         '''Calculate the FOM for each player eligible at a position based on the current replacement level.'''
@@ -270,10 +310,13 @@ class BatValues():
             #Filter to the current position
             par_rate = row[self.rank_basis] - rep_level
             #Are we doing P/PA values, or P/G values
-            if self.rank_basis == 'P/PA':
-                return par_rate * row['PA']
+            if ScoringFormat.is_points_type(self.format):
+                if self.rank_basis == 'P/PA':
+                    return par_rate * row['PA']
+                else:
+                    return par_rate * row['G']
             else:
-                return par_rate * row['G']
+                return par_rate
         #If the position doesn't apply, set FOM to -999.9 to differentiate from the replacement player
         return -999.9
 
@@ -326,15 +369,107 @@ class BatValues():
                 if pos != 'Util' and rep_level > max_rep_lvl:
                     max_rep_lvl = rep_level
             return max_rep_lvl
+    
+    def calculate_roto_bases(self, proj:DataFrame, init=False) -> None:
+        '''Calculates zScore information (average and stdev of the 4x4 or 5x5 stats). If init is true, will rank off of Runs, otherwise ranks off of previous zScores'''
+        if init:
+            self.rank_position_players(proj, 'R')
+        else:
+            self.rank_position_players(proj)
+        alr = self.roto_above_rl(proj)
+        above_rep_lvl = proj.loc[alr]
+        self.pa_per_team = above_rep_lvl['PA'].sum() / self.num_teams
+        self.ab_per_team = above_rep_lvl['AB'].sum() / self.num_teams
+        if self.format == ScoringFormat.OLD_SCHOOL_5X5:
+            self.stat_avg[StatType.AVG] = self.weighted_avg(above_rep_lvl, StatType.AVG, StatType.AB)
+            proj['AVG_Delta'] = proj.apply(self.calc_rate_delta, axis=1, args=(StatType.AVG,))
+            cols = ['R','HR','RBI','SB','AVG_Delta']
+        else:
+            self.stat_avg[StatType.OBP] = self.weighted_avg(above_rep_lvl, StatType.OBP, StatType.PA)
+            proj['OBP_Delta'] = proj.apply(self.calc_rate_delta, axis=1, args=(StatType.OBP,))
+            self.stat_avg[StatType.SLG] = self.weighted_avg(above_rep_lvl, StatType.SLG, StatType.AB)
+            proj['SLG_Delta'] = proj.apply(self.calc_rate_delta, axis=1, args=(StatType.SLG,))
+            cols = ['R','HR','OBP_Delta','SLG_Delta']
+        above_rep_lvl = above_rep_lvl = proj.loc[alr]
+        means = above_rep_lvl[cols].mean()
+        stds = above_rep_lvl[cols].std()
+        self.stat_avg[StatType.R] = means['R']
+        self.stat_std[StatType.R] = stds['R']
+        self.stat_avg[StatType.HR] = means['HR']
+        self.stat_std[StatType.HR] = stds['HR']
+        
+        if self.format == ScoringFormat.OLD_SCHOOL_5X5:
+            self.stat_avg[StatType.RBI] = means['RBI']
+            self.stat_std[StatType.RBI] = stds['RBI']
+            self.stat_avg[StatType.SB] = means['SB']
+            self.stat_std[StatType.SB] = stds['SB']
+            self.stat_std[StatType.AVG] = stds['AVG_Delta']
+        else:
+            self.stat_std[StatType.OBP] = stds['SLG_Delta']
+            self.stat_std[StatType.SLG] = stds['OBP_Delta']
+        proj['zScore'] = proj.apply(self.calc_z_score, axis=1)
+
+    def calc_rate_delta(self, row, stat:StatType) -> float:
+        '''Using the average of the rate stat and the team total AB or PA calculates the change in the rate stat for the player's contributions'''
+        if stat == StatType.OBP:
+            denom = self.pa_per_team
+            p_denom = row['PA']
+        else:
+            denom = self.ab_per_team
+            p_denom = row['AB']
+        return ((self.stat_avg[stat] * (denom-p_denom) 
+            + row[StatType.enum_to_display_dict().get(stat)] * p_denom)) \
+            / denom - self.stat_avg[stat]
+
+    def weighted_avg(self, df:DataFrame, vals:StatType, weights:StatType) -> float:
+        '''Returns the weighted average of the vals StatType with weights weighting'''
+        d = df[StatType.enum_to_display_dict().get(vals)]
+        w = df[StatType.enum_to_display_dict().get(weights)]
+        return (d * w).sum() / w.sum()
+    
+    def roto_above_rl(self, proj:DataFrame) -> List[bool]:
+        above_rl = []
+        for idx, row in proj.iterrows():
+            arl = False
+            for pos in Position.get_discrete_offensive_pos():
+                col = f"Rank {pos.value} Rate"
+                if row[col] > 0 and row[col] <= self.replacement_positions.get(pos.value):
+                    arl = True
+                    break
+            above_rl.append(arl)
+        return above_rl
+
+    def calc_z_score(self, row) -> float:
+        '''Calculates the zScore for the player row'''
+        zScore = 0
+        zScore += (row['R'] - self.stat_avg.get(StatType.R)) / self.stat_std.get(StatType.R)
+        zScore += (row['HR'] - self.stat_avg.get(StatType.HR)) / self.stat_std.get(StatType.HR)
+        if self.format == ScoringFormat.OLD_SCHOOL_5X5:
+            zScore += (row['RBI'] - self.stat_avg.get(StatType.RBI)) / self.stat_std.get(StatType.RBI)
+            zScore += (row['SB'] - self.stat_avg.get(StatType.SB)) / self.stat_std.get(StatType.SB)
+            zScore += row['AVG_Delta'] / self.stat_std.get(StatType.AVG)
+        else:
+            zScore += row['OBP_Delta'] / self.stat_std.get(StatType.OBP)
+            zScore += row['SLG_Delta'] / self.stat_std.get(StatType.SLG)
+        return zScore
 
     def calc_fom(self, pos_proj: DataFrame, min_pa:int) -> DataFrame:
         '''Returns a populated DataFrame with all required FOM information for all players above the minimum PA at all positions.'''
-        pos_proj['Points'] = pos_proj.apply(self.calc_bat_points, axis=1)
-        pos_proj['P/G'] = pos_proj.apply(self.calc_ppg, axis=1)
-        pos_proj['P/PA'] = pos_proj.apply(self.calc_pppa, axis=1)
+        if ScoringFormat.is_points_type(self.format):
+            pos_proj['Points'] = pos_proj.apply(self.calc_bat_points, axis=1)
+            pos_proj['P/G'] = pos_proj.apply(self.calc_ppg, axis=1)
+            pos_proj['P/PA'] = pos_proj.apply(self.calc_pppa, axis=1)
+            pos_min_pa = pos_proj.loc[pos_proj['PA'] >= min_pa]
+        else:
 
+            if self.rank_basis == RankingBasis.SGP:
+                #TODO: Implement SGP
+                ...
+            else:
+                pos_min_pa = pos_proj.loc[pos_proj['PA'] >= min_pa]
+                self.calculate_roto_bases(pos_min_pa, init=True)
         #Filter to players projected to a baseline amount of playing time
-        pos_min_pa = pos_proj.loc[pos_proj['PA'] >= min_pa]
-
+        
         self.get_position_fom(pos_min_pa)
+            pos_min_pa.to_csv(filepath, encoding='utf-8-sig')
         return pos_min_pa
