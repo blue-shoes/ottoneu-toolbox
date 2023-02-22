@@ -11,7 +11,7 @@ from domain.enum import CalculationDataType, Position, RepLevelScheme, ScoringFo
 
 pd.options.mode.chained_assignment = None # from https://stackoverflow.com/a/20627316
 
-class PointValues():
+class PlayerValues():
 
     def __init__(self, value_calc:ValueCalculation, debug=False, rostered_hitters=244, rostered_pitchers=196,
                     rp_limit=999):

@@ -3,7 +3,7 @@ from dao.session import Session
 from domain.domain import ValueCalculation, Projection, PlayerProjection, ProjectionData
 from domain.enum import Position, CalculationDataType as CDT, StatType, ScoringFormat, RankingBasis, IdType, RepLevelScheme, ProjectionType
 from domain.exception import InputException
-from value.point_values import PointValues
+from value.player_values import PlayerValues
 from services import player_services, projection_services
 from util import string_util, date_util
 import math
@@ -16,7 +16,7 @@ def perform_point_calculation(value_calc : ValueCalculation, pd = None) -> None:
     if pd is not None:
         pd.set_task_title("Initializing Value Calculation...")
         pd.increment_completion_percent(5)
-    value_calculation = PointValues(value_calc=value_calc)
+    value_calculation = PlayerValues(value_calc=value_calc)
     value_calculation.calculate_values(progress=pd)
 
 def get_num_rostered_rep_levels(value_calc: ValueCalculation) -> Dict[str,float]:
