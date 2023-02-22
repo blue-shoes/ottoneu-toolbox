@@ -66,6 +66,7 @@ def get_player_by_ottoneu_id(ottoneu_id:int) -> Player:
         player = session.query(Player).filter(Player.ottoneu_id == ottoneu_id).first()
     if player is None:
         player = get_player_from_ottoneu_player_page(ottoneu_id, 1)
+        player = session.query(Player).filter(Player.ottoneu_id == ottoneu_id).first()
     return player
 
 def is_populated() -> bool:
@@ -146,4 +147,5 @@ def get_player_from_ottoneu_player_page(player_id: int, league_id: int) -> Playe
         sal_info.roster_percentage = 0
         player.salary_info.append(sal_info)
         session.add(sal_info)
+        session.commit()
     return player
