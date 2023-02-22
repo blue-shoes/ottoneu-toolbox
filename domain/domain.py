@@ -317,6 +317,8 @@ class Projection(Base):
     def get_player_projection(self, player_id:int, idx:str=None, id_type:IdType=IdType.FANGRAPHS) -> PlayerProjection:
         '''Gets the PlayerProjection for the given player_id'''
         if player_id is None:
+            if idx is None:
+                return None
             for pp in self.player_projections:
                 if id_type == IdType.FANGRAPHS:
                     if idx.isnumeric():
