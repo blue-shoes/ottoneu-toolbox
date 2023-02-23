@@ -588,7 +588,7 @@ class DraftTool(tk.Frame):
                             index -= 1
                             continue
                         pos = player_services.get_player_positions(player)
-                        update_pos.append(pos)
+                        np.append(update_pos, pos)
                         if last_trans.iloc[index]['Type'].upper() == 'ADD':
                             salary = int(last_trans.iloc[index]['Salary'].split('$')[1])
                             self.values.at[player.index, 'Salary'] = salary
