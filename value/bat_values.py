@@ -209,7 +209,7 @@ class BatValues():
                     self.replacement_positions[max_pos] = self.replacement_positions[max_pos] + 1
                     if not ScoringFormat.is_points_type(self.format):
                         self.calculate_roto_bases(df)
-                    #Recalcluate FOM for the position given the new replacement level
+                    #Recalculate FOM for the position given the new replacement level
                     if ScoringFormat.is_points_type(self.format):
                         self.get_position_fom_calc(df, Position._value2member_map_.get(max_pos))
                         self.get_position_fom_calc(df, Position.POS_UTIL)
@@ -295,6 +295,7 @@ class BatValues():
             updated = df['Max FOM'].sum()
             sigma = orig - updated
             orig = updated
+            print(f'new sigma = {sigma}')
         return sigma
 
     def get_position_fom_calc(self, df:DataFrame, pos:Position) -> None:
@@ -408,6 +409,8 @@ class BatValues():
             self.stat_std[StatType.OBP] = stds['SLG_Delta']
             self.stat_std[StatType.SLG] = stds['OBP_Delta']
         proj['zScore'] = proj.apply(self.calc_z_score, axis=1)
+        print(f'Avg = {self.stat_avg}')
+        print(f'std = {self.stat_std}')
 
     def calc_rate_delta(self, row, stat:StatType) -> float:
         '''Using the average of the rate stat and the team total AB or PA calculates the change in the rate stat for the player's contributions'''
@@ -471,5 +474,11 @@ class BatValues():
         #Filter to players projected to a baseline amount of playing time
         
         self.get_position_fom(pos_min_pa)
+        if not ScoringFormat.is_points_type(self.format):
+            self.dirname = os.path.abspath(os.path.join(os.path.dirname( __file__ ), '..'))
+            self.intermed_subdirpath = os.path.join(self.dirname, 'data_dirs', 'intermediate')
+            if not path.exists(self.intermed_subdirpath):
+                os.mkdir(self.intermed_subdirpath)
+            filepath = os.path.join(self.intermed_subdirpath, f"pos_ranks.csv")
             pos_min_pa.to_csv(filepath, encoding='utf-8-sig')
         return pos_min_pa
