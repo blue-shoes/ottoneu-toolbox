@@ -287,6 +287,8 @@ class ArmValues():
 
     def usable_fom_calc(self, row, role) -> float:
         '''Returns an estimated usable number of pitching FOM based on the projection and pitcher ranking'''
+        if row[f'FOM {role}'] < -100:
+            return 0
         return row[f'FOM {role}'] * row[f'{role} Multiplier']
 
     def usable_gs_calc(self, row) -> float:
