@@ -9,6 +9,7 @@ from typing import List
 from domain.domain import ValueCalculation
 from domain.enum import RankingBasis, RepLevelScheme, CalculationDataType as CDT, Position, ScoringFormat, StatType
 from domain.exception import InputException
+from util import dataframe_util
 
 pd.options.mode.chained_assignment = None # from https://stackoverflow.com/a/20627316
 
@@ -382,16 +383,16 @@ class BatValues():
         self.pa_per_team = above_rep_lvl['PA'].sum() / self.num_teams
         self.ab_per_team = above_rep_lvl['AB'].sum() / self.num_teams
         if self.format == ScoringFormat.OLD_SCHOOL_5X5:
-            self.stat_avg[StatType.AVG] = self.weighted_avg(above_rep_lvl, StatType.AVG, StatType.AB)
+            self.stat_avg[StatType.AVG] = dataframe_util.weighted_avg(above_rep_lvl, 'AVG', 'AB')
             proj['AVG_Delta'] = proj.apply(self.calc_rate_delta, axis=1, args=(StatType.AVG,))
             cols = ['R','HR','RBI','SB','AVG_Delta']
         else:
-            self.stat_avg[StatType.OBP] = self.weighted_avg(above_rep_lvl, StatType.OBP, StatType.PA)
+            self.stat_avg[StatType.OBP] = dataframe_util.weighted_avg(above_rep_lvl, 'OBP', 'PA')
             proj['OBP_Delta'] = proj.apply(self.calc_rate_delta, axis=1, args=(StatType.OBP,))
-            self.stat_avg[StatType.SLG] = self.weighted_avg(above_rep_lvl, StatType.SLG, StatType.AB)
+            self.stat_avg[StatType.SLG] = dataframe_util.weighted_avg(above_rep_lvl, 'SLG', 'AB')
             proj['SLG_Delta'] = proj.apply(self.calc_rate_delta, axis=1, args=(StatType.SLG,))
             cols = ['R','HR','OBP_Delta','SLG_Delta']
-        above_rep_lvl = above_rep_lvl = proj.loc[alr]
+        above_rep_lvl = proj.loc[alr]
         means = above_rep_lvl[cols].mean()
         stds = above_rep_lvl[cols].std()
         self.stat_avg[StatType.R] = means['R']
@@ -423,12 +424,6 @@ class BatValues():
         return ((self.stat_avg[stat] * (denom-p_denom) 
             + row[StatType.enum_to_display_dict().get(stat)] * p_denom)) \
             / denom - self.stat_avg[stat]
-
-    def weighted_avg(self, df:DataFrame, vals:StatType, weights:StatType) -> float:
-        '''Returns the weighted average of the vals StatType with weights weighting'''
-        d = df[StatType.enum_to_display_dict().get(vals)]
-        w = df[StatType.enum_to_display_dict().get(weights)]
-        return (d * w).sum() / w.sum()
     
     def roto_above_rl(self, proj:DataFrame) -> List[bool]:
         above_rl = []
