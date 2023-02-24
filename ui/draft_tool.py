@@ -212,7 +212,7 @@ class DraftTool(tk.Frame):
             self.stop_monitor = ttk.Button(monitor_frame, textvariable=self.stop_draft_sv, command=self.stop_draft_monitor)
             self.stop_monitor.grid(column=1,row=0)
             CreateToolTip(self.stop_monitor, 'Stop watching league for new draft results')
-            btn = ttk.Button(monitor_frame, textvariable=self.cm_text, command=self.link_couchmanagers)
+            self.link_cm_btn = btn = ttk.Button(monitor_frame, textvariable=self.cm_text, command=self.link_couchmanagers)
             btn.grid(column=2, row=0)
             CreateToolTip(btn, 'Link a CouchManagers draft to this league.')
 
@@ -261,7 +261,7 @@ class DraftTool(tk.Frame):
             self.stop_monitor = ttk.Button(search_frame, textvariable=self.stop_draft_sv, command=self.stop_draft_monitor)
             self.stop_monitor.grid(column=0,row=4)
             CreateToolTip(self.stop_monitor, 'Stop watching league for new draft results')
-            btn = ttk.Button(search_frame, textvariable=self.cm_text, command=self.link_couchmanagers)
+            self.link_cm_btn = btn = ttk.Button(search_frame, textvariable=self.cm_text, command=self.link_couchmanagers)
             btn.grid(column=0, row=5)
             CreateToolTip(btn, 'Link a CouchManagers draft to this league.')
 
@@ -396,15 +396,18 @@ class DraftTool(tk.Frame):
 
     def start_draft_monitor(self):
         if self.draft.cm_draft is None:
-            logging.info('---Starting Draft Monitor---')
-            self.run_event.set()
-            self.monitor_thread = threading.Thread(target = self.refresh_thread)
-            self.monitor_thread.daemon = True
-            self.monitor_thread.start()
-            self.monitor_status.set('Draft Started')
-            self.monitor_status_lbl.config(fg='green')
-            self.parent.update_idletasks()
-            self.parent.after(1000, self.update_ui)
+            if not self.run_event.is_set():
+                logging.info('---Starting Draft Monitor---')
+                self.monitor_status.set('Draft Started')
+                self.monitor_status_lbl.config(fg='green')
+                self.start_monitor['state'] = DISABLED
+                self.link_cm_btn['state'] = DISABLED
+                self.monitor_thread = threading.Thread(target = self.refresh_thread)
+                self.monitor_thread.daemon = True
+                self.monitor_thread.start()
+                
+                self.parent.update_idletasks()
+                self.parent.after(60000, self.update_ui)
 
             if self.demo_source:
                 self.demo_thread = threading.Thread(target=draft_demo.demo_draft, args=(self.league, self.run_event))
@@ -429,6 +432,8 @@ class DraftTool(tk.Frame):
         if self.draft.cm_draft is None:
             logging.info('!!!Stopping Draft Monitor!!!')
             self.run_event.clear()
+            self.start_monitor['state'] = ACTIVE
+            self.link_cm_btn['state'] = ACTIVE
             self.monitor_status.set('Draft stopped')
             self.monitor_status_lbl.config(fg='red')
             self.parent.update_idletasks()
@@ -559,6 +564,8 @@ class DraftTool(tk.Frame):
             last_time = datetime.now() - timedelta(days=10)
             #speed up loop refresh for demo
             delay = 10
+        sleep(delay)
+        self.run_event.set()
         while(self.run_event.is_set()):
             if not self.demo_source:
                 last_trans = Scrape_Ottoneu().scrape_recent_trans_api(self.controller.league.ottoneu_id)
