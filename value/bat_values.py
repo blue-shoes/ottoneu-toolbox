@@ -195,13 +195,13 @@ class BatValues():
                 df['Max FOM'] = df.apply(self.calc_max_fom, axis=1)
                 self.calc_total_games(df)
                 while not self.are_games_filled():
-                    max_rep_lvl = 0.0
+                    max_rep_lvl = -999
                     for pos, rep_lvl in self.replacement_levels.items():
                         if pos == 'Util': continue
                         if not self.games_filled[pos] and rep_lvl > max_rep_lvl:
                             max_rep_lvl = rep_lvl
                             max_pos = pos
-                    if max_rep_lvl == 0.0:
+                    if max_rep_lvl == -999:
                         #Need to fill Util games with highest replacement
                         for pos, rep_lvl in self.replacement_levels.items():
                             if rep_lvl > max_rep_lvl:
@@ -410,8 +410,8 @@ class BatValues():
             self.stat_std[StatType.OBP] = stds['SLG_Delta']
             self.stat_std[StatType.SLG] = stds['OBP_Delta']
         proj['zScore'] = proj.apply(self.calc_z_score, axis=1)
-        print(f'Avg = {self.stat_avg}')
-        print(f'std = {self.stat_std}')
+        #print(f'Avg = {self.stat_avg}')
+        #print(f'std = {self.stat_std}')
 
     def calc_rate_delta(self, row, stat:StatType) -> float:
         '''Using the average of the rate stat and the team total AB or PA calculates the change in the rate stat for the player's contributions'''
