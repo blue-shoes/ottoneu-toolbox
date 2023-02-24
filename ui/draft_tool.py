@@ -692,7 +692,7 @@ class DraftTool(tk.Frame):
             l10 = '$0.0'
             roster = '0.0%'
         else:
-            if self.controller.preferences.get('General', Pref.AVG_SALARY_FOM) == AvgSalaryFom.MEAN.value:
+            if self.controller.preferences.get('General', Pref.AVG_SALARY_FOM, fallback=AvgSalaryFom.MEAN.value) == AvgSalaryFom.MEAN.value:
                 avg = f'$' + "{:.1f}".format(si.avg_salary)
             else:
                 avg = f'$' + "{:.1f}".format(si.med_salary)
