@@ -3,9 +3,11 @@ from pandas import DataFrame
 import os
 from os import path
 from copy import deepcopy
+from typing import List
 
 from domain.domain import ValueCalculation
-from domain.enum import RepLevelScheme, RankingBasis, CalculationDataType as CDT, ScoringFormat
+from domain.enum import RepLevelScheme, RankingBasis, CalculationDataType as CDT, ScoringFormat, Position, StatType
+from util import dataframe_util
 
 pd.options.mode.chained_assignment = None # from https://stackoverflow.com/a/20627316
 
@@ -30,12 +32,14 @@ class ArmValues():
         self.min_sp_ip = value_calc.get_input(CDT.SP_IP_TO_RANK)
         self.min_rp_ip = value_calc.get_input(CDT.RP_IP_TO_RANK)
         self.rank_basis = value_calc.pitcher_basis
-        self.scoring_format = value_calc.format
+        self.format = value_calc.format
+        self.stat_avg = {}
+        self.stat_std = {}
         
         self.no_sv_hld = value_calc.get_input(CDT.INCLUDE_SVH) == 0
         
         if self.rep_level_scheme == RepLevelScheme.FILL_GAMES:
-            if ScoringFormat.is_h2h(self.scoring_format):
+            if ScoringFormat.is_h2h(self.format):
                 self.gs_per_week = value_calc.get_input(CDT.GS_LIMIT)
                 self.est_rp_g_per_week = value_calc.get_input(CDT.RP_G_TARGET)
             else:
@@ -116,7 +120,8 @@ class ArmValues():
         else:
             num_arms = 0
             total_ip = 0
-            self.get_pitcher_fom_calc(df)
+            split = ScoringFormat.is_points_type(self.format)
+            self.get_pitcher_fom_calc(df, split=split)
 
             rosterable = df.loc[df['FOM'] >= 0]
             sp_ip = rosterable.apply(self.usable_ip_calc, args=("SP",), axis=1).sum()
@@ -127,17 +132,27 @@ class ArmValues():
             rp_g = rosterable.apply(self.usable_rp_g_calc, axis=1).sum()
 
             if self.rep_level_scheme == RepLevelScheme.FILL_GAMES:
-                if not ScoringFormat.is_h2h(self.scoring_format):
+                if not ScoringFormat.is_h2h(self.format):
                     while sp_ip < self.num_teams * (self.ip_per_team-self.rp_ip_per_team) and self.replacement_positions['SP'] < self.max_rost_num['SP']:
                         self.replacement_positions['SP'] = self.replacement_positions['SP'] + 1
-                        self.get_pitcher_fom_calc(df)
+                        if not ScoringFormat.is_points_type(self.format):
+                            self.calculate_roto_bases(df)
+                        self.get_pitcher_fom_calc(df, split=split)
                         rosterable = df.loc[df['FOM SP'] >= 0]
                         sp_ip = rosterable.apply(self.usable_ip_calc, args=("SP",), axis=1).sum()
+                        if not ScoringFormat.is_points_type(self.format) and sp_ip < self.num_teams * (self.ip_per_team-self.rp_ip_per_team):
+                            sigma = self.iterate_roto(df)
+                            sp_ip = rosterable.apply(self.usable_ip_calc, args=("SP",), axis=1).sum()
                     while rp_ip < self.num_teams * self.rp_ip_per_team and self.replacement_positions['RP'] < self.max_rost_num['RP']:
                         self.replacement_positions['RP'] = self.replacement_positions['RP'] + 1
-                        self.get_pitcher_fom_calc(df)
+                        if not ScoringFormat.is_points_type(self.format):
+                            self.calculate_roto_bases(df)
+                        self.get_pitcher_fom_calc(df, split=split)
                         rosterable = df.loc[df['FOM RP'] >= 0]
                         rp_ip = rosterable.apply(self.usable_ip_calc, args=("RP",), axis=1).sum()
+                        if not ScoringFormat.is_points_type(self.format) and rp_ip < self.num_teams * self.rp_ip_per_team:
+                            sigma = self.iterate_roto(df)
+                            rp_ip = rosterable.apply(self.usable_ip_calc, args=("SRP",), axis=1).sum()
                 else:
                     while sp_g < self.num_teams * self.gs_per_week * self.weeks and self.replacement_positions['SP'] < self.max_rost_num['SP']:
                         self.replacement_positions['SP'] = self.replacement_positions['SP'] + 1
@@ -151,7 +166,10 @@ class ArmValues():
                         rp_g = rosterable.apply(self.usable_rp_g_calc, axis=1).sum()
                 self.replacement_positions['SP'] = min(self.replacement_positions['SP'] + self.surplus_pos['SP'], self.max_rost_num['SP'])
                 self.replacement_positions['RP'] = min(self.replacement_positions['RP'] + self.surplus_pos['RP'], self.max_rost_num['RP'])
-                self.get_pitcher_fom_calc(df)
+                if not ScoringFormat.is_points_type(self.format) and rp_ip < self.num_teams * self.rp_ip_per_team:
+                    sigma = self.iterate_roto(df)
+                else:
+                    self.get_pitcher_fom_calc(df, split=split)
 
             elif self.rep_level_scheme == RepLevelScheme.TOTAL_ROSTERED:
                 if self.rank_basis == RankingBasis.PIP:
@@ -248,7 +266,10 @@ class ArmValues():
                         #...and how many GS
                         sp_g = rosterable.apply(self.usable_gs_calc, axis=1).sum()
             elif self.rep_level_scheme == RepLevelScheme.NUM_ROSTERED:
-                self.get_pitcher_fom_calc(df)
+                if split:
+                    self.get_pitcher_fom_calc(df)
+                else:
+                    sigma = self.iterate_roto(df)
             else:
                 raise Exception("Unusable Replacement Level Scheme")
         
@@ -276,19 +297,38 @@ class ArmValues():
         '''Returns an estimated usable number of relief games pitched based on the projection and pitcher ranking'''
         return (row['G'] - row['GS']) * row['RP Multiplier']
 
-    def get_pitcher_fom_calc(self, df:DataFrame) -> None:
+    def get_pitcher_fom_calc(self, df:DataFrame, split:bool=True) -> None:
         '''Sets replacement levels for the current iteration and populates FOM figures for all pitchers and roles'''
         sp_rep_level = self.get_pitcher_rep_level(df, 'SP')
         self.replacement_levels['SP'] = sp_rep_level
         rp_rep_level = self.get_pitcher_rep_level(df, 'RP')
         self.replacement_levels['RP'] = rp_rep_level
-        self.get_fom(df)
+        print(f'rep_levels = {self.replacement_levels}')
+        self.get_fom(df, split)
 
-    def get_fom(self, df:DataFrame) -> None:
+    def get_fom(self, df:DataFrame, split:bool=True) -> None:
         '''Calculates role FOMs and overall FOM for each pitcher in-place'''
-        df['FOM SP'] = df.apply(self.calc_pitch_fom_role, args=('SP', self.replacement_levels['SP']), axis=1)
-        df['FOM RP'] = df.apply(self.calc_pitch_fom_role, args=('RP', self.replacement_levels['RP']), axis=1)
-        df['FOM'] = df.apply(self.sum_role_fom, axis=1)
+        if split:
+            df['FOM SP'] = df.apply(self.calc_pitch_fom_role, args=('SP', self.replacement_levels['SP']), axis=1)
+            df['FOM RP'] = df.apply(self.calc_pitch_fom_role, args=('RP', self.replacement_levels['RP']), axis=1)
+            df['FOM'] = df.apply(self.sum_role_fom, axis=1)
+        else:
+            df['FOM SP'] = df.apply(self.calc_roto_fom_role, args=('SP', self.replacement_levels['SP']), axis=1)
+            df['FOM RP'] = df.apply(self.calc_roto_fom_role, args=('RP', self.replacement_levels['RP']), axis=1)
+            df['FOM'] = df.apply(self.calc_max_fom, axis=1)
+    
+    def calc_roto_fom_role(self, row, pos:str, rep_level:float) -> float:
+        if pos in row['Position(s)']:
+            #Filter to the current position
+            return row[RankingBasis.enum_to_display_dict().get(self.rank_basis)] - rep_level
+        #If the position doesn't apply, set FOM to -999.9 to differentiate from the replacement player
+        return -999.9
+    
+    def calc_max_fom(self, row) -> float:
+        '''Returns the max FOM value for the player'''
+        #Find the max FOM for player across all positions
+        #TODO: Confirm max works here instead of np.max
+        return max([row['FOM SP'], row['FOM RP']])
     
     def set_number_rostered(self, df:DataFrame) -> None:
         '''Determines what number pitcher represents replacement level for all roles and sets it in the internal dict'''
@@ -348,6 +388,8 @@ class ArmValues():
             sort_col = f"{prefix}P/IP {pos}"
         elif self.rank_basis == RankingBasis.PPG:
             sort_col = f"{prefix}PPG {pos}"
+        else:
+            sort_col = RankingBasis.enum_to_display_dict().get(self.rank_basis)
         pitch_df = pitch_df.sort_values(sort_col, ascending=False)
         #Get the nth value (here the # of players rostered at the position - 1 for 0 index) from the sorted data
         return pitch_df.iloc[self.replacement_positions[pos] - 1][sort_col]
@@ -527,23 +569,143 @@ class ArmValues():
         
         self.max_rost_num['SP'] = len(df.loc[df[f'IP SP'] >= self.min_sp_ip])
         self.max_rost_num['RP'] = len(df.loc[df['IP RP'] >= self.min_rp_ip])
+    
+    def iterate_roto(self, df:DataFrame) -> float:
+        df['Max FOM'] = df.apply(self.calc_max_fom, axis=1)
+        sigma = 999
+        orig = df['Max FOM'].sum()
+        while abs(sigma) > 2:
+            self.calculate_roto_bases(df)
+            self.get_pitcher_fom_calc(df, split=False)
+            df['Max FOM'] = df.apply(self.calc_max_fom, axis=1)
+            updated = df['Max FOM'].sum()
+            sigma = orig - updated
+            orig = updated
+            print(f'new sigma = {sigma}')
+        return sigma
+
+    def rank_roto_pitchers(self, df:DataFrame, rank_col:str=None, ascending=False) -> None:
+        '''Ranks all players eligible at each discrete pitching position according to the RankingBasis per the DataFrame columns'''
+        if rank_col is None:
+            rank_col = RankingBasis.enum_to_display_dict().get(self.rank_basis)
+        for pos in Position.get_discrete_pitching_pos():
+            col = f"Rank {pos.value} Rate"
+            g_col = f"{pos.value} Games"
+            df[g_col] = 0
+            df[col] = df.loc[df['Position(s)'].str.contains(pos.value)][rank_col].rank(ascending=ascending)
+            df[col].fillna(-999, inplace=True)
+            self.max_rost_num[pos.value] = len(df.loc[df['Position(s)'].str.contains(pos.value)])
+    
+    def roto_above_rl(self, proj:DataFrame) -> List[bool]:
+        above_rl = []
+        for idx, row in proj.iterrows():
+            arl = False
+            for pos in Position.get_discrete_pitching_pos():
+                col = f"Rank {pos.value} Rate"
+                if row[col] > 0 and row[col] <= self.replacement_positions.get(pos.value):
+                    arl = True
+                    break
+            above_rl.append(arl)
+        return above_rl
+
+    def calc_rate_delta(self, row, stat:StatType) -> float:
+        '''Using the average of the rate stat and the team total IP calculates the change in the rate stat for the player's contributions'''
+        denom = self.ip_per_team
+        p_denom = row['IP']
+
+        return self.stat_avg[stat] - ((self.stat_avg[stat] * (denom-p_denom) 
+            + row[StatType.enum_to_display_dict().get(stat)] * p_denom)) \
+            / denom
+    
+    def calculate_roto_bases(self, proj:DataFrame, init=False) -> None:
+        '''Calculates zScore information (average and stdev of the 4x4 or 5x5 stats). If init is true, will rank off of WHIP, otherwise ranks off of previous zScores'''
+        if init:
+            self.rank_roto_pitchers(proj, rank_col='WHIP', ascending=True)
+        else:
+            self.rank_roto_pitchers(proj)
+        alr = self.roto_above_rl(proj)
+        above_rep_lvl = proj.loc[alr]
+        self.ip_per_team = above_rep_lvl['IP'].sum() / self.num_teams
+
+        self.stat_avg[StatType.ERA] = dataframe_util.weighted_avg(above_rep_lvl, 'ERA', 'IP')
+        proj['ERA_Delta'] = proj.apply(self.calc_rate_delta, axis=1, args=(StatType.ERA,))
+        self.stat_avg[StatType.WHIP] = dataframe_util.weighted_avg(above_rep_lvl, 'WHIP', 'IP')
+        proj['WHIP_Delta'] = proj.apply(self.calc_rate_delta, axis=1, args=(StatType.WHIP,))
+
+        if self.format == ScoringFormat.OLD_SCHOOL_5X5:
+            cols = ['W','SV','SO','ERA_Delta','WHIP_Delta']
+        else:
+            self.stat_avg[StatType.HR_PER_9] = dataframe_util.weighted_avg(above_rep_lvl, 'HR/9', 'IP')
+            proj['HR/9_Delta'] = proj.apply(self.calc_rate_delta, axis=1, args=(StatType.HR_PER_9,))
+            cols = ['SO','WHIP_Delta','ERA_Delta','HR/9_Delta']
+        above_rep_lvl = proj.loc[alr]
+        means = above_rep_lvl[cols].mean()
+        stds = above_rep_lvl[cols].std()
+        self.stat_avg[StatType.K] = means['SO']
+        self.stat_std[StatType.K] = stds['SO']
+        self.stat_std[StatType.ERA] = stds['ERA_Delta']
+        self.stat_std[StatType.WHIP] = stds['WHIP_Delta']
+        
+        if self.format == ScoringFormat.OLD_SCHOOL_5X5:
+            self.stat_avg[StatType.W] = means['W']
+            self.stat_std[StatType.W] = stds['W']
+            self.stat_avg[StatType.SV] = means['SV']
+            self.stat_std[StatType.SV] = stds['SV']
+        else:
+            self.stat_std[StatType.HR_PER_9] = stds['HR/9_Delta']
+        proj['zScore'] = proj.apply(self.calc_z_score, axis=1)
+        print(f'Avg = {self.stat_avg}')
+        print(f'std = {self.stat_std}')
+
+    def calc_z_score(self, row) -> float:
+        '''Calculates the zScore for the player row'''
+        zScore = 0
+        zScore += (row['SO'] - self.stat_avg.get(StatType.K)) / self.stat_std.get(StatType.K)
+        zScore += row['ERA_Delta'] / self.stat_std.get(StatType.ERA)
+        zScore += row['WHIP_Delta'] / self.stat_std.get(StatType.WHIP)
+        if self.format == ScoringFormat.OLD_SCHOOL_5X5:
+            zScore += (row['W'] - self.stat_avg.get(StatType.W)) / self.stat_std.get(StatType.W)
+            zScore += (row['SV'] - self.stat_avg.get(StatType.SV)) / self.stat_std.get(StatType.SV)
+        else:
+            zScore += row['HR/9_Delta'] / self.stat_std.get(StatType.HR_PER_9)
+        return zScore
 
     def calc_fom(self, df:DataFrame) -> DataFrame:
         '''Returns a populated DataFrame with all required FOM information for all players above the minimum IP at all positions.'''
-        df['Points'] = df.apply(self.calc_pitch_points, axis=1)
-        df['No SVH Points'] = df.apply(self.calc_pitch_points_no_svh, axis=1)
+        if ScoringFormat.is_points_type(self.format):
+            df['Points'] = df.apply(self.calc_pitch_points, axis=1)
+            df['No SVH Points'] = df.apply(self.calc_pitch_points_no_svh, axis=1)
 
-        df['P/IP'] = df.apply(self.calc_ppi, axis=1)
-        df['No SVH P/IP'] = df.apply(self.calc_ppi_no_svh, axis=1)
-        if self.rank_basis == RankingBasis.PPG:
-            df['PPG'] = df.apply(self.calc_ppg, axis=1)
-            df['No SVH PPG'] = df.apply(self.calc_ppg_no_svh, axis=1)
+            df['P/IP'] = df.apply(self.calc_ppi, axis=1)
+            df['No SVH P/IP'] = df.apply(self.calc_ppi_no_svh, axis=1)
+            if self.rank_basis == RankingBasis.PPG:
+                df['PPG'] = df.apply(self.calc_ppg, axis=1)
+                df['No SVH PPG'] = df.apply(self.calc_ppg_no_svh, axis=1)
+            
+            #Filter to pitchers projected to a baseline amount of playing time
+            real_pitchers = df.loc[df.apply(self.not_a_belly_itcher_filter, axis=1)]
 
-        #Filter to pitchers projected to a baseline amount of playing time
-        real_pitchers = df.loc[df.apply(self.not_a_belly_itcher_filter, axis=1)]
-
-        self.estimate_role_splits(real_pitchers)
+            self.estimate_role_splits(real_pitchers)
+        else:
+            if self.rank_basis == RankingBasis.SGP:
+                #TODO: Implement SGP
+                ...
+            else:
+                real_pitchers = df.loc[df.apply(self.not_a_belly_itcher_filter, axis=1)]
+                real_pitchers['IP RP'] = real_pitchers.apply(self.rp_ip_func, axis=1)
+                real_pitchers['IP SP'] = real_pitchers.apply(self.sp_ip_func, axis=1)
+                real_pitchers['SP Multiplier'] = 1
+                real_pitchers['RP Multiplier'] = 1
+                self.calculate_roto_bases(real_pitchers, init=True)
 
         real_pitchers = self.get_pitcher_fom(real_pitchers)
+
+        if not ScoringFormat.is_points_type(self.format):
+            self.dirname = os.path.abspath(os.path.join(os.path.dirname( __file__ ), '..'))
+            self.intermed_subdirpath = os.path.join(self.dirname, 'data_dirs', 'intermediate')
+            if not path.exists(self.intermed_subdirpath):
+                os.mkdir(self.intermed_subdirpath)
+            filepath = os.path.join(self.intermed_subdirpath, f"pitch_ranks.csv")
+            real_pitchers.to_csv(filepath, encoding='utf-8-sig')
 
         return real_pitchers
