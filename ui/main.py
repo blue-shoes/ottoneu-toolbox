@@ -9,6 +9,7 @@ from tkinter import messagebox as mb
 import datetime
 import threading
 import requests
+import sys
 
 from ui.dialog import preferences, progress, league_select, value_select, help, update
 from ui.start import Start
@@ -19,7 +20,7 @@ from domain.domain import Property
 from domain.enum import Preference as Pref, PropertyType
 from dao import db_update
    
-__version__ = '1.2.3'
+__version__ = '1.2.4'
 
 class Main(tk.Tk):
 
@@ -70,7 +71,7 @@ class Main(tk.Tk):
         self.current_page = Start.__name__
 
         if self.startup_tasks():
-            exit(0)
+            sys.exit(0)
 
         self.lift()
         self.focus_force()

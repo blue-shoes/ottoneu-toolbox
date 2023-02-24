@@ -29,6 +29,7 @@ def demo_draft(league, run_event: threading.Event, player_source='.\\demo\\data\
 
     index = 0
     print('---BEGINNING DRAFT---')
+    sleep(45)
     while index < len(results) and run_event.is_set():
         sleep(randint(5,10))
         print('!!!Getting player!!!')
