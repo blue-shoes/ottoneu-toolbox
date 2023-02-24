@@ -366,7 +366,7 @@ class BatValues():
         else:
             #Util replacement level is equal to the highest replacement level at any position
             pos_df = df
-            max_rep_lvl = 0.0
+            max_rep_lvl = -100.0
             for pos, rep_level in self.replacement_levels.items():
                 if pos != 'Util' and rep_level > max_rep_lvl:
                     max_rep_lvl = rep_level
