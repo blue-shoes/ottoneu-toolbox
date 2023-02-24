@@ -908,6 +908,8 @@ class DraftTool(tk.Frame):
             elif self.value_calculation.hitter_basis == RankingBasis.PPPA:
                 hit_rate = ('P/PA',)
                 pos_hit_rate = hit_rate
+            elif self.value_calculation.hitter_basis == RankingBasis.FG_AC:
+                hit_rate = pos_hit_rate = tuple()
             else:
                 raise Exception(f"Unhandled hitter_basis {self.value_calculation.hitter_basis}")
             if self.value_calculation.pitcher_basis == RankingBasis.PIP:
@@ -920,6 +922,8 @@ class DraftTool(tk.Frame):
                     pitch_rate = ('SABR PPG',)
                 else:
                     pitch_rate = ('PP/G',)
+            elif self.value_calculation.pitcher_basis == RankingBasis.FG_AC:
+                pitch_rate = tuple()
             else:
                 raise Exception(f"Unhandled pitcher_basis {self.value_calculation.pitcher_basis}")
             self.overall_view.set_display_columns(player_cols + p_points + hit_rate + pitch_rate + salary_cols)
