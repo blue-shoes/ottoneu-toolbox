@@ -417,7 +417,7 @@ class DraftTool(tk.Frame):
                 self.check_new_cm_teams()
 
     def update_ui(self):
-        if not self.run_event.is_set and self.queue.empty():
+        if not self.run_event.is_set() and self.queue.empty():
             return
         if not self.queue.empty():
             key, data = self.queue.get()
@@ -572,7 +572,7 @@ class DraftTool(tk.Frame):
             most_recent = last_trans.iloc[0]['Date']
             if most_recent > last_time:
                 index = len(last_trans)-1
-                update_pos = []
+                update_pos = set()
                 while index >= 0:
                     if last_trans.iloc[index]['Date'] > last_time:
                         otto_id = last_trans.iloc[index]['Ottoneu ID']
@@ -588,7 +588,8 @@ class DraftTool(tk.Frame):
                             index -= 1
                             continue
                         pos = player_services.get_player_positions(player)
-                        np.append(update_pos, pos)
+                        for p in pos:
+                            update_pos.add(p)
                         if last_trans.iloc[index]['Type'].upper() == 'ADD':
                             salary = int(last_trans.iloc[index]['Salary'].split('$')[1])
                             self.values.at[player.index, 'Salary'] = salary
@@ -600,7 +601,7 @@ class DraftTool(tk.Frame):
                                 self.pos_values[p].at[player.index, 'Salary'] = 0
                     index -= 1
                 last_time = most_recent
-                self.queue.put(('pos', list(set(update_pos))))
+                self.queue.put(('pos', list(update_pos)))
             sleep(delay)
 
     def refresh_views(self, pos_keys=None):
@@ -1307,10 +1308,10 @@ def main():
         run_event = threading.Event()
         tool = DraftTool(run_event)
     except Exception:
-        if run_event.is_set:
+        if run_event.is_set():
             run_event.clear()
     finally:
-        if run_event.is_set:
+        if run_event.is_set():
             run_event.clear()
 
 if __name__ == '__main__':
