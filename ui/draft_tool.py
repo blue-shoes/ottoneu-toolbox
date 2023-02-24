@@ -37,6 +37,7 @@ class DraftTool(tk.Frame):
         self.demo_source = controller.demo_source
         self.demo_thread = None
         self.run_event = controller.run_event
+        self.run_event.set()
         self.queue = queue.Queue()
         self.sort_cols = {}
         self.show_drafted_players = tk.BooleanVar()
@@ -211,6 +212,7 @@ class DraftTool(tk.Frame):
             self.monitor_status_lbl.grid(column=2,row=0)
             self.stop_monitor = ttk.Button(monitor_frame, textvariable=self.stop_draft_sv, command=self.stop_draft_monitor)
             self.stop_monitor.grid(column=1,row=0)
+            self.stop_monitor['state'] = DISABLED
             CreateToolTip(self.stop_monitor, 'Stop watching league for new draft results')
             self.link_cm_btn = btn = ttk.Button(monitor_frame, textvariable=self.cm_text, command=self.link_couchmanagers)
             btn.grid(column=2, row=0)
@@ -261,6 +263,7 @@ class DraftTool(tk.Frame):
             self.stop_monitor = ttk.Button(search_frame, textvariable=self.stop_draft_sv, command=self.stop_draft_monitor)
             self.stop_monitor.grid(column=0,row=4)
             CreateToolTip(self.stop_monitor, 'Stop watching league for new draft results')
+            self.stop_monitor['state'] = DISABLED
             self.link_cm_btn = btn = ttk.Button(search_frame, textvariable=self.cm_text, command=self.link_couchmanagers)
             btn.grid(column=0, row=5)
             CreateToolTip(btn, 'Link a CouchManagers draft to this league.')
@@ -396,18 +399,19 @@ class DraftTool(tk.Frame):
 
     def start_draft_monitor(self):
         if self.draft.cm_draft is None:
-            if not self.run_event.is_set():
+            self.monitor_status.set('Draft Started')
+            self.monitor_status_lbl.config(fg='green')
+            self.start_monitor['state'] = DISABLED
+            self.link_cm_btn['state'] = DISABLED
+            if self.run_event.is_set():
+                self.run_event.clear()
                 logging.info('---Starting Draft Monitor---')
-                self.monitor_status.set('Draft Started')
-                self.monitor_status_lbl.config(fg='green')
-                self.start_monitor['state'] = DISABLED
-                self.link_cm_btn['state'] = DISABLED
                 self.monitor_thread = threading.Thread(target = self.refresh_thread)
                 self.monitor_thread.daemon = True
                 self.monitor_thread.start()
                 
                 self.parent.update_idletasks()
-                self.parent.after(60000, self.update_ui)
+                self.parent.after(1000, self.update_ui)
 
             if self.demo_source:
                 self.demo_thread = threading.Thread(target=draft_demo.demo_draft, args=(self.league, self.run_event))
@@ -420,8 +424,11 @@ class DraftTool(tk.Frame):
                 self.check_new_cm_teams()
 
     def update_ui(self):
-        if not self.run_event.is_set() and self.queue.empty():
+        if self.run_event.is_set() and self.queue.empty():
+            self.stop_monitor['state'] = DISABLED
             return
+        if str(self.stop_monitor['state']) == DISABLED:
+            self.stop_monitor['state'] = ACTIVE
         if not self.queue.empty():
             key, data = self.queue.get()
             logging.debug(f'Updating the following positions: {data}')
@@ -431,7 +438,7 @@ class DraftTool(tk.Frame):
     def stop_draft_monitor(self):
         if self.draft.cm_draft is None:
             logging.info('!!!Stopping Draft Monitor!!!')
-            self.run_event.clear()
+            self.run_event.set()
             self.start_monitor['state'] = ACTIVE
             self.link_cm_btn['state'] = ACTIVE
             self.monitor_status.set('Draft stopped')
@@ -456,6 +463,7 @@ class DraftTool(tk.Frame):
             self.start_draft_sv.set('Refresh CM Draft')
             CreateToolTip(self.start_monitor, 'Gets the latest CouchManager draft results and applies them.')
             self.stop_draft_sv.set('Unlink CM Draft')
+            self.stop_monitor['state'] = ACTIVE
             CreateToolTip(self.stop_monitor, 'Removes the connection to the CouchManagers draft for the league and reverts to the Ottoneu-only rosters.')
             if self.draft.cm_draft.setup:
                 self.resolve_cm_draft_with_rosters(init=False)
@@ -474,6 +482,7 @@ class DraftTool(tk.Frame):
             self.start_draft_sv.set('Start Draft Monitor')
             CreateToolTip(self.start_monitor, 'Begin watching league for new draft results')
             self.stop_draft_sv.set('Stop Draft Monitor')
+            self.stop_monitor['state'] = DISABLED
             CreateToolTip(self.stop_monitor, 'Stop watching league for new draft results')
             return True
         return False
@@ -564,9 +573,9 @@ class DraftTool(tk.Frame):
             last_time = datetime.now() - timedelta(days=10)
             #speed up loop refresh for demo
             delay = 10
-        sleep(delay)
-        self.run_event.set()
-        while(self.run_event.is_set()):
+        logging.info('Entering Draft Refresh Loop')
+        self.run_event.clear()
+        while(not self.run_event.is_set()):
             if not self.demo_source:
                 last_trans = Scrape_Ottoneu().scrape_recent_trans_api(self.controller.league.ottoneu_id)
             else:
@@ -609,7 +618,8 @@ class DraftTool(tk.Frame):
                     index -= 1
                 last_time = most_recent
                 self.queue.put(('pos', list(update_pos)))
-            sleep(delay)
+            self.run_event.wait(delay)
+        logging.info('Exiting Draft Refresh Loop')
 
     def refresh_views(self, pos_keys=None):
         self.calc_inflation()
@@ -838,7 +848,7 @@ class DraftTool(tk.Frame):
         
     def initialize_draft(self, same_values=False):  
         restart = False
-        if self.run_event.is_set():
+        if not self.run_event.is_set():
             self.stop_draft_monitor()
         pd = progress.ProgressDialog(self.parent, 'Initializing Draft Session')
         pd.set_task_title('Loading Rosters...')
@@ -871,6 +881,7 @@ class DraftTool(tk.Frame):
             self.start_draft_sv.set('Refresh CM Draft')
             CreateToolTip(self.start_monitor, 'Gets the latest CouchManager draft results and applies them.')
             self.stop_draft_sv.set('Unlink CM Draft')
+            self.stop_monitor['state'] = ACTIVE
             CreateToolTip(self.stop_monitor, 'Removes the connection to the CouchManagers draft for the league and reverts to the Ottoneu-only rosters.')
             if self.draft.cm_draft.setup:
                 self.resolve_cm_draft_with_rosters()
@@ -1315,11 +1326,11 @@ def main():
         run_event = threading.Event()
         tool = DraftTool(run_event)
     except Exception:
-        if run_event.is_set():
-            run_event.clear()
+        if not run_event.is_set():
+            run_event.set()
     finally:
-        if run_event.is_set():
-            run_event.clear()
+        if not run_event.is_set():
+            run_event.set()
 
 if __name__ == '__main__':
     main()
