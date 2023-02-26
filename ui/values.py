@@ -188,7 +188,7 @@ class ValuesCalculation(tk.Frame):
         gt_combo.bind("<<ComboboxSelected>>", self.update_game_type)
         # TODO: Don't hardcode game types, include other types
 
-        gt_combo['values'] = (gt_map[ScoringFormat.FG_POINTS], gt_map[ScoringFormat.SABR_POINTS], gt_map[ScoringFormat.H2H_FG_POINTS], gt_map[ScoringFormat.H2H_SABR_POINTS])
+        gt_combo['values'] = (gt_map[ScoringFormat.FG_POINTS], gt_map[ScoringFormat.SABR_POINTS], gt_map[ScoringFormat.H2H_FG_POINTS], gt_map[ScoringFormat.H2H_SABR_POINTS], gt_map[ScoringFormat.OLD_SCHOOL_5X5], gt_map[ScoringFormat.CLASSIC_4X4])
         gt_combo.grid(column=1,row=2,pady=5)
 
         ttk.Label(inpf, text="Number of Teams:").grid(column=0, row=3,pady=5)
@@ -356,6 +356,25 @@ class ValuesCalculation(tk.Frame):
     def update_game_type(self, event: Event):
         self.set_display_columns()
         self.set_advanced_button_status()
+        if ScoringFormat.is_points_type(ScoringFormat.name_to_enum_map().get(self.game_type.get())):
+            self.hitter_basis_cb['values'] = ('P/G','P/PA')
+            if self.hitter_basis.get() not in self.hitter_basis_cb['values']:
+                self.hitter_basis.set('P/G')
+            self.pitcher_basis_cb['values'] = ('P/IP', 'P/G')
+            if self.pitcher_basis.get() not in self.pitcher_basis_cb['values']:
+                self.pitcher_basis.set('P/IP')
+            self.static_rl_btn['state'] = ACTIVE
+        else:
+            self.hitter_basis_cb['values'] = ('zScore')
+            if self.hitter_basis.get() not in self.hitter_basis_cb['values']:
+                self.hitter_basis.set('zScore')
+            self.pitcher_basis_cb['values'] = ('zScore')
+            if self.pitcher_basis.get() not in self.pitcher_basis_cb['values']:
+                self.pitcher_basis.set('zScore')
+            self.static_rl_btn['state'] = DISABLED
+            if self.rep_level_scheme.get() == RepLevelScheme.STATIC_REP_LEVEL.value:
+                self.rep_level_scheme.set(RepLevelScheme.NUM_ROSTERED.value)
+
 
     def select_projection(self):
         count = projection_services.get_projection_count()
@@ -823,45 +842,55 @@ class ValuesCalculation(tk.Frame):
             h_basis = RankingBasis.display_to_enum_map().get(self.hitter_basis.get())
             p_basis = RankingBasis.display_to_enum_map().get(self.pitcher_basis.get())
             scoring_format = ScoringFormat.name_to_enum_map().get(self.game_type.get())
-            if self.sv_hld_bv.get():
-                prefix = ''
-            else:
-                prefix = 'NSH '
-            if h_basis == RankingBasis.PPG:
-                if p_basis == RankingBasis.PPG:
-                    overall.append('HP/G')
-                else:
-                    overall.append("P/G")
-                hit.append("P/G")
-            elif h_basis == RankingBasis.PPPA:
-                overall.append("P/PA")
-                hit.append("P/PA")
-            if p_basis == RankingBasis.PPG:
-                if ScoringFormat.is_sabr(scoring_format):
-                    overall.append(f"{prefix}SABR PP/G")
-                    pitch.append(f"{prefix}SABR PP/G")
-                else:
-                    overall.append(f"{prefix}PP/G")
-                    pitch.append(f"{prefix}PP/G")
-            elif p_basis == RankingBasis.PIP:
-                if ScoringFormat.is_sabr(scoring_format):
-                    overall.append(f"{prefix}SABR P/IP")
-                    pitch.append(f"{prefix}SABR P/IP")
-                else:
-                    overall.append(f"{prefix}P/IP")
-                    pitch.append(f"{prefix}P/IP")
             if ScoringFormat.is_points_type(scoring_format):
-                if ScoringFormat.is_sabr(scoring_format):
-                    overall.append(f"{prefix}SABR Pts")
-                    pitch.append(f"{prefix}SABR Pts")
+                if self.sv_hld_bv.get():
+                    prefix = ''
                 else:
-                    overall.append(f"{prefix}FG Pts")
-                    pitch.append(f"{prefix}FG Pts")
-                hit.append("FG Pts")
-                if self.projection.type != ProjectionType.VALUE_DERIVED:
-                    hit.extend(points_hitting_columns)
-                    pitch.extend(points_pitching_columns)
-
+                    prefix = 'NSH '
+                if h_basis == RankingBasis.PPG:
+                    if p_basis == RankingBasis.PPG:
+                        overall.append('HP/G')
+                    else:
+                        overall.append("P/G")
+                    hit.append("P/G")
+                elif h_basis == RankingBasis.PPPA:
+                    overall.append("P/PA")
+                    hit.append("P/PA")
+                if p_basis == RankingBasis.PPG:
+                    if ScoringFormat.is_sabr(scoring_format):
+                        overall.append(f"{prefix}SABR PP/G")
+                        pitch.append(f"{prefix}SABR PP/G")
+                    else:
+                        overall.append(f"{prefix}PP/G")
+                        pitch.append(f"{prefix}PP/G")
+                elif p_basis == RankingBasis.PIP:
+                    if ScoringFormat.is_sabr(scoring_format):
+                        overall.append(f"{prefix}SABR P/IP")
+                        pitch.append(f"{prefix}SABR P/IP")
+                    else:
+                        overall.append(f"{prefix}P/IP")
+                        pitch.append(f"{prefix}P/IP")
+                if ScoringFormat.is_points_type(scoring_format):
+                    if ScoringFormat.is_sabr(scoring_format):
+                        overall.append(f"{prefix}SABR Pts")
+                        pitch.append(f"{prefix}SABR Pts")
+                    else:
+                        overall.append(f"{prefix}FG Pts")
+                        pitch.append(f"{prefix}FG Pts")
+                    hit.append("FG Pts")
+                    if self.projection.type != ProjectionType.VALUE_DERIVED:
+                        hit.extend(points_hitting_columns)
+                        pitch.extend(points_pitching_columns)
+            elif scoring_format == ScoringFormat.OLD_SCHOOL_5X5:
+                for col in old_school_hitting_columns:
+                    hit.append(col)
+                for col in old_school_pitching_columns:
+                    pitch.append(col)
+            elif scoring_format == ScoringFormat.CLASSIC_4X4:
+                for col in classic_hitting_columns:
+                    hit.append(col)
+                for col in classic_pitching_columns:
+                    pitch.append(col)
         self.overall_table.set_display_columns(tuple(overall))
         for pos in self.tables:
             if pos in Position.get_offensive_pos():
@@ -879,7 +908,7 @@ class ValuesCalculation(tk.Frame):
         btn = ttk.Radiobutton(inpf, text="Number Rostered", value=RepLevelScheme.NUM_ROSTERED.value, command=self.update_rep_level_scheme, variable=self.rep_level_scheme)
         btn.grid(column=0,row=row,pady=5)
         CreateToolTip(btn, 'Sets the number of players eligible at the given position that are at or above replacement level.')
-        btn = ttk.Radiobutton(inpf, text="Replacment Level", value=RepLevelScheme.STATIC_REP_LEVEL.value, command=self.update_rep_level_scheme, variable=self.rep_level_scheme)
+        self.static_rl_btn = btn = ttk.Radiobutton(inpf, text="Replacement Level", value=RepLevelScheme.STATIC_REP_LEVEL.value, command=self.update_rep_level_scheme, variable=self.rep_level_scheme)
         btn.grid(column=1,row=row,pady=5)
         CreateToolTip(btn, 'Sets the static replacement level value (in units corresponding to the selected basis) to use for calculations.')
         btn = ttk.Radiobutton(inpf, text="Fill Games", value=RepLevelScheme.FILL_GAMES.value, command=self.update_rep_level_scheme, variable=self.rep_level_scheme)
@@ -1029,8 +1058,8 @@ class ValuesCalculation(tk.Frame):
         bad_rep_level = []
 
         game_type = ScoringFormat.name_to_enum_map().get(self.game_type.get())
-        if not ScoringFormat.is_points_type(game_type):
-            errors.append(f"Calculations for {self.game_type.get()} not currently supported.")
+        #if not ScoringFormat.is_points_type(game_type):
+        #    errors.append(f"Calculations for {self.game_type.get()} not currently supported.")
         
         if self.projection is None:
             errors.append("No projection selected. Please select a projection before calculating.")
