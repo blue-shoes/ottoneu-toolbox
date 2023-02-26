@@ -7,7 +7,7 @@ import value.arm_values
 
 from services import projection_services, calculation_services
 from domain.domain import ValueCalculation
-from domain.enum import CalculationDataType, Position, RepLevelScheme, ScoringFormat
+from domain.enum import CalculationDataType, Position, RepLevelScheme, ScoringFormat, RankingBasis
 
 pd.options.mode.chained_assignment = None # from https://stackoverflow.com/a/20627316
 
@@ -137,7 +137,7 @@ class PlayerValues():
                 pos_value['Value'] = pos_value[f'{pos.value}_FOM'].apply(lambda x: x*self.bat_dol_per_fom + 1.0 if x >= 0 else 0)
             else:
                 pos_value['Value'] = pos_value[f'{pos.value}_FOM'].apply(lambda x: x*self.dol_per_fom + 1.0 if x >= 0 else 0)
-            pos_value.sort_values(by=['Value','P/G'], inplace=True, ascending=[False,False])
+            pos_value.sort_values(by=['Value',RankingBasis.enum_to_display_dict().get(self.value_calc.hitter_basis)], inplace=True, ascending=[False,False])
             pos_value['Dol_Value'] = pos_value['Value'].apply(lambda x : "${:.0f}".format(x))
 
             for index, row in pos_value.iterrows():
@@ -155,7 +155,7 @@ class PlayerValues():
                 pos_value['Value'] = pos_value[f'FOM {pos.value}'].apply(lambda x: x*self.arm_dol_per_fom + 1.0 if x >= 0 else 0)
             else:
                 pos_value['Value'] = pos_value[f'FOM {pos.value}'].apply(lambda x: x*self.dol_per_fom + 1.0 if x >= 0 else 0)
-            pos_value.sort_values(by=['Value','P/IP'], inplace=True, ascending=[False,False])
+            pos_value.sort_values(by=['Value',RankingBasis.enum_to_display_dict().get(self.value_calc.pitcher_basis)], inplace=True, ascending=[False,False])
             pos_value['Dol_Value'] = pos_value['Value'].apply(lambda x : "${:.0f}".format(x))
 
             for index, row in pos_value.iterrows():
@@ -186,17 +186,12 @@ class PlayerValues():
         intersect = pos_index.intersection(pitch_index)
 
         results = pos_min_pa
-        results['P/IP'] = 0
-        pitch_results['P/G'] = 0
         for index in intersect:
             results.loc[index, 'Value'] = results.loc[index]['Value'] + pitch_results.loc[index]['Value']
-            results.loc[index, 'Points'] = results.loc[index]['Points'] + pitch_results.loc[index]['Points']
             results.loc[index, 'FOM'] = results.loc[index]['FOM'] + pitch_results.loc[index]['FOM']
-            results.loc[index, 'P/IP'] = pitch_results.loc[index]['P/IP']
             pitch_results = pitch_results.drop(index=index)
 
-        results = results.append(pitch_results)
-        results['Dol_Value'] = results['Value'].apply(lambda x : "${:.0f}".format(x))
+        results = pd.concat([results, pitch_results])
         
         for index, row in results.iterrows():
             self.value_calc.set_player_value(index, Position.OVERALL, row['Value'])
