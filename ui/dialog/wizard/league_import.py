@@ -46,7 +46,11 @@ class Wizard(wizard.Wizard):
                 team.users_team = True
             else:
                 team.users_team = False
-        self.parent.league = league_services.save_league(self.league)
+        prog = progress.ProgressDialog(self, 'Saving League')
+        prog.set_task_title('Saving league')
+        prog.set_completion_percent(20)
+        self.parent.league = league_services.save_league(self.league, pd=prog)
+        prog.complete()
         super().finish()
 
 class Step1(tk.Frame):

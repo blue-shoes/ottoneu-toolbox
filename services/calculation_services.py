@@ -512,7 +512,7 @@ def init_outputs_from_upload(vc: ValueCalculation, df : DataFrame, game_type:Sco
             total_count += 1
             above_rep = True
         if id_type == IdType.OTTONEU:
-            player = player_services.get_player_by_ottoneu_id(int(index))
+            player = player_services.get_player_by_ottoneu_id(int(index), pd=pd)
         elif id_type == IdType.FANGRAPHS:
             player = player_services.get_player_by_fg_id(index)
         else:

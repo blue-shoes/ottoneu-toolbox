@@ -50,7 +50,7 @@ def refresh_league(league_idx:int, pd=None) -> League:
                 rs = Roster_Spot()
                 player = session.query(Player).filter_by(ottoneu_id = idx).first()
                 if player is None:
-                    player = player_services.get_player_from_ottoneu_player_page(idx, lg.ottoneu_id)
+                    player = player_services.get_player_from_ottoneu_player_page(idx, lg.ottoneu_id, session=session, pd=pd)
                 rs.player = player
                 rs.salary = row['Salary'].split('$')[1]
                 team_map[team].roster_spots.append(rs)
