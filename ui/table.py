@@ -153,6 +153,8 @@ def sort_cmp(t1):
         return v1
     if v1[0] == '$':
         return float(v1[1:])
+    if v1[-1] == '%':
+        return float(v1[:-1])
     try:
         float(v1)
         return float(v1)
