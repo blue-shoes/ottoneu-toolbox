@@ -1,5 +1,6 @@
 from ui import main
 import sys, getopt, os
+import logging
 
 def resource_path(end_file):
     """ Get absolute path to resource, works for dev and for PyInstaller """
@@ -23,10 +24,11 @@ if __name__ == "__main__":
     app = main.Main(debug = debug, demo_source=demo_source, resource_path=resource_path)
     try:
         app.mainloop()
-    except Exception:
-        if app.run_event.is_set:
-            app.run_event.clear()
+    except Exception as Argument:
+        if not app.run_event.is_set():
+            app.run_event.set()
+        logging.exception('Fatal Application Exception')
     finally:
-        if app.run_event.is_set:
-            app.run_event.clear()
+        if not app.run_event.is_set():
+            app.run_event.set()
     

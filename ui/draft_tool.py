@@ -14,9 +14,11 @@ import threading
 from time import sleep
 from datetime import datetime, timedelta
 
+from functools import partial
+
 from scrape.scrape_ottoneu import Scrape_Ottoneu 
 from domain.enum import Position, ScoringFormat, StatType, Preference as Pref, AvgSalaryFom, RankingBasis, ProjectionType
-from ui.table import Table
+from ui.table import Table, sort_cmp
 from ui.dialog import progress, draft_target, cm_team_assignment
 from ui.dialog.wizard import couchmanagers_import
 from ui.tool.tooltip import CreateToolTip
@@ -37,6 +39,7 @@ class DraftTool(tk.Frame):
         self.demo_source = controller.demo_source
         self.demo_thread = None
         self.run_event = controller.run_event
+        self.run_event.set()
         self.queue = queue.Queue()
         self.sort_cols = {}
         self.show_drafted_players = tk.BooleanVar()
@@ -149,7 +152,9 @@ class DraftTool(tk.Frame):
         widths['Pos'] = 75
         align = {}
         align['Name'] = W
-        self.overall_view = ov = Table(overall_frame, cols,sortable_columns=cols, column_widths=widths, init_sort_col='Value', column_alignments=align)
+        custom_sort = {}
+        custom_sort['Value'] = partial(self.default_value_sort, Position.OVERALL)
+        self.overall_view = ov = Table(overall_frame, cols,sortable_columns=cols, column_widths=widths, init_sort_col='Value', column_alignments=align, custom_sort=custom_sort)
         ov.grid(column=0)
         ov.set_row_select_method(self.on_select)
         ov.set_right_click_method(self.player_rclick)
@@ -164,7 +169,9 @@ class DraftTool(tk.Frame):
                 cols = ('Name','Value','Inf. Cost','Pos','Team','Points','P/G', 'P/PA','Avg. Price', 'L10 Price', 'Roster %', 'R', 'HR', 'RBI', 'AVG', 'SB', 'OBP', 'SLG')
             else:
                 cols = ('Name','Value','Inf. Cost','Pos','Team','Points','SABR Pts','P/IP','SABR PIP','PP/G','SABR PPG', 'Avg. Price', 'L10 Price', 'Roster %', 'K', 'ERA', 'WHIP', 'W', 'SV', 'HR/9')
-            self.pos_view[pos] = pv = Table(pos_frame, cols,sortable_columns=cols, column_widths=widths, column_alignments=align, init_sort_col='Value')
+            custom_sort = {}
+            custom_sort['Value'] = partial(self.default_value_sort, pos)
+            self.pos_view[pos] = pv = Table(pos_frame, cols,sortable_columns=cols, column_widths=widths, column_alignments=align, init_sort_col='Value', custom_sort=custom_sort)
             pv.grid(column=0)
             pv.set_row_select_method(self.on_select)
             pv.set_right_click_method(self.player_rclick)
@@ -211,6 +218,7 @@ class DraftTool(tk.Frame):
             self.monitor_status_lbl.grid(column=2,row=0)
             self.stop_monitor = ttk.Button(monitor_frame, textvariable=self.stop_draft_sv, command=self.stop_draft_monitor)
             self.stop_monitor.grid(column=1,row=0)
+            self.stop_monitor['state'] = DISABLED
             CreateToolTip(self.stop_monitor, 'Stop watching league for new draft results')
             self.link_cm_btn = btn = ttk.Button(monitor_frame, textvariable=self.cm_text, command=self.link_couchmanagers)
             btn.grid(column=2, row=0)
@@ -261,6 +269,7 @@ class DraftTool(tk.Frame):
             self.stop_monitor = ttk.Button(search_frame, textvariable=self.stop_draft_sv, command=self.stop_draft_monitor)
             self.stop_monitor.grid(column=0,row=4)
             CreateToolTip(self.stop_monitor, 'Stop watching league for new draft results')
+            self.stop_monitor['state'] = DISABLED
             self.link_cm_btn = btn = ttk.Button(search_frame, textvariable=self.cm_text, command=self.link_couchmanagers)
             btn.grid(column=0, row=5)
             CreateToolTip(btn, 'Link a CouchManagers draft to this league.')
@@ -370,44 +379,65 @@ class DraftTool(tk.Frame):
             self.pos_view[pos].set_tags_by_row_text(player_id, tags)
         self.search_view.set_tags_by_row_text(player_id, tags)
 
-    def sort_treeview(self, treeview, col, pos=None):
-        if self.sort_cols[treeview] == col:
-            self.sort_cols[treeview] = None
-        else:
-            self.sort_cols[treeview] = col
-        if pos != None:
-            self.refresh_pos_table(pos)
-        else:
-            self.refresh_overall_view()
-
     def on_select(self, event):
         if len(event.widget.selection()) == 1:
             print(f'Selection is {int(event.widget.item(event.widget.selection()[0])["text"])}')
     
+
+    def default_value_sort(self, pos:Position):
+        if pos == Position.OVERALL:
+            pos_table = self.overall_view
+        else:
+            pos_table = self.pos_view.get(pos)
+        if self.league.format is None:
+            l = [(self.set(k, 'Values'), k) for k in self.get_children('')]
+            sorted(l, reverse=self.table.reverse_sort['Values'], key=lambda x: sort_cmp(x)) 
+        if self.value_calculation.projection is None:
+            col2 = 'Roster %'
+        else:
+            if ScoringFormat.is_points_type(self.league.format):
+                #if pos == Position.OVERALL:
+                    if ScoringFormat.is_sabr(self.league.format):
+                        col2 = 'SABR Pts'
+                    else:
+                        col2 = 'Points'
+            else:
+                if pos == Position.OVERALL:
+                    col2 = 'Roster %'
+                elif pos in Position.get_offensive_pos():
+                    col2 = 'R'
+                else:
+                    #TODO: I'd like this to be WHIP, but need to make it not reverse sort then
+                    col2 = 'K'
+        l = [((pos_table.set(k, 'Value'), pos_table.set(k,col2)), k) for k in pos_table.get_children('')]
+        l = sorted(l, reverse=pos_table.reverse_sort['Value'], key=lambda x: self.sort_dual_columns(x))
+        return l
+
     def default_search_sort(self):
         l = [((self.search_view.set(k, 'Value'), self.search_view.set(k,'Roster %')), k) for k in self.search_view.get_children('')]
-        l = sorted(l, reverse=self.search_view.reverse_sort['Value'], key=lambda x: self.sort_search_val_and_rost(x))
+        l = sorted(l, reverse=self.search_view.reverse_sort['Value'], key=lambda x: self.sort_dual_columns(x))
         return l
     
-    def sort_search_val_and_rost(self, val_rost):
-        val = float(val_rost[0][0][1:])
-        rost = float(val_rost[0][1][:-1])
-        return (val, rost)
+    def sort_dual_columns(self, cols):
+        primary = float(cols[0][0][1:])
+        secondary = float(cols[0][1][:-1])
+        return (primary, secondary)
 
     def start_draft_monitor(self):
         if self.draft.cm_draft is None:
-            if not self.run_event.is_set():
+            self.monitor_status.set('Draft Started')
+            self.monitor_status_lbl.config(fg='green')
+            self.start_monitor['state'] = DISABLED
+            self.link_cm_btn['state'] = DISABLED
+            if self.run_event.is_set():
+                self.run_event.clear()
                 logging.info('---Starting Draft Monitor---')
-                self.monitor_status.set('Draft Started')
-                self.monitor_status_lbl.config(fg='green')
-                self.start_monitor['state'] = DISABLED
-                self.link_cm_btn['state'] = DISABLED
                 self.monitor_thread = threading.Thread(target = self.refresh_thread)
                 self.monitor_thread.daemon = True
                 self.monitor_thread.start()
                 
                 self.parent.update_idletasks()
-                self.parent.after(60000, self.update_ui)
+                self.parent.after(1000, self.update_ui)
 
             if self.demo_source:
                 self.demo_thread = threading.Thread(target=draft_demo.demo_draft, args=(self.league, self.run_event))
@@ -420,18 +450,25 @@ class DraftTool(tk.Frame):
                 self.check_new_cm_teams()
 
     def update_ui(self):
-        if not self.run_event.is_set() and self.queue.empty():
+        if self.run_event.is_set() and self.queue.empty():
+            self.stop_monitor['state'] = DISABLED
             return
-        if not self.queue.empty():
-            key, data = self.queue.get()
-            logging.debug(f'Updating the following positions: {data}')
-            self.refresh_views(data)
-        self.parent.after(1000, self.update_ui)
+        try:
+            if str(self.stop_monitor['state']) == DISABLED:
+                self.stop_monitor['state'] = ACTIVE
+            if not self.queue.empty():
+                key, data = self.queue.get()
+                logging.debug(f'Updating the following positions: {data}')
+                self.refresh_views(data)
+        except Exception as Argument:
+            logging.exception('Exception updating Draft Tool UI.')
+        finally:
+            self.parent.after(1000, self.update_ui)
     
     def stop_draft_monitor(self):
         if self.draft.cm_draft is None:
             logging.info('!!!Stopping Draft Monitor!!!')
-            self.run_event.clear()
+            self.run_event.set()
             self.start_monitor['state'] = ACTIVE
             self.link_cm_btn['state'] = ACTIVE
             self.monitor_status.set('Draft stopped')
@@ -456,6 +493,7 @@ class DraftTool(tk.Frame):
             self.start_draft_sv.set('Refresh CM Draft')
             CreateToolTip(self.start_monitor, 'Gets the latest CouchManager draft results and applies them.')
             self.stop_draft_sv.set('Unlink CM Draft')
+            self.stop_monitor['state'] = ACTIVE
             CreateToolTip(self.stop_monitor, 'Removes the connection to the CouchManagers draft for the league and reverts to the Ottoneu-only rosters.')
             if self.draft.cm_draft.setup:
                 self.resolve_cm_draft_with_rosters(init=False)
@@ -474,6 +512,7 @@ class DraftTool(tk.Frame):
             self.start_draft_sv.set('Start Draft Monitor')
             CreateToolTip(self.start_monitor, 'Begin watching league for new draft results')
             self.stop_draft_sv.set('Stop Draft Monitor')
+            self.stop_monitor['state'] = DISABLED
             CreateToolTip(self.stop_monitor, 'Stop watching league for new draft results')
             return True
         return False
@@ -564,52 +603,57 @@ class DraftTool(tk.Frame):
             last_time = datetime.now() - timedelta(days=10)
             #speed up loop refresh for demo
             delay = 10
-        sleep(delay)
-        self.run_event.set()
-        while(self.run_event.is_set()):
-            if not self.demo_source:
-                last_trans = Scrape_Ottoneu().scrape_recent_trans_api(self.controller.league.ottoneu_id)
-            else:
-                logging.debug("demo_source")
-                if not os.path.exists(draft_demo.demo_trans):
-                    sleep(11)
-                    continue
-                last_trans = pd.read_csv(draft_demo.demo_trans)
-                last_trans['Date'] = last_trans['Date'].apply(lambda x: datetime.strptime(x, '%Y-%m-%d %H:%M:%S.%f'))
-            most_recent = last_trans.iloc[0]['Date']
-            if most_recent > last_time:
-                index = len(last_trans)-1
-                update_pos = set()
-                while index >= 0:
-                    if last_trans.iloc[index]['Date'] > last_time:
-                        otto_id = last_trans.iloc[index]['Ottoneu ID']
-                        player = player_services.get_player_by_ottoneu_id(int(otto_id))
-                        if player is None:
-                            logging.info(f'Otto id {otto_id} not in database')
-                            index -= 1
-                            continue
-                        else:
-                            self.add_trans_to_rosters(last_trans, index, player)
-                        if not player.index in self.values.index:
-                            logging.info(f'id {player.index} not in values')
-                            index -= 1
-                            continue
-                        pos = player_services.get_player_positions(player)
-                        for p in pos:
-                            update_pos.add(p)
-                        if last_trans.iloc[index]['Type'].upper() == 'ADD':
-                            salary = int(last_trans.iloc[index]['Salary'].split('$')[1])
-                            self.values.at[player.index, 'Salary'] = salary
-                            for p in pos:                                    
-                                self.pos_values[p].at[player.index, 'Salary'] = salary
-                        elif last_trans.iloc[index]['Type'].upper() == 'CUT':
-                            self.values.at[player.index, 'Salary'] = 0
+        logging.info('Entering Draft Refresh Loop')
+        self.run_event.clear()
+        while(not self.run_event.is_set()):
+            try:
+                if not self.demo_source:
+                    last_trans = Scrape_Ottoneu().scrape_recent_trans_api(self.controller.league.ottoneu_id)
+                else:
+                    logging.debug("demo_source")
+                    if not os.path.exists(draft_demo.demo_trans):
+                        sleep(11)
+                        continue
+                    last_trans = pd.read_csv(draft_demo.demo_trans)
+                    last_trans['Date'] = last_trans['Date'].apply(lambda x: datetime.strptime(x, '%Y-%m-%d %H:%M:%S.%f'))
+                most_recent = last_trans.iloc[0]['Date']
+                if most_recent > last_time:
+                    index = len(last_trans)-1
+                    update_pos = set()
+                    while index >= 0:
+                        if last_trans.iloc[index]['Date'] > last_time:
+                            otto_id = last_trans.iloc[index]['Ottoneu ID']
+                            player = player_services.get_player_by_ottoneu_id(int(otto_id))
+                            if player is None:
+                                logging.info(f'Otto id {otto_id} not in database')
+                                index -= 1
+                                continue
+                            else:
+                                self.add_trans_to_rosters(last_trans, index, player)
+                            if not player.index in self.values.index:
+                                logging.info(f'id {player.index} not in values')
+                                index -= 1
+                                continue
+                            pos = player_services.get_player_positions(player)
                             for p in pos:
-                                self.pos_values[p].at[player.index, 'Salary'] = 0
-                    index -= 1
-                last_time = most_recent
-                self.queue.put(('pos', list(update_pos)))
-            sleep(delay)
+                                update_pos.add(p)
+                            if last_trans.iloc[index]['Type'].upper() == 'ADD':
+                                salary = int(last_trans.iloc[index]['Salary'].split('$')[1])
+                                self.values.at[player.index, 'Salary'] = salary
+                                for p in pos:                                    
+                                    self.pos_values[p].at[player.index, 'Salary'] = salary
+                            elif last_trans.iloc[index]['Type'].upper() == 'CUT':
+                                self.values.at[player.index, 'Salary'] = 0
+                                for p in pos:
+                                    self.pos_values[p].at[player.index, 'Salary'] = 0
+                        index -= 1
+                    last_time = most_recent
+                    self.queue.put(('pos', list(update_pos)))
+            except Exception as Argument:
+                logging.exception('Exception processing transaction.')
+            finally:
+                self.run_event.wait(delay)
+        logging.info('Exiting Draft Refresh Loop')
 
     def refresh_views(self, pos_keys=None):
         self.calc_inflation()
@@ -838,7 +882,7 @@ class DraftTool(tk.Frame):
         
     def initialize_draft(self, same_values=False):  
         restart = False
-        if self.run_event.is_set():
+        if not self.run_event.is_set():
             self.stop_draft_monitor()
         pd = progress.ProgressDialog(self.parent, 'Initializing Draft Session')
         pd.set_task_title('Loading Rosters...')
@@ -871,6 +915,7 @@ class DraftTool(tk.Frame):
             self.start_draft_sv.set('Refresh CM Draft')
             CreateToolTip(self.start_monitor, 'Gets the latest CouchManager draft results and applies them.')
             self.stop_draft_sv.set('Unlink CM Draft')
+            self.stop_monitor['state'] = ACTIVE
             CreateToolTip(self.stop_monitor, 'Removes the connection to the CouchManagers draft for the league and reverts to the Ottoneu-only rosters.')
             if self.draft.cm_draft.setup:
                 self.resolve_cm_draft_with_rosters()
@@ -1315,11 +1360,11 @@ def main():
         run_event = threading.Event()
         tool = DraftTool(run_event)
     except Exception:
-        if run_event.is_set():
-            run_event.clear()
+        if not run_event.is_set():
+            run_event.set()
     finally:
-        if run_event.is_set():
-            run_event.clear()
+        if not run_event.is_set():
+            run_event.set()
 
 if __name__ == '__main__':
     main()
