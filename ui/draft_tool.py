@@ -14,9 +14,11 @@ import threading
 from time import sleep
 from datetime import datetime, timedelta
 
+from functools import partial
+
 from scrape.scrape_ottoneu import Scrape_Ottoneu 
 from domain.enum import Position, ScoringFormat, StatType, Preference as Pref, AvgSalaryFom, RankingBasis, ProjectionType
-from ui.table import Table
+from ui.table import Table, sort_cmp
 from ui.dialog import progress, draft_target, cm_team_assignment
 from ui.dialog.wizard import couchmanagers_import
 from ui.tool.tooltip import CreateToolTip
@@ -150,7 +152,9 @@ class DraftTool(tk.Frame):
         widths['Pos'] = 75
         align = {}
         align['Name'] = W
-        self.overall_view = ov = Table(overall_frame, cols,sortable_columns=cols, column_widths=widths, init_sort_col='Value', column_alignments=align)
+        custom_sort = {}
+        custom_sort['Value'] = partial(self.default_value_sort, Position.OVERALL)
+        self.overall_view = ov = Table(overall_frame, cols,sortable_columns=cols, column_widths=widths, init_sort_col='Value', column_alignments=align, custom_sort=custom_sort)
         ov.grid(column=0)
         ov.set_row_select_method(self.on_select)
         ov.set_right_click_method(self.player_rclick)
@@ -165,7 +169,9 @@ class DraftTool(tk.Frame):
                 cols = ('Name','Value','Inf. Cost','Pos','Team','Points','P/G', 'P/PA','Avg. Price', 'L10 Price', 'Roster %', 'R', 'HR', 'RBI', 'AVG', 'SB', 'OBP', 'SLG')
             else:
                 cols = ('Name','Value','Inf. Cost','Pos','Team','Points','SABR Pts','P/IP','SABR PIP','PP/G','SABR PPG', 'Avg. Price', 'L10 Price', 'Roster %', 'K', 'ERA', 'WHIP', 'W', 'SV', 'HR/9')
-            self.pos_view[pos] = pv = Table(pos_frame, cols,sortable_columns=cols, column_widths=widths, column_alignments=align, init_sort_col='Value')
+            custom_sort = {}
+            custom_sort['Value'] = partial(self.default_value_sort, pos)
+            self.pos_view[pos] = pv = Table(pos_frame, cols,sortable_columns=cols, column_widths=widths, column_alignments=align, init_sort_col='Value', custom_sort=custom_sort)
             pv.grid(column=0)
             pv.set_row_select_method(self.on_select)
             pv.set_right_click_method(self.player_rclick)
@@ -373,29 +379,49 @@ class DraftTool(tk.Frame):
             self.pos_view[pos].set_tags_by_row_text(player_id, tags)
         self.search_view.set_tags_by_row_text(player_id, tags)
 
-    def sort_treeview(self, treeview, col, pos=None):
-        if self.sort_cols[treeview] == col:
-            self.sort_cols[treeview] = None
-        else:
-            self.sort_cols[treeview] = col
-        if pos != None:
-            self.refresh_pos_table(pos)
-        else:
-            self.refresh_overall_view()
-
     def on_select(self, event):
         if len(event.widget.selection()) == 1:
             print(f'Selection is {int(event.widget.item(event.widget.selection()[0])["text"])}')
     
+
+    def default_value_sort(self, pos:Position):
+        if pos == Position.OVERALL:
+            pos_table = self.overall_view
+        else:
+            pos_table = self.pos_view.get(pos)
+        if self.league.format is None:
+            l = [(self.set(k, 'Values'), k) for k in self.get_children('')]
+            sorted(l, reverse=self.table.reverse_sort['Values'], key=lambda x: sort_cmp(x)) 
+        if self.value_calculation.projection is None:
+            col2 = 'Roster %'
+        else:
+            if ScoringFormat.is_points_type(self.league.format):
+                #if pos == Position.OVERALL:
+                    if ScoringFormat.is_sabr(self.league.format):
+                        col2 = 'SABR Pts'
+                    else:
+                        col2 = 'Points'
+            else:
+                if pos == Position.OVERALL:
+                    col2 = 'Roster %'
+                elif pos in Position.get_offensive_pos():
+                    col2 = 'R'
+                else:
+                    #TODO: I'd like this to be WHIP, but need to make it not reverse sort then
+                    col2 = 'K'
+        l = [((pos_table.set(k, 'Value'), pos_table.set(k,col2)), k) for k in pos_table.get_children('')]
+        l = sorted(l, reverse=pos_table.reverse_sort['Value'], key=lambda x: self.sort_dual_columns(x))
+        return l
+
     def default_search_sort(self):
         l = [((self.search_view.set(k, 'Value'), self.search_view.set(k,'Roster %')), k) for k in self.search_view.get_children('')]
-        l = sorted(l, reverse=self.search_view.reverse_sort['Value'], key=lambda x: self.sort_search_val_and_rost(x))
+        l = sorted(l, reverse=self.search_view.reverse_sort['Value'], key=lambda x: self.sort_dual_columns(x))
         return l
     
-    def sort_search_val_and_rost(self, val_rost):
-        val = float(val_rost[0][0][1:])
-        rost = float(val_rost[0][1][:-1])
-        return (val, rost)
+    def sort_dual_columns(self, cols):
+        primary = float(cols[0][0][1:])
+        secondary = float(cols[0][1][:-1])
+        return (primary, secondary)
 
     def start_draft_monitor(self):
         if self.draft.cm_draft is None:
