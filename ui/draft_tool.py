@@ -427,13 +427,17 @@ class DraftTool(tk.Frame):
         if self.run_event.is_set() and self.queue.empty():
             self.stop_monitor['state'] = DISABLED
             return
-        if str(self.stop_monitor['state']) == DISABLED:
-            self.stop_monitor['state'] = ACTIVE
-        if not self.queue.empty():
-            key, data = self.queue.get()
-            logging.debug(f'Updating the following positions: {data}')
-            self.refresh_views(data)
-        self.parent.after(1000, self.update_ui)
+        try:
+            if str(self.stop_monitor['state']) == DISABLED:
+                self.stop_monitor['state'] = ACTIVE
+            if not self.queue.empty():
+                key, data = self.queue.get()
+                logging.debug(f'Updating the following positions: {data}')
+                self.refresh_views(data)
+        except Exception as Argument:
+            logging.exception('Exception updating Draft Tool UI.')
+        finally:
+            self.parent.after(1000, self.update_ui)
     
     def stop_draft_monitor(self):
         if self.draft.cm_draft is None:
@@ -576,49 +580,53 @@ class DraftTool(tk.Frame):
         logging.info('Entering Draft Refresh Loop')
         self.run_event.clear()
         while(not self.run_event.is_set()):
-            if not self.demo_source:
-                last_trans = Scrape_Ottoneu().scrape_recent_trans_api(self.controller.league.ottoneu_id)
-            else:
-                logging.debug("demo_source")
-                if not os.path.exists(draft_demo.demo_trans):
-                    sleep(11)
-                    continue
-                last_trans = pd.read_csv(draft_demo.demo_trans)
-                last_trans['Date'] = last_trans['Date'].apply(lambda x: datetime.strptime(x, '%Y-%m-%d %H:%M:%S.%f'))
-            most_recent = last_trans.iloc[0]['Date']
-            if most_recent > last_time:
-                index = len(last_trans)-1
-                update_pos = set()
-                while index >= 0:
-                    if last_trans.iloc[index]['Date'] > last_time:
-                        otto_id = last_trans.iloc[index]['Ottoneu ID']
-                        player = player_services.get_player_by_ottoneu_id(int(otto_id))
-                        if player is None:
-                            logging.info(f'Otto id {otto_id} not in database')
-                            index -= 1
-                            continue
-                        else:
-                            self.add_trans_to_rosters(last_trans, index, player)
-                        if not player.index in self.values.index:
-                            logging.info(f'id {player.index} not in values')
-                            index -= 1
-                            continue
-                        pos = player_services.get_player_positions(player)
-                        for p in pos:
-                            update_pos.add(p)
-                        if last_trans.iloc[index]['Type'].upper() == 'ADD':
-                            salary = int(last_trans.iloc[index]['Salary'].split('$')[1])
-                            self.values.at[player.index, 'Salary'] = salary
-                            for p in pos:                                    
-                                self.pos_values[p].at[player.index, 'Salary'] = salary
-                        elif last_trans.iloc[index]['Type'].upper() == 'CUT':
-                            self.values.at[player.index, 'Salary'] = 0
+            try:
+                if not self.demo_source:
+                    last_trans = Scrape_Ottoneu().scrape_recent_trans_api(self.controller.league.ottoneu_id)
+                else:
+                    logging.debug("demo_source")
+                    if not os.path.exists(draft_demo.demo_trans):
+                        sleep(11)
+                        continue
+                    last_trans = pd.read_csv(draft_demo.demo_trans)
+                    last_trans['Date'] = last_trans['Date'].apply(lambda x: datetime.strptime(x, '%Y-%m-%d %H:%M:%S.%f'))
+                most_recent = last_trans.iloc[0]['Date']
+                if most_recent > last_time:
+                    index = len(last_trans)-1
+                    update_pos = set()
+                    while index >= 0:
+                        if last_trans.iloc[index]['Date'] > last_time:
+                            otto_id = last_trans.iloc[index]['Ottoneu ID']
+                            player = player_services.get_player_by_ottoneu_id(int(otto_id))
+                            if player is None:
+                                logging.info(f'Otto id {otto_id} not in database')
+                                index -= 1
+                                continue
+                            else:
+                                self.add_trans_to_rosters(last_trans, index, player)
+                            if not player.index in self.values.index:
+                                logging.info(f'id {player.index} not in values')
+                                index -= 1
+                                continue
+                            pos = player_services.get_player_positions(player)
                             for p in pos:
-                                self.pos_values[p].at[player.index, 'Salary'] = 0
-                    index -= 1
-                last_time = most_recent
-                self.queue.put(('pos', list(update_pos)))
-            self.run_event.wait(delay)
+                                update_pos.add(p)
+                            if last_trans.iloc[index]['Type'].upper() == 'ADD':
+                                salary = int(last_trans.iloc[index]['Salary'].split('$')[1])
+                                self.values.at[player.index, 'Salary'] = salary
+                                for p in pos:                                    
+                                    self.pos_values[p].at[player.index, 'Salary'] = salary
+                            elif last_trans.iloc[index]['Type'].upper() == 'CUT':
+                                self.values.at[player.index, 'Salary'] = 0
+                                for p in pos:
+                                    self.pos_values[p].at[player.index, 'Salary'] = 0
+                        index -= 1
+                    last_time = most_recent
+                    self.queue.put(('pos', list(update_pos)))
+            except Exception as Argument:
+                logging.exception('Exception processing transaction.')
+            finally:
+                self.run_event.wait(delay)
         logging.info('Exiting Draft Refresh Loop')
 
     def refresh_views(self, pos_keys=None):
