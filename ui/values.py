@@ -136,7 +136,7 @@ class ValuesCalculation(tk.Frame):
             for adv_inp in CDT.get_adv_inputs():
                 inp = self.value_calc.get_input(adv_inp)
                 if inp is not None:
-                    adv_calc_services.set_advanced_option(adv_inp, inp.value)
+                    adv_calc_services.set_advanced_option(adv_inp, inp)
             self.update_calc_output_frame()
         pd.set_completion_percent(33)
         if len(self.tables) > 0:
