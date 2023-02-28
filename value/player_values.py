@@ -93,7 +93,10 @@ class PlayerValues():
         rosterable_pos = pos_min_pa.loc[pos_min_pa['Max FOM'] >= 0]
         rosterable_pitch = real_pitchers.loc[real_pitchers['FOM'] >= 0]
 
-        bat_fom = rosterable_pos['Max FOM'].sum()
+        if RankingBasis.is_roto_per_game(self.value_calc.hitter_basis):
+            bat_fom = rosterable_pos.apply(self.ration_fom, axis=1).sum()
+        else:
+            bat_fom = rosterable_pos['Max FOM'].sum()
         total_fom = bat_fom + rosterable_pitch['FOM'].sum()
         arm_fom = rosterable_pitch.apply(pitch_values.usable_fom_calc, args=('SP',), axis=1).sum() + rosterable_pitch.apply(pitch_values.usable_fom_calc, args=('RP',), axis=1).sum()
         total_usable_fom = bat_fom + arm_fom
@@ -206,3 +209,6 @@ class PlayerValues():
                 return (row['G']) / self.value_calc.get_input(CalculationDataType.BATTER_G_TARGET) * row[f'{pos.value}_FOM'] * self.dol_per_fom + 1
         else:
             return 0
+    
+    def ration_fom(self, row) -> float:
+        return row['G'] / self.value_calc.get_input(CalculationDataType.BATTER_G_TARGET) * row['Max FOM']
