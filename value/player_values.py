@@ -133,6 +133,8 @@ class PlayerValues():
                 pos_value = pd.DataFrame(pos_min_pa)
             else:
                 pos_value = pd.DataFrame(pos_min_pa.loc[pos_min_pa['Position(s)'].str.contains(pos.value)])
+            if RankingBasis.is_roto_per_game(self.value_calc.hitter_basis):
+                pos_value['Value'] = pos_value.apply(self.ration_roto_per_game, args=(pos,), axis=1)
             if self.bat_dol_per_fom > 0:
                 pos_value['Value'] = pos_value[f'{pos.value}_FOM'].apply(lambda x: x*self.bat_dol_per_fom + 1.0 if x >= 0 else 0)
             else:
@@ -195,3 +197,12 @@ class PlayerValues():
         
         for index, row in results.iterrows():
             self.value_calc.set_player_value(index, Position.OVERALL, row['Value'])
+
+    def ration_roto_per_game(self, row, pos:Position) -> float:
+        if row[f'{pos.value}_FOM'] >= 0:
+            if self.bat_dol_per_fom > 0:
+                return (row['G']) / self.value_calc.get_input(CalculationDataType.BATTER_G_TARGET) * row[f'{pos.value}_FOM'] * self.bat_dol_per_fom + 1
+            else:
+                return (row['G']) / self.value_calc.get_input(CalculationDataType.BATTER_G_TARGET) * row[f'{pos.value}_FOM'] * self.dol_per_fom + 1
+        else:
+            return 0

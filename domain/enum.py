@@ -205,7 +205,7 @@ class RankingBasis(Enum):
         return basis in [self.ZSCORE, self.ZSCORE_PER_G]
     
     @classmethod
-    def is_per_game(self, basis:RankingBasis):
+    def is_roto_per_game(self, basis:RankingBasis):
         return basis in [self.ZSCORE_PER_G]
     
 class StatType(Enum):

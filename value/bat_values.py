@@ -372,44 +372,61 @@ class BatValues():
                     max_rep_lvl = rep_level
             return max_rep_lvl
     
+    def per_game_rate(self, row, stat:StatType) -> float:
+        '''Calculates the per game column for the stat type'''
+        return row[StatType.enum_to_display_dict().get(stat)] / row['G']
+
     def calculate_roto_bases(self, proj:DataFrame, init=False) -> None:
         '''Calculates zScore information (average and stdev of the 4x4 or 5x5 stats). If init is true, will rank off of Runs, otherwise ranks off of previous zScores'''
         if init:
             self.rank_position_players(proj, 'R')
         else:
             self.rank_position_players(proj)
+        proj['AB/G'] = proj.apply(self.per_game_rate, axis=1, args=(StatType.AB,))
+        proj['PA/G'] = proj.apply(self.per_game_rate, axis=1, args=(StatType.PA,))
         alr = self.roto_above_rl(proj)
         above_rep_lvl = proj.loc[alr]
-        self.pa_per_team = above_rep_lvl['PA'].sum() / self.num_teams
-        self.ab_per_team = above_rep_lvl['AB'].sum() / self.num_teams
-        if self.format == ScoringFormat.OLD_SCHOOL_5X5:
-            self.stat_avg[StatType.AVG] = dataframe_util.weighted_avg(above_rep_lvl, 'AVG', 'AB')
-            proj['AVG_Delta'] = proj.apply(self.calc_rate_delta, axis=1, args=(StatType.AVG,))
-            cols = ['R','HR','RBI','SB','AVG_Delta']
+        if RankingBasis.is_roto_per_game(RankingBasis.display_to_enum_map().get(self.rank_basis)):
+            fom = 'zScore/G'
+            self.pa_per_team = above_rep_lvl['PA/G'].sum() / self.num_teams
+            self.ab_per_team = above_rep_lvl['AB/G'].sum() / self.num_teams
+            proj['R/G'] = proj.apply(self.per_game_rate, axis=1, args=(StatType.R,))
+            proj['HR/G'] = proj.apply(self.per_game_rate, axis=1, args=(StatType.HR,))
+            if self.format == ScoringFormat.OLD_SCHOOL_5X5:
+                proj['RBI/G'] = proj.apply(self.per_game_rate, axis=1, args=(StatType.RBI,))
+                proj['SB/G'] = proj.apply(self.per_game_rate, axis=1, args=(StatType.SB,))
+                self.stat_avg[StatType.AVG] = dataframe_util.weighted_avg(above_rep_lvl, 'AVG', 'AB/G')
+                proj['AVG_Delta'] = proj.apply(self.calc_rate_delta, axis=1, args=(StatType.AVG,))
+                cat_to_col = {StatType.R : 'R/G', StatType.HR : 'HR/G', StatType.RBI : 'RBI/G', StatType.SB : 'SB/G', StatType.AVG : "AVG_Delta"}
+            else:
+                self.stat_avg[StatType.OBP] = dataframe_util.weighted_avg(above_rep_lvl, 'OBP', 'PA/G')
+                proj['OBP_Delta'] = proj.apply(self.calc_rate_delta, axis=1, args=(StatType.OBP,))
+                self.stat_avg[StatType.SLG] = dataframe_util.weighted_avg(above_rep_lvl, 'SLG', 'AB/G')
+                proj['SLG_Delta'] = proj.apply(self.calc_rate_delta, axis=1, args=(StatType.SLG,))
+                cat_to_col = {StatType.R : 'R/G', StatType.HR : 'HR/G', StatType.OBP : 'OBP_Delta', StatType.SLG : 'SLG_Delta'}
         else:
-            self.stat_avg[StatType.OBP] = dataframe_util.weighted_avg(above_rep_lvl, 'OBP', 'PA')
-            proj['OBP_Delta'] = proj.apply(self.calc_rate_delta, axis=1, args=(StatType.OBP,))
-            self.stat_avg[StatType.SLG] = dataframe_util.weighted_avg(above_rep_lvl, 'SLG', 'AB')
-            proj['SLG_Delta'] = proj.apply(self.calc_rate_delta, axis=1, args=(StatType.SLG,))
-            cols = ['R','HR','OBP_Delta','SLG_Delta']
+            fom = 'zScore'
+            self.pa_per_team = above_rep_lvl['PA'].sum() / self.num_teams
+            self.ab_per_team = above_rep_lvl['AB'].sum() / self.num_teams
+            if self.format == ScoringFormat.OLD_SCHOOL_5X5:
+                self.stat_avg[StatType.AVG] = dataframe_util.weighted_avg(above_rep_lvl, 'AVG', 'AB')
+                proj['AVG_Delta'] = proj.apply(self.calc_rate_delta, axis=1, args=(StatType.AVG,))
+                cat_to_col = {StatType.R : 'R', StatType.HR : 'HR', StatType.RBI : 'RBI', StatType.SB : 'SB', StatType.AVG : "AVG_Delta"}
+            else:
+                self.stat_avg[StatType.OBP] = dataframe_util.weighted_avg(above_rep_lvl, 'OBP', 'PA')
+                proj['OBP_Delta'] = proj.apply(self.calc_rate_delta, axis=1, args=(StatType.OBP,))
+                self.stat_avg[StatType.SLG] = dataframe_util.weighted_avg(above_rep_lvl, 'SLG', 'AB')
+                proj['SLG_Delta'] = proj.apply(self.calc_rate_delta, axis=1, args=(StatType.SLG,))
+                cat_to_col = {StatType.R : 'R', StatType.HR : 'HR', StatType.OBP : 'OBP_Delta', StatType.SLG : 'SLG_Delta'}
         above_rep_lvl = proj.loc[alr]
-        means = above_rep_lvl[cols].mean()
-        stds = above_rep_lvl[cols].std()
-        self.stat_avg[StatType.R] = means['R']
-        self.stat_std[StatType.R] = stds['R']
-        self.stat_avg[StatType.HR] = means['HR']
-        self.stat_std[StatType.HR] = stds['HR']
+        means = above_rep_lvl[list(cat_to_col.values())].mean()
+        stds = above_rep_lvl[list(cat_to_col.values())].std()
+        for cat in cat_to_col:
+            if cat not in [StatType.AVG, StatType.OBP, StatType.SLG]:
+                self.stat_avg[cat] = means[cat_to_col.get(cat)]
+            self.stat_std[cat] = stds[cat_to_col.get(cat)]
         
-        if self.format == ScoringFormat.OLD_SCHOOL_5X5:
-            self.stat_avg[StatType.RBI] = means['RBI']
-            self.stat_std[StatType.RBI] = stds['RBI']
-            self.stat_avg[StatType.SB] = means['SB']
-            self.stat_std[StatType.SB] = stds['SB']
-            self.stat_std[StatType.AVG] = stds['AVG_Delta']
-        else:
-            self.stat_std[StatType.OBP] = stds['SLG_Delta']
-            self.stat_std[StatType.SLG] = stds['OBP_Delta']
-        proj['zScore'] = proj.apply(self.calc_z_score, axis=1)
+        proj[fom] = proj.apply(self.calc_z_score, axis=1)
         #print(f'Avg = {self.stat_avg}')
         #print(f'std = {self.stat_std}')
 
@@ -417,10 +434,13 @@ class BatValues():
         '''Using the average of the rate stat and the team total AB or PA calculates the change in the rate stat for the player's contributions'''
         if stat == StatType.OBP:
             denom = self.pa_per_team
-            p_denom = row['PA']
+            col = 'PA'
         else:
             denom = self.ab_per_team
-            p_denom = row['AB']
+            col = 'AB'
+        if RankingBasis.is_roto_per_game(RankingBasis.display_to_enum_map().get(self.rank_basis)):
+            col += '/G'
+        p_denom = row[col]
         return ((self.stat_avg[stat] * (denom-p_denom) 
             + row[StatType.enum_to_display_dict().get(stat)] * p_denom)) \
             / denom - self.stat_avg[stat]
@@ -439,12 +459,16 @@ class BatValues():
 
     def calc_z_score(self, row) -> float:
         '''Calculates the zScore for the player row'''
+        if RankingBasis.is_roto_per_game(RankingBasis.display_to_enum_map().get(self.rank_basis)):
+            col_add = '/G'
+        else:
+            col_add = ''
         zScore = 0
-        zScore += (row['R'] - self.stat_avg.get(StatType.R)) / self.stat_std.get(StatType.R)
-        zScore += (row['HR'] - self.stat_avg.get(StatType.HR)) / self.stat_std.get(StatType.HR)
+        zScore += (row[f'R{col_add}'] - self.stat_avg.get(StatType.R)) / self.stat_std.get(StatType.R)
+        zScore += (row[f'HR{col_add}'] - self.stat_avg.get(StatType.HR)) / self.stat_std.get(StatType.HR)
         if self.format == ScoringFormat.OLD_SCHOOL_5X5:
-            zScore += (row['RBI'] - self.stat_avg.get(StatType.RBI)) / self.stat_std.get(StatType.RBI)
-            zScore += (row['SB'] - self.stat_avg.get(StatType.SB)) / self.stat_std.get(StatType.SB)
+            zScore += (row[f'RBI{col_add}'] - self.stat_avg.get(StatType.RBI)) / self.stat_std.get(StatType.RBI)
+            zScore += (row[f'SB{col_add}'] - self.stat_avg.get(StatType.SB)) / self.stat_std.get(StatType.SB)
             zScore += row['AVG_Delta'] / self.stat_std.get(StatType.AVG)
         else:
             zScore += row['OBP_Delta'] / self.stat_std.get(StatType.OBP)
