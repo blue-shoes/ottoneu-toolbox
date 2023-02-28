@@ -636,16 +636,31 @@ class DraftTool(tk.Frame):
                                 continue
                             pos = player_services.get_player_positions(player)
                             for p in pos:
-                                update_pos.add(p)
+                                if p in Position.get_pitching_pos():
+                                    #Because of how we treat pitching, update all pitcher tables if it's a pitcher
+                                    for p2 in Position.get_pitching_pos():
+                                        update_pos.add(p2)
+                                else:
+                                    update_pos.add(p)
                             if last_trans.iloc[index]['Type'].upper() == 'ADD':
                                 salary = int(last_trans.iloc[index]['Salary'].split('$')[1])
                                 self.values.at[player.index, 'Salary'] = salary
-                                for p in pos:                                    
-                                    self.pos_values[p].at[player.index, 'Salary'] = salary
-                            elif last_trans.iloc[index]['Type'].upper() == 'CUT':
+                                for p in pos:  
+                                    if p in Position.get_pitching_pos():
+                                        #Because of how we treat pitching, update all pitcher tables if it's a pitcher
+                                        for p2 in Position.get_pitching_pos():              
+                                            self.pos_values[p2].at[player.index, 'Salary'] = salary          
+                                    else:          
+                                        self.pos_values[p].at[player.index, 'Salary'] = salary
+                            elif 'CUT' in last_trans.iloc[index]['Type'].upper():
                                 self.values.at[player.index, 'Salary'] = 0
                                 for p in pos:
-                                    self.pos_values[p].at[player.index, 'Salary'] = 0
+                                    if p in Position.get_pitching_pos():
+                                        #Because of how we treat pitching, update all pitcher tables if it's a pitcher
+                                        for p2 in Position.get_pitching_pos():              
+                                            self.pos_values[p2].at[player.index, 'Salary'] = 0
+                                    else:
+                                        self.pos_values[p].at[player.index, 'Salary'] = 0
                         index -= 1
                     last_time = most_recent
                     self.queue.put(('pos', list(update_pos)))
