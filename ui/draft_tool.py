@@ -94,7 +94,7 @@ class DraftTool(tk.Frame):
         return True
     
     def salary_information_refresh(self):
-        pd = progress.ProgressDialog(self, title='Downloading latest salary information...')
+        pd = progress.ProgressDialog(self.parent, title='Downloading latest salary information...')
         pd.increment_completion_percent(10)
 
         format_salary_refresh = salary_services.get_last_refresh(self.controller.league.format)
