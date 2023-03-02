@@ -138,10 +138,11 @@ class PlayerValues():
                 pos_value = pd.DataFrame(pos_min_pa.loc[pos_min_pa['Position(s)'].str.contains(pos.value)])
             if RankingBasis.is_roto_per_game(self.value_calc.hitter_basis):
                 pos_value['Value'] = pos_value.apply(self.ration_roto_per_game, args=(pos,), axis=1)
-            if self.bat_dol_per_fom > 0:
-                pos_value['Value'] = pos_value[f'{pos.value}_FOM'].apply(lambda x: x*self.bat_dol_per_fom + 1.0 if x >= 0 else 0)
             else:
-                pos_value['Value'] = pos_value[f'{pos.value}_FOM'].apply(lambda x: x*self.dol_per_fom + 1.0 if x >= 0 else 0)
+                if self.bat_dol_per_fom > 0:
+                    pos_value['Value'] = pos_value[f'{pos.value}_FOM'].apply(lambda x: x*self.bat_dol_per_fom + 1.0 if x >= 0 else 0)
+                else:
+                    pos_value['Value'] = pos_value[f'{pos.value}_FOM'].apply(lambda x: x*self.dol_per_fom + 1.0 if x >= 0 else 0)
             pos_value.sort_values(by=['Value',RankingBasis.enum_to_display_dict().get(self.value_calc.hitter_basis)], inplace=True, ascending=[False,False])
             pos_value['Dol_Value'] = pos_value['Value'].apply(lambda x : "${:.0f}".format(x))
 
