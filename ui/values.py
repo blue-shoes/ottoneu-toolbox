@@ -235,7 +235,7 @@ class ValuesCalculation(tk.Frame):
         self.hitter_basis_cb = hbcb = ttk.Combobox(inpf, textvariable=self.hitter_basis)
         hbcb['values'] = ('P/G','P/PA')
         hbcb.grid(column=1,row=7,pady=5)
-        hbcb.bind("<<ComboboxSelected>>", self.set_display_columns)
+        hbcb.bind("<<ComboboxSelected>>", self.update_ranking_basis)
 
         ttk.Label(inpf, text="Min PA to Rank:").grid(column=0, row= 8, pady=5)
         self.min_pa = StringVar()
@@ -252,7 +252,7 @@ class ValuesCalculation(tk.Frame):
         self.pitcher_basis_cb = pbcb = ttk.Combobox(inpf, textvariable=self.pitcher_basis)
         pbcb['values'] = ('P/IP','P/G')
         pbcb.grid(column=1,row=9,pady=5)
-        pbcb.bind("<<ComboboxSelected>>", self.set_display_columns)
+        pbcb.bind("<<ComboboxSelected>>", self.update_ranking_basis)
 
         ttk.Label(inpf, text="Min SP IP to Rank:").grid(column=0, row= 10, pady=5)
         self.min_sp_ip = StringVar()
@@ -352,6 +352,10 @@ class ValuesCalculation(tk.Frame):
             pt.set_refresh_method(lambda _pos=pos: self.refresh_pitchers(_pos))
             pt.grid(row=0, column=0)
             pt.add_scrollbar()
+    
+    def update_ranking_basis(self, event: Event):
+        self.set_display_columns()
+        self.set_advanced_button_status()
 
     def update_game_type(self, event: Event):
         self.set_display_columns()
@@ -944,7 +948,7 @@ class ValuesCalculation(tk.Frame):
     
     def advanced_options(self):
         advanced_calc.Dialog(self, ScoringFormat.name_to_enum_map()[self.game_type.get()], RepLevelScheme.num_to_enum_map()[self.rep_level_scheme.get()],
-        RankingBasis._value2member_map_.get(self.hitter_basis.get()), RankingBasis._value2member_map_.get(self.pitcher_basis.get()))
+            RankingBasis.display_to_enum_map().get(self.hitter_basis.get()), RankingBasis.display_to_enum_map().get(self.pitcher_basis.get()))
 
     def calculate_values(self):
         try:
@@ -1049,8 +1053,15 @@ class ValuesCalculation(tk.Frame):
     def set_advanced_button_status(self):
         if self.rep_level_scheme.get() == RepLevelScheme.FILL_GAMES.value:
             self.advanced_btn.configure(state='enable')
-        elif self.game_type.get() == ScoringFormat.CLASSIC_4X4.value or self.game_type.get() == ScoringFormat.OLD_SCHOOL_5X5.value:
-            self.advanced_btn.configure(state='enable')
+        elif not ScoringFormat.is_points_type(ScoringFormat.name_to_enum_map().get(self.game_type.get())):
+            h_basis = RankingBasis.display_to_enum_map().get(self.hitter_basis.get())
+            p_basis = RankingBasis.display_to_enum_map().get(self.pitcher_basis.get())
+            if h_basis == RankingBasis.ZSCORE_PER_G or h_basis == RankingBasis.SGP:
+                self.advanced_btn.configure(state='enable')
+            elif p_basis == RankingBasis.ZSCORE_PER_G or p_basis == RankingBasis.SGP:
+                self.advanced_btn.configure(state='enable')
+            else:
+                self.advanced_btn.configure(state='disable')    
         else:
             self.advanced_btn.configure(state='disable')
 

@@ -26,8 +26,12 @@ class Dialog(tk.Toplevel):
         row = row + 1
 
         if not ScoringFormat.is_points_type(format):
+            if RankingBasis.is_roto_per_game(hit_basis):
+                row = self.add_row('Target games filled by hitter:', CDT.BATTER_G_TARGET, row)
+            if RankingBasis.is_roto_per_game(pitch_basis):
+                row = self.add_row('Target IP filled:', CDT.IP_TARGET, row)
             #TODO: SGP info
-            ...
+
         if rep_scheme == RepLevelScheme.FILL_GAMES:
             row = self.add_row('Target games filled by hitter:', CDT.BATTER_G_TARGET, row)
             if ScoringFormat.is_h2h(format):
@@ -43,11 +47,14 @@ class Dialog(tk.Toplevel):
         tk.Button(frm, command=self.cancel, text='Cancel', width=7).grid(row=row, column=1, padx=5)
     
     def add_row(self, label_txt:str, data_type:CDT, row:int) -> int:
+        if self.value_dict.get(data_type, None) is None:
             tk.Label(self.frm, text=label_txt).grid(row=row, column=0)
             self.value_dict[data_type] = textvar = StringVar()
             tk.Entry(self.frm, textvariable=textvar).grid(row=row, column=1)
             textvar.set(self.option_dict.get(data_type).value)
             return row+1
+        else:
+            return row
     
     def ok(self):
         for cdt in self.value_dict:
