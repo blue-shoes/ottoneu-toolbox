@@ -157,6 +157,7 @@ class PlayerValues():
 
         for pos in Position.get_discrete_pitching_pos():
             pos_value = pd.DataFrame(real_pitchers.loc[real_pitchers[f'IP {pos.value}'] > 0])
+            #TODO: Implement rationing for zScore/G
             if self.arm_dol_per_fom > 0:
                 pos_value['Value'] = pos_value[f'FOM {pos.value}'].apply(lambda x: x*self.arm_dol_per_fom + 1.0 if x >= 0 else 0)
             else:
