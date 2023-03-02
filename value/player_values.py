@@ -148,11 +148,13 @@ class PlayerValues():
 
             for index, row in pos_value.iterrows():
                 self.value_calc.set_player_value(index, pos, row['Value'])
-
-        if self.bat_dol_per_fom > 0:
-            pos_min_pa['Value'] = pos_min_pa['Max FOM'].apply(lambda x: x*self.bat_dol_per_fom + 1.0 if x >= 0 else 0)
+        if RankingBasis.is_roto_per_game(self.value_calc.hitter_basis):
+            pos_value['Value'] = pos_value.apply(self.ration_roto_per_game, args=(Position.OFFENSE,), axis=1)
         else:
-            pos_min_pa['Value'] = pos_min_pa['Max FOM'].apply(lambda x: x*self.dol_per_fom + 1.0 if x >= 0 else 0)
+            if self.bat_dol_per_fom > 0:
+                pos_min_pa['Value'] = pos_min_pa['Max FOM'].apply(lambda x: x*self.bat_dol_per_fom + 1.0 if x >= 0 else 0)
+            else:
+                pos_min_pa['Value'] = pos_min_pa['Max FOM'].apply(lambda x: x*self.dol_per_fom + 1.0 if x >= 0 else 0)
         pos_min_pa.sort_values('Max FOM', inplace=True)
 
         for pos in Position.get_discrete_pitching_pos():
@@ -204,11 +206,15 @@ class PlayerValues():
             self.value_calc.set_player_value(index, Position.OVERALL, row['Value'])
 
     def ration_roto_per_game(self, row, pos:Position) -> float:
-        if row[f'{pos.value}_FOM'] >= 0:
+        if pos == Position.OFFENSE:
+            col = 'Max FOM'
+        else:
+            col = f'{pos.value}_FOM'
+        if row[col] >= 0:
             if self.bat_dol_per_fom > 0:
-                return (row['G']) / self.value_calc.get_input(CalculationDataType.BATTER_G_TARGET) * row[f'{pos.value}_FOM'] * self.bat_dol_per_fom + 1
+                return (row['G']) / self.value_calc.get_input(CalculationDataType.BATTER_G_TARGET) * row[col] * self.bat_dol_per_fom + 1
             else:
-                return (row['G']) / self.value_calc.get_input(CalculationDataType.BATTER_G_TARGET) * row[f'{pos.value}_FOM'] * self.dol_per_fom + 1
+                return (row['G']) / self.value_calc.get_input(CalculationDataType.BATTER_G_TARGET) * row[col] * self.dol_per_fom + 1
         else:
             return 0
     
