@@ -378,7 +378,7 @@ class ValuesCalculation(tk.Frame):
             self.static_rl_btn['state'] = DISABLED
             if self.rep_level_scheme.get() == RepLevelScheme.STATIC_REP_LEVEL.value:
                 self.rep_level_scheme.set(RepLevelScheme.NUM_ROSTERED.value)
-
+                self.update_rep_level_scheme()
 
     def select_projection(self):
         count = projection_services.get_projection_count()
