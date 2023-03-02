@@ -368,7 +368,7 @@ class ValuesCalculation(tk.Frame):
             self.hitter_basis_cb['values'] = ('zScore', 'zScore/G')
             if self.hitter_basis.get() not in self.hitter_basis_cb['values']:
                 self.hitter_basis.set('zScore')
-            self.pitcher_basis_cb['values'] = ('zScore')
+            self.pitcher_basis_cb['values'] = ('zScore', 'zScore/G')
             if self.pitcher_basis.get() not in self.pitcher_basis_cb['values']:
                 self.pitcher_basis.set('zScore')
             self.static_rl_btn['state'] = DISABLED
