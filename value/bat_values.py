@@ -387,7 +387,6 @@ class BatValues():
         alr = self.roto_above_rl(proj)
         above_rep_lvl = proj.loc[alr]
         if RankingBasis.is_roto_per_game(RankingBasis.display_to_enum_map().get(self.rank_basis)):
-            fom = 'zScore/G'
             self.pa_per_team = above_rep_lvl['PA/G'].sum() / self.num_teams
             self.ab_per_team = above_rep_lvl['AB/G'].sum() / self.num_teams
             proj['R/G'] = proj.apply(self.per_game_rate, axis=1, args=(StatType.R,))
@@ -405,7 +404,6 @@ class BatValues():
                 proj['SLG_Delta'] = proj.apply(self.calc_rate_delta, axis=1, args=(StatType.SLG,))
                 cat_to_col = {StatType.R : 'R/G', StatType.HR : 'HR/G', StatType.OBP : 'OBP_Delta', StatType.SLG : 'SLG_Delta'}
         else:
-            fom = 'zScore'
             self.pa_per_team = above_rep_lvl['PA'].sum() / self.num_teams
             self.ab_per_team = above_rep_lvl['AB'].sum() / self.num_teams
             if self.format == ScoringFormat.OLD_SCHOOL_5X5:
@@ -426,7 +424,7 @@ class BatValues():
                 self.stat_avg[cat] = means[cat_to_col.get(cat)]
             self.stat_std[cat] = stds[cat_to_col.get(cat)]
         
-        proj[fom] = proj.apply(self.calc_z_score, axis=1)
+        proj[self.rank_basis] = proj.apply(self.calc_z_score, axis=1)
         #print(f'Avg = {self.stat_avg}')
         #print(f'std = {self.stat_std}')
 
