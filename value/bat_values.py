@@ -459,14 +459,16 @@ class BatValues():
         '''Calculates the zScore for the player row'''
         if RankingBasis.is_roto_per_game(RankingBasis.display_to_enum_map().get(self.rank_basis)):
             col_add = '/G'
+            rat = row['G'] / self.target_games
         else:
             col_add = ''
+            rat = 1
         zScore = 0
-        zScore += (row[f'R{col_add}'] - self.stat_avg.get(StatType.R)) / self.stat_std.get(StatType.R)
-        zScore += (row[f'HR{col_add}'] - self.stat_avg.get(StatType.HR)) / self.stat_std.get(StatType.HR)
+        zScore += (row[f'R{col_add}'] - self.stat_avg.get(StatType.R)) / self.stat_std.get(StatType.R) * rat
+        zScore += (row[f'HR{col_add}'] - self.stat_avg.get(StatType.HR)) / self.stat_std.get(StatType.HR) * rat
         if self.format == ScoringFormat.OLD_SCHOOL_5X5:
-            zScore += (row[f'RBI{col_add}'] - self.stat_avg.get(StatType.RBI)) / self.stat_std.get(StatType.RBI)
-            zScore += (row[f'SB{col_add}'] - self.stat_avg.get(StatType.SB)) / self.stat_std.get(StatType.SB)
+            zScore += (row[f'RBI{col_add}'] - self.stat_avg.get(StatType.RBI)) / self.stat_std.get(StatType.RBI) * rat
+            zScore += (row[f'SB{col_add}'] - self.stat_avg.get(StatType.SB)) / self.stat_std.get(StatType.SB) * rat
             zScore += row['AVG_Delta'] / self.stat_std.get(StatType.AVG)
         else:
             zScore += row['OBP_Delta'] / self.stat_std.get(StatType.OBP)

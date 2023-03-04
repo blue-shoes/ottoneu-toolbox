@@ -136,25 +136,25 @@ class PlayerValues():
                 pos_value = pd.DataFrame(pos_min_pa)
             else:
                 pos_value = pd.DataFrame(pos_min_pa.loc[pos_min_pa['Position(s)'].str.contains(pos.value)])
-            if RankingBasis.is_roto_per_game(self.value_calc.hitter_basis):
-                pos_value['Value'] = pos_value.apply(self.ration_roto_per_game, args=(pos,), axis=1)
+            #if RankingBasis.is_roto_fractional(self.value_calc.hitter_basis):
+            #    pos_value['Value'] = pos_value.apply(self.ration_roto_per_game, args=(pos,), axis=1)
+            #else:
+            if self.bat_dol_per_fom > 0:
+                pos_value['Value'] = pos_value[f'{pos.value}_FOM'].apply(lambda x: x*self.bat_dol_per_fom + 1.0 if x >= 0 else 0)
             else:
-                if self.bat_dol_per_fom > 0:
-                    pos_value['Value'] = pos_value[f'{pos.value}_FOM'].apply(lambda x: x*self.bat_dol_per_fom + 1.0 if x >= 0 else 0)
-                else:
-                    pos_value['Value'] = pos_value[f'{pos.value}_FOM'].apply(lambda x: x*self.dol_per_fom + 1.0 if x >= 0 else 0)
+                pos_value['Value'] = pos_value[f'{pos.value}_FOM'].apply(lambda x: x*self.dol_per_fom + 1.0 if x >= 0 else 0)
             pos_value.sort_values(by=['Value',RankingBasis.enum_to_display_dict().get(self.value_calc.hitter_basis)], inplace=True, ascending=[False,False])
             pos_value['Dol_Value'] = pos_value['Value'].apply(lambda x : "${:.0f}".format(x))
 
             for index, row in pos_value.iterrows():
                 self.value_calc.set_player_value(index, pos, row['Value'])
-        if RankingBasis.is_roto_per_game(self.value_calc.hitter_basis):
-            pos_value['Value'] = pos_value.apply(self.ration_roto_per_game, args=(Position.OFFENSE,), axis=1)
+        #if RankingBasis.is_roto_fractional(self.value_calc.hitter_basis):
+        #    pos_value['Value'] = pos_value.apply(self.ration_roto_per_game, args=(Position.OFFENSE,), axis=1)
+        #else:
+        if self.bat_dol_per_fom > 0:
+            pos_min_pa['Value'] = pos_min_pa['Max FOM'].apply(lambda x: x*self.bat_dol_per_fom + 1.0 if x >= 0 else 0)
         else:
-            if self.bat_dol_per_fom > 0:
-                pos_min_pa['Value'] = pos_min_pa['Max FOM'].apply(lambda x: x*self.bat_dol_per_fom + 1.0 if x >= 0 else 0)
-            else:
-                pos_min_pa['Value'] = pos_min_pa['Max FOM'].apply(lambda x: x*self.dol_per_fom + 1.0 if x >= 0 else 0)
+            pos_min_pa['Value'] = pos_min_pa['Max FOM'].apply(lambda x: x*self.dol_per_fom + 1.0 if x >= 0 else 0)
         pos_min_pa.sort_values('Max FOM', inplace=True)
 
         for pos in Position.get_discrete_pitching_pos():
