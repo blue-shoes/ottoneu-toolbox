@@ -116,25 +116,28 @@ class Main(tk.Tk):
         progress_dialog.increment_completion_percent(10)
         progress_dialog.set_task_title('Checking for updates')
         #Check if we have the latest version
-        response = requests.get("https://api.github.com/repos/blue-shoes/ottoneu-toolbox/releases/latest")
-        latest_version = response.json()["name"]
-        if 'v' in latest_version:
-            latest_version = latest_version.split('v')[1]
-        if StrictVersion(latest_version) > StrictVersion(v):
-            dialog = update.Dialog(self, response)
-            if dialog.status:
-                progress_dialog.complete()
-                return True
-        #Check that database has players in it, and populate if it doesn't
-        if not player_services.is_populated():
-            progress_dialog.set_task_title("Populating Player Database")
-            salary_services.update_salary_info(pd=progress_dialog)
-            progress_dialog.increment_completion_percent(33)
-        refresh = salary_services.get_last_refresh()
-        if refresh is None or (datetime.datetime.now() - refresh.last_refresh).days > self.preferences.getint('General', Pref.SALARY_REFRESH_FREQUENCY, fallback=30):
-            progress_dialog.set_task_title("Updating Player Database")
-            salary_services.update_salary_info()
-            progress_dialog.increment_completion_percent(33)
+        try:
+            response = requests.get("https://api.github.com/repos/blue-shoes/ottoneu-toolbox/releases/latest")
+            latest_version = response.json()["name"]
+            if 'v' in latest_version:
+                latest_version = latest_version.split('v')[1]
+            if StrictVersion(latest_version) > StrictVersion(v):
+                dialog = update.Dialog(self, response)
+                if dialog.status:
+                    progress_dialog.complete()
+                    return True
+            #Check that database has players in it, and populate if it doesn't
+            if not player_services.is_populated():
+                progress_dialog.set_task_title("Populating Player Database")
+                salary_services.update_salary_info(pd=progress_dialog)
+                progress_dialog.increment_completion_percent(33)
+            refresh = salary_services.get_last_refresh()
+            if refresh is None or (datetime.datetime.now() - refresh.last_refresh).days > self.preferences.getint('General', Pref.SALARY_REFRESH_FREQUENCY, fallback=30):
+                progress_dialog.set_task_title("Updating Player Database")
+                salary_services.update_salary_info()
+                progress_dialog.increment_completion_percent(33)
+        except requests.ConnectionError:
+            mb.showinfo('No Internet Connection', 'There appears to be no internet connection. Connectivity functions will be unavailable.')
 
         progress_dialog.complete()
         return False
