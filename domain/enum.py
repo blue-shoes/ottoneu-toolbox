@@ -163,7 +163,8 @@ class RankingBasis(Enum):
     ZSCORE = 3
     SGP = 4,
     FG_AC = 5,
-    ZSCORE_PER_G = 6
+    ZSCORE_PER_G = 6,
+    ZSCORE_PER_IP = 7
 
     @classmethod
     def num_to_enum_map(self):
@@ -174,7 +175,8 @@ class RankingBasis(Enum):
             3 : self.ZSCORE,
             4 : self.SGP,
             5 : self.FG_AC,
-            6 : self.ZSCORE_PER_G
+            6 : self.ZSCORE_PER_G,
+            7 : self.ZSCORE_PER_IP
         }
     
     @classmethod
@@ -185,6 +187,7 @@ class RankingBasis(Enum):
             'P/IP' : self.PIP,
             'zScore' : self.ZSCORE,
             'zScore/G' : self.ZSCORE_PER_G,
+            'zScore/IP' : self.ZSCORE_PER_IP,
             'SGP' : self.SGP
         }
     
@@ -196,17 +199,18 @@ class RankingBasis(Enum):
             self.PIP : 'P/IP',
             self.ZSCORE : 'zScore',
             self.ZSCORE_PER_G : 'zScore/G',
+            self.ZSCORE_PER_IP : 'zScore/IP',
             self.SGP : 'SGP',
             self.FG_AC : 'FG AC'
         }
 
     @classmethod
     def is_zscore(self, basis:RankingBasis):
-        return basis in [self.ZSCORE, self.ZSCORE_PER_G]
+        return basis in [self.ZSCORE, self.ZSCORE_PER_G, self.ZSCORE_PER_IP]
     
     @classmethod
-    def is_roto_per_game(self, basis:RankingBasis):
-        return basis in [self.ZSCORE_PER_G]
+    def is_roto_fractional(self, basis:RankingBasis):
+        return basis in [self.ZSCORE_PER_G, self.ZSCORE_PER_IP]
     
 class StatType(Enum):
     G_HIT = 0

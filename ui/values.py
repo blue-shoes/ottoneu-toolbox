@@ -374,7 +374,7 @@ class ValuesCalculation(tk.Frame):
                 self.hitter_basis.set('zScore')
             #TODO: Reimplement zScore/G for pitchers once the games rationing is figured out
             #self.pitcher_basis_cb['values'] = ('zScore', 'zScore/G')
-            self.pitcher_basis_cb['values'] = ('zScore')
+            self.pitcher_basis_cb['values'] = ('zScore', 'zScore/IP')
             if self.pitcher_basis.get() not in self.pitcher_basis_cb['values']:
                 self.pitcher_basis.set('zScore')
             self.static_rl_btn['state'] = DISABLED
@@ -1001,7 +1001,7 @@ class ValuesCalculation(tk.Frame):
     def get_advanced_inputs(self):
         if not ScoringFormat.is_points_type(self.value_calc.format):
             #TODO: SGP info
-            if RankingBasis.is_roto_per_game(self.value_calc.hitter_basis):
+            if RankingBasis.is_roto_fractional(self.value_calc.hitter_basis):
                 #TODO: Something for pitcher zScore/G
                 self.value_calc.set_input(CDT.BATTER_G_TARGET, adv_calc_services.get_advanced_option(CDT.BATTER_G_TARGET).value)
         if self.value_calc.get_input(CDT.REP_LEVEL_SCHEME) == RepLevelScheme.FILL_GAMES.value:

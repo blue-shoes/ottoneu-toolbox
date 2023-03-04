@@ -93,12 +93,12 @@ class PlayerValues():
         rosterable_pos = pos_min_pa.loc[pos_min_pa['Max FOM'] >= 0]
         rosterable_pitch = real_pitchers.loc[real_pitchers['FOM'] >= 0]
 
-        if RankingBasis.is_roto_per_game(self.value_calc.hitter_basis):
-            bat_fom = rosterable_pos.apply(self.ration_fom, axis=1).sum()
-        else:
-            bat_fom = rosterable_pos['Max FOM'].sum()
+        bat_fom = rosterable_pos['Max FOM'].sum()
         total_fom = bat_fom + rosterable_pitch['FOM'].sum()
-        arm_fom = rosterable_pitch.apply(pitch_values.usable_fom_calc, args=('SP',), axis=1).sum() + rosterable_pitch.apply(pitch_values.usable_fom_calc, args=('RP',), axis=1).sum()
+        if RankingBasis.is_roto_fractional(self.value_calc.pitcher_basis):
+            arm_fom = rosterable_pitch['FOM'].sum()
+        else:
+            arm_fom = rosterable_pitch.apply(pitch_values.usable_fom_calc, args=('SP',), axis=1).sum() + rosterable_pitch.apply(pitch_values.usable_fom_calc, args=('RP',), axis=1).sum()
         total_usable_fom = bat_fom + arm_fom
         total_players = len(rosterable_pos) + len(rosterable_pitch)
         self.value_calc.set_output(CalculationDataType.TOTAL_HITTERS_ROSTERED, len(rosterable_pos))
@@ -136,9 +136,7 @@ class PlayerValues():
                 pos_value = pd.DataFrame(pos_min_pa)
             else:
                 pos_value = pd.DataFrame(pos_min_pa.loc[pos_min_pa['Position(s)'].str.contains(pos.value)])
-            #if RankingBasis.is_roto_fractional(self.value_calc.hitter_basis):
-            #    pos_value['Value'] = pos_value.apply(self.ration_roto_per_game, args=(pos,), axis=1)
-            #else:
+
             if self.bat_dol_per_fom > 0:
                 pos_value['Value'] = pos_value[f'{pos.value}_FOM'].apply(lambda x: x*self.bat_dol_per_fom + 1.0 if x >= 0 else 0)
             else:
@@ -148,9 +146,7 @@ class PlayerValues():
 
             for index, row in pos_value.iterrows():
                 self.value_calc.set_player_value(index, pos, row['Value'])
-        #if RankingBasis.is_roto_fractional(self.value_calc.hitter_basis):
-        #    pos_value['Value'] = pos_value.apply(self.ration_roto_per_game, args=(Position.OFFENSE,), axis=1)
-        #else:
+
         if self.bat_dol_per_fom > 0:
             pos_min_pa['Value'] = pos_min_pa['Max FOM'].apply(lambda x: x*self.bat_dol_per_fom + 1.0 if x >= 0 else 0)
         else:
@@ -159,7 +155,6 @@ class PlayerValues():
 
         for pos in Position.get_discrete_pitching_pos():
             pos_value = pd.DataFrame(real_pitchers.loc[real_pitchers[f'IP {pos.value}'] > 0])
-            #TODO: Implement rationing for zScore/G
             if self.arm_dol_per_fom > 0:
                 pos_value['Value'] = pos_value[f'FOM {pos.value}'].apply(lambda x: x*self.arm_dol_per_fom + 1.0 if x >= 0 else 0)
             else:
@@ -204,19 +199,3 @@ class PlayerValues():
         
         for index, row in results.iterrows():
             self.value_calc.set_player_value(index, Position.OVERALL, row['Value'])
-
-    def ration_roto_per_game(self, row, pos:Position) -> float:
-        if pos == Position.OFFENSE:
-            col = 'Max FOM'
-        else:
-            col = f'{pos.value}_FOM'
-        if row[col] >= 0:
-            if self.bat_dol_per_fom > 0:
-                return (row['G']) / self.value_calc.get_input(CalculationDataType.BATTER_G_TARGET) * row[col] * self.bat_dol_per_fom + 1
-            else:
-                return (row['G']) / self.value_calc.get_input(CalculationDataType.BATTER_G_TARGET) * row[col] * self.dol_per_fom + 1
-        else:
-            return 0
-    
-    def ration_fom(self, row) -> float:
-        return row['G'] / self.value_calc.get_input(CalculationDataType.BATTER_G_TARGET) * row['Max FOM']

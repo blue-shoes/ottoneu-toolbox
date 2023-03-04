@@ -386,7 +386,7 @@ class BatValues():
         proj['PA/G'] = proj.apply(self.per_game_rate, axis=1, args=(StatType.PA,))
         alr = self.roto_above_rl(proj)
         above_rep_lvl = proj.loc[alr]
-        if RankingBasis.is_roto_per_game(RankingBasis.display_to_enum_map().get(self.rank_basis)):
+        if RankingBasis.is_roto_fractional(RankingBasis.display_to_enum_map().get(self.rank_basis)):
             self.pa_per_team = above_rep_lvl['PA/G'].sum() / self.num_teams
             self.ab_per_team = above_rep_lvl['AB/G'].sum() / self.num_teams
             proj['R/G'] = proj.apply(self.per_game_rate, axis=1, args=(StatType.R,))
@@ -436,7 +436,7 @@ class BatValues():
         else:
             denom = self.ab_per_team
             col = 'AB'
-        if RankingBasis.is_roto_per_game(RankingBasis.display_to_enum_map().get(self.rank_basis)):
+        if RankingBasis.is_roto_fractional(RankingBasis.display_to_enum_map().get(self.rank_basis)):
             col += '/G'
         p_denom = row[col]
         return ((self.stat_avg[stat] * (denom-p_denom) 
@@ -457,7 +457,7 @@ class BatValues():
 
     def calc_z_score(self, row) -> float:
         '''Calculates the zScore for the player row'''
-        if RankingBasis.is_roto_per_game(RankingBasis.display_to_enum_map().get(self.rank_basis)):
+        if RankingBasis.is_roto_fractional(RankingBasis.display_to_enum_map().get(self.rank_basis)):
             col_add = '/G'
             rat = row['G'] / self.target_games
         else:

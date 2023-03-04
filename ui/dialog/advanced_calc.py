@@ -26,7 +26,7 @@ class Dialog(tk.Toplevel):
         row = row + 1
 
         if not ScoringFormat.is_points_type(format):
-            if RankingBasis.is_roto_per_game(hit_basis):
+            if RankingBasis.is_roto_fractional(hit_basis):
                 row = self.add_row('Target games filled by hitter:', CDT.BATTER_G_TARGET, row)
             if RankingBasis.is_roto_per_game(pitch_basis):
                 row = self.add_row('Target IP filled:', CDT.IP_TARGET, row)
