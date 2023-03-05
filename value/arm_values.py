@@ -357,7 +357,7 @@ class ArmValues():
             rate = row[f'{prefix}P/IP {role}'] - rep_level
             return rate * row[f'IP {role}']
         elif self.rank_basis == RankingBasis.PPG:
-            rate = row[f'{prefix}PPG {role}'] - rep_level
+            rate = row[f'{prefix}P/G {role}'] - rep_level
             if role == 'SP':
                 return rate * row['GS']
             else:
@@ -388,7 +388,7 @@ class ArmValues():
         if self.rank_basis == RankingBasis.PIP:
             sort_col = f"{prefix}P/IP {pos}"
         elif self.rank_basis == RankingBasis.PPG:
-            sort_col = f"{prefix}PPG {pos}"
+            sort_col = f"{prefix}P/G {pos}"
         else:
             sort_col = RankingBasis.enum_to_display_dict().get(self.rank_basis)
         pitch_df = pitch_df.sort_values(sort_col, ascending=False)
@@ -552,18 +552,18 @@ class ArmValues():
             df['RP Multiplier'] = df.apply(self.rp_multiplier_assignment, axis=1)
         
         elif self.rank_basis == RankingBasis.PPG:
-            df['PPG SP'] = df.apply(self.sp_ppg_calc, axis=1)
-            df['PPG RP'] = df.apply(self.rp_ppg_calc, axis=1)
+            df['P/G SP'] = df.apply(self.sp_ppg_calc, axis=1)
+            df['P/G RP'] = df.apply(self.rp_ppg_calc, axis=1)
 
-            df['No SVH PPG SP'] = df['PPG SP']
-            df['No SVH PPG RP'] = df.apply(self.rp_no_svh_ppg_calc, axis=1)
+            df['No SVH P/G SP'] = df['P/G SP']
+            df['No SVH P/G RP'] = df.apply(self.rp_no_svh_ppg_calc, axis=1)
 
             if self.no_sv_hld:
-                df['Rank SP Rate'] = df['No SVH PPG SP'].rank(ascending=False)
-                df['Rank RP Rate'] = df['No SVH PPG RP'].rank(ascending=False)
+                df['Rank SP Rate'] = df['No SVH P/G SP'].rank(ascending=False)
+                df['Rank RP Rate'] = df['No SVH P/G RP'].rank(ascending=False)
             else:
-                df['Rank SP Rate'] = df['PPG SP'].rank(ascending=False)
-                df['Rank RP Rate'] = df['PPG RP'].rank(ascending=False)
+                df['Rank SP Rate'] = df['P/G SP'].rank(ascending=False)
+                df['Rank RP Rate'] = df['P/G RP'].rank(ascending=False)
 
             df['SP Multiplier'] = 1
             df['RP Multiplier'] = 1
@@ -582,7 +582,6 @@ class ArmValues():
             updated = df['Max FOM'].sum()
             sigma = orig - updated
             orig = updated
-            print(f'new sigma = {sigma}')
         return sigma
 
     def rank_roto_pitchers(self, df:DataFrame, rank_col:str=None, ascending=False) -> None:
@@ -704,8 +703,8 @@ class ArmValues():
             df['P/IP'] = df.apply(self.calc_ppi, axis=1)
             df['No SVH P/IP'] = df.apply(self.calc_ppi_no_svh, axis=1)
             if self.rank_basis == RankingBasis.PPG:
-                df['PPG'] = df.apply(self.calc_ppg, axis=1)
-                df['No SVH PPG'] = df.apply(self.calc_ppg_no_svh, axis=1)
+                df['P/G'] = df.apply(self.calc_ppg, axis=1)
+                df['No SVH P/G'] = df.apply(self.calc_ppg_no_svh, axis=1)
             
             #Filter to pitchers projected to a baseline amount of playing time
             real_pitchers = df.loc[df.apply(self.not_a_belly_itcher_filter, axis=1)]
