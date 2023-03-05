@@ -186,7 +186,6 @@ class ValuesCalculation(tk.Frame):
         self.game_type.set(gt_map[ScoringFormat.FG_POINTS])
         gt_combo = ttk.Combobox(inpf, textvariable=self.game_type)
         gt_combo.bind("<<ComboboxSelected>>", self.update_game_type)
-        # TODO: Don't hardcode game types, include other types
 
         gt_combo['values'] = (gt_map[ScoringFormat.FG_POINTS], gt_map[ScoringFormat.SABR_POINTS], gt_map[ScoringFormat.H2H_FG_POINTS], gt_map[ScoringFormat.H2H_SABR_POINTS], gt_map[ScoringFormat.OLD_SCHOOL_5X5], gt_map[ScoringFormat.CLASSIC_4X4])
         gt_combo.grid(column=1,row=2,pady=5)
@@ -204,7 +203,7 @@ class ValuesCalculation(tk.Frame):
         CreateToolTip(lbl, 'Indicate if value calculations should calculate hitter/pitcher value\nabove replacement intrinsically or by user percentage.')
         self.manual_split = BooleanVar()
         self.manual_split.set(False)
-        cb = ttk.Checkbutton(inpf, variable=self.manual_split, command=self.toggle_manual_split)
+        self.manual_split_cb = cb = ttk.Checkbutton(inpf, variable=self.manual_split, command=self.toggle_manual_split)
         cb.grid(column=1, row=4, pady=5)
         CreateToolTip(cb, 'Indicate if value calculations should calculate hitter/pitcher value\nabove replacement intrinsically or by user percentage.')
 
@@ -354,6 +353,13 @@ class ValuesCalculation(tk.Frame):
             pt.add_scrollbar()
     
     def update_ranking_basis(self, event: Event):
+        if RankingBasis.is_roto_fractional(RankingBasis.display_to_enum_map().get(self.hitter_basis.get()))\
+            or RankingBasis.is_roto_fractional(RankingBasis.display_to_enum_map().get(self.pitcher_basis.get())):
+            self.manual_split.set(True)
+            self.manual_split_cb.configure(state='disable')
+            self.toggle_manual_split()
+        else:
+            self.manual_split_cb.configure(state='active')
         self.set_display_columns()
         self.set_advanced_button_status()
 
@@ -368,12 +374,12 @@ class ValuesCalculation(tk.Frame):
             if self.pitcher_basis.get() not in self.pitcher_basis_cb['values']:
                 self.pitcher_basis.set('P/IP')
             self.static_rl_btn['state'] = ACTIVE
+            self.sv_hld_entry['state'] = ACTIVE
+            self.sv_hld_lbl['state'] = ACTIVE
         else:
             self.hitter_basis_cb['values'] = ('zScore', 'zScore/G')
             if self.hitter_basis.get() not in self.hitter_basis_cb['values']:
                 self.hitter_basis.set('zScore')
-            #TODO: Reimplement zScore/G for pitchers once the games rationing is figured out
-            #self.pitcher_basis_cb['values'] = ('zScore', 'zScore/G')
             self.pitcher_basis_cb['values'] = ('zScore', 'zScore/IP')
             if self.pitcher_basis.get() not in self.pitcher_basis_cb['values']:
                 self.pitcher_basis.set('zScore')
@@ -381,6 +387,8 @@ class ValuesCalculation(tk.Frame):
             if self.rep_level_scheme.get() == RepLevelScheme.STATIC_REP_LEVEL.value:
                 self.rep_level_scheme.set(RepLevelScheme.NUM_ROSTERED.value)
                 self.update_rep_level_scheme()
+            self.sv_hld_entry['state'] = DISABLED
+            self.sv_hld_lbl['state'] = DISABLED
 
     def select_projection(self):
         count = projection_services.get_projection_count()
@@ -1002,7 +1010,6 @@ class ValuesCalculation(tk.Frame):
         if not ScoringFormat.is_points_type(self.value_calc.format):
             #TODO: SGP info
             if RankingBasis.is_roto_fractional(self.value_calc.hitter_basis):
-                #TODO: Something for pitcher zScore/G
                 self.value_calc.set_input(CDT.BATTER_G_TARGET, adv_calc_services.get_advanced_option(CDT.BATTER_G_TARGET).value)
         if self.value_calc.get_input(CDT.REP_LEVEL_SCHEME) == RepLevelScheme.FILL_GAMES.value:
             self.value_calc.set_input(CDT.BATTER_G_TARGET, adv_calc_services.get_advanced_option(CDT.BATTER_G_TARGET).value)
