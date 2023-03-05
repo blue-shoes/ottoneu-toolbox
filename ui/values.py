@@ -1106,7 +1106,7 @@ class ValuesCalculation(tk.Frame):
                 try:
                     f_val = float(value.get())
                     if f_val > 10.0:
-                        if self.pitcher_basis.get() == RankingBasis.PPG and key == 'SP' and f_val < 40.0:
+                        if RankingBasis.display_to_enum_map().get(self.pitcher_basis.get()) == RankingBasis.PPG and key == 'SP' and f_val < 40.0:
                             continue
                         bad_rep_level.append(key)
                 except ValueError:
