@@ -25,7 +25,7 @@ from scrape.exceptions import BrowserTypeException, DownloadException
 
 class Scrape_Base(object):
     '''Abstract scraper class'''
-    def __init__(self, browser):
+    def __init__(self, browser=None):
         self.driver = None
         self.browser = browser
         dirname = os.path.abspath(os.path.join(os.path.dirname( __file__ ), '..'))
@@ -133,7 +133,7 @@ class Scrape_Base(object):
             service = EdgeService(EdgeChromiumDriverManager().install())
             service.creationflags = CREATE_NO_WINDOW
             self.driver = webdriver.Edge(service=service, options=options)
-        elif 'FirefoxURL' in self.browser:
+        elif self.browser is not None and 'FirefoxURL' in self.browser:
             options = webdriver.FirefoxOptions()
             options.add_argument('--headless')
             options.set_preference("browser.download.folderList", 2)
