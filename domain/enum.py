@@ -11,8 +11,15 @@ class ProjectionType(Enum):
     THE_BATX = 5
     CUSTOM = 6
     VALUE_DERIVED = 7
+    DAVENPORT = 8
 
-    fg_downloadable = [STEAMER, ZIPS, DEPTH_CHARTS, ATC, THE_BAT, THE_BATX]
+    @classmethod
+    def get_fg_downloadable(self):
+        return [self.STEAMER, self.ZIPS, self.DEPTH_CHARTS, self.ATC, self.THE_BAT, self.THE_BATX]
+    
+    @classmethod
+    def get_downloadable(self):
+        return [self.DAVENPORT, self.STEAMER, self.ZIPS, self.DEPTH_CHARTS, self.ATC, self.THE_BAT, self.THE_BATX]
 
     @classmethod
     def enum_to_name_dict(self):
@@ -24,7 +31,8 @@ class ProjectionType(Enum):
         self.THE_BAT : "THE BAT",
         self.THE_BATX : "THE BATX",
         self.CUSTOM : "Custom",
-        self.VALUE_DERIVED: "Derived"
+        self.VALUE_DERIVED: "Derived",
+        self.DAVENPORT: "Davenport"
     }
 
     @classmethod
@@ -37,7 +45,8 @@ class ProjectionType(Enum):
         "THE BAT" : self.THE_BAT,
         "THE BATX" : self.THE_BATX,
         "Custom" : self.CUSTOM,
-        "Derived" : self.VALUE_DERIVED
+        "Derived" : self.VALUE_DERIVED,
+        "Davenport" : self.DAVENPORT
     }
 
     @classmethod
@@ -279,6 +288,7 @@ class StatType(Enum):
         'SB' : self.SB,
         'CS' : self.CS,
         'AVG' : self.AVG,
+        'BA'  : self.AVG,
         'OBP' : self.OBP,
         'SLG' : self.SLG,
         'OPS' : self.OPS,
@@ -545,6 +555,7 @@ class Position(Enum):
 class IdType(Enum):
     OTTONEU = 'Ottoneu'
     FANGRAPHS = 'FanGraphs'
+    MLB = 'MLBID'
 
 class PropertyType(Enum):
     DB_VERSION = 'db.version'
