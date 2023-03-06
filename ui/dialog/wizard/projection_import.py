@@ -57,7 +57,10 @@ class Wizard(wizard.Wizard):
         pd.set_task_title('Uploading')
         pd.set_completion_percent(15)
         if self.step1.source_var.get():
-            id_type = IdType.FANGRAPHS
+            if self.step1.proj_type.get() == ProjectionType.enum_to_name_dict().get(ProjectionType.DAVENPORT):
+                id_type = IdType.MLB
+            else:
+                id_type = IdType.FANGRAPHS
         else:
             id_type = IdType._value2member_map_.get(self.step1.id_type.get())
         self.parent.projection = projection_services.save_projection(self.projection, [self.step1.hitter_df, self.step1.pitcher_df],id_type,pd)
@@ -74,7 +77,7 @@ class Step1(tk.Frame):
         tk.Label(self, text="Source", font="bold").grid(column=0, row=1)
         self.source_var = tk.BooleanVar()
         
-        tk.Radiobutton(self, text="FanGraphs", value=True, variable=self.source_var, command=self.toggle_fg_proj).grid(column=1,row=1)
+        tk.Radiobutton(self, text="Downloadable", value=True, variable=self.source_var, command=self.toggle_downloadable_proj).grid(column=1,row=1)
         btn = tk.Radiobutton(self, text="Custom",value=False,variable=self.source_var, command=self.toggle_custom_proj)
         btn.grid(column=2,row=1)
         CreateToolTip(btn, "Upload a valid set of csv files with projection data from user's computer.")
@@ -85,24 +88,25 @@ class Step1(tk.Frame):
         tk.Label(self.fg_self , text="Projection Type:", font="bold").grid(column=0,row=0)
         
         downloadable = []
-        for proj in islice(ProjectionType, 6):
-            downloadable.append(ProjectionType.enum_to_name_dict().get(proj))
+        for pt in ProjectionType.get_downloadable():
+            downloadable.append(ProjectionType.enum_to_name_dict().get(pt))
         
         self.proj_type = tk.StringVar()
-        self.proj_type.set('Steamer')
+        self.proj_type.set('Davenport')
         proj_cb = ttk.Combobox(self.fg_self , textvariable=self.proj_type)
         proj_cb['values'] = downloadable
         proj_cb.grid(column=1, row=0)
+        proj_cb.bind("<<ComboboxSelected>>", self.update_proj_type)
 
         self.dc_var = tk.BooleanVar()
         self.dc_var.set(False)
-        btn = ttk.Checkbutton(self.fg_self, text="DC Playing Time?", variable=self.dc_var)
+        self.dc_btn = btn = ttk.Checkbutton(self.fg_self, text="DC Playing Time?", variable=self.dc_var)
         btn.grid(column=1,row=1)
         CreateToolTip(btn, 'Re-scale stats to FanGraphs Depth Charts playing time?')
 
         self.ros_var = tk.BooleanVar()
         self.ros_var.set(False)
-        btn = ttk.Checkbutton(self.fg_self, text="RoS Projection?", variable=self.ros_var)
+        self.ros_btn = btn = ttk.Checkbutton(self.fg_self, text="RoS Projection?", variable=self.ros_var)
         btn.grid(column=1,row=2)
         CreateToolTip(btn, 'Use a Rest-of-Season projection?')
 
@@ -139,8 +143,19 @@ class Step1(tk.Frame):
         pitcher_btn.grid(column=1,row=2, padx=5)
         pitcher_btn.configure(state='disable')
         self.pitcher_proj_file.set(Path.home())
+    
+    def update_proj_type(self, event:Event):
+        p_type = ProjectionType.name_to_enum_dict().get(self.proj_type.get())
+        if p_type == ProjectionType.DAVENPORT:
+            self.dc_var.set(False)
+            self.dc_btn.configure(state='disabled')
+            self.ros_var.set(False)
+            self.ros_btn.configure(state='disabled')
+        else:
+            self.dc_btn.configure(state='active')
+            self.ros_btn.configure(state='active')
 
-    def toggle_fg_proj(self):
+    def toggle_downloadable_proj(self):
         for child in self.fg_self.winfo_children():
             child.configure(state='active')
         for child in self.custom_self.winfo_children():
