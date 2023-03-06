@@ -1,6 +1,6 @@
 from pandas import DataFrame
 from domain.domain import PlayerProjection, Projection, ProjectionData
-from scrape import scrape_fg
+from scrape import scrape_fg, scrape_davenport
 from domain.enum import ProjectionType, StatType, IdType
 from domain.exception import InputException
 from datetime import datetime
@@ -118,12 +118,21 @@ def save_projection(projection:Projection, projs:List[DataFrame], id_type:IdType
                 else:
                     if id_type == IdType.FANGRAPHS:
                         player = player_services.get_player_by_fg_id(idx)
+                        id = idx
                     elif id_type == IdType.OTTONEU:
                         player = player_services.get_player_by_ottoneu_id(idx)
+                        id = idx
+                    elif id_type == IdType.MLB:
+                        id = player_services.get_fg_id_by_mlb_id(idx)
+                        player = player_services.get_player_by_fg_id(id)
                     else:
                         raise Exception(f'Unsupported IdType {id_type}')
                     if player == None:
-                        player = player_services.create_player(row, fg_id=idx)
+                        if id_type == IdType.OTTONEU:
+                            player = player_services.create_player(row, ottoneu_id=id)
+                        else:
+                            print(f'creating player {id}')
+                            player = player_services.create_player(row, fg_id=id)
                     seen_players[idx] = player
                     player_proj = PlayerProjection()
                     projection.player_projections.append(player_proj)
@@ -436,11 +445,16 @@ def create_projection_from_download(projection: Projection, type:ProjectionType,
         year = date_util.get_current_ottoneu_year()
     projection.season = year
 
-    proj_type_url = ProjectionType.enum_to_url().get(type)
-    if progress is not None:
-        progress.set_task_title('Downloading projections...')
-        progress.increment_completion_percent(10)
-    projs = download_projections(proj_type_url, ros, dc_pt, progress)
+    if type in ProjectionType.get_fg_downloadable():
+        proj_type_url = ProjectionType.enum_to_url().get(type)
+        if progress is not None:
+            progress.set_task_title('Downloading projections...')
+            progress.increment_completion_percent(10)
+        projs = download_projections(proj_type_url, ros, dc_pt, progress)
+    elif type == ProjectionType.DAVENPORT:
+        projs = scrape_davenport.Scrape_Davenport().get_projections()
+    else:
+        raise InputException(f"Unhandled projection type passed to create_projection_from_download {type}")
     projection_check(projs)
     return projs[0], projs[1]
     #return save_projection(projection, projs, progress)
