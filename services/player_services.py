@@ -1,5 +1,6 @@
 from datetime import datetime
 from sqlalchemy.orm import joinedload
+from pybaseball import playerid_reverse_lookup
 
 from domain.domain import Player, Salary_Refresh, Salary_Info
 from domain.enum import ScoringFormat, Position
@@ -147,3 +148,13 @@ def get_player_from_ottoneu_player_page(player_id: int, league_id: int) -> Playe
         player.salary_info.append(sal_info)
         session.add(sal_info)
     return player
+
+def get_player_by_mlb_id(player_id:int) -> Player:
+    '''Retrieves a player by MLB Id using the pybaseball playerid_reverse_lookup function to find FanGraphs id'''
+    fg_id = get_fg_id_by_mlb_id(player_id)
+    return get_player_by_fg_id(fg_id)
+
+def get_fg_id_by_mlb_id(player_id:int) -> str:
+    '''Retrieves a player's FanGraphs Id by MLB Id using the pybaseball playerid_reverse_lookup function'''
+    p_df = playerid_reverse_lookup([player_id])
+    return p_df.loc[0,'key_fangraphs']
