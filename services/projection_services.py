@@ -124,15 +124,32 @@ def save_projection(projection:Projection, projs:List[DataFrame], id_type:IdType
                         id = idx
                     elif id_type == IdType.MLB:
                         id = player_services.get_fg_id_by_mlb_id(idx)
-                        player = player_services.get_player_by_fg_id(id)
+                        if id is None or id <= 0:
+                            name = f"{row['First'].strip()} {row['Last'].strip()}".upper()
+                            players = player_services.search_by_name(name)
+                            players.sort(reverse=True, key=lambda p: p.get_salary_info_for_format().roster_percentage)
+                            if players is not None and len(players) > 0:
+                                for possible_player in players:
+                                    if possible_player.team is not None and possible_player.team.split(" ")[0] == row['Team']:
+                                        player = possible_player
+                                        break
+                                if player is None:
+                                    player = players[0]
+                            else:
+                                player = None
+                        else:
+                            player = player_services.get_player_by_fg_id(str(id), force_major=True)
+
                     else:
                         raise Exception(f'Unsupported IdType {id_type}')
                     if player == None:
                         if id_type == IdType.OTTONEU:
                             player = player_services.create_player(row, ottoneu_id=id)
-                        else:
-                            print(f'creating player {id}')
+                        elif id_type == IdType.FANGRAPHS:
                             player = player_services.create_player(row, fg_id=id)
+                        else:
+                            #TODO: Decide how we want to handle this for non-FG/Ottoneu new players. Would probably need new db column and ways to resolve against FG/Ott Ids later
+                            continue
                     seen_players[idx] = player
                     player_proj = PlayerProjection()
                     projection.player_projections.append(player_proj)
@@ -142,7 +159,7 @@ def save_projection(projection:Projection, projs:List[DataFrame], id_type:IdType
                 player_proj.player = player
                 
                 for col in stat_cols:
-                    if col not in ['Name','Team','-1','PlayerId']:
+                    if col not in ['Name','Team','-1','PlayerId', 'Last', 'First', 'Lg']:
                         if pitch:
                             stat_type = StatType.pitch_to_enum_dict().get(col)
                         else:
