@@ -499,9 +499,24 @@ def projection_check(projs) -> None:
     '''Performs checks for uploaded projections'''
     # Perform checks here, update data as needed
     pitch_proj = projs[1]
-    if StatType.enum_to_display_dict()[StatType.HBP_ALLOWED] not in pitch_proj.columns:
+    if 'FIP' not in pitch_proj.columns and set(['IP', 'SO', 'BB', 'HBP', 'HR']).issubset(pitch_proj.columns):
+        pitch_proj['FIP'] = pitch_proj.apply(calc_fip, axis=1)
+    if 'HBP' not in pitch_proj.columns and 'BB' in pitch_proj.columns:
         # If HBP allowed is blank, fill with pre-calculated regression vs BB
         pitch_proj[StatType.enum_to_display_dict()[StatType.HBP_ALLOWED]] = pitch_proj[StatType.enum_to_display_dict()[StatType.BB_ALLOWED]].apply(lambda bb: 0.0951*bb+0.4181)
+    if 'FIP' not in pitch_proj.columns and set(['IP', 'SO', 'BB', 'HBP', 'HR']).issubset(pitch_proj.columns):
+        pitch_proj['FIP'] = pitch_proj.apply(calc_fip, axis=1)
+    if 'ERA' not in pitch_proj.columns and set(['IP', 'ER']).issubset(pitch_proj.columns):
+        pitch_proj['ERA'] = pitch_proj.apply(calc_era, axis=1)
+    if 'WHIP' not in pitch_proj.columns and set(['IP', 'H', 'BB']).issubset(pitch_proj.columns):
+        pitch_proj['WHIP'] = pitch_proj.apply(calc_whip, axis=1)
+    if 'HR/9' not in pitch_proj.columns and set(['IP', 'HR']).issubset(pitch_proj.columns):
+        pitch_proj['HR/9'] = pitch_proj.apply(calc_hr_per_9, axis=1)
+    if 'BB/9' not in pitch_proj.columns and set(['IP', 'BB']).issubset(pitch_proj.columns):
+        pitch_proj['BB/9'] = pitch_proj.apply(calc_bb_per_9, axis=1)
+    if 'K/9' not in pitch_proj.columns and set(['IP', 'SO']).issubset(pitch_proj.columns):
+        pitch_proj['K/9'] = pitch_proj.apply(calc_k_per_9, axis=1)
+    
 
 def get_projection_count() -> int:
     '''Returns number of Projections in database.'''
