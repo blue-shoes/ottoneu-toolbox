@@ -76,8 +76,6 @@ class DraftTool(tk.Frame):
         self.league_text_var.set(f'{self.controller.league.name} Draft')
         self.values_name.set(f'Selected Values: {self.value_calculation.name}')
 
-        self.calculate_extra_value()
-
         self.salary_information_refresh()
 
         self.draft = draft_services.get_draft_by_league(self.controller.league.index)
@@ -554,10 +552,11 @@ class DraftTool(tk.Frame):
             return
         prog.set_task_title('Resolving rosters...')
         prog.increment_completion_percent(50)
+        pos_val = self.values.loc[~(self.values['Value'] < 1)]
         rows = []
         for idx, cm_player in cm_rosters_df.iterrows():
             if cm_player['ottid'] == 0:
-                self.extra_value = self.extra_value + cm_player['Amount']
+                self.extra_value = self.extra_value - cm_player['Amount']
                 continue
             found = False
             if cm_player['ottid'] in set(self.rosters['ottoneu ID']):
@@ -577,6 +576,8 @@ class DraftTool(tk.Frame):
                         pos = player_services.get_player_positions(player)
                         for p in pos:                                    
                             self.pos_values[p].at[player.index, 'Salary'] = salary
+                    if player.index not in pos_val.index:
+                        self.extra_value = self.extra_value - salary
         if rows is None or len(rows) == 0:
             prog.complete()
             return
@@ -645,6 +646,7 @@ class DraftTool(tk.Frame):
                             if last_trans.iloc[index]['Type'].upper() == 'ADD':
                                 salary = int(last_trans.iloc[index]['Salary'].split('$')[1])
                                 self.values.at[player.index, 'Salary'] = salary
+                                self.update_remaining_extra_value(self.values.at[player.index, 'Value'], salary)
                                 for p in pos:  
                                     if p in Position.get_pitching_pos():
                                         #Because of how we treat pitching, update all pitcher tables if it's a pitcher
@@ -653,6 +655,7 @@ class DraftTool(tk.Frame):
                                     else:          
                                         self.pos_values[p].at[player.index, 'Salary'] = salary
                             elif 'CUT' in last_trans.iloc[index]['Type'].upper():
+                                self.revert_extra_value(self.values.at[player.index, 'Value'], self.values.at[player.index, 'Salary'])
                                 self.values.at[player.index, 'Salary'] = 0
                                 for p in pos:
                                     if p in Position.get_pitching_pos():
@@ -895,7 +898,8 @@ class DraftTool(tk.Frame):
             tags = self.get_row_tags(id)
             self.target_table.insert('', tk.END, text=id, tags=tags, values=(name, t_price, value, pos))
         
-    def initialize_draft(self, same_values=False):  
+    def initialize_draft(self, same_values=False): 
+        self.calculate_extra_value() 
         restart = False
         if not self.run_event.is_set():
             self.stop_draft_monitor()
@@ -1343,7 +1347,7 @@ class DraftTool(tk.Frame):
         num_teams = self.controller.league.num_teams
         pos_df = self.values.loc[self.values['Salary'] == 0]
         pos_val = pos_df.loc[~(pos_df['Value'] < 1)]
-        remaining_valued_roster_spots = self.valued_roster_spots - len(self.rosters)
+        remaining_valued_roster_spots = len(pos_val)
         self.remaining_value = pos_val['Value'].sum() - remaining_valued_roster_spots
         self.remaining_dollars = (num_teams*400 - self.extra_value) - self.rosters['Salary'].sum() - remaining_valued_roster_spots
         self.inflation = self.remaining_dollars / self.remaining_value
@@ -1351,9 +1355,26 @@ class DraftTool(tk.Frame):
 
     def update_rostered_players(self):
         self.values = self.values.merge(self.rosters[['Salary']], how='left', left_index=True, right_index=True, sort=False).fillna(0)
+        for idx, row in self.values.iterrows():
+            self.update_remaining_extra_value(row['Value'], row['Salary'])
         for pos in self.pos_values:
             self.pos_values[pos] = self.pos_values[pos].merge(self.rosters[['Salary']], how='left', left_index=True, right_index=True, sort=False).fillna(0)
     
+    def update_remaining_extra_value(self, value:float, salary:float) -> None:
+        if salary > 0:
+            if value <= 0:
+                self.extra_value = self.extra_value - salary
+            elif value < 10 and value < salary:
+                subtract = (salary - value) / (2*value)
+                self.extra_value = self.extra_value - subtract
+    
+    def revert_extra_value(self, value:float, old_salary:float) -> None:
+        if value <= 0:
+            self.extra_value = self.extra_value + old_salary
+        elif value < 10 and value < old_salary:
+            readd = (old_salary - value) / (2*value)
+            self.extra_value = self.extra_value + readd
+
     def league_change(self):
         while self.controller.league is None:
             self.controller.select_league()
