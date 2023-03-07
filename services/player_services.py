@@ -157,4 +157,7 @@ def get_player_by_mlb_id(player_id:int) -> Player:
 def get_fg_id_by_mlb_id(player_id:int) -> str:
     '''Retrieves a player's FanGraphs Id by MLB Id using the pybaseball playerid_reverse_lookup function'''
     p_df = playerid_reverse_lookup([player_id])
-    return p_df.loc[0,'key_fangraphs']
+    if len(p_df) > 0:
+        return p_df.loc[0,'key_fangraphs']
+    else:
+        return -1
