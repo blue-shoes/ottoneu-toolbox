@@ -352,11 +352,18 @@ class PlayerProjection(Base):
     pitcher = Column(Boolean)
     two_way = Column(Boolean)
 
-    def get_stat(self, stat_type:StatType) -> ProjectionData:
-        '''Gets the ProejctionData associated with the input StatType'''
+    def get_stat(self, stat_type:StatType) -> float:
+        '''Gets the stat value associated with the input StatType'''
+        pd = self.get_projection_data(stat_type)
+        if pd is None:
+            return None
+        return pd.stat_value
+
+    def get_projection_data(self, stat_type:StatType) -> ProjectionData:
+        '''Gets the ProjectionData object associated with the input StatType'''
         for pd in self.projection_data:
             if pd.stat_type == stat_type:
-                return pd.stat_value
+                return pd
         return None
 
 class ProjectionData(Base):

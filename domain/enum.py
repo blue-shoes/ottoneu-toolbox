@@ -269,6 +269,7 @@ class StatType(Enum):
     PPG = 44
     PIP = 45
 
+
     @classmethod
     def hit_to_enum_dict(self):
         return {
@@ -294,7 +295,16 @@ class StatType(Enum):
         'OPS' : self.OPS,
         'wOBA' : self.WOBA,
         'wRC+' : self.WRC_PLUS,
-        'BABIP' : self.BABIP_H
+        'BABIP' : self.BABIP_H,
+        'G_C' : self.G_HIT,
+        'G_FB' : self.G_HIT,
+        'G_SB' : self.G_HIT,
+        'G_3B' : self.G_HIT,
+        'G_SS' : self.G_HIT,
+        'G_LF' : self.G_HIT,
+        'G_CF' : self.G_HIT,
+        'G_RF' : self.G_HIT,
+        'G_DH' : self.G_HIT
     }
 
     @classmethod
@@ -308,6 +318,7 @@ class StatType(Enum):
         'QS' : self.QS,
         'SV' : self.SV,
         'HLD' : self.HLD,
+        'Holds' : self.HLD,
         'H' : self.H_ALLOWED,
         'ER' : self.ER,
         'HR' : self.HR_ALLOWED,
