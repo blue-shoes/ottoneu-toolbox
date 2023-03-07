@@ -52,10 +52,12 @@ def create_player(player_row:list, ottoneu_id:int=None, fg_id=None) -> Player:
     player.salary_info = []
     return player
 
-def get_player_by_fg_id(player_id) -> Player:
-    '''Returns player from database based on input FanGraphs player id. Will resolve either major or minor league id.'''
+def get_player_by_fg_id(player_id, force_major:bool=False) -> Player:
+    '''Returns player from database based on input FanGraphs player id. Will resolve either major or minor league id by default. If force_major is true, will only look for major league id'''
     with Session() as session:
-        if isinstance(player_id, int) or player_id.isdigit():
+        if force_major:
+            player = session.query(Player).filter(Player.fg_major_id == player_id).first()
+        elif isinstance(player_id, int) or player_id.isdigit():
             player = session.query(Player).filter(Player.fg_major_id == player_id).first()
         else:
             player = session.query(Player).filter(Player.fg_minor_id == player_id).first()
