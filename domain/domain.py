@@ -322,13 +322,12 @@ class Projection(Base):
             for pp in self.player_projections:
                 if id_type == IdType.FANGRAPHS:
                     if idx.isnumeric():
-                        for pp in self.player_projections:
-                            if pp.player.fg_major_id == idx:
-                                return pp
+                        if pp.player.fg_major_id == idx:
+                            print('returning pp')
+                            return pp
                     else:
-                        for pp in self.player_projections:
-                            if pp.player.fg_minor_id == idx:
-                                return pp
+                        if pp.player.fg_minor_id == idx:
+                            return pp
                 else:
                     for pp in self.player_projections:
                         if pp.player.ottoneu_id == idx:
