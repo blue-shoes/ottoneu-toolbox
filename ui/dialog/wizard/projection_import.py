@@ -244,27 +244,14 @@ class Step1(tk.Frame):
                     df_name = string_util.normalize(self.hitter_df.at[id, 'NAME'])
                     if df_name != player.search_name:
                         raise InputException(f'The input IdType {self.id_type.get()} appears wrong for this projection set.')
-        except FangraphsException as e:
+        except (FangraphsException, DavenportException, InputException) as e:
             self.parent.projection = None
             self.parent.validate_msg = e.validation_msgs
-            #mb.showerror('Error retrieving projection',  )
-            #self.parent.lift()
-            #self.parent.focus_force()
-            return False
-        except InputException as e:
-            self.parent.projection = None
-            self.parent.validate_msg = e.validation_msgs
-            #mb.showerror('Error uploading projections', f'{e.args[0]}\n{msgs}')
-            #self.parent.lift()
-            #self.parent.focus_force()
             return False
         except Exception as Argument:
             self.parent.projection = None
             logging.exception("Error retrieving projections")
             self.parent.validate_msg = 'Error retrieving projection. See log file for details.'
-            #mb.showerror('Error retrieving projection', 'See log file for details.')
-            #self.parent.lift()
-            #self.parent.focus_force()
             return False
         finally:
             pd.complete()
