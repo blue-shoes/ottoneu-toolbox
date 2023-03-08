@@ -5,20 +5,22 @@ from tkinter import filedialog as fd
 from tkinter import messagebox as mb
 from tkinter.messagebox import CANCEL
 from tkinter import font
-from itertools import islice
 import logging
 from pathlib import Path
 import os
 import os.path
+import webbrowser
+from functools import partial
 
 from domain.domain import Projection
 from domain.enum import ProjectionType, IdType
 from domain.exception import InputException
-from scrape.exceptions import FangraphsException
+from scrape.exceptions import FangraphsException, DavenportException
 from services import projection_services, player_services
 from ui.dialog import progress, fg_login
 from ui.dialog.wizard import wizard
 from ui.tool.tooltip import CreateToolTip
+from ui.tool.tkHyperlinkManager import HyperlinkManager
 from util import date_util, string_util
 
 class Dialog(wizard.Dialog):
@@ -205,19 +207,22 @@ class Step1(tk.Frame):
     def on_show(self):
         return True
     
-    def validate(self):
-        if not os.path.exists('conf/fangraphs.conf'):
-            dialog = fg_login.Dialog(self)
-            if dialog.status == CANCEL:
-                self.parent.validate_msg = 'Please enter a FanGraphs username and password to proceed'
-                mb.showerror('Download Error', 'Projections cannot be downloaded by the Toolbox without FanGraph credentials')
-                return False
+    def validate(self):        
         self.parent.projection = Projection()
         pd = progress.ProgressDialog(self.master, title='Getting Projection Set')
         year = date_util.get_current_ottoneu_year()
         try:
             if self.source_var.get():
-                #Download proj from FG
+                if self.proj_type.get() == ProjectionType.enum_to_name_dict().get(ProjectionType.DAVENPORT):
+                    DavenportHyperlinkDialog(self)
+                else:
+                    if not os.path.exists('conf/fangraphs.conf'):
+                        dialog = fg_login.Dialog(self)
+                        if dialog.status == CANCEL:
+                            self.parent.validate_msg = 'Please enter a FanGraphs username and password to proceed'
+                            mb.showerror('Download Error', 'Projections cannot be downloaded by the Toolbox without FanGraphs credentials')
+                            return False
+                #Download proj
                 self.hitter_df, self.pitcher_df = projection_services.create_projection_from_download(self.parent.projection, ProjectionType.name_to_enum_dict().get(self.proj_type.get()), self.ros_var.get(), self.dc_var.get(), year=year, progress=pd)
             else:
                 #Upload proj from files
@@ -309,3 +314,28 @@ class Step2(tk.Frame):
         self.cats5_var.set(self.parent.projection.valid_5x5)
         self.cats4_var.set(self.parent.projection.valid_4x4)
         return True
+
+class DavenportHyperlinkDialog(tk.Toplevel):
+
+    def __init__(self, parent):
+        super().__init__(parent) 
+        tk.Label(self, text='Donate to Davenport', font='bold').grid(row=0, column=0)
+        text_widget = Text(self, width=45, height=4, wrap=tk.WORD,
+            font = font.nametofont("TkDefaultFont"))
+        text_widget.grid(row=1,column=0)
+
+        hyperlink = HyperlinkManager(text_widget)
+
+        text_widget.insert(tk.INSERT, 'Clay Davenport provides his projections free of charge, but donations are appreciated and can be made through a PayPal link on ')
+        text_widget.insert(tk.END, 'his site', hyperlink.add(partial(webbrowser.open, 'https://claydavenport.com/projections/PROJHOME.shtml')))
+        text_widget.insert(tk.END, '.')
+        text_widget.configure(state='disabled')
+
+        tk.Button(self, text="OK", command=self.ok_click, width=15).grid(row=2, column=0)
+
+        self.focus_force()
+        self.lift()
+        self.wait_window()
+    
+    def ok_click(self):
+        self.destroy()
