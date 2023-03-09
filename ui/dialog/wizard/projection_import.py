@@ -105,12 +105,14 @@ class Step1(tk.Frame):
         self.dc_btn = btn = ttk.Checkbutton(self.fg_self, text="DC Playing Time?", variable=self.dc_var)
         btn.grid(column=1,row=1)
         CreateToolTip(btn, 'Re-scale stats to FanGraphs Depth Charts playing time?')
+        btn.configure(state='disable')
 
         self.ros_var = tk.BooleanVar()
         self.ros_var.set(False)
         self.ros_btn = btn = ttk.Checkbutton(self.fg_self, text="RoS Projection?", variable=self.ros_var)
         btn.grid(column=1,row=2)
         CreateToolTip(btn, 'Use a Rest-of-Season projection?')
+        btn.configure(state='disable')
 
         self.custom_self = tk.Frame(self, borderwidth=4)
         self.custom_self.grid(row=3,column=0,columnspan=3)
@@ -160,6 +162,9 @@ class Step1(tk.Frame):
     def toggle_downloadable_proj(self):
         for child in self.fg_self.winfo_children():
             child.configure(state='active')
+        if self.proj_type.get() == ProjectionType.enum_to_name_dict().get(ProjectionType.DAVENPORT):
+            self.dc_btn.configure(state='disable')
+            self.ros_btn.configure(state='disable')
         for child in self.custom_self.winfo_children():
             child.configure(state='disable')
     
