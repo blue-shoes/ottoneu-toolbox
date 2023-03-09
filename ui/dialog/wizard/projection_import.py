@@ -117,7 +117,7 @@ class Step1(tk.Frame):
         self.custom_self = tk.Frame(self, borderwidth=4)
         self.custom_self.grid(row=3,column=0,columnspan=3)
 
-        id_map = [IdType.OTTONEU.value, IdType.FANGRAPHS.value]
+        id_map = [IdType.OTTONEU.value, IdType.FANGRAPHS.value, IdType.MLB.value]
         id_label = ttk.Label(self.custom_self, text="Player Id Type:")
         id_label.grid(column=0,row=0,pady=5, stick=W)
         id_label.configure(state='disabled')
@@ -242,6 +242,8 @@ class Step1(tk.Frame):
                             player = player_services.get_player_by_fg_id(id)
                         elif self.id_type.get() == IdType.OTTONEU.value:
                             player = player_services.get_player_by_ottoneu_id(id)
+                        elif self.id_type.get() == IdType.MLB.value:
+                            player = player_services.get_player_by_mlb_id(id)
                         found_player = player is not None
                         idx = idx + 1
                     if player is None:
