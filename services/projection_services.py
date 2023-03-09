@@ -160,13 +160,22 @@ def save_projection(projection:Projection, projs:List[DataFrame], id_type:IdType
                     player_proj.two_way = False
                 player_proj.player = player
                 
+                generic_games = False
                 for col in stat_cols:
                     if col not in ['Name','Team','-1','PlayerId', 'Last', 'First', 'Lg']:
                         if pitch:
                             stat_type = StatType.pitch_to_enum_dict().get(col)
                         else:
-                            stat_type = StatType.hit_to_enum_dict().get(col)                            
-                        if stat_type != None:
+                            stat_type = StatType.hit_to_enum_dict().get(col)       
+                        if col == 'G':
+                            generic_games = True 
+                            data = ProjectionData()
+                            data.stat_type = stat_type
+                            data.stat_value = row[col]
+                            if data.stat_value is None or math.isnan(data.stat_value):
+                                data.stat_value = 0
+                            player_proj.projection_data.append(data)
+                        elif stat_type != None: 
                             if player_proj.get_projection_data(stat_type) is None:
                                 data = ProjectionData()
                                 data.stat_type = stat_type
@@ -176,7 +185,14 @@ def save_projection(projection:Projection, projs:List[DataFrame], id_type:IdType
                                 player_proj.projection_data.append(data)
                             else:
                                 data = player_proj.get_projection_data(stat_type)
-                                data.stat_value = data.stat_value + row[col]
+                                if stat_type == StatType.G_HIT:
+                                    if not generic_games:
+                                        data.stat_value = data.stat_value + row[col]
+                                else:
+                                    data.stat_value = row[col]
+                                    if data.stat_value is None or math.isnan(data.stat_value):
+                                        data.stat_value = 0
+
                 
                 inc_count += 1
                 if inc_count == inc_div and progress is not None:
@@ -224,11 +240,15 @@ def create_projection_from_upload(projection: Projection, pos_file:str, pitch_fi
     
     issue_list = normalize_batter_projections(projection, pos_df)
 
+    pos_df = pos_df[pos_df.index.notnull()] #Remove blank rows
+
     if len(issue_list) > 0:
         raise InputException(issue_list, 'Could not normalize batter projections')
 
     pitch_df = pd.read_csv(pitch_file)
     issue_list = normalize_pitcher_projections(projection, pitch_df)
+
+    pitch_df = pitch_df[pitch_df.index.notnull()] #Remove blank rows
 
     return pos_df, pitch_df
     #return save_projection(projection, [pos_df, pitch_df], progress)
@@ -239,7 +259,7 @@ def normalize_batter_projections(proj: Projection, df: DataFrame) -> List[str]:
     found_id = False
     issue_list = []
     for col in df.columns:
-        if '%' in col.upper() or 'INTER' in col.upper():
+        if '%' in col.upper() or 'INTER' in col.upper() or 'EQ' in col.upper() or 'COMP' in col.upper():
             continue
         if 'ID' in col.upper():
             df.set_index(col, inplace=True)
@@ -256,11 +276,11 @@ def normalize_batter_projections(proj: Projection, df: DataFrame) -> List[str]:
             col_map[col] = 'AB'
         elif 'H' == col.upper() or 'HIT' in col.upper():
             col_map[col] = 'H'
-        elif '2B' in col.upper() or 'DOUBLE' in col.upper():
+        elif '2B' == col.upper() or 'DOUBLE' in col.upper():
             col_map[col] = '2B'
-        elif '3B' in col.upper() or 'TRIPLE' in col.upper():
+        elif '3B' == col.upper() or 'TRIPLE' in col.upper():
             col_map[col] = '3B'
-        elif 'HR' in col.upper():
+        elif 'HR' == col.upper():
             col_map[col] = 'HR'
         elif 'R' == col.upper() or 'RUN' in col.upper():
             col_map[col] = 'R'
@@ -278,7 +298,7 @@ def normalize_batter_projections(proj: Projection, df: DataFrame) -> List[str]:
             col_map[col] = 'CS'
         elif 'AVG' in col.upper() or 'BA' == col.upper() or 'AVERAGE' in col.upper():
             col_map[col] = 'AVG'
-        elif 'OBP' in col.upper() or 'ON' in col.upper():
+        elif 'OBP' in col.upper():
             col_map[col] = 'OBP'
         elif 'SLG' in col.upper() or 'SLUG' in col.upper():
             col_map[col] = 'SLG'
@@ -333,7 +353,7 @@ def normalize_pitcher_projections(proj: Projection, df: DataFrame) -> List[str]:
     found_id = False
     issue_list = []
     for col in df.columns:
-        if '%' in col.upper() or 'INTER' in col.upper():
+        if '%' in col.upper() or 'INTER' in col.upper() or 'EQ' in col.upper():
             continue
         if 'ID' in col.upper():
             df.set_index(col, inplace=True)
@@ -366,7 +386,7 @@ def normalize_pitcher_projections(proj: Projection, df: DataFrame) -> List[str]:
             col_map[col] = 'HR/9'
         elif 'HR/FB' in col.upper():
             continue
-        elif 'HR' in col.upper() or 'HOME' in col.upper():
+        elif 'HR' == col.upper() or 'HRA' == col.upper() or 'HOME' in col.upper():
             col_map[col] = 'HR'
         elif 'HBP' in col.upper() or 'BY' in col.upper():
             col_map[col] = 'HBP'
@@ -374,13 +394,13 @@ def normalize_pitcher_projections(proj: Projection, df: DataFrame) -> List[str]:
             col_map[col] = 'K/9'
         elif 'K/' in col.upper():
             continue
-        elif 'SO' in col.upper() or 'K' in col.upper():
+        elif 'SO' == col.upper() or 'K' == col.upper():
             col_map[col] = 'SO'
-        elif 'ERA' in col.upper():
+        elif 'ERA' == col.upper():
             col_map[col] = 'ERA'
         elif 'BB/9' in col.upper():
             col_map[col] = 'BB/9'
-        elif 'BB' in col.upper() or 'WALK' in col.upper():
+        elif 'BB' == col.upper() or 'WALK' in col.upper():
             col_map[col] = 'BB'
         elif 'H' == col.upper() or 'HIT' in col.upper():
             col_map[col] = 'H'
