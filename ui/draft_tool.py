@@ -418,7 +418,11 @@ class DraftTool(tk.Frame):
     
     def sort_dual_columns(self, cols):
         primary = float(cols[0][0][1:])
-        secondary = float(cols[0][1][:-1])
+        val = cols[0][1][:-1]
+        if val is None or val == '':
+            secondary = 0
+        else:
+            secondary = float(val)
         return (primary, secondary)
 
     def start_draft_monitor(self):
