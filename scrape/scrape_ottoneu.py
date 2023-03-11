@@ -384,7 +384,7 @@ class Scrape_Ottoneu(scrape_base.Scrape_Base):
         name = header.find('h1').contents[0].string.strip()
         org_info = header.find('h1').find('span', {'class':'strong tinytext'}).contents[0].string.split()
         team = org_info[0]
-        pos = org_info[1]
+        pos = org_info[-2]
         fg_id = header.find('a').get('href').split('=')[1]
         return (player_id, name, team, pos, fg_id)
     

@@ -112,7 +112,7 @@ def save_projection(projection:Projection, projs:List[DataFrame], id_type:IdType
             for idx, row in proj.iterrows():
                 if idx in seen_players:
                     player = seen_players[idx]
-                    player_proj = projection.get_player_projection(player.index)
+                    player_proj = projection.get_player_projection(player.index, idx=idx)
                     player_proj.pitcher = False
                     player_proj.two_way = True
                 else:

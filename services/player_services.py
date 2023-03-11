@@ -33,7 +33,7 @@ def create_player(player_row:list, ottoneu_id:int=None, fg_id=None) -> Player:
     player = Player()
     if ottoneu_id != None:
         player.ottoneu_id = int(ottoneu_id)
-        player.fg_major_id = player_row['FG MajorLeagueID']
+        player.fg_major_id = str(player_row['FG MajorLeagueID'])
         player.fg_minor_id = player_row['FG MinorLeagueID']
         player.name = player_row['Name']
         player.team = player_row['Org']
@@ -42,7 +42,7 @@ def create_player(player_row:list, ottoneu_id:int=None, fg_id=None) -> Player:
     else:
         # This must have come from a FG leaderboard
         if isinstance(fg_id, int) or  fg_id.isnumeric():
-            player.fg_major_id = int(fg_id)
+            player.fg_major_id = str(fg_id)
         else:
             player.fg_minor_id = fg_id
         player.name = player_row['Name']
