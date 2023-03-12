@@ -1,6 +1,6 @@
 from pandas import DataFrame
-from domain.domain import PlayerProjection, Projection, ProjectionData
-from scrape import scrape_fg
+from domain.domain import PlayerProjection, Projection, ProjectionData, Player
+from scrape import scrape_fg, scrape_davenport
 from domain.enum import ProjectionType, StatType, IdType
 from domain.exception import InputException
 from datetime import datetime
@@ -110,6 +110,7 @@ def save_projection(projection:Projection, projs:List[DataFrame], id_type:IdType
             inc_div = math.ceil(len(proj)/25)
             inc_count=0
             for idx, row in proj.iterrows():
+                player = None
                 if idx in seen_players:
                     player = seen_players[idx]
                     player_proj = projection.get_player_projection(player.index)
@@ -118,12 +119,39 @@ def save_projection(projection:Projection, projs:List[DataFrame], id_type:IdType
                 else:
                     if id_type == IdType.FANGRAPHS:
                         player = player_services.get_player_by_fg_id(idx)
+                        id = idx
                     elif id_type == IdType.OTTONEU:
                         player = player_services.get_player_by_ottoneu_id(idx)
+                        id = idx
+                    elif id_type == IdType.MLB:
+                        id = player_services.get_fg_id_by_mlb_id(idx)
+                        if id is None or id <= 0:
+                            name = f"{row['First'].strip()} {row['Last'].strip()}".upper()
+                            players = player_services.search_by_name(name)
+                            players.sort(reverse=True, key=lambda p: p.get_salary_info_for_format().roster_percentage)
+                            if players is not None and len(players) > 0:
+                                for possible_player in players:
+                                    if match_team(possible_player, row['Team']):
+                                        player = possible_player
+                                        break
+                                if player is None:
+                                    player = players[0]
+                            else:
+                                player = None
+                            
+                        else:
+                            player = player_services.get_player_by_fg_id(str(id), force_major=True)
+
                     else:
                         raise Exception(f'Unsupported IdType {id_type}')
                     if player == None:
-                        player = player_services.create_player(row, fg_id=idx)
+                        if id_type == IdType.OTTONEU:
+                            player = player_services.create_player(row, ottoneu_id=id)
+                        elif id_type == IdType.FANGRAPHS:
+                            player = player_services.create_player(row, fg_id=id)
+                        else:
+                            #TODO: Decide how we want to handle this for non-FG/Ottoneu new players. Would probably need new db column and ways to resolve against FG/Ott Ids later
+                            continue
                     seen_players[idx] = player
                     player_proj = PlayerProjection()
                     projection.player_projections.append(player_proj)
@@ -132,19 +160,39 @@ def save_projection(projection:Projection, projs:List[DataFrame], id_type:IdType
                     player_proj.two_way = False
                 player_proj.player = player
                 
+                generic_games = False
                 for col in stat_cols:
-                    if col not in ['Name','Team','-1','PlayerId']:
+                    if col not in ['Name','Team','-1','PlayerId', 'Last', 'First', 'Lg']:
                         if pitch:
                             stat_type = StatType.pitch_to_enum_dict().get(col)
                         else:
-                            stat_type = StatType.hit_to_enum_dict().get(col)                            
-                        if stat_type != None:
+                            stat_type = StatType.hit_to_enum_dict().get(col)       
+                        if col == 'G':
+                            generic_games = True 
                             data = ProjectionData()
                             data.stat_type = stat_type
                             data.stat_value = row[col]
                             if data.stat_value is None or math.isnan(data.stat_value):
                                 data.stat_value = 0
                             player_proj.projection_data.append(data)
+                        elif stat_type != None: 
+                            if player_proj.get_projection_data(stat_type) is None:
+                                data = ProjectionData()
+                                data.stat_type = stat_type
+                                data.stat_value = row[col]
+                                if data.stat_value is None or math.isnan(data.stat_value):
+                                    data.stat_value = 0
+                                player_proj.projection_data.append(data)
+                            else:
+                                data = player_proj.get_projection_data(stat_type)
+                                if stat_type == StatType.G_HIT:
+                                    if not generic_games:
+                                        data.stat_value = data.stat_value + row[col]
+                                else:
+                                    data.stat_value = row[col]
+                                    if data.stat_value is None or math.isnan(data.stat_value):
+                                        data.stat_value = 0
+
                 
                 inc_count += 1
                 if inc_count == inc_div and progress is not None:
@@ -156,6 +204,19 @@ def save_projection(projection:Projection, projs:List[DataFrame], id_type:IdType
 
         new_proj = get_projection(projection.index, player_data=False) 
     return new_proj
+
+def match_team(player:Player, team_name:str) -> bool:
+    if player.team is None:
+        return False
+    db_team = player.team.split(" ")[0]
+    if db_team == team_name:
+        return True
+    map = {'TBY': 'TBR',
+           'CWS': 'CHW',
+           'WAS': 'WSN'}
+    if team_name in map:
+        return db_team == map.get(team_name)
+    return False
 
 def create_projection_from_upload(projection: Projection, pos_file:str, pitch_file:str, name:str, desc:str='', ros:bool=False, year:int=None, progress=None):
     '''Creates a new projection from user inputs, saves it to the database, and returns the populated projection.'''
@@ -179,11 +240,15 @@ def create_projection_from_upload(projection: Projection, pos_file:str, pitch_fi
     
     issue_list = normalize_batter_projections(projection, pos_df)
 
+    pos_df = pos_df[pos_df.index.notnull()] #Remove blank rows
+
     if len(issue_list) > 0:
         raise InputException(issue_list, 'Could not normalize batter projections')
 
     pitch_df = pd.read_csv(pitch_file)
     issue_list = normalize_pitcher_projections(projection, pitch_df)
+
+    pitch_df = pitch_df[pitch_df.index.notnull()] #Remove blank rows
 
     return pos_df, pitch_df
     #return save_projection(projection, [pos_df, pitch_df], progress)
@@ -194,7 +259,7 @@ def normalize_batter_projections(proj: Projection, df: DataFrame) -> List[str]:
     found_id = False
     issue_list = []
     for col in df.columns:
-        if '%' in col.upper() or 'INTER' in col.upper():
+        if '%' in col.upper() or 'INTER' in col.upper() or 'EQ' in col.upper() or 'COMP' in col.upper():
             continue
         if 'ID' in col.upper():
             df.set_index(col, inplace=True)
@@ -211,11 +276,11 @@ def normalize_batter_projections(proj: Projection, df: DataFrame) -> List[str]:
             col_map[col] = 'AB'
         elif 'H' == col.upper() or 'HIT' in col.upper():
             col_map[col] = 'H'
-        elif '2B' in col.upper() or 'DOUBLE' in col.upper():
+        elif '2B' == col.upper() or 'DOUBLE' in col.upper():
             col_map[col] = '2B'
-        elif '3B' in col.upper() or 'TRIPLE' in col.upper():
+        elif '3B' == col.upper() or 'TRIPLE' in col.upper():
             col_map[col] = '3B'
-        elif 'HR' in col.upper():
+        elif 'HR' == col.upper():
             col_map[col] = 'HR'
         elif 'R' == col.upper() or 'RUN' in col.upper():
             col_map[col] = 'R'
@@ -233,7 +298,7 @@ def normalize_batter_projections(proj: Projection, df: DataFrame) -> List[str]:
             col_map[col] = 'CS'
         elif 'AVG' in col.upper() or 'BA' == col.upper() or 'AVERAGE' in col.upper():
             col_map[col] = 'AVG'
-        elif 'OBP' in col.upper() or 'ON' in col.upper():
+        elif 'OBP' in col.upper():
             col_map[col] = 'OBP'
         elif 'SLG' in col.upper() or 'SLUG' in col.upper():
             col_map[col] = 'SLG'
@@ -288,7 +353,7 @@ def normalize_pitcher_projections(proj: Projection, df: DataFrame) -> List[str]:
     found_id = False
     issue_list = []
     for col in df.columns:
-        if '%' in col.upper() or 'INTER' in col.upper():
+        if '%' in col.upper() or 'INTER' in col.upper() or 'EQ' in col.upper():
             continue
         if 'ID' in col.upper():
             df.set_index(col, inplace=True)
@@ -321,7 +386,7 @@ def normalize_pitcher_projections(proj: Projection, df: DataFrame) -> List[str]:
             col_map[col] = 'HR/9'
         elif 'HR/FB' in col.upper():
             continue
-        elif 'HR' in col.upper() or 'HOME' in col.upper():
+        elif 'HR' == col.upper() or 'HRA' == col.upper() or 'HOME' in col.upper():
             col_map[col] = 'HR'
         elif 'HBP' in col.upper() or 'BY' in col.upper():
             col_map[col] = 'HBP'
@@ -329,13 +394,13 @@ def normalize_pitcher_projections(proj: Projection, df: DataFrame) -> List[str]:
             col_map[col] = 'K/9'
         elif 'K/' in col.upper():
             continue
-        elif 'SO' in col.upper() or 'K' in col.upper():
+        elif 'SO' == col.upper() or 'K' == col.upper():
             col_map[col] = 'SO'
-        elif 'ERA' in col.upper():
+        elif 'ERA' == col.upper():
             col_map[col] = 'ERA'
         elif 'BB/9' in col.upper():
             col_map[col] = 'BB/9'
-        elif 'BB' in col.upper() or 'WALK' in col.upper():
+        elif 'BB' == col.upper() or 'WALK' in col.upper():
             col_map[col] = 'BB'
         elif 'H' == col.upper() or 'HIT' in col.upper():
             col_map[col] = 'H'
@@ -436,11 +501,16 @@ def create_projection_from_download(projection: Projection, type:ProjectionType,
         year = date_util.get_current_ottoneu_year()
     projection.season = year
 
-    proj_type_url = ProjectionType.enum_to_url().get(type)
-    if progress is not None:
-        progress.set_task_title('Downloading projections...')
-        progress.increment_completion_percent(10)
-    projs = download_projections(proj_type_url, ros, dc_pt, progress)
+    if type in ProjectionType.get_fg_downloadable():
+        proj_type_url = ProjectionType.enum_to_url().get(type)
+        if progress is not None:
+            progress.set_task_title('Downloading projections...')
+            progress.increment_completion_percent(10)
+        projs = download_projections(proj_type_url, ros, dc_pt, progress)
+    elif type == ProjectionType.DAVENPORT:
+        projs = scrape_davenport.Scrape_Davenport().get_projections()
+    else:
+        raise InputException(f"Unhandled projection type passed to create_projection_from_download {type}")
     projection_check(projs)
     return projs[0], projs[1]
     #return save_projection(projection, projs, progress)
@@ -449,9 +519,24 @@ def projection_check(projs) -> None:
     '''Performs checks for uploaded projections'''
     # Perform checks here, update data as needed
     pitch_proj = projs[1]
-    if StatType.enum_to_display_dict()[StatType.HBP_ALLOWED] not in pitch_proj.columns:
+    if 'FIP' not in pitch_proj.columns and set(['IP', 'SO', 'BB', 'HBP', 'HR']).issubset(pitch_proj.columns):
+        pitch_proj['FIP'] = pitch_proj.apply(calc_fip, axis=1)
+    if 'HBP' not in pitch_proj.columns and 'BB' in pitch_proj.columns:
         # If HBP allowed is blank, fill with pre-calculated regression vs BB
         pitch_proj[StatType.enum_to_display_dict()[StatType.HBP_ALLOWED]] = pitch_proj[StatType.enum_to_display_dict()[StatType.BB_ALLOWED]].apply(lambda bb: 0.0951*bb+0.4181)
+    if 'FIP' not in pitch_proj.columns and set(['IP', 'SO', 'BB', 'HBP', 'HR']).issubset(pitch_proj.columns):
+        pitch_proj['FIP'] = pitch_proj.apply(calc_fip, axis=1)
+    if 'ERA' not in pitch_proj.columns and set(['IP', 'ER']).issubset(pitch_proj.columns):
+        pitch_proj['ERA'] = pitch_proj.apply(calc_era, axis=1)
+    if 'WHIP' not in pitch_proj.columns and set(['IP', 'H', 'BB']).issubset(pitch_proj.columns):
+        pitch_proj['WHIP'] = pitch_proj.apply(calc_whip, axis=1)
+    if 'HR/9' not in pitch_proj.columns and set(['IP', 'HR']).issubset(pitch_proj.columns):
+        pitch_proj['HR/9'] = pitch_proj.apply(calc_hr_per_9, axis=1)
+    if 'BB/9' not in pitch_proj.columns and set(['IP', 'BB']).issubset(pitch_proj.columns):
+        pitch_proj['BB/9'] = pitch_proj.apply(calc_bb_per_9, axis=1)
+    if 'K/9' not in pitch_proj.columns and set(['IP', 'SO']).issubset(pitch_proj.columns):
+        pitch_proj['K/9'] = pitch_proj.apply(calc_k_per_9, axis=1)
+    
 
 def get_projection_count() -> int:
     '''Returns number of Projections in database.'''

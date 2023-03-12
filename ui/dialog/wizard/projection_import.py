@@ -5,20 +5,22 @@ from tkinter import filedialog as fd
 from tkinter import messagebox as mb
 from tkinter.messagebox import CANCEL
 from tkinter import font
-from itertools import islice
 import logging
 from pathlib import Path
 import os
 import os.path
+import webbrowser
+from functools import partial
 
 from domain.domain import Projection
 from domain.enum import ProjectionType, IdType
 from domain.exception import InputException
-from scrape.exceptions import FangraphsException
+from scrape.exceptions import FangraphsException, DavenportException
 from services import projection_services, player_services
 from ui.dialog import progress, fg_login
 from ui.dialog.wizard import wizard
 from ui.tool.tooltip import CreateToolTip
+from ui.tool.tkHyperlinkManager import HyperlinkManager
 from util import date_util, string_util
 
 class Dialog(wizard.Dialog):
@@ -57,7 +59,10 @@ class Wizard(wizard.Wizard):
         pd.set_task_title('Uploading')
         pd.set_completion_percent(15)
         if self.step1.source_var.get():
-            id_type = IdType.FANGRAPHS
+            if self.step1.proj_type.get() == ProjectionType.enum_to_name_dict().get(ProjectionType.DAVENPORT):
+                id_type = IdType.MLB
+            else:
+                id_type = IdType.FANGRAPHS
         else:
             id_type = IdType._value2member_map_.get(self.step1.id_type.get())
         self.parent.projection = projection_services.save_projection(self.projection, [self.step1.hitter_df, self.step1.pitcher_df],id_type,pd)
@@ -74,7 +79,7 @@ class Step1(tk.Frame):
         tk.Label(self, text="Source", font="bold").grid(column=0, row=1)
         self.source_var = tk.BooleanVar()
         
-        tk.Radiobutton(self, text="FanGraphs", value=True, variable=self.source_var, command=self.toggle_fg_proj).grid(column=1,row=1)
+        tk.Radiobutton(self, text="Downloadable", value=True, variable=self.source_var, command=self.toggle_downloadable_proj).grid(column=1,row=1)
         btn = tk.Radiobutton(self, text="Custom",value=False,variable=self.source_var, command=self.toggle_custom_proj)
         btn.grid(column=2,row=1)
         CreateToolTip(btn, "Upload a valid set of csv files with projection data from user's computer.")
@@ -85,31 +90,34 @@ class Step1(tk.Frame):
         tk.Label(self.fg_self , text="Projection Type:", font="bold").grid(column=0,row=0)
         
         downloadable = []
-        for proj in islice(ProjectionType, 6):
-            downloadable.append(ProjectionType.enum_to_name_dict().get(proj))
+        for pt in ProjectionType.get_downloadable():
+            downloadable.append(ProjectionType.enum_to_name_dict().get(pt))
         
         self.proj_type = tk.StringVar()
-        self.proj_type.set('Steamer')
+        self.proj_type.set('Davenport')
         proj_cb = ttk.Combobox(self.fg_self , textvariable=self.proj_type)
         proj_cb['values'] = downloadable
         proj_cb.grid(column=1, row=0)
+        proj_cb.bind("<<ComboboxSelected>>", self.update_proj_type)
 
         self.dc_var = tk.BooleanVar()
         self.dc_var.set(False)
-        btn = ttk.Checkbutton(self.fg_self, text="DC Playing Time?", variable=self.dc_var)
+        self.dc_btn = btn = ttk.Checkbutton(self.fg_self, text="DC Playing Time?", variable=self.dc_var)
         btn.grid(column=1,row=1)
         CreateToolTip(btn, 'Re-scale stats to FanGraphs Depth Charts playing time?')
+        btn.configure(state='disable')
 
         self.ros_var = tk.BooleanVar()
         self.ros_var.set(False)
-        btn = ttk.Checkbutton(self.fg_self, text="RoS Projection?", variable=self.ros_var)
+        self.ros_btn = btn = ttk.Checkbutton(self.fg_self, text="RoS Projection?", variable=self.ros_var)
         btn.grid(column=1,row=2)
         CreateToolTip(btn, 'Use a Rest-of-Season projection?')
+        btn.configure(state='disable')
 
         self.custom_self = tk.Frame(self, borderwidth=4)
         self.custom_self.grid(row=3,column=0,columnspan=3)
 
-        id_map = [IdType.OTTONEU.value, IdType.FANGRAPHS.value]
+        id_map = [IdType.OTTONEU.value, IdType.FANGRAPHS.value, IdType.MLB.value]
         id_label = ttk.Label(self.custom_self, text="Player Id Type:")
         id_label.grid(column=0,row=0,pady=5, stick=W)
         id_label.configure(state='disabled')
@@ -139,10 +147,24 @@ class Step1(tk.Frame):
         pitcher_btn.grid(column=1,row=2, padx=5)
         pitcher_btn.configure(state='disable')
         self.pitcher_proj_file.set(Path.home())
+    
+    def update_proj_type(self, event:Event):
+        p_type = ProjectionType.name_to_enum_dict().get(self.proj_type.get())
+        if p_type == ProjectionType.DAVENPORT:
+            self.dc_var.set(False)
+            self.dc_btn.configure(state='disabled')
+            self.ros_var.set(False)
+            self.ros_btn.configure(state='disabled')
+        else:
+            self.dc_btn.configure(state='active')
+            self.ros_btn.configure(state='active')
 
-    def toggle_fg_proj(self):
+    def toggle_downloadable_proj(self):
         for child in self.fg_self.winfo_children():
             child.configure(state='active')
+        if self.proj_type.get() == ProjectionType.enum_to_name_dict().get(ProjectionType.DAVENPORT):
+            self.dc_btn.configure(state='disable')
+            self.ros_btn.configure(state='disable')
         for child in self.custom_self.winfo_children():
             child.configure(state='disable')
     
@@ -190,19 +212,22 @@ class Step1(tk.Frame):
     def on_show(self):
         return True
     
-    def validate(self):
-        if not os.path.exists('conf/fangraphs.conf'):
-            dialog = fg_login.Dialog(self)
-            if dialog.status == CANCEL:
-                self.parent.validate_msg = 'Please enter a FanGraphs username and password to proceed'
-                mb.showerror('Download Error', 'Projections cannot be downloaded by the Toolbox without FanGraph credentials')
-                return False
+    def validate(self):        
         self.parent.projection = Projection()
         pd = progress.ProgressDialog(self.master, title='Getting Projection Set')
         year = date_util.get_current_ottoneu_year()
         try:
             if self.source_var.get():
-                #Download proj from FG
+                if self.proj_type.get() == ProjectionType.enum_to_name_dict().get(ProjectionType.DAVENPORT):
+                    DavenportHyperlinkDialog(self)
+                else:
+                    if not os.path.exists('conf/fangraphs.conf'):
+                        dialog = fg_login.Dialog(self)
+                        if dialog.status == CANCEL:
+                            self.parent.validate_msg = 'Please enter a FanGraphs username and password to proceed'
+                            mb.showerror('Download Error', 'Projections cannot be downloaded by the Toolbox without FanGraphs credentials')
+                            return False
+                #Download proj
                 self.hitter_df, self.pitcher_df = projection_services.create_projection_from_download(self.parent.projection, ProjectionType.name_to_enum_dict().get(self.proj_type.get()), self.ros_var.get(), self.dc_var.get(), year=year, progress=pd)
             else:
                 #Upload proj from files
@@ -217,6 +242,8 @@ class Step1(tk.Frame):
                             player = player_services.get_player_by_fg_id(id)
                         elif self.id_type.get() == IdType.OTTONEU.value:
                             player = player_services.get_player_by_ottoneu_id(id)
+                        elif self.id_type.get() == IdType.MLB.value:
+                            player = player_services.get_player_by_mlb_id(id)
                         found_player = player is not None
                         idx = idx + 1
                     if player is None:
@@ -224,27 +251,14 @@ class Step1(tk.Frame):
                     df_name = string_util.normalize(self.hitter_df.at[id, 'NAME'])
                     if df_name != player.search_name:
                         raise InputException(f'The input IdType {self.id_type.get()} appears wrong for this projection set.')
-        except FangraphsException as e:
+        except (FangraphsException, DavenportException, InputException) as e:
             self.parent.projection = None
             self.parent.validate_msg = e.validation_msgs
-            #mb.showerror('Error retrieving projection',  )
-            #self.parent.lift()
-            #self.parent.focus_force()
-            return False
-        except InputException as e:
-            self.parent.projection = None
-            self.parent.validate_msg = e.validation_msgs
-            #mb.showerror('Error uploading projections', f'{e.args[0]}\n{msgs}')
-            #self.parent.lift()
-            #self.parent.focus_force()
             return False
         except Exception as Argument:
             self.parent.projection = None
             logging.exception("Error retrieving projections")
             self.parent.validate_msg = 'Error retrieving projection. See log file for details.'
-            #mb.showerror('Error retrieving projection', 'See log file for details.')
-            #self.parent.lift()
-            #self.parent.focus_force()
             return False
         finally:
             pd.complete()
@@ -294,3 +308,28 @@ class Step2(tk.Frame):
         self.cats5_var.set(self.parent.projection.valid_5x5)
         self.cats4_var.set(self.parent.projection.valid_4x4)
         return True
+
+class DavenportHyperlinkDialog(tk.Toplevel):
+
+    def __init__(self, parent):
+        super().__init__(parent) 
+        tk.Label(self, text='Donate to Davenport', font='bold').grid(row=0, column=0)
+        text_widget = Text(self, width=45, height=4, wrap=tk.WORD,
+            font = font.nametofont("TkDefaultFont"))
+        text_widget.grid(row=1,column=0)
+
+        hyperlink = HyperlinkManager(text_widget)
+
+        text_widget.insert(tk.INSERT, 'Clay Davenport provides his projections free of charge, but donations are appreciated and can be made through a PayPal link on ')
+        text_widget.insert(tk.END, 'his site', hyperlink.add(partial(webbrowser.open, 'https://claydavenport.com/projections/PROJHOME.shtml')))
+        text_widget.insert(tk.END, '.')
+        text_widget.configure(state='disabled')
+
+        tk.Button(self, text="OK", command=self.ok_click, width=15).grid(row=2, column=0)
+
+        self.focus_force()
+        self.lift()
+        self.wait_window()
+    
+    def ok_click(self):
+        self.destroy()

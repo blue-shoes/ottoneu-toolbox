@@ -1,5 +1,6 @@
 from datetime import datetime
 from sqlalchemy.orm import joinedload
+from pybaseball import playerid_reverse_lookup
 
 from domain.domain import Player, Salary_Refresh, Salary_Info
 from domain.enum import ScoringFormat, Position
@@ -51,10 +52,12 @@ def create_player(player_row:list, ottoneu_id:int=None, fg_id=None) -> Player:
     player.salary_info = []
     return player
 
-def get_player_by_fg_id(player_id) -> Player:
-    '''Returns player from database based on input FanGraphs player id. Will resolve either major or minor league id.'''
+def get_player_by_fg_id(player_id, force_major:bool=False) -> Player:
+    '''Returns player from database based on input FanGraphs player id. Will resolve either major or minor league id by default. If force_major is true, will only look for major league id'''
     with Session() as session:
-        if isinstance(player_id, int) or player_id.isdigit():
+        if force_major:
+            player = session.query(Player).filter(Player.fg_major_id == player_id).first()
+        elif isinstance(player_id, int) or player_id.isdigit():
             player = session.query(Player).filter(Player.fg_major_id == player_id).first()
         else:
             player = session.query(Player).filter(Player.fg_minor_id == player_id).first()
@@ -147,3 +150,16 @@ def get_player_from_ottoneu_player_page(player_id: int, league_id: int) -> Playe
         player.salary_info.append(sal_info)
         session.add(sal_info)
     return player
+
+def get_player_by_mlb_id(player_id:int) -> Player:
+    '''Retrieves a player by MLB Id using the pybaseball playerid_reverse_lookup function to find FanGraphs id'''
+    fg_id = get_fg_id_by_mlb_id(player_id)
+    return get_player_by_fg_id(fg_id)
+
+def get_fg_id_by_mlb_id(player_id:int) -> str:
+    '''Retrieves a player's FanGraphs Id by MLB Id using the pybaseball playerid_reverse_lookup function'''
+    p_df = playerid_reverse_lookup([player_id])
+    if len(p_df) > 0:
+        return p_df.loc[0,'key_fangraphs']
+    else:
+        return -1

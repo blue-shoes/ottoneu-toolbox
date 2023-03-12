@@ -67,7 +67,8 @@ def get_couchmanagers_draft_dataframe(cm_draft_id:int) -> DataFrame:
     for idx, row in df.iterrows():
         if row['ottid'] == 0:
             name = f"{row['First Name']} {row['Last Name']}".upper()
-            players = player_services.search_by_name(name).sort(reverse=True, key=lambda p: p.get_salary_info_for_format().roster_percentage)
+            players = player_services.search_by_name(name)
+            players.sort(reverse=True, key=lambda p: p.get_salary_info_for_format().roster_percentage)
             if players is not None and len(players) > 0:
                 row['ottid'] = players[0].ottoneu_id
     return df

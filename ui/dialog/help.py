@@ -9,7 +9,7 @@ class Dialog(tk.Toplevel):
         license_path = parent.get_resource_path(file)
         with open(license_path, 'r') as lic_fil:
             long_text = lic_fil.read()
-        text_widget = scrolledtext.ScrolledText(self, width=100, height=20,
+        text_widget = scrolledtext.ScrolledText(self, width=100, height=20, wrap=tk.WORD,
             font = font.nametofont("TkDefaultFont"))
 
         text_widget.insert(tk.INSERT, long_text)

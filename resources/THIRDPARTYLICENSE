@@ -1,7 +1,15 @@
+PROJECTION SOURCE ACKNOWLEDEMENTS
+
+Davenport projections are provided by Clay Davenport at https://claydavenport.com/projections/PROJHOME.shtml. Projections are provided free of charge, but donations are
+appreciated and can be made through his page.
+
+Steamer, ZiPs, ATC, THE BAT, and THE BATX projections are hosted by FanGraphs on https://www.fangraphs.com/. A paid FanGraphs account is required for access to these
+projections.
+
 THIRD-PARTY SOFTWARE LICENSE ACKNOWLEDGEMENTS
 
 -- MIT License --
-Used by: BeautifulSoup4, SQLAlchemy
+Used by: BeautifulSoup4, SQLAlchemy, pybaseball
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
