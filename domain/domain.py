@@ -97,6 +97,13 @@ class League(Base):
 
     teams = relationship("Team", back_populates="league", cascade="all, delete")
 
+    def get_user_team(self):
+        '''Returns the user\'s team for the league. None if no team is specified'''
+        for team in self.teams:
+            if team.users_team:
+                return team
+        return None
+
 class Team(Base):
     __tablename__ = "team"
     index = Column(Integer, primary_key=True)
@@ -110,6 +117,13 @@ class Team(Base):
     
     roster_spots = relationship("Roster_Spot", back_populates="team", cascade="all, delete")
 
+    def get_rs_by_player(self, player:Player) -> Roster_Spot:
+        '''Returns the team's Roster_Spot for the input player'''
+        for rs in self.roster_spots:
+            if rs.player.index == player.index:
+                return rs
+        return None
+
 class Roster_Spot(Base):
     __tablename__ = "roster_spot"
     index = Column(Integer, primary_key=True)
@@ -121,6 +135,9 @@ class Roster_Spot(Base):
     player = relationship("Player", back_populates="roster_spots")
 
     salary = Column(Integer)
+
+    g_h:int = 0
+    ip:int = 0
 
 class Salary_Info(Base):
     __tablename__ = "salary_info"
