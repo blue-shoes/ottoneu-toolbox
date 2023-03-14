@@ -8,6 +8,7 @@ from services import calculation_services, player_services
 def optimize_team_pt(team:Team, proj:Projection, format=ScoringFormat, off_opt_stat:StatType=StatType.R, pit_opt_stat:StatType=StatType.WHIP, rp_ip:float=350) -> None:
     o_opt_pg = {}
     p_opt_pg = {}
+    team.index_rs()
     for rs in team.roster_spots:
         if rs.player.pos_eligible(Position.OFFENSE):
             #Offense
@@ -54,14 +55,16 @@ def optimize_team_pt(team:Team, proj:Projection, format=ScoringFormat, off_opt_s
     j = 0
     for val in o_sorted:
         j = j+1
-        print(f'player {j}, len poss = {len(opt_sum)}')
         player = val[0]
+        print(f'player {j}, {player.name}, len poss = {len(opt_sum)}')
+        if val[1][0] == 0:
+            continue
         elig_pos = player_services.get_player_positions(player, discrete=True)
         for i in range(0, len(possibilities)):
             first = True
             for pos in elig_pos:
                 if pos in Position.get_offensive_pos():
-                    __add_pt(possibilities, pt, opt_sum, val, pos, i, first=first)
+                    __add_pt(possibilities, pt, opt_sum, val, pos, i, first=first, elig_pos=elig_pos)
                     first = False
                     #if pos == Position.POS_UTIL:
                         #Util taken care of outside the loop at the current index
@@ -85,8 +88,13 @@ def optimize_team_pt(team:Team, proj:Projection, format=ScoringFormat, off_opt_s
                 possibilities[i].get_rs_by_player(player).g_h = pt      '''            
     print(f'possibility length = {len(possibilities)}')
     print(f'max points = {max(opt_sum)}')
+    idx = max(range(len(opt_sum)), key=opt_sum.__getitem__)
+    for rs in possibilities[idx].roster_spots:
+        print(f'{rs.player.name}: {rs.g_h} G')
+    for key, games in pt[idx].items():
+        print(f'{key}: {games} G')
 
-def __add_pt(possibilities:List[Team], pt:List[Dict[Position, int]], opt_sum:List[int], val:Tuple[Player,Tuple[int, float]], target_pos:Position, index:int, first:bool=False, used_pos:List[Position]=[], used_pt:int=0) -> None:
+def __add_pt(possibilities:List[Team], pt:List[Dict[Position, int]], opt_sum:List[int], val:Tuple[Player,Tuple[int, float]], target_pos:Position, index:int, first:bool=False, used_pos:List[Position]=[], used_pt:int=0, elig_pos:List[Position]=[]) -> None:
     if target_pos == Position.POS_OF:
         cap = 5*162
     else:
@@ -105,8 +113,16 @@ def __add_pt(possibilities:List[Team], pt:List[Dict[Position, int]], opt_sum:Lis
         if rs.g_h < val[1][0]:
             used_pt = rs.g_h
             used_pos.append(target_pos)
-            for pos in player_services.get_player_positions(val[0]):
+            for pos in elig_pos:
                 if pos in used_pos or pos == Position.OFFENSE:
                     continue
                 if pos in Position.get_offensive_pos():
                     __add_pt(possibilities, pt, opt_sum, val, pos, index=len(possibilities)-1, used_pos = used_pos, used_pt=used_pt)
+    elif used_pt == 0:
+        used_pos.append(target_pos)
+        if val[0].pos_eligible(Position.POS_MI) and target_pos != Position.POS_MI and target_pos != Position.POS_UTIL:
+            __add_pt(possibilities, pt, opt_sum, val, Position.POS_MI, index=index, used_pos = used_pos, used_pt=used_pt)
+        elif target_pos != Position.POS_UTIL:
+            __add_pt(possibilities, pt, opt_sum, val, Position.POS_UTIL, index=index, used_pos = used_pos, used_pt=used_pt)
+        #print(f'at cap for {target_pos}')
+
