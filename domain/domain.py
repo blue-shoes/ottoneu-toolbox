@@ -117,12 +117,23 @@ class Team(Base):
     
     roster_spots = relationship("Roster_Spot", back_populates="team", cascade="all, delete")
 
+    rs_map = None
+
     def get_rs_by_player(self, player:Player) -> Roster_Spot:
         '''Returns the team's Roster_Spot for the input player'''
+        
+        if self.rs_map is None:
+            for rs in self.roster_spots:
+                if rs.player.index == player.index:
+                    return rs
+            return None
+        else:
+            return self.rs_map.get(player.index, None)
+
+    def index_rs(self) -> None:
+        self.rs_map = {}
         for rs in self.roster_spots:
-            if rs.player.index == player.index:
-                return rs
-        return None
+            self.rs_map[rs.player.index] = rs
 
 class Roster_Spot(Base):
     __tablename__ = "roster_spot"
