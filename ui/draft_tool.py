@@ -661,6 +661,7 @@ class DraftTool(tk.Frame):
                             elif 'CUT' in last_trans.iloc[index]['Type'].upper():
                                 self.revert_extra_value(self.values.at[player.index, 'Value'], self.values.at[player.index, 'Salary'])
                                 self.values.at[player.index, 'Salary'] = 0
+                                self.rosters.drop(player.index)
                                 for p in pos:
                                     if p in Position.get_pitching_pos():
                                         #Because of how we treat pitching, update all pitcher tables if it's a pitcher
