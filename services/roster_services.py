@@ -47,7 +47,7 @@ def optimize_team_pt(team:Team, proj:Projection, format=ScoringFormat, off_opt_s
     print(o_sorted)
 
     possibilities = []
-    possibilities.append(copy.deepcopy(team))
+    possibilities.append({})
     pt = []
     pt.append({Position.POS_C: 0, Position.POS_1B: 0, Position.POS_2B: 0, Position.POS_3B:0, Position.POS_SS: 0, Position.POS_MI: 0, Position.POS_OF:0, Position.POS_UTIL:0})
     opt_sum = []
@@ -64,56 +64,37 @@ def optimize_team_pt(team:Team, proj:Projection, format=ScoringFormat, off_opt_s
             first = True
             for pos in elig_pos:
                 if pos in Position.get_offensive_pos():
-                    __add_pt(possibilities, pt, opt_sum, val, pos, i, first=first, elig_pos=elig_pos)
-                    first = False
-                    #if pos == Position.POS_UTIL:
-                        #Util taken care of outside the loop at the current index
-                    #    continue
-                    #else:
-                    #    ...
-            '''if player.pos_eligible(Position.POS_MI) and pt[i].get(Position.POS_MI) < 162:
-                possibilities.append(copy.deepcopy(possibilities[i]))
-                opt_sum.append(opt_sum[i])
-                pt.append(copy.deepcopy(pt[i]))
-                pt = min(val(1)(0), 162 - pt[-1].get(Position.POS_MI))
-                pt[-1][Position.POS_MI] = pt[-1].get(Position.POS_MI) + pt
-                opt_sum[-1] = opt_sum[-1] + pt*val(1)(1) 
-                possibilities[-1].get_rs_by_player(val(0)).g_h = pt
-
-
-            if pt[i].get(Position.POS_UTIL) < 162:
-                pt = min(val(1)(0), 162 - pt[i].get(Position.POS_UTIL))
-                pt[i][Position.POS_UTIL] = pt[i].get(Position.POS_UTIL) + pt
-                opt_sum[i] = opt_sum[i] + pt*val(1)(1) 
-                possibilities[i].get_rs_by_player(player).g_h = pt      '''            
+                    __add_pt(possibilities, pt, opt_sum, val, pos, i, first=first)
+                    first = False        
     print(f'possibility length = {len(possibilities)}')
     print(f'max points = {max(opt_sum)}')
     idx = max(range(len(opt_sum)), key=opt_sum.__getitem__)
-    for rs in possibilities[idx].roster_spots:
-        print(f'{rs.player.name}: {rs.g_h} G')
+    for idx, games in possibilities[idx].items():
+        print(f'{idx}: {games} G')
     for key, games in pt[idx].items():
         print(f'{key}: {games} G')
 
-def __add_pt(possibilities:List[Team], pt:List[Dict[Position, int]], opt_sum:List[int], val:Tuple[Player,Tuple[int, float]], target_pos:Position, index:int, first:bool=False, used_pos:List[Position]=[], used_pt:int=0, elig_pos:List[Position]=[]) -> None:
+def __add_pt(possibilities:List[Dict[int, int]], pt:List[Dict[Position, int]], opt_sum:List[int], val:Tuple[Player,Tuple[int, float]], target_pos:Position, index:int, first:bool=False, used_pos:List[Position]=[], used_pt:int=0, elig_pos:List[Position]=[]) -> None:
     if target_pos == Position.POS_OF:
         cap = 5*162
     else:
         cap = 162
     if pt[index].get(target_pos) < cap:
         if target_pos != Position.POS_UTIL and not first:
-            possibilities.append(copy.deepcopy(possibilities[index]))
+            possibilities.append(copy.copy(possibilities[index]))
             opt_sum.append(opt_sum[index])
-            pt.append(copy.deepcopy(pt[index]))
+            pt.append(copy.copy(pt[index]))
             index = -1
-        rs = possibilities[index].get_rs_by_player(val[0])
-        playing_time = min(val[1][0] - rs.g_h, cap - pt[index].get(target_pos))
+        g_h = possibilities[index].get(val[0].index, 0)
+        playing_time = min(val[1][0] - g_h, cap - pt[index].get(target_pos))
         pt[index][target_pos] = pt[index].get(target_pos) + playing_time
         opt_sum[index] = opt_sum[index] + playing_time*val[1][1] 
-        rs.g_h = playing_time + rs.g_h
-        if rs.g_h < val[1][0]:
-            used_pt = rs.g_h
+        g_h = playing_time + g_h
+        possibilities[index][val[0].index] = g_h
+        if g_h < val[1][0]:
+            used_pt = g_h
             used_pos.append(target_pos)
-            for pos in elig_pos:
+            for pos in player_services.get_player_positions(val[0]):
                 if pos in used_pos or pos == Position.OFFENSE:
                     continue
                 if pos in Position.get_offensive_pos():
