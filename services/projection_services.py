@@ -1,7 +1,7 @@
 from pandas import DataFrame
 from domain.domain import PlayerProjection, Projection, ProjectionData, Player
 from scrape import scrape_fg, scrape_davenport
-from domain.enum import ProjectionType, StatType, IdType
+from domain.enum import ProjectionType, StatType, IdType, Position
 from domain.exception import InputException
 from datetime import datetime
 from services import player_services, browser_services
@@ -640,3 +640,31 @@ def get_player_projection(pp_id: int) -> PlayerProjection:
     '''Returns a PlayerProjection from the database based on index.'''
     with Session() as session:
         return session.query(PlayerProjection).filter(PlayerProjection.index == pp_id).first()
+
+def get_pitcher_role_ips(pp:PlayerProjection) -> Tuple[float, float]:
+    '''Calculates the number of innings pitched in relief based on a linear regression using games relieved per total
+    games as the independent variable.'''
+    if not pp.player.pos_eligible(Position.PITCHER):
+        return (0, 0)
+
+    g = pp.get_stat(StatType.G_PIT)
+    gs = pp.get_stat(StatType.GS_PIT)
+    ip = pp.get_stat(StatType.IP)
+
+    if g is None or gs is None or ip is None:
+        return (0, 0)
+    if g == 0 or ip == 0:
+        return (0, 0)
+
+    if gs == 0:
+        return (0, ip)
+    
+    if gs == g:
+        return (ip, 0)
+
+    #Based on second-order poly regression performed for all pitcher seasons from 2019-2021 with GS > 0 and GRP > 0
+    #Regression has dep variable of GRP/G (or (G-GS)/G) and IV IPRP/IP. R^2=0.9481. Possible issues with regression: overweighting
+    #of pitchers with GRP/G ratios very close to 0 (starters with few RP appearances) or 1 (relievers with few SP appearances)
+    gr_per_g = (g - gs) / g
+    rp_ip = ip * (0.7851*gr_per_g**2 + 0.1937*gr_per_g + 0.0328)
+    return (ip - rp_ip, rp_ip)
