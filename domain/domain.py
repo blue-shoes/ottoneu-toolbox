@@ -103,6 +103,12 @@ class League(Base):
             if team.users_team:
                 return team
         return None
+    
+    def get_team_by_index(self, team_id:int):
+        for team in self.teams:
+            if team.index == team_id:
+                return team
+        return None
 
 class Team(Base):
     __tablename__ = "team"
@@ -121,14 +127,19 @@ class Team(Base):
 
     def get_rs_by_player(self, player:Player) -> Roster_Spot:
         '''Returns the team's Roster_Spot for the input player'''
-        
+        if player is None:
+            return None
+        return self.get_rs_by_player_id(player.index)
+
+    def get_rs_by_player_id(self, player_id:int) -> Roster_Spot:
+        '''Returns the team's Roster_Spot for the input player id'''
         if self.rs_map is None:
             for rs in self.roster_spots:
-                if rs.player.index == player.index:
+                if rs.player.index == player_id:
                     return rs
             return None
         else:
-            return self.rs_map.get(player.index, None)
+            return self.rs_map.get(player_id, None)
 
     def index_rs(self) -> None:
         self.rs_map = {}
