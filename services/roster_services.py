@@ -3,9 +3,10 @@ from typing import Tuple, List, Dict
 
 from domain.domain import Team, Roster_Spot, Projection, Player
 from domain.enum import StatType, ScoringFormat, Position, RankingBasis
-from services import calculation_services, player_services
+from domain.exception import InputException
+from services import calculation_services, player_services, projection_services
 
-def optimize_team_pt(team:Team, proj:Projection, format=ScoringFormat, off_opt_stat:StatType=StatType.R, pit_opt_stat:StatType=StatType.WHIP, rp_ip:float=350) -> List[Dict[Position, Dict[int,int]]]:
+def optimize_team_pt(team:Team, proj:Projection, format=ScoringFormat, off_opt_stat:StatType=StatType.R, pit_opt_stat:StatType=StatType.WHIP, rp_limit:float=350, sp_limit:float=10, pitcher_denom:StatType=StatType.IP) -> List[Dict[Position, Dict[int,int]]]:
     o_opt_pg = {}
     p_opt_pg = {}
     team.index_rs()
@@ -30,19 +31,29 @@ def optimize_team_pt(team:Team, proj:Projection, format=ScoringFormat, off_opt_s
             #Pitcher
             pp = proj.get_player_projection(rs.player.index)
             g = pp.get_stat(StatType.G_PIT)
+            gs = pp.get_stat(StatType.GS_PIT)
             ip = pp.get_stat(StatType.IP)
             if not ScoringFormat.is_points_type(format):
                 if g is None or g == 0 or ip is None or ip == 0:
-                    p_opt_pg[rs.player] = (0, 0)
+                    p_opt_pg[rs.player] = ((0,0), 0)
                 else:
-                    p_opt_pg[rs.player] = (ip, pp.get_stat(pit_opt_stat) / ip)
+                    if pitcher_denom == StatType.IP:
+                        p_opt_pg[rs.player] = (projection_services.get_pitcher_role_ips(pp), pp.get_stat(pit_opt_stat) / ip)
+                    elif pitcher_denom == StatType.G:
+                        p_opt_pg[rs.player] = ((gs, g-gs), pp.get_stat(pit_opt_stat) / g)
+                    else:
+                        raise InputException(f'Unexpected pitcher_denom value {pitcher_denom}')
             else:
                 if g is None or g == 0 or ip is None or ip == 0:
-                    p_opt_pg[rs.player] = (0, 0)
+                    p_opt_pg[rs.player] = ((0,0), 0)
                 else:
-                    p_opt_pg[rs.player] = (ip, calculation_services.get_pitching_point_rate_from_player_projection(pp, format=format, basis=RankingBasis.PIP))
+                    if pitcher_denom == StatType.IP:
+                        p_opt_pg[rs.player] = (projection_services.get_pitcher_role_ips(pp), calculation_services.get_pitching_point_rate_from_player_projection(pp, format=format, basis=RankingBasis.PIP))
+                    elif pitcher_denom == StatType.G:
+                        p_opt_pg[rs.player] = ((gs, g-gs), calculation_services.get_pitching_point_rate_from_player_projection(pp, format=format, basis=RankingBasis.PPG))
+                    else:
+                        raise InputException(f'Unexpected pitcher_denom value {pitcher_denom}')
     o_sorted = sorted(o_opt_pg.items(), key=lambda x:x[1][1], reverse=True)
-    p_sorted = sorted(p_opt_pg.items(), key=lambda x:x[1][1], reverse=True)
 
     possibilities = []
     possibilities.append({})
@@ -64,7 +75,46 @@ def optimize_team_pt(team:Team, proj:Projection, format=ScoringFormat, off_opt_s
                     last = (pos == last_pos)
                     __add_pt(possibilities, pt, opt_sum, val, pos, i, last=last)
                     first = False      
-    idx = max(range(len(opt_sum)), key=opt_sum.__getitem__)   
+    bat_idx = max(range(len(opt_sum)), key=opt_sum.__getitem__)
+    for player_id, games in possibilities[bat_idx].items():
+        team.get_rs_by_player_id(player_id).g_h = games
+
+    if ScoringFormat.is_points_type(format):
+        p_sorted = sorted(p_opt_pg.items(), key=lambda x:x[1][1], reverse=True)
+    elif pit_opt_stat in [StatType.WHIP, StatType.ERA, StatType.HR_PER_9]:
+        p_sorted = sorted(p_opt_pg.items(), key=lambda x:x[1][1], reverse=False)
+    else:
+        p_sorted = sorted(p_opt_pg.items(), key=lambda x:x[1][1], reverse=True) 
+
+    if pitcher_denom == StatType.IP:
+        rp_left = rp_limit
+        sp_left = 1500 - rp_limit
+    else:
+        rp_left = rp_limit * 26
+        sp_left = sp_limit * 26
+    
+    for val in p_sorted:
+        player = val[0]
+        if val[1][0] == (0,0):
+            continue
+        rp_ip = val[1][0][1]
+        sp_ip = val[1][0][0]
+
+        playing_time = 0
+        if rp_left > 0 and rp_ip > 0:
+            if rp_ip > rp_left:
+                playing_time = rp_left
+            else:
+                playing_time = rp_ip
+            rp_left = rp_left - playing_time
+            team.get_rs_by_player(player).ip = playing_time
+        if sp_left > 0 and sp_ip > 0:
+            if sp_ip > sp_left:
+                playing_time = sp_left
+            else:
+                playing_time = sp_ip
+            sp_left = sp_left - playing_time
+            team.get_rs_by_player(player).ip = playing_time + team.get_rs_by_player(player).ip
 
 def __add_pt(possibilities:List[Dict[int, int]], pt:List[Dict[Position, Dict[int,int]]], opt_sum:List[int], val:Tuple[Player,Tuple[int, float]], target_pos:Position, index:int, last:bool=False, used_pos:List[Position]=[], used_pt:int=0, elig_pos:List[Position]=[]) -> None:
     if target_pos == Position.POS_OF:
@@ -101,16 +151,3 @@ def __add_pt(possibilities:List[Dict[int, int]], pt:List[Dict[Position, Dict[int
             __add_pt(possibilities, pt, opt_sum, val, Position.POS_MI, index=index, used_pos = used_pos, used_pt=used_pt)
         elif target_pos != Position.POS_UTIL:
             __add_pt(possibilities, pt, opt_sum, val, Position.POS_UTIL, index=index, used_pos = used_pos, used_pt=used_pt)
-
-def main():
-    from services import league_services, projection_services
-    import time
-    league = league_services.get_league(2)
-    proj = projection_services.get_projection(7)
-    start = time.time()
-    optimize_team_pt(league.get_user_team(), proj, ScoringFormat.FG_POINTS)
-    end = time.time()
-    print(f'time = {end-start}')
-
-if __name__ == '__main__':
-    main()
