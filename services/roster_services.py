@@ -30,6 +30,8 @@ def optimize_team_pt(team:Team, proj:Projection, format=ScoringFormat, off_opt_s
         if rs.player.pos_eligible(Position.PITCHER):
             #Pitcher
             pp = proj.get_player_projection(rs.player.index)
+            if pp is None:
+                continue
             g = pp.get_stat(StatType.G_PIT)
             gs = pp.get_stat(StatType.GS_PIT)
             ip = pp.get_stat(StatType.IP)
@@ -115,6 +117,7 @@ def optimize_team_pt(team:Team, proj:Projection, format=ScoringFormat, off_opt_s
                 playing_time = sp_ip
             sp_left = sp_left - playing_time
             team.get_rs_by_player(player).ip = playing_time + team.get_rs_by_player(player).ip
+    return pt[bat_idx]
 
 def __add_pt(possibilities:List[Dict[int, int]], pt:List[Dict[Position, Dict[int,int]]], opt_sum:List[int], val:Tuple[Player,Tuple[int, float]], target_pos:Position, index:int, last:bool=False, used_pos:List[Position]=[], used_pt:int=0, elig_pos:List[Position]=[]) -> None:
     if target_pos == Position.POS_OF:
