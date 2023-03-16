@@ -1,8 +1,8 @@
-from domain.domain import League, Team, Roster_Spot, Player, Draft
+from domain.domain import League, Team, Roster_Spot, Player, Draft, ValueCalculation
 from domain.enum import ScoringFormat
 from dao.session import Session
 from scrape.scrape_ottoneu import Scrape_Ottoneu
-from services import player_services
+from services import player_services, roster_services, calculation_services
 from sqlalchemy.orm import joinedload
 from typing import List
 
@@ -160,3 +160,22 @@ def get_league_by_draft(draft:Draft, fill_rosters:bool=False) -> League:
     with Session() as session:
         league = session.query(Draft).options(joinedload(Draft.league)).filter(Draft.index == draft.index).first().league
         return get_league(league.index, fill_rosters)
+
+def calculate_league_table(league:League, value_calc:ValueCalculation, fill_pt:bool=False, inflation:float=0) -> None:
+    '''Calculates the projected standings table for the League with the given ValueCalculation'''
+    standings = {}
+    for team in league.teams:
+        pt = roster_services.optimize_team_pt(team, value_calc.projection, value_calc.format)
+        if ScoringFormat.is_points_type(value_calc.format):
+            points = 0
+            if fill_pt:
+                #TODO: fill remaining pt based on replacement levels, $/PAR, and inflation
+                ...
+            for rs in team.roster_spots:
+                pp = value_calc.projection.get_player_projection(rs.player.index)
+                if pp is None:
+                    continue
+                points = points + rs.g_h * calculation_services.get_batting_point_rate_from_player_projection(pp)
+                points = points + rs.ip * calculation_services.get_pitching_point_rate_from_player_projection(pp, value_calc.format, value_calc.pitcher_basis)
+        standings[team] = points
+    sorted_standings = sorted(standings.items(), key=lambda x:x[1], reverse=True)
