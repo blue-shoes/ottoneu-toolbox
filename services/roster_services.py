@@ -6,9 +6,32 @@ from domain.enum import StatType, ScoringFormat, Position, RankingBasis
 from domain.exception import InputException
 from services import calculation_services, player_services, projection_services
 
-def optimize_team_pt(team:Team, proj:Projection, format=ScoringFormat, off_opt_stat:StatType=StatType.R, pit_opt_stat:StatType=StatType.WHIP, rp_limit:float=350, sp_limit:float=10, pitcher_denom:StatType=StatType.IP) -> List[Dict[Position, Dict[int,int]]]:
+empty_pt_dict = {Position.POS_C:{},
+                Position.POS_1B:{},
+                Position.POS_2B:{},
+                Position.POS_SS:{},
+                Position.POS_3B:{},
+                Position.POS_MI:{},
+                Position.POS_OF:{},
+                Position.POS_UTIL:{},
+                Position.POS_SP:{},
+                Position.POS_RP:{},}
+
+def optimize_team_pt(team:Team, 
+                     proj:Projection, 
+                     format=ScoringFormat, 
+                     off_opt_stat:StatType=StatType.R, 
+                     pit_opt_stat:StatType=StatType.WHIP, 
+                     rp_limit:float=350, 
+                     sp_limit:float=10, 
+                     pitcher_denom:StatType=StatType.IP,
+                     rep_lvl:Dict[Position, float]=None,
+                     current_pt:Dict[Position, Dict[int,int]]=None) -> Dict[Position, Dict[int,int]]:
+    ''''''
     o_opt_pg = {}
     p_opt_pg = {}
+    if current_pt is None:
+        current_pt = copy.deepcopy(empty_pt_dict)
     team.index_rs()
     for rs in team.roster_spots:
         if rs.player.pos_eligible(Position.OFFENSE):
@@ -60,7 +83,7 @@ def optimize_team_pt(team:Team, proj:Projection, format=ScoringFormat, off_opt_s
     possibilities = []
     possibilities.append({})
     pt = []
-    pt.append({Position.POS_C: {}, Position.POS_1B: {}, Position.POS_2B: {}, Position.POS_3B:{}, Position.POS_SS: {}, Position.POS_MI: {}, Position.POS_OF:{}, Position.POS_UTIL:{}})
+    pt.append(current_pt)
     opt_sum = []
     opt_sum.append(0)
     for val in o_sorted:
@@ -75,7 +98,7 @@ def optimize_team_pt(team:Team, proj:Projection, format=ScoringFormat, off_opt_s
             for pos in elig_pos:
                 if pos in Position.get_offensive_pos():
                     last = (pos == last_pos)
-                    __add_pt(possibilities, pt, opt_sum, val, pos, i, last=last)
+                    __add_pt(possibilities, pt, opt_sum, val, pos, i, last=last, rep_lvl=rep_lvl)
                     first = False      
     bat_idx = max(range(len(opt_sum)), key=opt_sum.__getitem__)
     for player_id, games in possibilities[bat_idx].items():
@@ -94,6 +117,8 @@ def optimize_team_pt(team:Team, proj:Projection, format=ScoringFormat, off_opt_s
     else:
         rp_left = rp_limit * 26
         sp_left = sp_limit * 26
+    rp_left = rp_left - sum(current_pt.get(Position.POS_RP, {0:0}).values())
+    sp_left = sp_left - sum(current_pt.get(Position.POS_SP, {0:0}).values())
     
     for val in p_sorted:
         player = val[0]
@@ -103,30 +128,42 @@ def optimize_team_pt(team:Team, proj:Projection, format=ScoringFormat, off_opt_s
         sp_ip = val[1][0][0]
 
         playing_time = 0
-        if rp_left > 0 and rp_ip > 0:
+        if rp_left > 0 and rp_ip > 0 and (rep_lvl is None or rep_lvl.get(Position.POS_RP) < val[1][1]):
             if rp_ip > rp_left:
                 playing_time = rp_left
             else:
                 playing_time = rp_ip
             rp_left = rp_left - playing_time
             team.get_rs_by_player(player).ip = playing_time
-        if sp_left > 0 and sp_ip > 0:
+            pt[bat_idx].get(Position.POS_RP, {})[player.index] = playing_time
+        if sp_left > 0 and sp_ip > 0 and (rep_lvl is None or rep_lvl.get(Position.POS_SP) < val[1][1]):
             if sp_ip > sp_left:
                 playing_time = sp_left
             else:
                 playing_time = sp_ip
             sp_left = sp_left - playing_time
             team.get_rs_by_player(player).ip = playing_time + team.get_rs_by_player(player).ip
+            pt[bat_idx].get(Position.POS_SP, {})[player.index] = playing_time
     return pt[bat_idx]
 
-def __add_pt(possibilities:List[Dict[int, int]], pt:List[Dict[Position, Dict[int,int]]], opt_sum:List[int], val:Tuple[Player,Tuple[int, float]], target_pos:Position, index:int, last:bool=False, used_pos:List[Position]=[], used_pt:int=0, elig_pos:List[Position]=[]) -> None:
+def __add_pt(possibilities:List[Dict[int, int]], 
+             pt:List[Dict[Position, Dict[int,int]]], 
+             opt_sum:List[int], 
+             val:Tuple[Player,Tuple[int, float]], 
+             target_pos:Position, 
+             index:int, 
+             last:bool=False, 
+             used_pos:List[Position]=[], 
+             used_pt:int=0, 
+             rep_lvl:Dict[Position, float]=None) -> None:
     if target_pos == Position.POS_OF:
         cap = 5*162
     else:
         cap = 162
     g_h = 0
-    if sum(pt[index].get(target_pos, {0:0}).values()) < cap:
+    if sum(pt[index].get(target_pos, {0:0}).values()) < cap and (rep_lvl is None or rep_lvl.get(target_pos) < val[1][1]):
         if target_pos != Position.POS_UTIL and not last:
+
             possibilities.append(copy.copy(possibilities[index]))
             opt_sum.append(copy.copy(opt_sum[index]))
             pt.append(copy.deepcopy(pt[index]))
@@ -135,7 +172,7 @@ def __add_pt(possibilities:List[Dict[int, int]], pt:List[Dict[Position, Dict[int
         playing_time = min(val[1][0] - g_h, cap - sum(pt[index].get(target_pos, {0:0}).values()))
         if playing_time == 0:
             return
-        pt[index][target_pos][val[0].index] = playing_time
+        pt[index].get(target_pos, {})[val[0].index] = playing_time
         opt_sum[index] = opt_sum[index] + playing_time*val[1][1] 
         g_h = playing_time + g_h
         possibilities[index][val[0].index] = g_h
