@@ -1,5 +1,6 @@
 from domain.domain import League, Team, Roster_Spot, Player, Draft, ValueCalculation
 from domain.enum import ScoringFormat
+from domain.exception import InputException
 from dao.session import Session
 from scrape.scrape_ottoneu import Scrape_Ottoneu
 from services import player_services, roster_services, calculation_services
@@ -163,6 +164,8 @@ def get_league_by_draft(draft:Draft, fill_rosters:bool=False) -> League:
 
 def calculate_league_table(league:League, value_calc:ValueCalculation, fill_pt:bool=False, inflation:float=0) -> None:
     '''Calculates the projected standings table for the League with the given ValueCalculation'''
+    if value_calc.projection is None:
+        raise InputException('ValueCalculation requires a projection to calculate league table')
     standings = {}
     for team in league.teams:
         pt = roster_services.optimize_team_pt(team, value_calc.projection, value_calc.format)
