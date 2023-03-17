@@ -402,8 +402,8 @@ class Scrape_Ottoneu(scrape_base.Scrape_Base):
         '''Parses the 'Rankings' table from the league statings page. Returns None if the table does not exist (Points leagues)'''
         sect = None
         for section in table_sects:
-            header = section.find('h3').contents[0].string
-            if header == 'Rankings':
+            header = section.find('h3')
+            if header is not None and header.contents is not None and len(header.contents) > 0 and header.contents[0].string == 'Rankings':
                 sect = section
                 break
         if sect is None:
@@ -439,6 +439,9 @@ class Scrape_Ottoneu(scrape_base.Scrape_Base):
         for td in tds[1:]:
             if len(td.find_all('strong')) > 0:
                 rows.append(td.find_all('strong')[0].contents[0].strip())
+            elif len(td.find_all('span', {'class':'negative-change-from-yesterday'})) > 0\
+                or len(td.find_all('span', {'class':'positive-change-from-yesterday'})) > 0:
+                rows.append(td.contents[0].strip())
             elif len(td.find_all('i', {'class':'fa fa-caret-up'})) > 0:
                 rows.append(f'+{td.find_all("i", {"class":"fa fa-caret-up"})[0].next_sibling.strip()}')
             elif len(td.find_all('i', {'class':'fa fa-caret-down'})) > 0:
