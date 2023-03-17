@@ -27,7 +27,9 @@ def optimize_team_pt(team:Team,
                      pitcher_denom:StatType=StatType.IP,
                      rep_lvl:Dict[Position, float]=None,
                      current_pt:Dict[Position, Dict[int,int]]=None) -> Dict[Position, Dict[int,int]]:
-    ''''''
+    '''Creates a season lineup that maximizes the off_opt_stat and pit_opt_stat for the roster. Providing a rep_lvl dictionary will prevent players below replacement
+    level from accruing stats/playing time. Providing a current_pt dictionary will inform how much playing time has alraedy been accrued by the team and will solve
+    for the remaining playing time.'''
     o_opt_pg = {}
     p_opt_pg = {}
     if current_pt is None:
