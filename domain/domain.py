@@ -6,6 +6,8 @@ from sqlalchemy.orm import relationship
 import re
 from domain.enum import CalculationDataType, ProjectionType, RankingBasis, ScoringFormat, StatType, Position, IdType
 
+from typing import List, Dict
+
 Base = declarative_base()
 
 class Property(Base):
@@ -104,9 +106,17 @@ class League(Base):
                 return team
         return None
     
-    def get_team_by_index(self, team_id:int):
+    def get_team_by_index(self, team_id:int) -> Team:
+        '''Returns the team from the league by OTB index'''
         for team in self.teams:
             if team.index == team_id:
+                return team
+        return None
+
+    def get_team_by_site_id(self, site_id:int) -> Team:
+        '''Returns the team from the league by site Id'''
+        for team in self.teams:
+            if team.site_id == site_id:
                 return team
         return None
 
@@ -313,6 +323,13 @@ class ValueCalculation(Base):
                 values.append(pv)
         return values
 
+    def get_rep_level_map(self) -> List[Dict[Position, Float]]:
+        '''Returns the output replacement level values for the ValueCalclution with position as the key'''
+        rl_map = {}
+        for pos in Position.get_discrete_offensive_pos() + Position.get_discrete_pitching_pos():
+            rl_map[pos] = self.get_output(CalculationDataType.pos_to_rep_level().get(pos))
+        rl_map[Position.MI] = min(rl_map[Position.POS_2B], rl_map[Position.POS_SS])
+        return rl_map
 
 class CalculationInput(Base):
 
