@@ -123,6 +123,14 @@ class Team(Base):
     
     roster_spots = relationship("Roster_Spot", back_populates="team", cascade="all, delete")
 
+    num_players = Column(Integer)
+    spots = Column(Integer)
+    salaries = Column(Integer)
+    penalties = Column(Integer)
+    loans_in = Column(Integer)
+    loans_out = Column(Integer)
+    free_cap = Column(Integer)
+
     rs_map = None
 
     def get_rs_by_player(self, player:Player) -> Roster_Spot:

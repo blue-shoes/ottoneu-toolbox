@@ -354,7 +354,7 @@ class Scrape_Ottoneu(scrape_base.Scrape_Base):
         return fin_df
 
     def __parse_finance_rows(self, fin_row, depth_tbl_rows) -> List[str]:
-        '''Retruns the contents of a Team Finance table row. Returns a list of [Team_Id, Team_Name, # Players, # Spots, Base Salary, Cap Penalties, Loans in, Loans out, Available cap space]'''
+        '''Returns the contents of a Team Finance table row. Returns a list of [Team_Id, Team_Name, # Players, # Spots, Base Salary, Cap Penalties, Loans in, Loans out, Available cap space]'''
         tds = fin_row.find_all('td')
         parsed_row = []
         id = tds[0].find('a').get('href').split('=')[1]
@@ -366,7 +366,7 @@ class Scrape_Ottoneu(scrape_base.Scrape_Base):
             if tds[idx].string == '$':
                 parsed_row.append(0)
             else:
-                parsed_row.append(Decimal(sub(r'[^\d.]', '', tds[idx].string)))
+                parsed_row.append(sub(r'[^\d.]', '', tds[idx].string))
         for row in depth_tbl_rows:
             depth_id = row.find('a').get('href').split('=')[1]
             if id == depth_id:
