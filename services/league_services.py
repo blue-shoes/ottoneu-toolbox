@@ -27,6 +27,7 @@ def refresh_league(league_idx:int, pd=None) -> League:
             pd.set_task_title("Updating rosters...")
             pd.increment_completion_percent(5)
         upd_rost = scraper.scrape_roster_export(lg.ottoneu_id)
+        finances = scraper.scrape_finances_page(lg.ottoneu_id)
         if pd is not None:
             pd.increment_completion_percent(30)
         with Session() as session:
@@ -57,6 +58,15 @@ def refresh_league(league_idx:int, pd=None) -> League:
                 team_map[team].roster_spots.append(rs)
                 if team_map[team].name != row['Team Name']:
                     team_map[team].name = row['Team Name']
+            for idx, row in finances.iterrows():
+                team = team_map[idx]
+                team.num_players = row['Players']
+                team.spots = row['Spots'] 
+                team.salaries = row['Base Salaries']
+                team.penalties = row['Cap Penalties']
+                team.loans_in = row['Loans In']
+                team.loans_out = row['Loans Out']
+                team.free_cap = row['Cap Space']
             
             lg.last_refresh = datetime.now()
             session.commit()
