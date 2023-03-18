@@ -24,7 +24,7 @@ def optimize_team_pt(team:Team,
                      pit_opt_stat:StatType=StatType.WHIP, 
                      rp_limit:float=350, 
                      sp_limit:float=10, 
-                     pitcher_denom:StatType=StatType.IP,
+                     pitch_basis:RankingBasis=RankingBasis.PIP,
                      rep_lvl:Dict[Position, float]=None,
                      current_pt:Dict[Position, Dict[int,int]]=None) -> Dict[Position, Dict[int,int]]:
     '''Creates a season lineup that maximizes the off_opt_stat and pit_opt_stat for the roster. Providing a rep_lvl dictionary will prevent players below replacement
@@ -64,22 +64,22 @@ def optimize_team_pt(team:Team,
                 if g is None or g == 0 or ip is None or ip == 0:
                     p_opt_pg[rs.player] = ((0,0), 0)
                 else:
-                    if pitcher_denom == StatType.IP:
+                    if pitch_basis == RankingBasis.PIP:
                         p_opt_pg[rs.player] = (projection_services.get_pitcher_role_ips(pp), pp.get_stat(pit_opt_stat) / ip)
-                    elif pitcher_denom == StatType.G:
+                    elif pitch_basis == RankingBasis.PPG:
                         p_opt_pg[rs.player] = ((gs, g-gs), pp.get_stat(pit_opt_stat) / g)
                     else:
-                        raise InputException(f'Unexpected pitcher_denom value {pitcher_denom}')
+                        raise InputException(f'Unexpected pitch_basis value {pitch_basis}')
             else:
                 if g is None or g == 0 or ip is None or ip == 0:
                     p_opt_pg[rs.player] = ((0,0), 0)
                 else:
-                    if pitcher_denom == StatType.IP:
+                    if pitch_basis == RankingBasis.PIP:
                         p_opt_pg[rs.player] = (projection_services.get_pitcher_role_ips(pp), calculation_services.get_pitching_point_rate_from_player_projection(pp, format=format, basis=RankingBasis.PIP))
-                    elif pitcher_denom == StatType.G:
+                    elif pitch_basis == RankingBasis.PPG:
                         p_opt_pg[rs.player] = ((gs, g-gs), calculation_services.get_pitching_point_rate_from_player_projection(pp, format=format, basis=RankingBasis.PPG))
                     else:
-                        raise InputException(f'Unexpected pitcher_denom value {pitcher_denom}')
+                        raise InputException(f'Unexpected pitch_basis value {pitch_basis}')
     o_sorted = sorted(o_opt_pg.items(), key=lambda x:x[1][1], reverse=True)
 
     possibilities = []
@@ -113,7 +113,7 @@ def optimize_team_pt(team:Team,
     else:
         p_sorted = sorted(p_opt_pg.items(), key=lambda x:x[1][1], reverse=True) 
 
-    if pitcher_denom == StatType.IP:
+    if pitch_basis == RankingBasis.PIP:
         rp_left = rp_limit
         sp_left = 1500 - rp_limit
     else:
@@ -193,3 +193,17 @@ def __add_pt(possibilities:List[Dict[int, int]],
             __add_pt(possibilities, pt, opt_sum, val, Position.POS_MI, index=index, used_pos = used_pos, used_pt=used_pt)
         elif target_pos != Position.POS_UTIL:
             __add_pt(possibilities, pt, opt_sum, val, Position.POS_UTIL, index=index, used_pos = used_pos, used_pt=used_pt)
+
+def main():
+    from services import league_services, projection_services
+    import time
+    league = league_services.get_league(2)
+    proj = projection_services.get_projection(7)
+    start = time.time()
+    optimize_team_pt(league.get_user_team(), proj, ScoringFormat.FG_POINTS)
+    #optimize_team_pt(league.get_team_by_index(16), proj, ScoringFormat.FG_POINTS)
+    end = time.time()
+    print(f'time = {end-start}')
+
+if __name__ == '__main__':
+    main()

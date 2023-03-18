@@ -179,6 +179,7 @@ def calculate_league_table(league:League, value_calc:ValueCalculation, fill_pt:b
     standings = {}
     for team in league.teams:
         pt = roster_services.optimize_team_pt(team, value_calc.projection, value_calc.format)
+        pt = roster_services.optimize_team_pt(team, value_calc.projection, value_calc.format, pitch_basis=value_calc.pitcher_basis)
         if ScoringFormat.is_points_type(value_calc.format):
             points = 0
             if fill_pt:
@@ -192,3 +193,22 @@ def calculate_league_table(league:League, value_calc:ValueCalculation, fill_pt:b
                 points = points + rs.ip * calculation_services.get_pitching_point_rate_from_player_projection(pp, value_calc.format, value_calc.pitcher_basis)
         standings[team] = points
     sorted_standings = sorted(standings.items(), key=lambda x:x[1], reverse=True)
+    rank = 1
+    for item in sorted_standings:
+        print(f'{rank}: {item[0].name}\t{item[1]}')
+        rank = rank + 1
+    
+def main():
+    from services import calculation_services
+    import time
+    #refresh_league(6)
+    league = get_league(1)
+    value_calc = calculation_services.load_calculation(8)
+    print('about to calculate')
+    start = time.time()
+    calculate_league_table(league, value_calc)
+    end = time.time()
+    print(f'time = {end-start}')
+
+if __name__ == '__main__':
+    main()
