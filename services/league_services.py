@@ -1,11 +1,12 @@
 from domain.domain import League, Team, Roster_Spot, Player, Draft, ValueCalculation
-from domain.enum import ScoringFormat
+from domain.enum import ScoringFormat, Position, CalculationDataType, RepLevelScheme, RankingBasis
 from domain.exception import InputException
 from dao.session import Session
 from scrape.scrape_ottoneu import Scrape_Ottoneu
 from services import player_services, roster_services, calculation_services
 from sqlalchemy.orm import joinedload
 from typing import List
+from util import date_util
 
 from datetime import datetime
 
@@ -172,19 +173,57 @@ def get_league_by_draft(draft:Draft, fill_rosters:bool=False) -> League:
         league = session.query(Draft).options(joinedload(Draft.league)).filter(Draft.index == draft.index).first().league
         return get_league(league.index, fill_rosters)
 
-def calculate_league_table(league:League, value_calc:ValueCalculation, fill_pt:bool=False, inflation:float=0) -> None:
+def calculate_league_table(league:League, value_calc:ValueCalculation, fill_pt:bool=False, inflation:float=None, in_season:bool=False) -> None:
     '''Calculates the projected standings table for the League with the given ValueCalculation'''
     if value_calc.projection is None:
         raise InputException('ValueCalculation requires a projection to calculate league table')
+    if in_season:
+        stats ,_, pt = Scrape_Ottoneu().scrape_standings_page(league.index, date_util.get_current_ottoneu_year())
     standings = {}
     for team in league.teams:
-        pt = roster_services.optimize_team_pt(team, value_calc.projection, value_calc.format)
-        pt = roster_services.optimize_team_pt(team, value_calc.projection, value_calc.format, pitch_basis=value_calc.pitcher_basis)
+        if fill_pt:
+            rep_lvl = value_calc.get_rep_level_map()
+            if ScoringFormat.is_h2h(value_calc.format):
+                pt = roster_services.optimize_team_pt(team, value_calc.projection, value_calc.format, rep_lvl=rep_lvl, rp_limit=value_calc.get_input(CalculationDataType.RP_G_TARGET, 10), sp_limit=value_calc.get_input(CalculationDataType.GS_LIMIT, 10), pitch_basis=value_calc.pitcher_basis)
+            else:
+                pt = roster_services.optimize_team_pt(team, value_calc.projection, value_calc.format, rep_lvl=rep_lvl, rp_limit=value_calc.get_input(CalculationDataType.RP_IP_TARGET, 350))
+        else:
+            if ScoringFormat.is_h2h(value_calc.format):
+                pt = roster_services.optimize_team_pt(team, value_calc.projection, value_calc.format, rp_limit=value_calc.get_input(CalculationDataType.RP_G_TARGET, 10), sp_limit=value_calc.get_input(CalculationDataType.GS_LIMIT, 10), pitch_basis=value_calc.pitcher_basis)
+            else:
+                pt = roster_services.optimize_team_pt(team, value_calc.projection, value_calc.format, rp_limit=value_calc.get_input(CalculationDataType.RP_IP_TARGET, 350))
+
         if ScoringFormat.is_points_type(value_calc.format):
-            points = 0
+            if in_season:
+                points = stats.loc[team.ottoneu_id, 'Points']
+            else:
+                points = 0
             if fill_pt:
-                #TODO: fill remaining pt based on replacement levels, $/PAR, and inflation
-                ...
+                for pos in Position.get_discrete_offensive_pos() + [Position.POS_MI] + Position.get_discrete_pitching_pos():
+                    rl = rep_lvl.get(pos)
+                    if pos == Position.POS_OF:
+                        cap = 5*162
+                    elif pos in Position.get_offensive_pos():
+                        cap = 162
+                    elif pos == Position.POS_SP:
+                        if value_calc.pitcher_basis == RankingBasis.PIP:
+                            cap = 1150
+                        else:
+                            cap = value_calc.get_input(CalculationDataType.GS_LIMIT) * 26
+                    else:
+                        if value_calc.pitcher_basis == RankingBasis.PIP:
+                            cap = 350
+                        else:
+                            cap = value_calc.get_input(CalculationDataType.RP_G_TARGET) * 26
+                    used_pt = sum(pt.get(pos, {0:0}).values())
+                    if used_pt < cap:
+                        additional_pt = cap - used_pt
+                        points = points + additional_pt * rl
+                if inflation is not None:
+                    points1 = points
+                    available_surplus_dol = team.free_cap - (team.spots - team.num_players)
+                    points = points + available_surplus_dol * (1/value_calc.get_output(CalculationDataType.DOLLARS_PER_FOM)) * (1 - inflation/100)
+
             for rs in team.roster_spots:
                 pp = value_calc.projection.get_player_projection(rs.player.index)
                 if pp is None:
@@ -202,11 +241,10 @@ def main():
     from services import calculation_services
     import time
     #refresh_league(6)
-    league = get_league(1)
+    league = get_league(6)
     value_calc = calculation_services.load_calculation(8)
-    print('about to calculate')
     start = time.time()
-    calculate_league_table(league, value_calc)
+    calculate_league_table(league, value_calc, fill_pt=True, inflation=-40)
     end = time.time()
     print(f'time = {end-start}')
 
