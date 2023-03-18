@@ -328,7 +328,7 @@ class ValueCalculation(Base):
         rl_map = {}
         for pos in Position.get_discrete_offensive_pos() + Position.get_discrete_pitching_pos():
             rl_map[pos] = self.get_output(CalculationDataType.pos_to_rep_level().get(pos))
-        rl_map[Position.MI] = min(rl_map[Position.POS_2B], rl_map[Position.POS_SS])
+        rl_map[Position.POS_MI] = min(rl_map[Position.POS_2B], rl_map[Position.POS_SS])
         return rl_map
 
 class CalculationInput(Base):
