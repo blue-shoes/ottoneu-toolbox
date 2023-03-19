@@ -24,6 +24,7 @@ def optimize_team_pt(team:Team,
                      pit_opt_stat:StatType=StatType.WHIP, 
                      rp_limit:float=350, 
                      sp_limit:float=10, 
+                     off_g_limit:float=162,
                      pitch_basis:RankingBasis=RankingBasis.PIP,
                      rep_lvl:Dict[Position, float]=None,
                      current_pt:Dict[Position, Dict[int,int]]=None) -> Dict[Position, Dict[int,int]]:
@@ -100,7 +101,7 @@ def optimize_team_pt(team:Team,
             for pos in elig_pos:
                 if pos in Position.get_offensive_pos():
                     last = (pos == last_pos)
-                    __add_pt(possibilities, pt, opt_sum, val, pos, i, last=last, rep_lvl=rep_lvl)
+                    __add_pt(possibilities, pt, opt_sum, val, pos, i, last=last, rep_lvl=rep_lvl, g_limit=off_g_limit)
                     first = False      
     bat_idx = max(range(len(opt_sum)), key=opt_sum.__getitem__)
     for player_id, games in possibilities[bat_idx].items():
@@ -157,11 +158,12 @@ def __add_pt(possibilities:List[Dict[int, int]],
              last:bool=False, 
              used_pos:List[Position]=[], 
              used_pt:int=0, 
-             rep_lvl:Dict[Position, float]=None) -> None:
+             rep_lvl:Dict[Position, float]=None,
+             g_limit:float=163) -> None:
     if target_pos == Position.POS_OF:
-        cap = 5*162
+        cap = 5*g_limit
     else:
-        cap = 162
+        cap = g_limit
     g_h = 0
     if sum(pt[index].get(target_pos, {0:0}).values()) < cap and (rep_lvl is None or rep_lvl.get(target_pos) < val[1][1]):
         if target_pos != Position.POS_UTIL and not last:

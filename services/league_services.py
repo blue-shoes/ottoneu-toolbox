@@ -184,14 +184,14 @@ def calculate_league_table(league:League, value_calc:ValueCalculation, fill_pt:b
         if fill_pt:
             rep_lvl = value_calc.get_rep_level_map()
             if ScoringFormat.is_h2h(value_calc.format):
-                pt = roster_services.optimize_team_pt(team, value_calc.projection, value_calc.format, rep_lvl=rep_lvl, rp_limit=value_calc.get_input(CalculationDataType.RP_G_TARGET, 10), sp_limit=value_calc.get_input(CalculationDataType.GS_LIMIT, 10), pitch_basis=value_calc.pitcher_basis)
+                pt = roster_services.optimize_team_pt(team, value_calc.projection, value_calc.format, rep_lvl=rep_lvl, rp_limit=value_calc.get_input(CalculationDataType.RP_G_TARGET, 10), sp_limit=value_calc.get_input(CalculationDataType.GS_LIMIT, 10), pitch_basis=value_calc.pitcher_basis, off_g_limit=value_calc.get_input(CalculationDataType.BATTER_G_TARGET, 162))
             else:
-                pt = roster_services.optimize_team_pt(team, value_calc.projection, value_calc.format, rep_lvl=rep_lvl, rp_limit=value_calc.get_input(CalculationDataType.RP_IP_TARGET, 350))
+                pt = roster_services.optimize_team_pt(team, value_calc.projection, value_calc.format, rep_lvl=rep_lvl, rp_limit=value_calc.get_input(CalculationDataType.RP_IP_TARGET, 350), off_g_limit=value_calc.get_input(CalculationDataType.BATTER_G_TARGET, 162))
         else:
             if ScoringFormat.is_h2h(value_calc.format):
-                pt = roster_services.optimize_team_pt(team, value_calc.projection, value_calc.format, rp_limit=value_calc.get_input(CalculationDataType.RP_G_TARGET, 10), sp_limit=value_calc.get_input(CalculationDataType.GS_LIMIT, 10), pitch_basis=value_calc.pitcher_basis)
+                pt = roster_services.optimize_team_pt(team, value_calc.projection, value_calc.format, rp_limit=value_calc.get_input(CalculationDataType.RP_G_TARGET, 10), sp_limit=value_calc.get_input(CalculationDataType.GS_LIMIT, 10), pitch_basis=value_calc.pitcher_basis, off_g_limit=value_calc.get_input(CalculationDataType.BATTER_G_TARGET, 162))
             else:
-                pt = roster_services.optimize_team_pt(team, value_calc.projection, value_calc.format, rp_limit=value_calc.get_input(CalculationDataType.RP_IP_TARGET, 350))
+                pt = roster_services.optimize_team_pt(team, value_calc.projection, value_calc.format, rp_limit=value_calc.get_input(CalculationDataType.RP_IP_TARGET, 350), off_g_limit=value_calc.get_input(CalculationDataType.BATTER_G_TARGET, 162))
 
         if ScoringFormat.is_points_type(value_calc.format):
             if in_season:
@@ -202,19 +202,19 @@ def calculate_league_table(league:League, value_calc:ValueCalculation, fill_pt:b
                 for pos in Position.get_discrete_offensive_pos() + [Position.POS_MI] + Position.get_discrete_pitching_pos():
                     rl = rep_lvl.get(pos)
                     if pos == Position.POS_OF:
-                        cap = 5*162
+                        cap = 5*value_calc.get_input(CalculationDataType.BATTER_G_TARGET, 162)
                     elif pos in Position.get_offensive_pos():
-                        cap = 162
+                        cap = value_calc.get_input(CalculationDataType.BATTER_G_TARGET, 162)
                     elif pos == Position.POS_SP:
                         if value_calc.pitcher_basis == RankingBasis.PIP:
                             cap = 1150
                         else:
-                            cap = value_calc.get_input(CalculationDataType.GS_LIMIT) * 26
+                            cap = value_calc.get_input(CalculationDataType.GS_LIMIT, 10) * 26
                     else:
                         if value_calc.pitcher_basis == RankingBasis.PIP:
                             cap = 350
                         else:
-                            cap = value_calc.get_input(CalculationDataType.RP_G_TARGET) * 26
+                            cap = value_calc.get_input(CalculationDataType.RP_G_TARGET, 10) * 26
                     used_pt = sum(pt.get(pos, {0:0}).values())
                     if used_pt < cap:
                         additional_pt = cap - used_pt
