@@ -141,7 +141,9 @@ class Team(Base):
     loans_out = Column(Integer)
     free_cap = Column(Integer)
 
-    rs_map = None
+    rs_map:Dict[Player,Roster_Spot] = None
+    points:float=0
+    
 
     def get_rs_by_player(self, player:Player) -> Roster_Spot:
         '''Returns the team's Roster_Spot for the input player'''
