@@ -440,6 +440,18 @@ class StatType(Enum):
             self.PIP: two_decimal
         }
 
+    @classmethod
+    def get_format_stat_categores(self, format:ScoringFormat) -> List[StatType]:
+        if format == ScoringFormat.OLD_SCHOOL_5X5:
+            cats = [StatType.R, StatType.HR, StatType.RBI, StatType.SB, StatType.AVG,
+                    StatType.W, StatType.SV, StatType.SO, StatType.ERA, StatType.WHIP]
+        elif format == ScoringFormat.CLASSIC_4X4:
+            cats = [StatType.R, StatType.HR, StatType.OBP, StatType.SLG,
+                    StatType.SO, StatType.ERA, StatType.WHIP, StatType.HR_PER_9]
+        else:
+            cats = [StatType.POINTS]
+        return cats
+
 class ScoringFormat(Enum):
     ALL = 0
     CLASSIC_4X4 = 1
