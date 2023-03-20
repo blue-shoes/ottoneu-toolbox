@@ -143,7 +143,9 @@ class Team(Base):
 
     rs_map:Dict[Player,Roster_Spot] = None
     points:float=0
-    
+    lg_rank:int=0
+    cat_stats:Dict[StatType,float]={}
+    cat_ranks:Dict[StatType,int]={}
 
     def get_rs_by_player(self, player:Player) -> Roster_Spot:
         '''Returns the team's Roster_Spot for the input player'''
