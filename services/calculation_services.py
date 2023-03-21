@@ -437,6 +437,9 @@ def get_values_from_fg_auction_files(vc: ValueCalculation, hit_df : DataFrame, p
     total_hitters = 0
     for idx, row in hit_df.iterrows():
         player = player_services.get_player_by_fg_id(idx)
+        if player is None:
+            print(f'player for idx {idx} is None')
+            continue
         if row['Dollars'] >= rep_lvl_dol:
             total_hitters = total_hitters + 1
         vc.set_player_value(player.index, Position.OVERALL, row['Dollars'])
@@ -453,17 +456,23 @@ def get_values_from_fg_auction_files(vc: ValueCalculation, hit_df : DataFrame, p
     pitch_df.set_index("PlayerId", inplace=True)
     total_pitchers = 0
     for idx, row in pitch_df.iterrows():
+        if player is None:
+            continue
         player = player_services.get_player_by_fg_id(idx)
         if player.position == 'SP':
             rep_lvls[Position.POS_SP] = row['aPOS']
             break
     for idx, row in pitch_df.iterrows():
         player = player_services.get_player_by_fg_id(idx)
+        if player is None:
+            continue
         if player.position == 'RP':
             rep_lvls[Position.POS_RP] = row['aPOS']
             break
     for idx, row in pitch_df.iterrows():
         player = player_services.get_player_by_fg_id(idx)
+        if player is None:
+            continue
         if player.index in vc.value_dict:
             vc.set_player_value(player.index, Position.OVERALL, row['Dollars'] + vc.get_player_value(player.index, Position.OVERALL).value)
         else:
