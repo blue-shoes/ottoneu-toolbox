@@ -1,13 +1,14 @@
 from pandas import DataFrame
 from domain.domain import League, Team, Roster_Spot, Player, Draft, ValueCalculation
-from domain.enum import ScoringFormat, Position, CalculationDataType, RepLevelScheme, RankingBasis
+from domain.enum import ScoringFormat, Position, CalculationDataType, StatType, RankingBasis
 from domain.exception import InputException
 from dao.session import Session
 from scrape.scrape_ottoneu import Scrape_Ottoneu
 from services import player_services, roster_services, calculation_services
 from sqlalchemy.orm import joinedload
 from typing import List
-from util import date_util
+from util import date_util, list_util
+from collections import defaultdict
 
 from datetime import datetime
 
@@ -184,17 +185,22 @@ def calculate_league_table(league:League, value_calc:ValueCalculation, fill_pt:b
     pt = None
     if in_season:
         stats ,_, pt = Scrape_Ottoneu().scrape_standings_page(league.index, date_util.get_current_ottoneu_year())
+    for team in league.teams:
+        project_team_results(team, value_calc, fill_pt, inflation, stats=stats, accrued_pt=pt)        
+    if not ScoringFormat.is_points_type(league.format):
+        calculate_league_cat_ranks(league)
     team_list = []
     for team in league.teams:
-        project_team_results(team, value_calc, fill_pt, inflation, stats=stats, accrued_pt=pt)
         team_list.append(team)
     sorted_teams = sorted(team_list, key=lambda x: x.points, reverse=True)
     rank = 1
     for team in sorted_teams:
-        print(f'{rank}: {team.name}\t{team.points}')
-        rank = rank + 1
+        team.lg_rank = rank
 
 def project_team_results(team:Team, value_calc:ValueCalculation, fill_pt:bool=False, inflation:float=None, stats:DataFrame=None, accrued_pt:DataFrame=None) -> None:
+    if accrued_pt is not None:
+        #TODO: Need to adjust targets here
+        ...
     if fill_pt and not ScoringFormat.is_points_type(value_calc.format):
         raise InputException('Roto leagues do not support filling playing time (the math makes my brain hurt)')
     if fill_pt:
@@ -211,7 +217,7 @@ def project_team_results(team:Team, value_calc:ValueCalculation, fill_pt:bool=Fa
 
     if ScoringFormat.is_points_type(value_calc.format):
         if stats is not None:
-            team.points = stats.loc[team.ottoneu_id, 'Points']
+            team.points = stats.loc[team.site_id, 'Points']
         else:
             team.points = 0
         if fill_pt:
@@ -245,7 +251,64 @@ def project_team_results(team:Team, value_calc:ValueCalculation, fill_pt:bool=Fa
                 continue
             team.points = team.points + rs.g_h * calculation_services.get_batting_point_rate_from_player_projection(pp)
             team.points = team.points + rs.ip * calculation_services.get_pitching_point_rate_from_player_projection(pp, value_calc.format, value_calc.pitcher_basis)
-    
+    else:
+        rate_cats = defaultdict(list)
+        if stats is not None:
+            prod_bat, _ = Scrape_Ottoneu().scrape_team_production_page(team.league_id, team.site_id)
+            for cat in StatType.get_format_stat_categories(value_calc.format):
+                if cat in [StatType.AVG, StatType.SLG]:
+                    rate_cats[cat].append((prod_bat['AB'].sum(), stats.loc[team.site_id, StatType.enum_to_display_dict().get(cat)]))
+                elif cat == StatType.OBP:
+                    #As of 3/22/23, 4x4 only has AB available, which is not quite correct for OBP
+                    #to account for this, we increase AB by 12% to estimate PA per recent historical averages (2019-2022)
+                    rate_cats.get(cat).append((prod_bat['AB'].sum() * 1.12, stats.loc[team.site_id, StatType.enum_to_display_dict().get(cat)]))
+                elif cat in  [StatType.ERA, StatType.WHIP, StatType.HR_PER_9]:
+                    rate_cats[cat].append((stats.loc[team.site_id, 'IP'], stats.loc[team.site_id, StatType.enum_to_display_dict().get(cat)]))
+                else:
+                    team.cat_stats[cat] = stats.loc[team.site_id, StatType.enum_to_display_dict().get(cat)]
+        for rs in team.roster_spots:
+            pp = value_calc.projection.get_player_projection(rs.player.index)
+            if pp is None:
+                continue
+            g = pp.get_stat(StatType.G_HIT)
+            ip = pp.get_stat(StatType.IP)
+            for cat in StatType.get_format_stat_categories(value_calc.format):
+                if cat in StatType.hit_to_enum_dict().values() and rs.g_h > 0 and g > 0:
+                    if cat in [StatType.AVG, StatType.SLG]:
+                        ab = (pp.get_stat(StatType.AB) / g) * rs.g_h
+                        rate_cats[cat].append((ab, pp.get_stat(cat)))
+                    elif cat == StatType.OBP:
+                        pa = (pp.get_stat(StatType.PA) / g) * rs.g_h
+                        rate_cats[cat].append((pa, pp.get_stat(cat)))
+                    else:
+                        rate = pp.get_stat(cat) / g
+                        team.cat_stats[cat] = team.cat_stats.get(cat, 0) + rate * rs.g_h
+                elif cat in StatType.pitch_to_enum_dict().values() and rs.ip > 0 and ip > 0:
+                    if cat in [StatType.ERA, StatType.WHIP, StatType.HR_PER_9]:
+                        rate_cats[cat].append((rs.ip, pp.get_stat(cat)))
+                    else:
+                        rate = pp.get_stat(cat) / ip
+                        team.cat_stats[cat] = team.cat_stats.get(cat, 0) + rate * rs.ip
+        for cat, val in rate_cats.items():
+            team.cat_stats[cat] = list_util.weighted_average(val)
+
+def calculate_league_cat_ranks(league:League) -> None:    
+    for cat in StatType.get_format_stat_categories(league.format):
+        cat_list = [team.cat_stats.get(cat) for team in league.teams]
+        if cat in [StatType.ERA, StatType.WHIP, StatType.HR_PER_9]:
+            rank_map = list_util.rank_list_with_ties(cat_list,reverse=False, max_rank=league.num_teams)
+        else:
+            rank_map = list_util.rank_list_with_ties(cat_list,reverse=True, max_rank=league.num_teams)
+        for team in league.teams:
+            team.cat_ranks[cat] = rank_map.get(team.cat_stats.get(cat))
+    for team in league.teams:
+        team.points = sum(team.cat_ranks.values())
+    sorted_teams = sorted(league.teams, key=lambda x: x.points, reverse=True)
+    rank = 1
+    for team in sorted_teams:
+        team.lg_rank = rank
+        rank = rank + 1
+
 def main():
     from services import calculation_services
     import time
