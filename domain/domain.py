@@ -2,7 +2,7 @@ from __future__ import annotations
 from sqlalchemy import Column, ForeignKey, Index
 from sqlalchemy import Integer, String, Boolean, Float, Date, Enum, TIMESTAMP
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, reconstructor
 import re
 from domain.enum import CalculationDataType, ProjectionType, RankingBasis, ScoringFormat, StatType, Position, IdType
 
@@ -144,8 +144,13 @@ class Team(Base):
     rs_map:Dict[Player,Roster_Spot] = None
     points:float=0
     lg_rank:int=0
-    cat_stats:Dict[StatType,float]={}
-    cat_ranks:Dict[StatType,int]={}
+    cat_stats:Dict[StatType,float]
+    cat_ranks:Dict[StatType,int]
+
+    @reconstructor
+    def init_on_load(self):
+        self.cat_stats = {}
+        self.cat_ranks = {}
 
     def get_rs_by_player(self, player:Player) -> Roster_Spot:
         '''Returns the team's Roster_Spot for the input player'''
