@@ -441,7 +441,7 @@ class StatType(Enum):
         }
 
     @classmethod
-    def get_format_stat_categores(self, format:ScoringFormat) -> List[StatType]:
+    def get_format_stat_categories(self, format:ScoringFormat) -> List[StatType]:
         if format == ScoringFormat.OLD_SCHOOL_5X5:
             cats = [StatType.R, StatType.HR, StatType.RBI, StatType.SB, StatType.AVG,
                     StatType.W, StatType.SV, StatType.SO, StatType.ERA, StatType.WHIP]
