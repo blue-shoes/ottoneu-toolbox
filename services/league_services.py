@@ -192,11 +192,7 @@ def calculate_league_table(league:League, value_calc:ValueCalculation, fill_pt:b
     team_list = []
     for team in league.teams:
         team_list.append(team)
-    sorted_teams = sorted(team_list, key=lambda x: x.points, reverse=True)
-    rank = 1
-    for team in sorted_teams:
-        team.lg_rank = rank
-        rank = rank + 1
+    set_team_ranks(league)
 
 def project_team_results(team:Team, value_calc:ValueCalculation, fill_pt:bool=False, inflation:float=None, stats:DataFrame=None, accrued_pt:DataFrame=None) -> None:
     if accrued_pt is not None:
@@ -304,6 +300,9 @@ def calculate_league_cat_ranks(league:League) -> None:
             team.cat_ranks[cat] = rank_map.get(team.cat_stats.get(cat))
     for team in league.teams:
         team.points = sum(team.cat_ranks.values())
+    set_team_ranks(league)
+
+def set_team_ranks(league:League) -> None:
     sorted_teams = sorted(league.teams, key=lambda x: x.points, reverse=True)
     rank = 1
     for team in sorted_teams:
