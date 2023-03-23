@@ -196,6 +196,7 @@ def calculate_league_table(league:League, value_calc:ValueCalculation, fill_pt:b
     rank = 1
     for team in sorted_teams:
         team.lg_rank = rank
+        rank = rank + 1
 
 def project_team_results(team:Team, value_calc:ValueCalculation, fill_pt:bool=False, inflation:float=None, stats:DataFrame=None, accrued_pt:DataFrame=None) -> None:
     if accrued_pt is not None:
@@ -240,7 +241,7 @@ def project_team_results(team:Team, value_calc:ValueCalculation, fill_pt:bool=Fa
                 used_pt = sum(pt.get(pos, {0:0}).values())
                 if used_pt < cap:
                     additional_pt = cap - used_pt
-                    points = points + additional_pt * rl
+                    team.points = team.points + additional_pt * rl
             if inflation is not None:
                 available_surplus_dol = team.free_cap - (team.spots - team.num_players)
                 team.points = team.points + available_surplus_dol * (1/value_calc.get_output(CalculationDataType.DOLLARS_PER_FOM)) * (1 - inflation/100)
