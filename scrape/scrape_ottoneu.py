@@ -178,7 +178,7 @@ class Scrape_Ottoneu(scrape_base.Scrape_Base):
         return parsed_row
 
     def scrape_team_production_page(self, lg_id:int, team_id:int) -> list[DataFrame]:
-        ''''Scrapes the production by position tables for a team and return a list of DataFrames with hitting in index 0 and pitching in index 1. Indices are Position'''
+        '''Scrapes the production by position tables for a team and return a list of DataFrames with hitting in index 0 and pitching in index 1. Indices are Position'''
         dfs = []
         prod_url = f'https://ottoneu.fangraphs.com/{lg_id}/teamproduction?teamID={team_id}'
         #response = requests.get(prod_url)
