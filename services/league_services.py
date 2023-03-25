@@ -308,17 +308,3 @@ def set_team_ranks(league:League) -> None:
     for team in sorted_teams:
         team.lg_rank = rank
         rank = rank + 1
-
-def main():
-    from services import calculation_services
-    import time
-    #refresh_league(6)
-    league = get_league(6)
-    value_calc = calculation_services.load_calculation(8)
-    start = time.time()
-    calculate_league_table(league, value_calc, fill_pt=True, inflation=-40)
-    end = time.time()
-    print(f'time = {end-start}')
-
-if __name__ == '__main__':
-    main()

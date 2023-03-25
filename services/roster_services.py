@@ -195,17 +195,3 @@ def __add_pt(possibilities:List[Dict[int, int]],
             __add_pt(possibilities, pt, opt_sum, val, Position.POS_MI, index=index, used_pos = used_pos, used_pt=used_pt)
         elif target_pos != Position.POS_UTIL:
             __add_pt(possibilities, pt, opt_sum, val, Position.POS_UTIL, index=index, used_pos = used_pos, used_pt=used_pt)
-
-def main():
-    from services import league_services, projection_services
-    import time
-    league = league_services.get_league(2)
-    proj = projection_services.get_projection(7)
-    start = time.time()
-    optimize_team_pt(league.get_user_team(), proj, ScoringFormat.FG_POINTS)
-    #optimize_team_pt(league.get_team_by_index(16), proj, ScoringFormat.FG_POINTS)
-    end = time.time()
-    print(f'time = {end-start}')
-
-if __name__ == '__main__':
-    main()
