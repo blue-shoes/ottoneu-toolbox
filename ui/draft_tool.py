@@ -20,6 +20,7 @@ from ui.table import Table
 from ui.dialog import progress, draft_target, cm_team_assignment
 from ui.dialog.wizard import couchmanagers_import
 from ui.tool.tooltip import CreateToolTip
+from ui.view.standings import Standings
 from services import salary_services, league_services, calculation_services, player_services, draft_services
 from demo import draft_demo
 
@@ -127,6 +128,10 @@ class DraftTool(tk.Frame):
         self.tab_control.grid(row=0, column=0)
 
         self.create_search()
+
+        #TODO: Clean this up
+        self.standings = Standings(self)
+        self.standings.grid(row=1,column=2)
 
         button_frame = ttk.Frame(running_list_frame)
         button_frame.grid(row=0, column=1, sticky=tk.N, pady=15)
@@ -856,6 +861,10 @@ class DraftTool(tk.Frame):
             for pos in Position.get_pitching_pos():
                 self.pos_values[pos].drop('Salary', axis=1, inplace=True)
                 pd.increment_completion_percent(5)
+        
+        self.standings.league = self.controller.league
+        self.standings.value_calc = self.controller.value_calculation
+        self.standings.standings_table.refresh()
 
         if self.draft.cm_draft is not None:
             self.monitor_status.set(f'Using CM Draft {self.draft.cm_draft.cm_draft_id}')
