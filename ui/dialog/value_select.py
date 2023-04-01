@@ -70,7 +70,7 @@ class Dialog(tk.Toplevel):
     
     def populate_table(self):
         for value in self.value_list:
-            self.value_table.insert('', tk.END, text=str(value.index), values=(value.name, ScoringFormat.enum_to_short_name_map()[value.format], int(value.get_input(CalculationDataType.NUM_TEAMS)), value.description))
+            self.value_table.insert('', tk.END, text=str(value.index), values=(value.name, value.format.short_name, int(value.get_input(CalculationDataType.NUM_TEAMS)), value.description))
 
     def double_click(self, event):
         self.on_select(event)

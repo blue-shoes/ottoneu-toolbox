@@ -321,7 +321,7 @@ class ArmValues():
     def calc_roto_fom_role(self, row, pos:str, rep_level:float) -> float:
         if (pos == Position.POS_RP.value and row['IP RP'] > self.min_rp_ip)\
             or (pos == Position.POS_SP.value and row['IP SP'] > self.min_sp_ip):
-            return row[RankingBasis.enum_to_display_dict().get(self.rank_basis)] - rep_level
+            return row[self.rank_basis.display] - rep_level
         #If the position doesn't apply, set FOM to -999.9 to differentiate from the replacement player
         return -999.9
     
@@ -390,7 +390,7 @@ class ArmValues():
         elif self.rank_basis == RankingBasis.PPG:
             sort_col = f"{prefix}P/G {pos}"
         else:
-            sort_col = RankingBasis.enum_to_display_dict().get(self.rank_basis)
+            sort_col = self.rank_basis.display
         pitch_df = pitch_df.sort_values(sort_col, ascending=False)
         #Get the nth value (here the # of players rostered at the position - 1 for 0 index) from the sorted data
         return pitch_df.iloc[self.replacement_positions[pos] - 1][sort_col]
@@ -587,7 +587,7 @@ class ArmValues():
     def rank_roto_pitchers(self, df:DataFrame, rank_col:str=None, ascending=False) -> None:
         '''Ranks all players eligible at each discrete pitching position according to the RankingBasis per the DataFrame columns'''
         if rank_col is None:
-            rank_col = RankingBasis.enum_to_display_dict().get(self.rank_basis)
+            rank_col = self.rank_basis.display
         for pos in Position.get_discrete_pitching_pos():
             if pos == Position.POS_RP:
                 min_ip = self.min_rp_ip
@@ -618,16 +618,16 @@ class ArmValues():
         p_denom = row['IP']
 
         return self.stat_avg[stat] - ((self.stat_avg[stat] * (denom-p_denom) 
-            + row[StatType.enum_to_display_dict().get(stat)] * p_denom)) \
+            + row[stat.display] * p_denom)) \
             / denom
 
     def per_ip_rate(self, row, stat:StatType) -> float:
         '''Calculates the per ip column for the stat type'''
-        return row[StatType.enum_to_display_dict().get(stat)] / row['IP']
+        return row[stat.display] / row['IP']
     
     def per_game_rate(self, row, stat:StatType) -> float:
         '''Calculates the per game column for the stat type'''
-        return row[StatType.enum_to_display_dict().get(stat)] / row['G']
+        return row[stat.display] / row['G']
 
     def calculate_roto_bases(self, proj:DataFrame, init=False) -> None:
         '''Calculates zScore information (average and stdev of the 4x4 or 5x5 stats). If init is true, will rank off of WHIP, otherwise ranks off of previous zScores'''
@@ -670,7 +670,7 @@ class ArmValues():
                 self.stat_avg[cat] = means[cat_to_col.get(cat)]
             self.stat_std[cat] = stds[cat_to_col.get(cat)]
         
-        col = RankingBasis.enum_to_display_dict().get(self.rank_basis)
+        col = self.rank_basis.display
         proj[col] = proj.apply(self.calc_z_score, axis=1)
 
     def calc_z_score(self, row) -> float:

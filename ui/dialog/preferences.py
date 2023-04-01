@@ -55,12 +55,12 @@ class Dialog(tk.Toplevel):
         
         try:
             browser = browser_services.get_desired_browser()
-            self.browser_type.set(Browser.get_display(browser))
+            self.browser_type.set(browser.display)
         except:
             logging.warning('Bad browser attempted to load in preferences')
         
         browser_combo = ttk.Combobox(value_frame, textvariable=self.browser_type)
-        browser_combo['values'] = (Browser.get_display(Browser.CHROME), Browser.get_display(Browser.FIREFOX), Browser.get_display(Browser.EDGE))
+        browser_combo['values'] = tuple([e.display for e in Browser])
         browser_combo.grid(column=1, row=1)
 
         self.fg_auth = fg_auth = StringVar()
