@@ -85,7 +85,7 @@ class Dialog(tk.Toplevel):
     
     def populate_table(self):
         for proj in self.proj_list:
-            self.proj_table.insert('', tk.END, text=str(proj.index), values=(proj.name, proj.detail, ProjectionType.enum_to_name_dict().get(proj.type), proj.timestamp, bool_to_table(proj.ros), bool_to_table(proj.dc_pt)))
+            self.proj_table.insert('', tk.END, text=str(proj.index), values=(proj.name, proj.detail, proj.type.type_name, proj.timestamp, bool_to_table(proj.ros), bool_to_table(proj.dc_pt)))
 
     def double_click(self, event):
         self.on_select(event)

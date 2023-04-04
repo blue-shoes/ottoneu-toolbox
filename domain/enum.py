@@ -1,66 +1,53 @@
 from __future__ import annotations
 from enum import Enum
-from typing import List
+from typing import List, Dict
 
-class ProjectionType(Enum):
-    STEAMER = 0
-    ZIPS = 1
-    DEPTH_CHARTS = 2
-    ATC = 3
-    THE_BAT = 4
-    THE_BATX = 5
-    CUSTOM = 6
-    VALUE_DERIVED = 7
-    DAVENPORT = 8
+class ProjectionType(int,Enum):
+    '''Enumeration of the available types of projections for the system, including name and url information.'''
+    id:int
+    type_name:str
+    url: str
+
+    def __new__(
+        cls, id: int, name: str = "", url: str = ""
+    ) -> ProjectionType:
+        obj = int.__new__(cls,id)
+        obj._value_ = id
+
+        obj.type_name = name
+        obj.url = url
+        return obj
+
+    STEAMER = (0, 'Steamer', 'steamer')
+    ZIPS = (1, 'ZiPs', 'zips')
+    DEPTH_CHARTS = (2, 'FG Depth Charts', 'fangraphsdc')
+    ATC = (3, 'ATC', 'atc')
+    THE_BAT = (4, 'THE BAT', 'thebat')
+    THE_BATX = (5, 'THE BATX', 'thebatx')
+    CUSTOM = (6, 'Custom')
+    VALUE_DERIVED = (7, 'Derived')
+    DAVENPORT = (8, 'Davenport')
 
     @classmethod
-    def get_fg_downloadable(self):
+    def get_fg_downloadable(self) -> List[ProjectionType]:
+        '''Returns list of ProjectionType that are downloadable from FanGraphs'''
         return [self.STEAMER, self.ZIPS, self.DEPTH_CHARTS, self.ATC, self.THE_BAT, self.THE_BATX]
     
     @classmethod
-    def get_downloadable(self):
+    def get_downloadable(self) -> List[ProjectionType]:
+        '''Returns list of ProjectionType that are downloadable'''
         return [self.DAVENPORT, self.STEAMER, self.ZIPS, self.DEPTH_CHARTS, self.ATC, self.THE_BAT, self.THE_BATX]
 
     @classmethod
-    def enum_to_name_dict(self):
-        return {
-        self.STEAMER : "Steamer",
-        self.ZIPS : "ZiPS",
-        self.DEPTH_CHARTS : "FG Depth Charts",
-        self.ATC : "ATC",
-        self.THE_BAT : "THE BAT",
-        self.THE_BATX : "THE BATX",
-        self.CUSTOM : "Custom",
-        self.VALUE_DERIVED: "Derived",
-        self.DAVENPORT: "Davenport"
-    }
-
-    @classmethod
-    def name_to_enum_dict(self):
-        return {
-        "Steamer" : self.STEAMER,
-        "ZiPS" : self.ZIPS,
-        "FG Depth Charts" : self.DEPTH_CHARTS,
-        "ATC" : self.ATC,
-        "THE BAT" : self.THE_BAT,
-        "THE BATX" : self.THE_BATX,
-        "Custom" : self.CUSTOM,
-        "Derived" : self.VALUE_DERIVED,
-        "Davenport" : self.DAVENPORT
-    }
-
-    @classmethod
-    def enum_to_url(self):
-        return {
-        self.STEAMER : "steamer",
-        self.ZIPS : "zips",
-        self.DEPTH_CHARTS : "fangraphsdc",
-        self.ATC : "atc",
-        self.THE_BAT : "thebat",
-        self.THE_BATX : "thebatx"
-    }
+    def get_enum_by_name(self, name:str)->ProjectionType:
+        '''Gets the enum with the argument name. Returns None if no matches'''
+        for pt in ProjectionType:
+            if pt.type_name == name:
+                return pt
+        return None
 
 class CalculationDataType(Enum):
+    '''Enumeration of the data types available for and created by ValueCalculations'''
     DOLLARS_PER_FOM = 0
     REP_LEVEL_C = 1
     REP_LEVEL_1B = 2
@@ -109,7 +96,8 @@ class CalculationDataType(Enum):
     BATTER_G_TARGET = 45
 
     @classmethod
-    def pos_to_num_rostered(self):
+    def pos_to_num_rostered(self) -> Dict[Position, CalculationDataType]:
+        '''Returns a Dict that maps player positions to the CalculationDataType for number of rostered players at the position'''
         return {
             Position.POS_C : self.ROSTERED_C,
             Position.POS_1B : self.ROSTERED_1B,
@@ -123,7 +111,8 @@ class CalculationDataType(Enum):
         }
     
     @classmethod
-    def pos_to_rep_level(self):
+    def pos_to_rep_level(self) -> Dict[Position, CalculationDataType]:
+        '''Returns a Dict that maps player positions to the CalculationDataType for replacement level at the position'''
         return {
             Position.POS_C : self.REP_LEVEL_C,
             Position.POS_1B : self.REP_LEVEL_1B,
@@ -138,6 +127,7 @@ class CalculationDataType(Enum):
     
     @classmethod
     def get_adv_inputs(self) -> List[CalculationDataType]:
+        '''Returns the list of CalculationDataType that are available as advanced inputs'''
         return [
             self.BATTER_G_TARGET,
             self.GS_LIMIT,
@@ -151,348 +141,205 @@ class CalculationDataType(Enum):
         ]
 
 class RepLevelScheme(Enum):
+    '''Enumeration of the available replacement level schemes for ValueCalculations'''
     NUM_ROSTERED = 0
     STATIC_REP_LEVEL = 1
     FILL_GAMES = 2
     TOTAL_ROSTERED = 3
 
     @classmethod
-    def num_to_enum_map(self):
-        return {
-            0: self.NUM_ROSTERED,
-            1: self.STATIC_REP_LEVEL,
-            2: self.FILL_GAMES,
-            3: self.TOTAL_ROSTERED
-        }
+    def get_enum_by_num(self, id:int) -> RepLevelScheme:
+        '''Gets the enumeration matching the RepLevelScheme number. None if no match'''
+        for rls in RepLevelScheme:
+            if rls._value_ == id:
+                return rls
+        return None
 
-class RankingBasis(Enum):
-    PPG = 0
-    PPPA = 1
-    PIP  = 2
-    ZSCORE = 3
-    SGP = 4,
-    FG_AC = 5,
-    ZSCORE_PER_G = 6,
-    ZSCORE_PER_IP = 7
+class RankingBasis(int, Enum):
+    '''Enumeration of bases for ranking players'''
+
+    id:int
+    display:str
+
+    def __new__(
+        cls, id: int, display: str = ""
+    ) -> RankingBasis:
+        obj = int.__new__(cls, id)
+        obj._value_ = id
+
+        obj.display = display
+        return obj
+
+    PPG = (0, 'P/G')
+    PPPA = (1, 'P/PA')
+    PIP  = (2, 'P/IP')
+    ZSCORE = (3, 'zScore')
+    SGP = (4, 'SGP')
+    FG_AC = (5, 'FG AC')
+    ZSCORE_PER_G = (6, 'zScore/G')
+    ZSCORE_PER_IP = (7, 'zScore/IP')
 
     @classmethod
-    def num_to_enum_map(self):
-        return {
-            0 : self.PPG,
-            1 : self.PPPA,
-            2 : self.PIP,
-            3 : self.ZSCORE,
-            4 : self.SGP,
-            5 : self.FG_AC,
-            6 : self.ZSCORE_PER_G,
-            7 : self.ZSCORE_PER_IP
-        }
+    def get_enum_by_id(self, id:int) -> RankingBasis:
+        '''Returns the RankingBasis that matches the argument id. None if no match'''
+        for rb in RankingBasis:
+            if rb.id == id:
+                return rb
+        return None
     
     @classmethod
-    def display_to_enum_map(self):
-        return {
-            'P/G' : self.PPG,
-            'P/PA' : self.PPPA,
-            'P/IP' : self.PIP,
-            'zScore' : self.ZSCORE,
-            'zScore/G' : self.ZSCORE_PER_G,
-            'zScore/IP' : self.ZSCORE_PER_IP,
-            'SGP' : self.SGP
-        }
-    
-    @classmethod
-    def enum_to_display_dict(self):
-        return {
-            self.PPG : 'P/G',
-            self.PPPA : 'P/PA',
-            self.PIP : 'P/IP',
-            self.ZSCORE : 'zScore',
-            self.ZSCORE_PER_G : 'zScore/G',
-            self.ZSCORE_PER_IP : 'zScore/IP',
-            self.SGP : 'SGP',
-            self.FG_AC : 'FG AC'
-        }
+    def get_enum_by_display(self, display:str) -> RankingBasis:
+        '''Returns the RankingBasis that matches the arguement display. None if no match'''
+        for rb in RankingBasis:
+            if rb.display == display:
+                return rb
+        return None
 
     @classmethod
-    def is_zscore(self, basis:RankingBasis):
+    def is_zscore(self, basis:RankingBasis) -> bool:
+        '''Returns if RankingBasis is a zScore type basis'''
         return basis in [self.ZSCORE, self.ZSCORE_PER_G, self.ZSCORE_PER_IP]
     
     @classmethod
-    def is_roto_fractional(self, basis:RankingBasis):
+    def is_roto_fractional(self, basis:RankingBasis) -> bool:
+        '''Returns if ranking basis is for a roto league and is a rate basis'''
         return basis in [self.ZSCORE_PER_G, self.ZSCORE_PER_IP]
     
-class StatType(Enum):
-    G_HIT = 0
-    GS_HIT = 1
-    PA = 2
-    AB = 3
-    H = 4
-    DOUBLE = 5
-    TRIPLE = 6
-    HR = 7
-    R = 8
-    RBI = 9
-    BB = 10
-    SO = 11
-    HBP = 12
-    SB = 13
-    CS = 14
-    AVG = 15
-    OBP = 16
-    SLG = 17
-    OPS = 18
-    WOBA = 19
-    WRC_PLUS = 20
-    G_PIT = 21
-    GS_PIT = 22
-    IP = 23
-    W = 24
-    L = 25
-    QS = 26
-    SV = 27
-    HLD = 28
-    H_ALLOWED = 29
-    ER = 30
-    HR_ALLOWED = 31
-    K = 32
-    BB_ALLOWED = 33
-    HBP_ALLOWED = 34
-    WHIP = 35
-    K_PER_9 = 36
-    BB_PER_9 = 37
-    ERA = 38
-    FIP = 39
-    BABIP_H = 40
-    BABIP_P = 41
-    HR_PER_9 = 42
-    POINTS = 43
-    PPG = 44
-    PIP = 45
+class StatType(int, Enum):
+    '''Enumeration of the available stat types for Projections'''
 
+    id:int
+    display:str
+    stat_list:List[str]
+    hitter: bool
+    format: str
 
-    @classmethod
-    def hit_to_enum_dict(self):
-        return {
-        'G' : self.G_HIT,
-        'GS' : self.GS_HIT,
-        'PA': self.PA,
-        'AB' : self.AB,
-        'H' : self.H,
-        '2B' : self.DOUBLE,
-        '3B' : self.TRIPLE, 
-        'HR' : self.HR,
-        'R' : self.R,
-        'RBI' : self.RBI,
-        'BB' : self.BB,
-        'SO'  : self.K,
-        'HBP' : self.HBP,
-        'SB' : self.SB,
-        'CS' : self.CS,
-        'AVG' : self.AVG,
-        'BA'  : self.AVG,
-        'OBP' : self.OBP,
-        'SLG' : self.SLG,
-        'OPS' : self.OPS,
-        'wOBA' : self.WOBA,
-        'wRC+' : self.WRC_PLUS,
-        'BABIP' : self.BABIP_H,
-        'G_C' : self.G_HIT,
-        'G_FB' : self.G_HIT,
-        'G_SB' : self.G_HIT,
-        'G_3B' : self.G_HIT,
-        'G_SS' : self.G_HIT,
-        'G_LF' : self.G_HIT,
-        'G_CF' : self.G_HIT,
-        'G_RF' : self.G_HIT,
-        'G_DH' : self.G_HIT
-    }
+    def __new__(
+        cls, id: int, stat_list: List[str], hitter: bool, format:str = "{:.0f}"
+    ) -> StatType:
+        obj = int.__new__(cls, id)
+        obj._value_ = id
+
+        obj.display = stat_list[0]
+        obj.stat_list = stat_list
+        obj.hitter = hitter
+        obj.format = format
+        return obj
+
+    G_HIT = (0, ['G', 'G_C', 'G_FB', 'G_SB', 'G_3B', 'G_SS', 'G_LF', 'G_CF', 'G_RF', 'G_DH'], True)
+    GS_HIT = (1, ['GS'], True)
+    PA = (2, ['PA'], True)
+    AB = (3, ['AB'], True)
+    H = (4, ['H'], True)
+    DOUBLE = (5, ['2B'], True)
+    TRIPLE = (6, ['3B'], True)
+    HR = (7, ['HR'], True)
+    R = (8, ['R'], True)
+    RBI = (9, ['RBI'], True)
+    BB = (10, ['BB'], True)
+    SO = (11, ['SO'], True)
+    HBP = (12, ['HBP'], True)
+    SB = (13, ['SB'], True)
+    CS = (14, ['CS'], True)
+    AVG = (15, ['AVG', 'BA'], True, "{:.3f}")
+    OBP = (16, ['OBP'], True, "{:.3f}")
+    SLG = (17, ['SLG'], True, "{:.3f}")
+    OPS = (18, ['OPS'], True, "{:.3f}")
+    WOBA = (19, ['wOBA'], True, "{:.3f}")
+    WRC_PLUS = (20, ['wRC+'], True, "{:.3f}")
+    G_PIT = (21, ['G'], False)
+    GS_PIT = (22, ['GS'], False)
+    IP = (23, ['IP'], False, "{:.1f}")
+    W = (24, ['W'], False)
+    L = (25, ['L'], False)
+    QS = (26, ['QS'], False)
+    SV = (27, ['SV'], False)
+    HLD = (28, ['HLD', 'Holds'], False)
+    H_ALLOWED = (29, ['H'], False)
+    ER = (30, ['ER'], False)
+    HR_ALLOWED = (31, ['HR', 'HRA'], False)
+    K = (32, ['SO'], False)
+    BB_ALLOWED = (33, ['BB'], False)
+    HBP_ALLOWED = (34, ['HBP'], False)
+    WHIP = (35, ['WHIP'], False, "{:.2f}")
+    K_PER_9 = (36, ['K/9'], False, "{:.2f}")
+    BB_PER_9 = (37, ['BB/9'], False, "{:.2f}")
+    ERA = (38, ['ERA'], False, "{:.2f}")
+    FIP = (39, ['FIP'], False, "{:.2f}")
+    BABIP_H = (40, ['BABIP'], True, "{:.3f}")
+    BABIP_P = (41, ['BABIP'], False, "{:.3f}")
+    HR_PER_9 = (42, ['HR/9'], False, "{:.2f}")
+    POINTS = (43, ['Points'], True, "{:.1f}")
+    PPG = (44, ['PPG'], True, "{:.2f}")
+    PIP = (45, ['PIP'], True, "{:.2f}")
 
     @classmethod
-    def pitch_to_enum_dict(self):
-        return {
-        'G': self.G_PIT,
-        'GS': self.GS_PIT,
-        'IP' : self.IP,
-        'W' : self.W,
-        'L' : self.L,
-        'QS' : self.QS,
-        'SV' : self.SV,
-        'HLD' : self.HLD,
-        'Holds' : self.HLD,
-        'H' : self.H_ALLOWED,
-        'ER' : self.ER,
-        'HR' : self.HR_ALLOWED,
-        'SO' : self.SO,
-        'BB' : self.BB_ALLOWED,
-        'HBP' : self.HBP_ALLOWED,
-        'WHIP' : self.WHIP,
-        'K/9' : self.K_PER_9,
-        'BB/9' : self.BB_PER_9,
-        'ERA' : self.ERA,
-        'FIP' : self.FIP,
-        'BABIP' : self.BABIP_P,
-        'HR/9' : self.HR_PER_9
-    }
+    def get_hit_stattype(self, display:str) -> StatType:
+        '''Returns the hitter StatType for the given display. None if no match'''
+        for st in StatType:
+            if st.hitter and display in st.stat_list:
+                return st
+        return None
 
     @classmethod
-    def enum_to_display_dict(self):
-        return {
-        self.G_HIT: 'G',
-        self.GS_HIT : 'GS',
-        self.PA : 'PA',
-        self.AB : 'AB',
-        self.H : 'H',
-        self.DOUBLE : '2B',
-        self.TRIPLE : '3B', 
-        self.HR : 'HR',
-        self.R : 'R',
-        self.RBI : 'RBI',
-        self.BB : 'BB',
-        self.SO : 'SO',
-        self.HBP : 'HBP',
-        self.SB : 'SB',
-        self.CS : 'CS',
-        self.AVG : 'AVG',
-        self.OBP : 'OBP',
-        self.SLG : 'SLG',
-        self.OPS : 'OPS',
-        self.WOBA : 'wOBA',
-        self.WRC_PLUS: 'wRC+',
-        self.BABIP_H : 'BABIP',
-        self.G_PIT : 'G',
-        self.GS_PIT : 'GS',
-        self.IP : 'IP',
-        self.W : 'W',
-        self.L : 'L',
-        self.QS : 'QS',
-        self.SV : 'SV',
-        self.HLD : 'HLD',
-        self.H_ALLOWED : 'H',
-        self.ER : 'ER',
-        self.HR_ALLOWED : 'HR',
-        self.K : 'K',
-        self.BB_ALLOWED : 'BB',
-        self.HBP_ALLOWED : 'HBP',
-        self.WHIP : 'WHIP',
-        self.K_PER_9 : 'K/9',
-        self.BB_PER_9 : 'BB/9',
-        self.ERA : 'ERA',
-        self.FIP : 'FIP',
-        self.BABIP_P : 'BABIP',
-        self.HR_PER_9 : 'HR/9',
-        self.POINTS: 'Points',
-        self.PPG: 'PPG',
-        self.PIP: 'PIP'
-    }
+    def get_pitch_stattype(self, display:str) -> StatType:
+        '''Returns the pitcher StatType for the given display. None if no match'''
+        for st in StatType:
+            if not st.hitter and display in st.stat_list:
+                return st
+        return None
+
+class ScoringFormat(int, Enum):
+    '''Enumeration of all Ottoneu Scoring Formats'''
+
+    id:int
+    full_name:str
+    short_name:str
+
+    def __new__(
+        cls, id: int, full_name: str, short_name:str
+    ) -> ScoringFormat:
+        obj = int.__new__(cls, id)
+        obj._value_ = id
+
+        obj.full_name = full_name
+        obj.short_name = short_name
+        return obj
+
+    ALL = (0, 'All', 'All')
+    CLASSIC_4X4 = (1, 'Ottoneu Classic (4x4)', '4x4')
+    OLD_SCHOOL_5X5 = (2, 'Old School (5x5)', '5x5')
+    FG_POINTS = (3, 'FanGraphs Points', 'FGP')
+    SABR_POINTS = (4, 'SABR Points', 'SABR')
+    H2H_FG_POINTS = (5, 'H2H FanGraphs Points', 'H2H FGP')
+    H2H_SABR_POINTS = (6, 'H2H SABR Points', 'H2H SABR')
 
     @classmethod
-    def get_stat_format(self):
-        zero_decimal = "{:.0f}"
-        one_decimal = "{:.1f}"
-        two_decimal = "{:.2f}"
-        three_decimal = "{:.3f}"
-        return {
-            self.G_HIT: zero_decimal,
-            self.GS_HIT : zero_decimal,
-            self.PA : zero_decimal,
-            self.AB : zero_decimal,
-            self.H : zero_decimal,
-            self.DOUBLE : zero_decimal,
-            self.TRIPLE : zero_decimal, 
-            self.HR : zero_decimal,
-            self.R : zero_decimal,
-            self.RBI : zero_decimal,
-            self.BB : zero_decimal,
-            self.SO : zero_decimal,
-            self.HBP : zero_decimal,
-            self.SB : zero_decimal,
-            self.CS : zero_decimal,
-            self.AVG : three_decimal,
-            self.OBP : three_decimal,
-            self.SLG : three_decimal,
-            self.OPS : three_decimal,
-            self.WOBA : three_decimal,
-            self.WRC_PLUS: zero_decimal,
-            self.G_PIT : zero_decimal,
-            self.GS_PIT : zero_decimal,
-            self.IP : one_decimal,
-            self.W : zero_decimal,
-            self.L : zero_decimal,
-            self.QS : zero_decimal,
-            self.SV : zero_decimal,
-            self.HLD : zero_decimal,
-            self.H_ALLOWED : zero_decimal,
-            self.ER : zero_decimal,
-            self.HR_ALLOWED : zero_decimal,
-            self.K : zero_decimal,
-            self.BB_ALLOWED : zero_decimal,
-            self.HBP_ALLOWED : zero_decimal,
-            self.WHIP : two_decimal,
-            self.K_PER_9 : two_decimal,
-            self.BB_PER_9 : two_decimal,
-            self.ERA : two_decimal,
-            self.FIP : two_decimal,
-            self.BABIP_H : three_decimal,
-            self.BABIP_P : three_decimal,
-            self.HR_PER_9 : two_decimal, 
-            self.POINTS: one_decimal,
-            self.PPG: two_decimal,
-            self.PIP: two_decimal
-        }
-
-class ScoringFormat(Enum):
-    ALL = 0
-    CLASSIC_4X4 = 1
-    OLD_SCHOOL_5X5 = 2
-    FG_POINTS = 3
-    SABR_POINTS = 4
-    H2H_FG_POINTS = 5
-    H2H_SABR_POINTS = 6
-
-    @classmethod
-    def is_points_type(self, format):
+    def is_points_type(self, format:ScoringFormat) -> bool:
+        '''Returns if the argument format is a points format'''
         return format in [self.FG_POINTS, self.H2H_FG_POINTS, self.SABR_POINTS, self.H2H_SABR_POINTS]
     
     @classmethod
-    def is_sabr(self, format):
+    def is_sabr(self, format:ScoringFormat) -> bool:
+        '''Returns if the argument format is a SABR points format'''
         return format in [self.SABR_POINTS, self.H2H_SABR_POINTS]
     
     @classmethod
     def is_h2h(self, format:ScoringFormat) -> bool:
+        '''Returns if the argument format is a head-to-head format'''
         return format in [self.H2H_FG_POINTS, self.H2H_SABR_POINTS]
 
     @classmethod
-    def name_to_enum_map(self):
-        return {'All' : self.ALL,
-                        'Ottoneu Classic (4x4)': self.CLASSIC_4X4, 
-                        'Old School (5x5)': self.OLD_SCHOOL_5X5,
-                        'FanGraphs Points': self.FG_POINTS,
-                        'SABR Points': self.SABR_POINTS,
-                        'H2H FanGraphs Points': self.H2H_FG_POINTS,
-                        'H2H SABR Points': self.H2H_SABR_POINTS}
-    
-    @classmethod
-    def enum_to_full_name_map(self):
-        return {self.ALL : "All",
-                            self.CLASSIC_4X4: 'Ottoneu Classic (4x4)',
-                            self.OLD_SCHOOL_5X5: 'Old School (5x5)',
-                            self.FG_POINTS: 'FanGraphs Points',
-                            self.SABR_POINTS: 'SABR Points',
-                            self.H2H_FG_POINTS: 'H2H FanGraphs Points',
-                            self.H2H_SABR_POINTS: 'H2H SABR Points'}
-
-    @classmethod
-    def enum_to_short_name_map(self): 
-        return {self.ALL : "All",
-                            self.CLASSIC_4X4: '4x4',
-                            self.OLD_SCHOOL_5X5: '5x5',
-                            self.FG_POINTS: 'FGP',
-                            self.SABR_POINTS: 'SABR',
-                            self.H2H_FG_POINTS: 'H2H FGP',
-                            self.H2H_SABR_POINTS: 'H2H SABR'}
+    def get_format_by_full_name(self, full_name:str) -> ScoringFormat:
+        '''Returns the ScoringFormat matching the argument full name. None if no match'''
+        for sf in ScoringFormat:
+            if sf.full_name == full_name:
+                return sf
+        return None
     
     @classmethod 
-    def get_discrete_types(self):
+    def get_discrete_types(self) -> List[ScoringFormat]:
+        '''Returns a list of discrete ScoringFormats'''
         return [self.CLASSIC_4X4,
                 self.OLD_SCHOOL_5X5,
                 self.FG_POINTS,
@@ -501,6 +348,7 @@ class ScoringFormat(Enum):
                 self.H2H_SABR_POINTS] 
 
 class Position(Enum):
+    '''Enumeration of Ottoneu positions'''
     POS_C = 'C'
     POS_1B = '1B'
     POS_2B = '2B'
@@ -517,7 +365,8 @@ class Position(Enum):
     OVERALL = 'Overall'
 
     @classmethod
-    def get_display_order(self):
+    def get_display_order(self) -> List[Position]:
+        '''Returns the ordered list of Positions for display in tables'''
         return [self.OVERALL,
             self.OFFENSE,
             self.PITCHER,
@@ -532,7 +381,8 @@ class Position(Enum):
             self.POS_RP]
 
     @classmethod
-    def get_offensive_pos(self):
+    def get_offensive_pos(self) -> List[Position]:
+        '''Returns list of all offensive positions, including general offense'''
         return [self.OFFENSE,
             self.POS_C, 
             self.POS_1B,
@@ -544,7 +394,8 @@ class Position(Enum):
             self.POS_UTIL]
     
     @classmethod
-    def get_discrete_offensive_pos(self):
+    def get_discrete_offensive_pos(self) -> List[Position]:
+        '''Returns list of offensive positions that does not include overall offense or MI'''
         return [self.POS_C, 
             self.POS_1B,
             self.POS_2B,
@@ -554,28 +405,34 @@ class Position(Enum):
             self.POS_UTIL]
     
     @classmethod
-    def get_pitching_pos(self):
+    def get_pitching_pos(self) -> List[Position]:
+        '''Returns list of all pitching positions, including all pitchers'''
         return [self.PITCHER,
             self.POS_SP,
             self.POS_RP]
 
     @classmethod
-    def get_discrete_pitching_pos(self):
+    def get_discrete_pitching_pos(self) -> List[Position]:
+        '''Returns list of pitching positions, not including general pitchers'''
         return [self.POS_SP, self.POS_RP]
 
 class IdType(Enum):
+    '''Enumeration of player id types'''
     OTTONEU = 'Ottoneu'
     FANGRAPHS = 'FanGraphs'
     MLB = 'MLBID'
 
 class PropertyType(Enum):
+    '''Enumeration of Ottoneu Toolbox propery types'''
     DB_VERSION = 'db.version'
 
 class AvgSalaryFom(str, Enum):
+    '''Enumeration of average salary statistic types'''
     MEAN = 'Mean',
     MEDIAN = 'Median'
 
 class Preference(str, Enum):
+    '''Enumeration of Ottoneu Toolbox preferences'''
     SALARY_REFRESH_FREQUENCY = 'sal_refresh_freq',
     AVG_SALARY_FOM = 'avg_sal_fom',
     DOCK_DRAFT_TARGETS = 'dock_draft_targets',
@@ -583,21 +440,28 @@ class Preference(str, Enum):
     DEFAULT_BROWSER = 'default_proj_browser'
 
 class Browser(str, Enum):
-    CHROME = 'ChromeHTML',
-    FIREFOX = 'FirefoxURL',
-    EDGE = 'MSEdgeHTM'
+    '''Enumeration of available browser types for projection download'''
 
-    @classmethod
-    def get_display(self, enum):
-        return {
-            self.CHROME: 'Chrome',
-            self.FIREFOX: 'Firefox',
-            self.EDGE: 'Microsoft Edge'}.get(enum, None)
+    name:str
+    display: str
+
+    def __new__(
+        cls, name: str, display: str = ""
+    ) -> Browser:
+        obj = str.__new__(cls, name)
+        obj._value_ = name
+
+        obj.display = display
+        return obj
+
+    CHROME = ('ChromeHTML', 'Chrome')
+    FIREFOX = ('FirefoxURL', 'Firefox')
+    EDGE = ('MSEdgeHTM', 'Microsoft Edge')
     
     @classmethod
-    def get_enum_from_display(self, display):
-        return {
-            'Chrome': self.CHROME,
-            'Firefox': self.FIREFOX,
-            'Microsoft Edge': self.EDGE
-        }.get(display, None)
+    def get_enum_from_display(self, display:str) -> Browser:
+        '''Returns the Browser for the argument display name. None if no match'''
+        for b in Browser:
+            if b.display == display:
+                return b
+        return None

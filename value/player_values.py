@@ -141,7 +141,7 @@ class PlayerValues():
                 pos_value['Value'] = pos_value[f'{pos.value}_FOM'].apply(lambda x: x*self.bat_dol_per_fom + 1.0 if x >= 0 else 0)
             else:
                 pos_value['Value'] = pos_value[f'{pos.value}_FOM'].apply(lambda x: x*self.dol_per_fom + 1.0 if x >= 0 else 0)
-            pos_value.sort_values(by=['Value',RankingBasis.enum_to_display_dict().get(self.value_calc.hitter_basis)], inplace=True, ascending=[False,False])
+            pos_value.sort_values(by=['Value',self.value_calc.hitter_basis.display], inplace=True, ascending=[False,False])
             pos_value['Dol_Value'] = pos_value['Value'].apply(lambda x : "${:.0f}".format(x))
 
             for index, row in pos_value.iterrows():
@@ -159,7 +159,7 @@ class PlayerValues():
                 pos_value['Value'] = pos_value[f'FOM {pos.value}'].apply(lambda x: x*self.arm_dol_per_fom + 1.0 if x >= 0 else 0)
             else:
                 pos_value['Value'] = pos_value[f'FOM {pos.value}'].apply(lambda x: x*self.dol_per_fom + 1.0 if x >= 0 else 0)
-            pos_value.sort_values(by=['Value',RankingBasis.enum_to_display_dict().get(self.value_calc.pitcher_basis)], inplace=True, ascending=[False,False])
+            pos_value.sort_values(by=['Value',self.value_calc.pitcher_basis.display], inplace=True, ascending=[False,False])
             pos_value['Dol_Value'] = pos_value['Value'].apply(lambda x : "${:.0f}".format(x))
 
             for index, row in pos_value.iterrows():

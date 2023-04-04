@@ -70,7 +70,7 @@ class ValuesCalculation(tk.Frame):
         pd = progress.ProgressDialog(self.parent, 'Updating Value Calculator Window...')
         pd.set_completion_percent(10)
         if self.value_calc is None or self.value_calc.format is None:
-            self.game_type.set(ScoringFormat.enum_to_full_name_map()[ScoringFormat.FG_POINTS])
+            self.game_type.set(ScoringFormat.FG_POINTS.full_name)
             self.sel_proj.set("None")
             self.projection = None
             self.num_teams_str.set("12")
@@ -101,7 +101,7 @@ class ValuesCalculation(tk.Frame):
             self.set_display_columns()
         else:
             v = self.value_calc
-            self.game_type.set(ScoringFormat.enum_to_full_name_map()[v.format])
+            self.game_type.set(v.format.full_name)
             if v.projection is None:
                 self.sel_proj.set("No Projection")
             else:
@@ -120,9 +120,9 @@ class ValuesCalculation(tk.Frame):
             else:
                 self.sv_hld_bv.set(False)
             self.safe_set_input_value(CDT.NON_PRODUCTIVE_DOLLARS, self.non_prod_dollars_str, True)
-            self.hitter_basis.set(RankingBasis.enum_to_display_dict()[v.hitter_basis])
+            self.hitter_basis.set(v.hitter_basis.display)
             self.safe_set_input_value(CDT.PA_TO_RANK, self.min_pa, True)
-            self.pitcher_basis.set(RankingBasis.enum_to_display_dict()[v.pitcher_basis])
+            self.pitcher_basis.set(v.pitcher_basis.display)
             self.safe_set_input_value(CDT.SP_IP_TO_RANK, self.min_sp_ip, True)
             self.safe_set_input_value(CDT.RP_IP_TO_RANK, self.min_rp_ip, True)
             self.safe_set_input_value(CDT.REP_LEVEL_SCHEME, self.rep_level_scheme, True, RepLevelScheme.STATIC_REP_LEVEL.value)
@@ -180,14 +180,13 @@ class ValuesCalculation(tk.Frame):
         btn.grid(column=2,row=0)
         CreateToolTip(btn, "Select a stored projection to use for value calculations or import a new one.")
 
-        gt_map = ScoringFormat.enum_to_full_name_map()
         ttk.Label(inpf, text="Game Type:").grid(column=0,row=2,pady=5)
         self.game_type = StringVar()
-        self.game_type.set(gt_map[ScoringFormat.FG_POINTS])
+        self.game_type.set(ScoringFormat.FG_POINTS.full_name)
         gt_combo = ttk.Combobox(inpf, textvariable=self.game_type)
         gt_combo.bind("<<ComboboxSelected>>", self.update_game_type)
 
-        gt_combo['values'] = (gt_map[ScoringFormat.FG_POINTS], gt_map[ScoringFormat.SABR_POINTS], gt_map[ScoringFormat.H2H_FG_POINTS], gt_map[ScoringFormat.H2H_SABR_POINTS], gt_map[ScoringFormat.OLD_SCHOOL_5X5], gt_map[ScoringFormat.CLASSIC_4X4])
+        gt_combo['values'] = (ScoringFormat.FG_POINTS.full_name, ScoringFormat.SABR_POINTS.full_name, ScoringFormat.H2H_FG_POINTS.full_name, ScoringFormat.H2H_SABR_POINTS.full_name, ScoringFormat.OLD_SCHOOL_5X5.full_name, ScoringFormat.CLASSIC_4X4.full_name)
         gt_combo.grid(column=1,row=2,pady=5)
 
         ttk.Label(inpf, text="Number of Teams:").grid(column=0, row=3,pady=5)
@@ -353,8 +352,8 @@ class ValuesCalculation(tk.Frame):
             pt.add_scrollbar()
     
     def update_ranking_basis(self, event: Event):
-        if RankingBasis.is_roto_fractional(RankingBasis.display_to_enum_map().get(self.hitter_basis.get()))\
-            or RankingBasis.is_roto_fractional(RankingBasis.display_to_enum_map().get(self.pitcher_basis.get())):
+        if RankingBasis.is_roto_fractional(RankingBasis.get_enum_by_display(self.hitter_basis.get()))\
+            or RankingBasis.is_roto_fractional(RankingBasis.get_enum_by_display(self.pitcher_basis.get())):
             self.manual_split.set(True)
             self.manual_split_cb.configure(state='disable')
             self.toggle_manual_split()
@@ -366,7 +365,7 @@ class ValuesCalculation(tk.Frame):
     def update_game_type(self, event: Event):
         self.set_display_columns()
         self.set_advanced_button_status()
-        if ScoringFormat.is_points_type(ScoringFormat.name_to_enum_map().get(self.game_type.get())):
+        if ScoringFormat.is_points_type(ScoringFormat.get_format_by_full_name(self.game_type.get())):
             self.hitter_basis_cb['values'] = ('P/G','P/PA')
             if self.hitter_basis.get() not in self.hitter_basis_cb['values']:
                 self.hitter_basis.set('P/G')
@@ -455,7 +454,7 @@ class ValuesCalculation(tk.Frame):
             val.append("{:.1f}".format(pp.get_stat(StatType.POINTS)))
             val.append("{:.1f}".format(pp.get_stat(StatType.POINTS)))
         else:
-            o_points = calculation_services.get_points(pp, Position.OFFENSE, sabr=(self.game_type.get() == ScoringFormat.enum_to_full_name_map()[ScoringFormat.SABR_POINTS]))
+            o_points = calculation_services.get_points(pp, Position.OFFENSE, sabr=ScoringFormat.is_sabr(ScoringFormat.get_format_by_full_name(self.game_type.get())))
             games = pp.get_stat(StatType.G_HIT)
             if games is None or games == 0:
                 val.append("0.00")
@@ -512,7 +511,7 @@ class ValuesCalculation(tk.Frame):
         val.append(pv.player.position)
         return val
 
-    def get_player_row(self, pp, enum_dict, cols, pos):
+    def get_player_row(self, pp, hitter, cols, pos):
         val = []
         if len(self.value_calc.values) > 0:
             pv = self.value_calc.get_player_value(pp.player.index, pos)
@@ -594,13 +593,16 @@ class ValuesCalculation(tk.Frame):
         val.append("{:.1f}".format(nsh_s_points))
         if self.projection.type != ProjectionType.VALUE_DERIVED:
             for col in cols:
-                if col in enum_dict:
-                    stat = pp.get_stat(enum_dict[col])
-                    fmt = StatType.get_stat_format()[enum_dict[col]]
+                if hitter:
+                    stat_type = StatType.get_hit_stattype(col)
+                else:
+                    stat_type = StatType.get_pitch_stattype(col)
+                if stat_type is not None:
+                    stat = pp.get_stat(stat_type)
                     if stat is None:
-                        val.append(fmt.format(0))
+                        val.append(stat_type.format.format(0))
                     else:
-                        val.append(fmt.format(stat))
+                        val.append(stat_type.format.format(stat))
         return val
     
     def get_player_row_no_proj(self, player_id, pos, cols):
@@ -634,9 +636,9 @@ class ValuesCalculation(tk.Frame):
             for pp in self.projection.player_projections:
                 if pp.player.pos_eligible(pos):
                     if self.projection.type == ProjectionType.VALUE_DERIVED:
-                        val = self.get_player_row(pp, StatType.hit_to_enum_dict(), all_hitting_stats, pos)
+                        val = self.get_player_row(pp, True, all_hitting_stats, pos)
                     elif pp.get_stat(StatType.AB) is not None:
-                        val = self.get_player_row(pp, StatType.hit_to_enum_dict(), all_hitting_stats, pos)
+                        val = self.get_player_row(pp, True, all_hitting_stats, pos)
                     self.tables[pos].insert('', tk.END, text=str(pp.player_id), values=val)
         elif self.value_calc is not None and self.value_calc.values is not None and len(self.value_calc.values) > 0:
             hit_col = player_columns + h_fom_columns + point_cols + all_hitting_stats
@@ -650,13 +652,13 @@ class ValuesCalculation(tk.Frame):
             for pp in self.projection.player_projections:
                 if self.projection.type == ProjectionType.VALUE_DERIVED:
                     if pp.player.pos_eligible(pos):
-                        val = self.get_player_row(pp, StatType.pitch_to_enum_dict(), all_pitching_stats, pos)
+                        val = self.get_player_row(pp, False, all_pitching_stats, pos)
                         self.tables[pos].insert('', tk.END, text=str(pp.player_id), values=val)
                 elif pp.get_stat(StatType.IP) is not None:
                     if  pos == Position.PITCHER \
                         or (pos == Position.POS_RP and pp.get_stat(StatType.G_PIT) > pp.get_stat(StatType.GS_PIT)) \
                         or (pos == Position.POS_SP and pp.get_stat(StatType.GS_PIT) > 0):
-                            val = self.get_player_row(pp, StatType.pitch_to_enum_dict(), all_pitching_stats, pos)
+                            val = self.get_player_row(pp, False, all_pitching_stats, pos)
                             self.tables[pos].insert('', tk.END, text=str(pp.player_id), values=val)
         elif self.value_calc is not None and self.value_calc.values is not None and len(self.value_calc.values) > 0:
             pitch_cols = player_columns + p_fom_columns + point_cols + all_pitching_stats
@@ -779,9 +781,9 @@ class ValuesCalculation(tk.Frame):
         self.safe_set_output_value(CDT.TOTAL_PITCHERS_ROSTERED, self.total_pitch_rostered_sv, integer=True)
         self.safe_set_output_value(CDT.TOTAL_GAMES_PLAYED, self.total_games_rostered_sv, format="{:.0f}")
         self.safe_set_output_value(CDT.TOTAL_INNINGS_PITCHED, self.total_ip_rostered_sv, format="{:.0f}")
-        hitter_rb = RankingBasis.enum_to_display_dict()[self.value_calc.hitter_basis]
+        hitter_rb = self.value_calc.hitter_basis.display
         self.bat_rep_level_lbl.set(f"Rep. Level ({hitter_rb})")
-        pitcher_rb = RankingBasis.enum_to_display_dict()[self.value_calc.pitcher_basis]
+        pitcher_rb = self.value_calc.pitcher_basis.display
         self.pitch_rep_level_lbl.set(f"Rep. Level ({pitcher_rb})")
 
         for pos in Position.get_discrete_offensive_pos() + Position.get_discrete_pitching_pos():
@@ -853,9 +855,9 @@ class ValuesCalculation(tk.Frame):
         hit.extend(player_columns)
         pitch.extend(player_columns)
         if self.projection is not None:
-            h_basis = RankingBasis.display_to_enum_map().get(self.hitter_basis.get())
-            p_basis = RankingBasis.display_to_enum_map().get(self.pitcher_basis.get())
-            scoring_format = ScoringFormat.name_to_enum_map().get(self.game_type.get())
+            h_basis = RankingBasis.get_enum_by_display(self.hitter_basis.get())
+            p_basis = RankingBasis.get_enum_by_display(self.pitcher_basis.get())
+            scoring_format = ScoringFormat.get_format_by_full_name(self.game_type.get())
             if ScoringFormat.is_points_type(scoring_format):
                 if self.sv_hld_bv.get():
                     prefix = ''
@@ -957,8 +959,8 @@ class ValuesCalculation(tk.Frame):
         self.set_advanced_button_status()
     
     def advanced_options(self):
-        advanced_calc.Dialog(self, ScoringFormat.name_to_enum_map()[self.game_type.get()], RepLevelScheme.num_to_enum_map()[self.rep_level_scheme.get()],
-            RankingBasis.display_to_enum_map().get(self.hitter_basis.get()), RankingBasis.display_to_enum_map().get(self.pitcher_basis.get()))
+        advanced_calc.Dialog(self, ScoringFormat.get_format_by_full_name(self.game_type.get()), RepLevelScheme.get_enum_by_num(self.rep_level_scheme.get()),
+            RankingBasis.get_enum_by_display(self.hitter_basis.get()), RankingBasis.get_enum_by_display(self.pitcher_basis.get()))
 
     def calculate_values(self):
         try:
@@ -971,15 +973,15 @@ class ValuesCalculation(tk.Frame):
             return
         self.value_calc = ValueCalculation()
         self.value_calc.projection = self.projection
-        self.value_calc.format = ScoringFormat.name_to_enum_map()[self.game_type.get()]
+        self.value_calc.format = ScoringFormat.get_format_by_full_name(self.game_type.get())
         self.value_calc.inputs = []
         self.value_calc.set_input(CDT.NUM_TEAMS, float(self.num_teams_str.get()))
         if self.manual_split.get():
             self.value_calc.set_input(CDT.HITTER_SPLIT, float(self.hitter_allocation.get()))
         self.value_calc.set_input(CDT.NON_PRODUCTIVE_DOLLARS, int(self.non_prod_dollars_str.get()))
-        self.value_calc.hitter_basis = RankingBasis.display_to_enum_map()[self.hitter_basis.get()]
+        self.value_calc.hitter_basis = RankingBasis.get_enum_by_display(self.hitter_basis.get())
         self.value_calc.set_input(CDT.PA_TO_RANK, float(self.min_pa.get()))
-        self.value_calc.pitcher_basis = RankingBasis.display_to_enum_map()[self.pitcher_basis.get()]
+        self.value_calc.pitcher_basis = RankingBasis.get_enum_by_display(self.pitcher_basis.get())
         self.value_calc.set_input(CDT.SP_IP_TO_RANK, float(self.min_sp_ip.get()))
         self.value_calc.set_input(CDT.RP_IP_TO_RANK, float(self.min_rp_ip.get()))
         self.value_calc.set_input(CDT.INCLUDE_SVH, float(self.sv_hld_bv.get()))
@@ -1037,16 +1039,16 @@ class ValuesCalculation(tk.Frame):
             for sv in self.rep_level_dict.values():
                 sv.set('0')
         elif scheme == RepLevelScheme.STATIC_REP_LEVEL:
-            if RankingBasis.display_to_enum_map()[self.hitter_basis.get()] == RankingBasis.PPG:
+            if RankingBasis.get_enum_by_display(self.hitter_basis.get()) == RankingBasis.PPG:
                 for pos in Position.get_discrete_offensive_pos():
                     self.rep_level_dict[pos.value].set("4.5")
-            elif RankingBasis.display_to_enum_map()[self.hitter_basis.get()] == RankingBasis.PPPA:
+            elif RankingBasis.get_enum_by_display(self.hitter_basis.get()) == RankingBasis.PPPA:
                 for pos in Position.get_discrete_offensive_pos():
                     self.rep_level_dict[pos.value].set("1.0")
-            if RankingBasis.display_to_enum_map()[self.pitcher_basis.get()] == RankingBasis.PIP:
+            if RankingBasis.get_enum_by_display(self.pitcher_basis.get()) == RankingBasis.PIP:
                 self.rep_level_dict["SP"].set("3.5")
                 self.rep_level_dict["RP"].set("6.0")
-            elif RankingBasis.display_to_enum_map()[self.pitcher_basis.get()] == RankingBasis.PPG:
+            elif RankingBasis.get_enum_by_display(self.pitcher_basis.get()) == RankingBasis.PPG:
                 self.rep_level_dict["SP"].set("20")
                 self.rep_level_dict["RP"].set("6.0")
 
@@ -1063,9 +1065,9 @@ class ValuesCalculation(tk.Frame):
     def set_advanced_button_status(self):
         if self.rep_level_scheme.get() == RepLevelScheme.FILL_GAMES.value:
             self.advanced_btn.configure(state='enable')
-        elif not ScoringFormat.is_points_type(ScoringFormat.name_to_enum_map().get(self.game_type.get())):
-            h_basis = RankingBasis.display_to_enum_map().get(self.hitter_basis.get())
-            p_basis = RankingBasis.display_to_enum_map().get(self.pitcher_basis.get())
+        elif not ScoringFormat.is_points_type(ScoringFormat.get_format_by_full_name(self.game_type.get())):
+            h_basis = RankingBasis.get_enum_by_display(self.hitter_basis.get())
+            p_basis = RankingBasis.get_enum_by_display(self.pitcher_basis.get())
             if h_basis == RankingBasis.ZSCORE_PER_G or h_basis == RankingBasis.SGP:
                 self.advanced_btn.configure(state='enable')
             elif p_basis == RankingBasis.ZSCORE_PER_G or p_basis == RankingBasis.SGP:
@@ -1079,7 +1081,7 @@ class ValuesCalculation(tk.Frame):
         errors = []
         bad_rep_level = []
 
-        game_type = ScoringFormat.name_to_enum_map().get(self.game_type.get())
+        game_type = ScoringFormat.get_format_by_full_name(self.game_type.get())
         #if not ScoringFormat.is_points_type(game_type):
         #    errors.append(f"Calculations for {self.game_type.get()} not currently supported.")
         
@@ -1113,7 +1115,7 @@ class ValuesCalculation(tk.Frame):
                 try:
                     f_val = float(value.get())
                     if f_val > 10.0:
-                        if RankingBasis.display_to_enum_map().get(self.pitcher_basis.get()) == RankingBasis.PPG and key == 'SP' and f_val < 40.0:
+                        if RankingBasis.get_enum_by_display(self.pitcher_basis.get()) == RankingBasis.PPG and key == 'SP' and f_val < 40.0:
                             continue
                         bad_rep_level.append(key)
                 except ValueError:

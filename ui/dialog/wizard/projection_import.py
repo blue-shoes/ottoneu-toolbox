@@ -59,7 +59,7 @@ class Wizard(wizard.Wizard):
         pd.set_task_title('Uploading')
         pd.set_completion_percent(15)
         if self.step1.source_var.get():
-            if self.step1.proj_type.get() == ProjectionType.enum_to_name_dict().get(ProjectionType.DAVENPORT):
+            if self.step1.proj_type.get() == ProjectionType.DAVENPORT.type_name:
                 id_type = IdType.MLB
             else:
                 id_type = IdType.FANGRAPHS
@@ -91,7 +91,7 @@ class Step1(tk.Frame):
         
         downloadable = []
         for pt in ProjectionType.get_downloadable():
-            downloadable.append(ProjectionType.enum_to_name_dict().get(pt))
+            downloadable.append(pt.type_name)
         
         self.proj_type = tk.StringVar()
         self.proj_type.set('Davenport')
@@ -149,7 +149,7 @@ class Step1(tk.Frame):
         self.pitcher_proj_file.set(Path.home())
     
     def update_proj_type(self, event:Event):
-        p_type = ProjectionType.name_to_enum_dict().get(self.proj_type.get())
+        p_type = ProjectionType.get_enum_by_name(self.proj_type.get())
         if p_type == ProjectionType.DAVENPORT:
             self.dc_var.set(False)
             self.dc_btn.configure(state='disabled')
@@ -162,7 +162,7 @@ class Step1(tk.Frame):
     def toggle_downloadable_proj(self):
         for child in self.fg_self.winfo_children():
             child.configure(state='active')
-        if self.proj_type.get() == ProjectionType.enum_to_name_dict().get(ProjectionType.DAVENPORT):
+        if self.proj_type.get() == ProjectionType.DAVENPORT.type_name:
             self.dc_btn.configure(state='disable')
             self.ros_btn.configure(state='disable')
         for child in self.custom_self.winfo_children():
@@ -218,7 +218,7 @@ class Step1(tk.Frame):
         year = date_util.get_current_ottoneu_year()
         try:
             if self.source_var.get():
-                if self.proj_type.get() == ProjectionType.enum_to_name_dict().get(ProjectionType.DAVENPORT):
+                if self.proj_type.get() == ProjectionType.DAVENPORT.type_name:
                     DavenportHyperlinkDialog(self)
                 else:
                     if not os.path.exists('conf/fangraphs.conf'):
@@ -228,7 +228,7 @@ class Step1(tk.Frame):
                             mb.showerror('Download Error', 'Projections cannot be downloaded by the Toolbox without FanGraphs credentials')
                             return False
                 #Download proj
-                self.hitter_df, self.pitcher_df = projection_services.create_projection_from_download(self.parent.projection, ProjectionType.name_to_enum_dict().get(self.proj_type.get()), self.ros_var.get(), self.dc_var.get(), year=year, progress=pd)
+                self.hitter_df, self.pitcher_df = projection_services.create_projection_from_download(self.parent.projection, ProjectionType.get_enum_by_name(self.proj_type.get()), self.ros_var.get(), self.dc_var.get(), year=year, progress=pd)
             else:
                 #Upload proj from files
                 self.hitter_df, self.pitcher_df =  projection_services.create_projection_from_upload(self.parent.projection, self.hitter_proj_file.get(), self.pitcher_proj_file.get(), name="User Custom", year=year, progress=pd)
