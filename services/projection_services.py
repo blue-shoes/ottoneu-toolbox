@@ -164,9 +164,9 @@ def save_projection(projection:Projection, projs:List[DataFrame], id_type:IdType
                 for col in stat_cols:
                     if col not in ['Name','Team','-1','PlayerId', 'Last', 'First', 'Lg']:
                         if pitch:
-                            stat_type = StatType.pitch_to_enum_dict().get(col)
+                            stat_type = StatType.get_pitch_stattype(col)
                         else:
-                            stat_type = StatType.hit_to_enum_dict().get(col)       
+                            stat_type = StatType.get_hit_stattype(col)       
                         if col == 'G':
                             generic_games = True 
                             data = ProjectionData()
@@ -414,7 +414,7 @@ def normalize_pitcher_projections(proj: Projection, df: DataFrame) -> List[str]:
 
     if 'HBP' not in df.columns and 'BB' in df.columns:
         # If HBP allowed is blank, fill with pre-calculated regression vs BB
-        df[StatType.enum_to_display_dict()[StatType.HBP_ALLOWED]] = df[StatType.enum_to_display_dict()[StatType.BB_ALLOWED]].apply(lambda bb: 0.0951*bb+0.4181)
+        df[StatType.HBP_ALLOWED.display] = df[StatType.BB_ALLOWED.display].apply(lambda bb: 0.0951*bb+0.4181)
     if 'FIP' not in df.columns and set(['IP', 'SO', 'BB', 'HBP', 'HR']).issubset(df.columns):
         df['FIP'] = df.apply(calc_fip, axis=1)
     if 'ERA' not in df.columns and set(['IP', 'ER']).issubset(df.columns):
@@ -486,7 +486,7 @@ def create_projection_from_download(projection: Projection, type:ProjectionType,
         dc_string = ' DC Playing Time'
     else:
         dc_string = ''
-    projection.name = f"{ProjectionType.enum_to_name_dict().get(type)}{ros_string}{dc_string}"
+    projection.name = f"{type.type_name}{ros_string}{dc_string}"
     projection.calculations = []
     projection.dc_pt = dc_pt
     projection.detail = ''
@@ -502,7 +502,7 @@ def create_projection_from_download(projection: Projection, type:ProjectionType,
     projection.season = year
 
     if type in ProjectionType.get_fg_downloadable():
-        proj_type_url = ProjectionType.enum_to_url().get(type)
+        proj_type_url = type.url
         if progress is not None:
             progress.set_task_title('Downloading projections...')
             progress.increment_completion_percent(10)
@@ -523,7 +523,7 @@ def projection_check(projs) -> None:
         pitch_proj['FIP'] = pitch_proj.apply(calc_fip, axis=1)
     if 'HBP' not in pitch_proj.columns and 'BB' in pitch_proj.columns:
         # If HBP allowed is blank, fill with pre-calculated regression vs BB
-        pitch_proj[StatType.enum_to_display_dict()[StatType.HBP_ALLOWED]] = pitch_proj[StatType.enum_to_display_dict()[StatType.BB_ALLOWED]].apply(lambda bb: 0.0951*bb+0.4181)
+        pitch_proj[StatType.HBP_ALLOWED.display] = pitch_proj[StatType.BB_ALLOWED.display].apply(lambda bb: 0.0951*bb+0.4181)
     if 'FIP' not in pitch_proj.columns and set(['IP', 'SO', 'BB', 'HBP', 'HR']).issubset(pitch_proj.columns):
         pitch_proj['FIP'] = pitch_proj.apply(calc_fip, axis=1)
     if 'ERA' not in pitch_proj.columns and set(['IP', 'ER']).issubset(pitch_proj.columns):
@@ -587,10 +587,10 @@ def convert_to_df(proj:Projection) -> List[DataFrame]:
 
     pos_header = ['ID', 'Name','Team', 'Position(s)']
     for col in pos_col:
-        pos_header.append(StatType.enum_to_display_dict().get(col))
+        pos_header.append(col.display)
     pitch_header = ['ID', 'Name', 'Team', 'Position(s)']
     for col in pitch_col:
-        pitch_header.append(StatType.enum_to_display_dict().get(col))
+        pitch_header.append(col.display)
     
     pos_proj.columns = pos_header
     pos_proj.set_index('ID', inplace=True)

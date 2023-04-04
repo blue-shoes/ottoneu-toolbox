@@ -120,7 +120,7 @@ def create_league(league_ottoneu_id:int, pd=None) -> League:
     lg.ottoneu_id = league_ottoneu_id
     lg.name = league_data['Name']
     lg.num_teams = league_data['Num Teams']
-    lg.format = ScoringFormat.name_to_enum_map()[league_data['Format']]
+    lg.format = ScoringFormat.get_format_by_full_name(league_data['Format'])
     lg.last_refresh = datetime.min
     lg.active = True
 

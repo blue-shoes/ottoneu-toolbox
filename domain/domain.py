@@ -1,37 +1,48 @@
 from __future__ import annotations
+from dataclasses import dataclass, field
+from datetime import datetime
+from typing import List
 from sqlalchemy import Column, ForeignKey, Index
 from sqlalchemy import Integer, String, Boolean, Float, Date, Enum, TIMESTAMP
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import relationship, reconstructor
+
+from sqlalchemy.orm import relationship, reconstructor, registry
 import re
 from domain.enum import CalculationDataType, ProjectionType, RankingBasis, ScoringFormat, StatType, Position, IdType
-
 from typing import List, Dict
 
-Base = declarative_base()
+mapper_registry = registry()
 
-class Property(Base):
+@mapper_registry.mapped
+@dataclass
+class Property:
     __tablename__ = "properties"
-    name = Column(String, primary_key=True)
-    value = Column(String)
+    __sa_dataclass_metadata_key__ = "sa"
+    name:str = field(default=None, metadata={"sa": Column(String, primary_key=True)})
+    value:str = field(default=None, metadata={"sa":Column(String)})
 
-class Player(Base):
+@mapper_registry.mapped
+@dataclass
+class Player:
     __tablename__ = "player"
-    index = Column(Integer, primary_key=True)
-    ottoneu_id = Column('Ottoneu ID', Integer, index=True)
-    fg_major_id = Column('FG MajorLeagueID', String)
-    fg_minor_id = Column('FG MinorLeagueID', String)
-    name = Column("Name",String)
-    search_name = Column(String)
-    team = Column("Org",String(7))
-    position = Column("Position(s)",String)
+    __sa_dataclass_metadata_key__ = "sa"
+    index:int = field(init=False, metadata={"sa":Column(Integer, primary_key=True)})
+    ottoneu_id:int = field(default=None, metadata={"sa":Column('Ottoneu ID', Integer, index=True)})
+    fg_major_id:str = field(default=None, metadata={"sa":Column('FG MajorLeagueID', String)}, repr=False)
+    fg_minor_id:str = field(default=None, metadata={"sa":Column('FG MinorLeagueID', String)}, repr=False)
+    name:str = field(default=None, metadata={"sa":Column("Name",String)})
+    search_name:str = field(default=None, metadata={"sa":Column(String)}, repr=False)
+    team:str = field(default=None, metadata={"sa":Column("Org",String(7))})
+    position:str = field(default=None, metadata={"sa":Column("Position(s)",String)})
 
-    roster_spots = relationship("Roster_Spot", back_populates="player", cascade="all, delete")
-    salary_info = relationship("Salary_Info", back_populates="player", cascade="all, delete", lazy="joined")
-    values = relationship("PlayerValue", back_populates="player", cascade="all, delete")
-    projections = relationship("PlayerProjection", back_populates="player", cascade="all, delete")
+    roster_spots:List[Roster_Spot] = field(default_factory=list, metadata={"sa":relationship("Roster_Spot", back_populates="player", cascade="all, delete")}, repr=False)
+    salary_info:List[Salary_Info] = field(default_factory=list, metadata={"sa":relationship("Salary_Info", back_populates="player", cascade="all, delete", lazy="joined")}, repr=False)
+    values:List[PlayerValue] = field(default_factory=list, metadata={"sa":relationship("PlayerValue", back_populates="player", cascade="all, delete")}, repr=False)
+    projections:List[PlayerProjection] = field(default_factory=list, metadata={"sa":relationship("PlayerProjection", back_populates="player", cascade="all, delete")}, repr=False)
 
     __table_args__ = (Index('idx_fg_id','FG MajorLeagueID','FG MinorLeagueID'),)
+
+    def __hash__(self) -> int:
+        return hash(self.index)
 
     def get_fg_id(self) -> object:
         '''Returns the FanGraphs Major League id, if available, otherwise returns the FanGraphs Minor League id.'''
@@ -86,16 +97,19 @@ class Player(Base):
         si.roster_percentage = 0.0
         return si
 
-class League(Base):
+@mapper_registry.mapped
+@dataclass
+class League:
     __tablename__ = "league"
-    index = Column(Integer, primary_key=True)
-    ottoneu_id = Column(Integer, nullable=False)
-    name = Column(String)
-    # Corresponds to ScoringFormat enum
-    format = Column(Enum(ScoringFormat), nullable=False)
-    num_teams = Column(Integer, nullable=False)
-    last_refresh = Column(TIMESTAMP, nullable=False)
-    active = Column(Boolean, nullable = False)
+    __sa_dataclass_metadata_key__ = "sa"
+    index:int = field(init=False, metadata={"sa":Column(Integer, primary_key=True)})
+    ottoneu_id:int = field(default=None, metadata={"sa":Column(Integer, nullable=False)})
+    name:str = field(default=None, metadata={"sa":Column(String)})
+  
+    format:ScoringFormat = field(default=None, metadata={"sa":Column(Enum(ScoringFormat), nullable=False)})
+    num_teams:int = field(default=None, metadata={"sa":Column(Integer, nullable=False)})
+    last_refresh:datetime = field(default=None, metadata={"sa":Column(TIMESTAMP, nullable=False)})
+    active:bool = field(default=True, metadata={"sa":Column(Boolean, nullable = False)})
 
     teams = relationship("Team", back_populates="league", cascade="all, delete")
 
@@ -120,32 +134,35 @@ class League(Base):
                 return team
         return None
 
-class Team(Base):
+@mapper_registry.mapped
+@dataclass
+class Team:
     __tablename__ = "team"
-    index = Column(Integer, primary_key=True)
-    site_id = Column(Integer, nullable=False)
+    __sa_dataclass_metadata_key__ = "sa"
+    index:int = field(init=False, metadata={"sa":Column(Integer, primary_key=True)})
+    site_id:int = field(default=None, metadata={"sa":Column(Integer, nullable=False)})
 
-    league_id = Column(Integer, ForeignKey("league.index"))
-    league = relationship("League", back_populates="teams")
+    league_id:int = field(default=None, metadata={"sa":Column(Integer, ForeignKey("league.index"))})
+    league:League = field(default=None, metadata={"sa":relationship("League", back_populates="teams")})
 
-    name = Column(String)
-    users_team = Column(Boolean)
+    name:str = field(default=None, metadata={"sa":Column(String)})
+    users_team:bool = field(default=False, metadata={"sa":Column(Boolean)})
     
-    roster_spots = relationship("Roster_Spot", back_populates="team", cascade="all, delete")
+    roster_spots:List[Roster_Spot] = field(default_factory=list, metadata={"sa":relationship("Roster_Spot", back_populates="team", cascade="all, delete")}, repr=False)
 
-    num_players = Column(Integer)
-    spots = Column(Integer)
-    salaries = Column(Integer)
-    penalties = Column(Integer)
-    loans_in = Column(Integer)
-    loans_out = Column(Integer)
-    free_cap = Column(Integer)
+    num_players:int = field(default=None, metadata={"sa":Column(Integer)})
+    spots:int = field(default=None, metadata={"sa":Column(Integer)})
+    salaries:int = field(default=None, metadata={"sa":Column(Integer)})
+    penalties:int = field(default=None, metadata={"sa":Column(Integer)})
+    loans_in:int = field(default=None, metadata={"sa":Column(Integer)})
+    loans_out:int = field(default=None, metadata={"sa":Column(Integer)})
+    free_cap:int = field(default=None, metadata={"sa":Column(Integer)})
 
     rs_map:Dict[Player,Roster_Spot] = None
     points:float=0
     lg_rank:int=0
-    cat_stats:Dict[StatType,float]
-    cat_ranks:Dict[StatType,int]
+    cat_stats:Dict[StatType,float]=None
+    cat_ranks:Dict[StatType,int]=None
 
     @reconstructor
     def init_on_load(self):
@@ -173,68 +190,80 @@ class Team(Base):
         for rs in self.roster_spots:
             self.rs_map[rs.player.index] = rs
 
-class Roster_Spot(Base):
+@mapper_registry.mapped
+@dataclass
+class Roster_Spot:
     __tablename__ = "roster_spot"
-    index = Column(Integer, primary_key=True)
+    __sa_dataclass_metadata_key__ = "sa"
+    index:int = field(init=False, metadata={"sa":Column(Integer, primary_key=True)})
 
-    team_id = Column(Integer, ForeignKey("team.index"))
-    team = relationship("Team", back_populates="roster_spots")
+    team_id:int = field(default=None, metadata={"sa":Column(Integer, ForeignKey("team.index"))})
+    team:Team = field(default=None, metadata={"sa":relationship("Team", back_populates="roster_spots")})
 
-    player_id = Column(Integer, ForeignKey("player.index"))
-    player = relationship("Player", back_populates="roster_spots")
+    player_id:int = field(default=None, metadata={"sa":Column(Integer, ForeignKey("player.index"))})
+    player:Player = field(default=None, metadata={"sa":relationship("Player", back_populates="roster_spots")})
 
-    salary = Column(Integer)
+    salary:int = field(default=None, metadata={"sa":Column(Integer)})
 
     g_h:int = 0
     ip:int = 0
 
-class Salary_Info(Base):
+@mapper_registry.mapped
+@dataclass
+class Salary_Info:
     __tablename__ = "salary_info"
-    index = Column(Integer, primary_key=True)
+    __sa_dataclass_metadata_key__ = "sa"
+    index:int = field(init=False, metadata={"sa":Column(Integer, primary_key=True)})
 
-    player_id = Column(Integer, ForeignKey("player.index"))
-    player = relationship("Player", back_populates="salary_info")
+    player_id:int = field(default=None, metadata={"sa":Column(Integer, ForeignKey("player.index"))})
+    player:Player = field(default=None, metadata={"sa":relationship("Player", back_populates="salary_info")})
 
-    format = Column(Enum(ScoringFormat))
+    format:ScoringFormat = field(default=None, metadata={"sa":Column(Enum(ScoringFormat))})
     
-    avg_salary = Column("Avg Salary",Float)
-    med_salary = Column("Median Salary",Float)
-    min_salary = Column("Min Salary",Float)
-    max_salary = Column("Max Salary",Float)
-    last_10 = Column("Last 10",Float)
-    roster_percentage = Column("Roster %",Float)
+    avg_salary:float = field(default=None, metadata={"sa":Column("Avg Salary",Float)})
+    med_salary:float = field(default=None, metadata={"sa":Column("Median Salary",Float)})
+    min_salary:float = field(default=None, metadata={"sa":Column("Min Salary",Float)})
+    max_salary:float = field(default=None, metadata={"sa":Column("Max Salary",Float)})
+    last_10:float = field(default=None, metadata={"sa":Column("Last 10",Float)})
+    roster_percentage:float = field(default=None, metadata={"sa":Column("Roster %",Float)})
 
-class PlayerValue(Base):
+@mapper_registry.mapped
+@dataclass
+class PlayerValue:
     __tablename__ = "player_value"
+    __sa_dataclass_metadata_key__ = "sa"
     index = Column(Integer, primary_key=True)
 
-    player_id = Column(Integer, ForeignKey("player.index"))
-    player = relationship("Player", back_populates="values", lazy="joined")
+    player_id:int = field(init=False, metadata={"sa":Column(Integer, ForeignKey("player.index"))})
+    player:Player = field(default=None, metadata={"sa":relationship("Player", back_populates="values", lazy="joined")})
 
-    position = Column(Enum(Position))
+    position:Position = field(default=None, metadata={"sa":Column(Enum(Position))})
 
-    calculation_id = Column(Integer, ForeignKey("value_calculation.index"))
-    calculation = relationship("ValueCalculation", back_populates="values")
+    calculation_id:int = field(default=None, metadata={"sa":Column(Integer, ForeignKey("value_calculation.index"))})
+    calculation:ValueCalculation = field(default=None, metadata={"sa":relationship("ValueCalculation", back_populates="values")}, repr=False)
 
-    value = Column(Float)
+    value:float = Column(Float)
 
-class ValueCalculation(Base):
+@mapper_registry.mapped
+@dataclass
+class ValueCalculation:
     __tablename__ = "value_calculation"
-    index = Column(Integer, primary_key=True)
-    name = Column(String)
-    description = Column(String)
-    timestamp = Column(Date, nullable=False)
+    __sa_dataclass_metadata_key__ = "sa"
+    index:int = field(init=False, metadata={"sa":Column(Integer, primary_key=True)})
+    name:str = field(default=None, metadata={"sa":Column(String)})
+    description:str = field(default=None,metadata={"sa":Column(String)})
+    timestamp:datetime = field(default=datetime.now(), metadata={"sa":Column(Date, nullable=False)})
 
-    projection_id = Column(Integer, ForeignKey("projection.index"))
-    projection = relationship("Projection", back_populates="calculations")
+    projection_id:int = field(default=None, metadata={"sa":Column(Integer, ForeignKey("projection.index"))})
+    projection:Projection = field(default=None, metadata={"sa":relationship("Projection", back_populates="calculations")})
     # Corresponds to ScoringFormat enum
-    format = Column(Enum(ScoringFormat))
-    hitter_basis = Column(Enum(RankingBasis))
-    pitcher_basis = Column(Enum(RankingBasis))
+    format:ScoringFormat = field(default=None, metadata={"sa":Column(Enum(ScoringFormat))})
+    hitter_basis:RankingBasis = field(default=None, metadata={"sa":Column(Enum(RankingBasis))})
+    pitcher_basis:RankingBasis = field(default=None, metadata={"sa":Column(Enum(RankingBasis))})
 
-    inputs = relationship("CalculationInput", back_populates="calculation", cascade="all, delete", lazy='joined')
-    values = relationship("PlayerValue", back_populates="calculation", cascade="all, delete")
-    data = relationship("ValueData", back_populates="calculation", cascade="all, delete", lazy='joined')
+    inputs:List[CalculationInput] = field(default_factory=list, metadata={"sa":relationship("CalculationInput", back_populates="calculation", cascade="all, delete", lazy='joined')}, repr=False)
+    values:List[PlayerValue] = field(default_factory=list, metadata={"sa":relationship("PlayerValue", back_populates="calculation", cascade="all, delete")}, repr=False)
+    data:List[ValueData] = field(default_factory=list, metadata={"sa":relationship("ValueData", back_populates="calculation", cascade="all, delete", lazy='joined')}, repr=False)
 
     value_dict = {}
 
@@ -340,52 +369,59 @@ class ValueCalculation(Base):
         rl_map[Position.POS_MI] = min(rl_map[Position.POS_2B], rl_map[Position.POS_SS])
         return rl_map
 
-class CalculationInput(Base):
+@mapper_registry.mapped
+@dataclass
+class CalculationInput:
 
     __tablename__ = "calculation_input"
-    index = Column(Integer, primary_key=True)
+    __sa_dataclass_metadata_key__ = "sa"
+    index:int = field(init=False, metadata={"sa":Column(Integer, primary_key=True)})
 
-    # This corresponds to the CalculationInput enum
-    data_type = Column(Enum(CalculationDataType), nullable=False)
+    data_type:CalculationDataType = field(default=None, metadata={"sa":Column(Enum(CalculationDataType), nullable=False)})
 
-    value = Column(Float, nullable=False)
+    value:float = field(default=None, metadata={"sa":Column(Float, nullable=False)})
 
-    calculation_id = Column(Integer, ForeignKey("value_calculation.index"))
-    calculation = relationship("ValueCalculation", back_populates="inputs")
+    calculation_id:int = field(default=None, metadata={"sa":Column(Integer, ForeignKey("value_calculation.index"))})
+    calculation:ValueCalculation = field(default=None, metadata={"sa":relationship("ValueCalculation", back_populates="inputs")}, repr=False)
 
-class ValueData(Base):
+@mapper_registry.mapped
+@dataclass
+class ValueData:
     __tablename__ = "value_data"
-    index = Column(Integer, primary_key=True)
+    __sa_dataclass_metadata_key__ = "sa"
+    index:int = field(init=False, metadata={"sa":Column(Integer, primary_key=True)})
 
-    # This corresponds to the CalculationDataType
-    data_type = Column(Enum(CalculationDataType), nullable=False)
+    data_type:CalculationDataType = field(default=None, metadata={"sa":Column(Enum(CalculationDataType), nullable=False)})
 
-    value = Column(Float, nullable=False)
+    value:float = field(default=None, metadata={"sa":Column(Float, nullable=False)})
 
-    calculation_id = Column(Integer, ForeignKey("value_calculation.index"))
-    calculation = relationship("ValueCalculation", back_populates="data")
-    
-class Projection(Base):
+    calculation_id:int = field(default=None, metadata={"sa":Column(Integer, ForeignKey("value_calculation.index"))})
+    calculation:ValueCalculation = field(default=None, metadata={"sa":relationship("ValueCalculation", back_populates="data")}, repr=False)
+
+@mapper_registry.mapped
+@dataclass    
+class Projection:
     __tablename__ = "projection"
-    index = Column(Integer, primary_key=True)
+    __sa_dataclass_metadata_key__ = "sa"
+    index:int = field(init=False, metadata={"sa":Column(Integer, primary_key=True)})
     
     # This corresponds to the ProjectionType enum
-    type = Column(Enum(ProjectionType))
-    timestamp = Column(Date, nullable=False)
-    name = Column(String, nullable=False)
-    detail = Column(String)
-    season = Column(Integer, nullable=False)
+    type:ProjectionType = field(default=None, metadata={"sa":Column(Enum(ProjectionType))})
+    timestamp:datetime = field(default=datetime.now(), metadata={"sa":Column(Date, nullable=False)})
+    name:str = field(default=None, metadata={"sa":Column(String, nullable=False)})
+    detail:str = field(default=None, metadata={"sa":Column(String)})
+    season:int = field(default=None, metadata={"sa":Column(Integer, nullable=False)})
 
-    ros = Column(Boolean, nullable=False)
-    dc_pt = Column(Boolean, nullable=False)
-    hide = Column(Boolean, nullable=False)
+    ros:bool = field(default=False, metadata={"sa":Column(Boolean, nullable=False)})
+    dc_pt:bool = field(default=False, metadata={"sa":Column(Boolean, nullable=False)})
+    hide:bool = field(default=False, metadata={"sa":Column(Boolean, nullable=False)})
 
-    valid_points = Column(Boolean)
-    valid_5x5 = Column(Boolean)
-    valid_4x4 = Column(Boolean)
+    valid_points:bool = field(default=False, metadata={"sa":Column(Boolean, nullable=False)})
+    valid_5x5:bool = field(default=False, metadata={"sa":Column(Boolean, nullable=False)})
+    valid_4x4:bool = field(default=False, metadata={"sa":Column(Boolean, nullable=False)})
 
-    player_projections = relationship("PlayerProjection", back_populates="projection", cascade="all, delete")
-    calculations = relationship("ValueCalculation", back_populates="projection", cascade="all, delete")
+    player_projections:List[PlayerProjection] = field(default_factory=list, metadata={"sa":relationship("PlayerProjection", back_populates="projection", cascade="all, delete")}, repr=False)
+    calculations:List[ValueCalculation] = field(default_factory=list, metadata={"sa":relationship("ValueCalculation", back_populates="projection", cascade="all, delete")}, repr=False)
 
     def get_player_projection(self, player_id:int, idx:str=None, id_type:IdType=IdType.FANGRAPHS) -> PlayerProjection:
         '''Gets the PlayerProjection for the given player_id'''
@@ -409,21 +445,24 @@ class Projection(Base):
                 if pp.player_id == player_id or pp.player.index == player_id:
                     return pp
         return None
-        
-class PlayerProjection(Base):
+
+@mapper_registry.mapped
+@dataclass        
+class PlayerProjection:
     __tablename__ = "player_projection"
-    index = Column(Integer, primary_key=True)
+    __sa_dataclass_metadata_key__ = "sa"
+    index:int = field(init=False, metadata={"sa":Column(Integer, primary_key=True)})
 
-    player_id = Column(Integer, ForeignKey("player.index"))
-    player = relationship("Player", back_populates="projections", lazy="joined")
+    player_id:int = field(default=None, metadata={"sa":Column(Integer, ForeignKey("player.index"))})
+    player:Player = field(default=None, metadata={"sa":relationship("Player", back_populates="projections", lazy="joined")})
 
-    projection_id = Column(Integer, ForeignKey("projection.index"))
-    projection = relationship("Projection", back_populates="player_projections")
+    projection_id:int = field(default=None, metadata={"sa":Column(Integer, ForeignKey("projection.index"))})
+    projection:Projection = field(default=None, metadata={"sa":relationship("Projection", back_populates="player_projections")}, repr=False)
 
-    projection_data = relationship("ProjectionData", back_populates="player_projection", cascade="all, delete", lazy="joined")
+    projection_data:List[ProjectionData] = field(default_factory=list, metadata={"sa":relationship("ProjectionData", back_populates="player_projection", cascade="all, delete", lazy="joined")}, repr=False)
 
-    pitcher = Column(Boolean)
-    two_way = Column(Boolean)
+    pitcher:bool = field(default=False, metadata={"sa":Column(Boolean)})
+    two_way:bool = field(default=False, metadata={"sa":Column(Boolean)})
 
     def get_stat(self, stat_type:StatType) -> float:
         '''Gets the stat value associated with the input StatType'''
@@ -439,32 +478,40 @@ class PlayerProjection(Base):
                 return pd
         return None
 
-class ProjectionData(Base):
+@mapper_registry.mapped
+@dataclass
+class ProjectionData:
     __tablename__ = "projection_data"
-    index = Column(Integer, primary_key=True)
+    __sa_dataclass_metadata_key__ = "sa"
+    index:int = field(init=False, metadata={"sa":Column(Integer, primary_key=True)})
 
-    player_projection_id = Column(Integer, ForeignKey("player_projection.index"))
-    player_projection = relationship("PlayerProjection", back_populates="projection_data")
+    player_projection_id:int = field(default=None, metadata={"sa":Column(Integer, ForeignKey("player_projection.index"))})
+    player_projection:PlayerProjection = field(default=None, metadata={"sa":relationship("PlayerProjection", back_populates="projection_data")}, repr=False)
 
-    # Corresponds to StatType enum
-    stat_type = Column(Enum(StatType), nullable=False) 
-    stat_value = Column(Float, nullable=False)
+    stat_type:StatType = field(default=None, metadata={"sa":Column(Enum(StatType), nullable=False) })
+    stat_value:float = field(default=None, metadata={"sa":Column(Float, nullable=False)})
 
-class Salary_Refresh(Base):
-    # Class to track how recently the Ottoverse average values have been refreshed
+@mapper_registry.mapped
+@dataclass
+class Salary_Refresh:
+    '''Class to track how recently the Ottoverse average values have been refreshed'''
     __tablename__ = "salary_refresh"
-    format = Column(Enum(ScoringFormat), primary_key=True)
-    last_refresh = Column(TIMESTAMP, nullable=False)
+    __sa_dataclass_metadata_key__ = "sa"
+    format:ScoringFormat = field(default=ScoringFormat.ALL, metadata={"sa":Column(Enum(ScoringFormat), primary_key=True)})
+    last_refresh:datetime = field(default=datetime.now(), metadata={"sa":Column(TIMESTAMP, nullable=False)})
 
-class Draft(Base):
+@mapper_registry.mapped
+@dataclass
+class Draft:
     '''Class to hold user draft inputs'''
     __tablename__ = 'draft'
-    index = Column(Integer, primary_key=True)
-    league_id = Column(Integer, ForeignKey("league.index"))
-    league = relationship("League")
+    __sa_dataclass_metadata_key__ = "sa"
+    index:int = field(init=False,metadata={"sa":Column(Integer, primary_key=True)})
+    league_id:int = field(default=None,metadata={"sa":Column(Integer, ForeignKey("league.index"))})
+    league:League = field(default=None, metadata={"sa":relationship("League")}, repr=False)
 
-    targets = relationship("Draft_Target", back_populates="draft", cascade="all, delete", lazy="joined")
-    cm_draft = relationship("CouchManagers_Draft", uselist=False, back_populates='draft', cascade="all, delete", lazy="joined")
+    targets:List[Draft_Target] = field(default_factory=list, metadata={"sa":relationship("Draft_Target", back_populates="draft", cascade="all, delete", lazy="joined")}, repr=False)
+    cm_draft:CouchManagers_Draft = field(default=None, metadata={"sa":relationship("CouchManagers_Draft", uselist=False, back_populates='draft', cascade="all, delete", lazy="joined")}, repr=False)
 
     year = Column(Integer, nullable=False)
 
@@ -486,28 +533,34 @@ class Draft(Base):
             self.targets.append(target)
         target.price = price
 
-class Draft_Target(Base):
+@mapper_registry.mapped
+@dataclass
+class Draft_Target:
     '''Class to hold user draft target information'''
     __tablename__ = 'draft_target'
-    index = Column(Integer, primary_key=True)
-    draft_id = Column(Integer, ForeignKey("draft.index"), nullable=False)
-    draft = relationship("Draft", back_populates='targets')
+    __sa_dataclass_metadata_key__ = "sa"
+    index:int = field(init=False, metadata={"sa":Column(Integer, primary_key=True)})
+    draft_id:int = field(default=None, metadata={"sa":Column(Integer, ForeignKey("draft.index"), nullable=False)})
+    draft:Draft = field(default=None, metadata={"sa":relationship("Draft", back_populates='targets')}, repr=False)
 
-    player_id = Column(Integer, ForeignKey("player.index"), nullable=False)
-    player = relationship("Player", lazy="joined")
+    player_id:int = field(default=None, metadata={"sa":Column(Integer, ForeignKey("player.index"), nullable=False)})
+    player:Player = field(default=None, metadata={"sa":relationship("Player", lazy="joined")})
 
-    price = Column(Integer, nullable=True)
+    price:int = field(default=None, metadata={"sa":Column(Integer, nullable=True)})
 
-class CouchManagers_Draft(Base):
+@mapper_registry.mapped
+@dataclass
+class CouchManagers_Draft:
     '''Class to hold CouchManagers Draft Data'''
     __tablename__ = 'cm_draft'
-    index = Column(Integer, primary_key=True)
-    cm_draft_id = Column(Integer, nullable=False)
-    draft_id = Column(Integer, ForeignKey("draft.index"), nullable=False)
-    draft = relationship("Draft", back_populates='cm_draft')
+    __sa_dataclass_metadata_key__ = "sa"
+    index:int = field(init=False, metadata={"sa":Column(Integer, primary_key=True)})
+    cm_draft_id:int = field(default=None, metadata={"sa":Column(Integer, nullable=False)})
+    draft_id:int = field(default=None, metadata={"sa":Column(Integer, ForeignKey("draft.index"), nullable=False)})
+    draft:Draft = field(default=None, metadata={"sa":relationship("Draft", back_populates='cm_draft')}, repr=False)
     setup = Column(Boolean)
 
-    teams = relationship("CouchManagers_Team", back_populates="cm_draft", cascade="all, delete", lazy="joined")
+    teams:List[CouchManagers_Team] = field(default_factory=list, metadata={"sa":relationship("CouchManagers_Team", back_populates="cm_draft", cascade="all, delete", lazy="joined")}, repr=False)
 
     def get_toolbox_team_index_by_cm_team_id(self, cm_team_id:int) -> int:
         '''Gets the linked Ottoneu Toolbox Team index associated with the input CouchManagers team id'''
@@ -516,19 +569,25 @@ class CouchManagers_Draft(Base):
                 return team.ottoneu_team_id
         return 0
 
-class CouchManagers_Team(Base):
+@mapper_registry.mapped
+@dataclass
+class CouchManagers_Team:
     '''Class that maps CouchManagers draft team numbers'''
     __tablename__ = 'cm_teams'
-    index = Column(Integer, primary_key=True)
-    cm_draft_id = Column(Integer, ForeignKey("cm_draft.index"), nullable=False)
-    cm_draft = relationship("CouchManagers_Draft", back_populates='teams')
+    __sa_dataclass_metadata_key__ = "sa"
+    index:int = field(init=False, metadata={"sa":Column(Integer, primary_key=True)})
+    cm_draft_id:int = field(default=None, metadata={"sa":Column(Integer, ForeignKey("cm_draft.index"), nullable=False)})
+    cm_draft:CouchManagers_Draft = field(default=None, metadata={"sa":relationship("CouchManagers_Draft", back_populates='teams')}, repr=False)
 
     cm_team_id = Column(Integer, nullable=False)
     cm_team_name = Column(String)
     ottoneu_team_id = Column(Integer, nullable=False)
 
-class Adv_Calc_Option(Base):
+@mapper_registry.mapped
+@dataclass
+class Adv_Calc_Option:
     '''Class to hold advanced calculation inputs'''
     __tablename__ = 'adv_calc_option'
-    index = Column(Enum(CalculationDataType), primary_key=True)
-    value = Column(Float)
+    __sa_dataclass_metadata_key__ = "sa"
+    index:CalculationDataType = field(default=None, metadata={"sa":Column(Enum(CalculationDataType), primary_key=True)})
+    value:float = field(default=None, metadata={"sa":Column(Float)})

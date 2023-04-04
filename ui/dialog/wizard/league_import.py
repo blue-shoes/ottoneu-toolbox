@@ -111,7 +111,7 @@ class Step2(tk.Frame):
         lg = self.parent.league
         self.lg_name_sv.set(lg.name)
         self.num_teams_sv.set(lg.num_teams)
-        self.format_sv.set(ScoringFormat.enum_to_full_name_map().get(lg.format))
+        self.format_sv.set(lg.format.full_name)
         teams = []
         for team in lg.teams:
             teams.append(team.name)

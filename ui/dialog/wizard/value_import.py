@@ -104,7 +104,7 @@ class Wizard(wizard.Wizard):
                     return False
                 self.value.name = self.step1_fg.name_tv.get()
                 self.value.description = self.step1_fg.desc_tv.get()
-                self.value.format = ScoringFormat.name_to_enum_map().get(self.step1_fg.game_type.get())
+                self.value.format = ScoringFormat.get_format_by_full_name(self.step1_fg.game_type.get())
                 self.value.hitter_basis = RankingBasis.FG_AC
                 self.value.pitcher_basis = RankingBasis.FG_AC
                 if self.step1_fg.projection is not None:
@@ -190,13 +190,12 @@ class Step1_FG(tk.Frame):
         ttk.Button(self, textvariable = self.pitcher_value_file, command=self.select_pitcher_value_file).grid(column=1,row=4, padx=5, sticky='we', columnspan=2)
         self.pitcher_value_file.set(Path.home())
 
-        gt_map = ScoringFormat.enum_to_full_name_map()
         ttk.Label(self, text="Game Type:").grid(column=0,row=5,pady=5, stick=W)
         self.game_type = StringVar()
-        self.game_type.set(gt_map[ScoringFormat.FG_POINTS])
+        self.game_type.set(ScoringFormat.FG_POINTS.full_name)
         gt_combo = ttk.Combobox(self, textvariable=self.game_type)
 
-        gt_combo['values'] = tuple([ScoringFormat.enum_to_full_name_map().get(e) for e in ScoringFormat.get_discrete_types()])
+        gt_combo['values'] = tuple([e.full_name for e in ScoringFormat.get_discrete_types()])
         gt_combo.grid(column=1,row=5,pady=5, columnspan=2)
 
         ttk.Label(self, text="Number of Teams:").grid(column=0, row=6,pady=5, stick=W)
@@ -315,15 +314,14 @@ class Step1(tk.Frame):
         ttk.Button(self, textvariable=self.sel_proj, command=self.select_projection).grid(column=1,row=5, sticky='we', columnspan=2)
         #ttk.Button(self, text="Select...", command=self.select_projection).grid(column=2,row=5)
 
-        gt_map = ScoringFormat.enum_to_full_name_map()
         ttk.Label(self, text="Game Type:").grid(column=0,row=6,pady=5, stick=W)
         self.game_type = StringVar()
-        self.game_type.set(gt_map[ScoringFormat.FG_POINTS])
+        self.game_type.set(ScoringFormat.FG_POINTS.full_name)
         gt_combo = ttk.Combobox(self, textvariable=self.game_type)
         gt_combo.bind("<<ComboboxSelected>>", self.update_game_type)
         # TODO: Don't hardcode game types, include other types
 
-        gt_combo['values'] = (gt_map[ScoringFormat.FG_POINTS], gt_map[ScoringFormat.SABR_POINTS], gt_map[ScoringFormat.OLD_SCHOOL_5X5], gt_map[ScoringFormat.CLASSIC_4X4])
+        gt_combo['values'] = (ScoringFormat.FG_POINTS.full_name, ScoringFormat.SABR_POINTS.full_name, ScoringFormat.OLD_SCHOOL_5X5.full_name, ScoringFormat.CLASSIC_4X4.full_name)
         gt_combo.grid(column=1,row=6,pady=5, columnspan=2)
 
         ttk.Label(self, text="Number of Teams:").grid(column=0, row=7,pady=5, stick=W)
@@ -396,7 +394,7 @@ class Step1(tk.Frame):
 
         try:
             self.df = df = pd.read_csv(self.value_file.get())
-            self.parent.validate_msg = calculation_services.normalize_value_upload(df, ScoringFormat.name_to_enum_map().get(self.game_type.get()))
+            self.parent.validate_msg = calculation_services.normalize_value_upload(df, ScoringFormat.get_format_by_full_name(self.game_type.get()))
         except PermissionError:
             self.parent.validate_msg = f'Error loading values file. File permission denied.'
             return False
@@ -422,13 +420,13 @@ class Step1(tk.Frame):
             prog.set_task_title('Getting projections...')
             prog.set_completion_percent(15)
             vc.projection = projection_services.get_projection(self.projection.index, player_data=True)
-        vc.format = ScoringFormat.name_to_enum_map()[self.game_type.get()]
+        vc.format = ScoringFormat.get_format_by_full_name(self.game_type.get())
         vc.inputs = []
         vc.set_input(CDT.NUM_TEAMS, float(self.num_teams_str.get()))
-        vc.hitter_basis = RankingBasis.display_to_enum_map().get(self.hitter_basis.get())
-        vc.pitcher_basis = RankingBasis.display_to_enum_map().get(self.pitcher_basis.get())
+        vc.hitter_basis = RankingBasis.get_enum_by_display(self.hitter_basis.get())
+        vc.pitcher_basis = RankingBasis.get_enum_by_display(self.pitcher_basis.get())
         calculation_services.init_outputs_from_upload(vc, self.df, 
-            ScoringFormat.name_to_enum_map()[self.game_type.get()], int(self.rep_level_value_str.get()), 
+            ScoringFormat.get_format_by_full_name(self.game_type.get()), int(self.rep_level_value_str.get()), 
             IdType._value2member_map_.get(self.id_type.get()), prog)
         prog.complete()
 
@@ -447,7 +445,7 @@ class Step1(tk.Frame):
             self.sel_proj.set("No Projection Selected")
 
     def update_game_type(self, event):
-        game_type = ScoringFormat.name_to_enum_map().get(self.game_type.get())
+        game_type = ScoringFormat.get_format_by_full_name(self.game_type.get())
         if ScoringFormat.is_points_type(game_type):
             self.hitter_basis_cb['values'] = ('P/G','P/PA')
             self.pitcher_basis_cb['values'] = ('P/IP','P/G')
@@ -553,9 +551,9 @@ class Step2(tk.Frame):
             self.pitch_dollars_entry.configure(state='disable')
         else:
             self.pitch_dollars_entry.configure(state='enable')
-        hitter_rb = RankingBasis.enum_to_display_dict()[vc.hitter_basis]
+        hitter_rb = vc.hitter_basis.display
         self.bat_rep_level_lbl.set(f"Rep. Level ({hitter_rb})")
-        pitcher_rb = RankingBasis.enum_to_display_dict()[vc.pitcher_basis]
+        pitcher_rb = vc.pitcher_basis.display
         self.pitch_rep_level_lbl.set(f"Rep. Level ({pitcher_rb})")
 
         for pos in Position.get_discrete_offensive_pos():
