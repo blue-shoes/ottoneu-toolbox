@@ -1,0 +1,541 @@
+
+    <!DOCTYPE html>
+    <html lang="en" xml:lang="en" xmlns="http://www.w3.org/1999/xhtml">
+    <head>
+    <link rel="shortcut icon" href="https://cdn-ottoneu.fangraphs.com/favicon.ico" >
+    <link rel="apple-touch-icon" href="https://cdn-ottoneu.fangraphs.com/images/baseball-logo-icon-only.png"/>
+    <link rel="apple-touch-icon-precomposed" href="https://cdn-ottoneu.fangraphs.com/images/baseball-logo-icon-only.png"/>
+        <link rel="stylesheet" type="text/css" href="/css/ottoneu.min.css?version=2023021901" />
+    <link rel="stylesheet" type="text/css" href="/scss/ottoneu.css?version=2023021901" />
+        <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/pikaday/css/pikaday.css">
+    <title>Ottoneu Fantasy Baseball - tools - Harry Caray Memorial League - Technocratic Clerk: Serving Geeks</title>
+    <meta charset="utf-8">
+    <meta name="google" content="notranslate">
+    <meta http-equiv="Content-Language" content="en">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+
+    <!-— facebook open graph tags -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://ottoneu.fangraphs.com/953/tools" />
+    <meta property="og:title" content="Ottoneu Fantasy Baseball - tools - Harry Caray Memorial League - Technocratic Clerk: Serving Geeks" />
+    <meta property="og:description" content="Year-round Dynasty fantasy baseball for serious baseball fans" />
+    <meta property="og:image" content="https://cdn-ottoneu.fangraphs.com/images/baseball-email-header.png" />
+
+    <!-— twitter card tags additive with the og: tags -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:domain" value="ottoneu.fangraphs.com" />
+    <meta name="twitter:title" value="Ottoneu Fantasy Baseball - tools - Harry Caray Memorial League - Technocratic Clerk: Serving Geeks" />
+    <meta name="twitter:description" value="Dynasty fantasy baseball for serious baseball fans" />
+    <meta name="twitter:image" content="https://cdn-ottoneu.fangraphs.com/images/baseball-twitter-card-logo.png" />
+    <meta name="twitter:url" value="https://ottoneu.fangraphs.com/953/tools" />
+
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1">
+        <script
+        src="https://code.jquery.com/jquery-1.12.4.js"
+        integrity="sha256-Qw82+bXyGq6MydymqBxNPYTaUXXq7c8v3CwiYwLLNXU="
+        crossorigin="anonymous"></script>
+        <script src="https://cdn-ottoneu.fangraphs.com/js/ottoneu.min.js?version=2023031501" type="text/javascript"></script>
+        <script src="https://cdn.jsdelivr.net/npm/pikaday/pikaday.js"></script>
+    <script src="https://kit.fontawesome.com/276ce102f1.js" crossorigin="anonymous"></script>
+    <script src="https://use.typekit.net/ocz7eof.js"></script>
+    <script>try{Typekit.load({ async: true });}catch(e){}</script>
+    <script type="text/javascript">
+        $(document).ready(function() {
+            $('.close-icon').hide();
+
+            $('#team-switcher').click(function() {
+                $('#team-switcher-menu').toggle();
+                $(this).removeClass("open");
+                $('.close-icon').hide();
+                $('.down-icon').toggle();
+
+                if ($("#team-switcher-menu").is(":visible")) {
+                    $('#league-switcher-menu').hide();
+                    $('.close-icon').toggle();
+                    $('.down-icon').hide();
+                }
+            });
+
+            // this code makes all textarea elements auto-resize
+            $('textarea:not(.no-resize)').each(function () {
+                this.setAttribute('style', 'height:' + (this.scrollHeight) + 'px;overflow-y:hidden;');
+            }).on('input', function () {
+                this.style.height = 'auto';
+                this.style.height = (this.scrollHeight) + 'px';
+            });
+        });
+
+                    // google analytics
+            window.ga=window.ga||function(){(ga.q=ga.q||[]).push(arguments)};ga.l=+new Date;
+            ga('create', 'UA-21401544-1', 'auto');
+
+            // Replace the following lines with the plugins you want to use.
+            ga('require', 'cleanUrlTracker');
+            ga('require', 'maxScrollTracker');
+            ga('require', 'mediaQueryTracker');
+            ga('require', 'pageVisibilityTracker');
+
+            // set user ID
+            ga('set', 'userId', 122841);
+
+            // simplify the title in google analytics
+            ga('set','title','tools');
+
+            ga('send', 'pageview', '/tools');
+
+            // GA 4
+            window.dataLayer = window.dataLayer || [];
+            function gtag() {
+                dataLayer.push(arguments);
+            }
+            gtag('js', new Date());
+
+            gtag('config', 'G-R079V0VW20');
+                </script>
+    <script async src='https://www.google-analytics.com/analytics.js'></script>
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-R079V0VW20"></script>
+    <script async src='https://cdn-ottoneu.fangraphs.com/js/autotrack.js'></script>
+
+    </head>
+    <body
+            >
+                    <div id="notifications"><p>
+      <a href="https://community.ottoneu.com/t/2023-opl-is-live/12754">2023 OPL Signups now available</a>   </p></div>
+           <header class="header--primary">
+        <div class="container">
+          <h1 class="header-headline ottoneu-logo">
+                            <a href='#' id='team-switcher' class='team-switcher'>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="ottoneu-baseball-logo" viewBox="0 0 372.5 71"><title>ottoneu Baseball logo</title><path class="a" d="M363.74,40V18.1H371V40c0,7.71-6.18,12.65-13.14,12.65S344.62,47.69,344.62,40V18.1H352V40A5.88,5.88,0,0,0,363.74,40Z"></path><path class="a" d="M104.75,17.7A17.46,17.46,0,1,1,87.51,35.19,17.29,17.29,0,0,1,104.75,17.7Zm0,27.76a10.3,10.3,0,1,0-10-10.28A10.13,10.13,0,0,0,104.75,45.47Z"></path><path class="a" d="M134.09,18.1h25.69v6.52h-9.19V52.14h-7.31V24.62h-9.19V18.1Z"></path><path class="a" d="M172.18,18.1h25.69v6.52h-9.19V52.14h-7.31V24.62h-9.19V18.1Z"></path><path class="a" d="M227.16,17.7a17.46,17.46,0,1,1-17.24,17.49A17.29,17.29,0,0,1,227.16,17.7Zm0,27.76a10.3,10.3,0,1,0-10-10.28A10.13,10.13,0,0,0,227.16,45.47Z"></path><path class="a" d="M287.68,52.14h-6.47l-13.35-20.2v20.2h-7.21v-34h6.62l13.15,20.83V18.1h7.26v34Z"></path><path class="a" d="M306,18.1h21.54v6.37H313.25v7.76H325.8V38.5H313.25v7.26H328v6.37H306v-34Z"></path><path class="b" d="M18.94,37.09L33.62,51.76,48.29,37.09,33.61,22.42Zm19.05,0a4.38,4.38,0,1,1-4.38-4.38A4.38,4.38,0,0,1,38,37.09Z"></path><path class="b" d="M33.61,60.17L2.85,29.49a31.33,31.33,0,1,0,61.59-.14Z"></path><path class="b" d="M14.71,32.91L33.61,14,52.5,32.89l10-10A31.34,31.34,0,0,0,4.74,23Z"></path></svg>                  <span class="team-switcher-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" class="down-icon" height="10px" version="1.1" viewBox="0 0 16 10" width="16px"><title>Down Icon</title><g fill="#F6CF90" transform="translate(-275.000000, -146.000000)"><path d="M290.276125,148.804875 C290.574625,148.521375 290.574625,148.060875 290.276125,147.780375 L289.200625,146.754375 C288.905125,146.469375 288.425125,146.469375 288.129625,146.754375 L283.022125,151.696875 L277.872625,146.713875 C277.572625,146.428875 277.092625,146.428875 276.797125,146.713875 L275.721625,147.738375 C275.426125,148.020375 275.426125,148.479375 275.721625,148.764375 L282.483625,155.287875 C282.782125,155.569875 283.262125,155.569875 283.559125,155.287875 L290.276125,148.804875"></path></g></svg>                    <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" class="close-icon" height="11px" version="1.1" viewBox="0 0 11 11" width="11px"><title>Close Icon</title><g fill="#F6CF90" transform="translate(-296.000000, -145.000000)"><g transform="translate(49.000000, 145.000000)"><path d="M257.799678,8.87174802 L254.426908,5.49897795 L257.799678,2.12620788 C258.066774,1.86047448 258.066774,1.4298501 257.799678,1.16275396 L256.836224,0.19930005 C256.569128,-0.0664333499 256.138503,-0.0664333499 255.871407,0.19930005 L252.5,3.57207012 L249.12723,0.19930005 C248.861497,-0.0664333499 248.430872,-0.0664333499 248.163776,0.19930005 L247.200322,1.16275396 C246.933226,1.4298501 246.933226,1.86047448 247.200322,2.12620788 L250.573092,5.49897795 L247.200322,8.87174802 C246.933226,9.13748142 246.933226,9.5681058 247.200322,9.83520193 L248.163776,10.7986558 C248.430872,11.0643892 248.861497,11.0643892 249.12723,10.7986558 L252.5,7.42588578 L255.871407,10.7986558 C256.138503,11.0643892 256.569128,11.0643892 256.836224,10.7986558 L257.799678,9.83520193 C258.066774,9.5681058 258.066774,9.13748142 257.799678,8.87174802"></path></g></g></svg>                  </span>
+              </a>
+                      </h1>
+                    <div id="team-switcher-menu" class="team-switcher-menu">
+            <ul><li><a href="/160/home" class="league">Anyone but the Astros in '23</a><a href="/160/tools" class="team">FIPs Don't Lie 💃</a></li><li><a href="/303/home" class="league">3OH3</a><a href="/303/tools" class="team">nVenue AI 🤖 (Now w/ 122 Inputs!)</a></li><li><a href="/953/home" class="league">Harry Caray Memorial League</a><a href="/953/tools" class="team">Technocratic Clerk: Serving Geeks</a></li><li><a href="/1053/home" class="league">Twenty Sided Diamond (1053)</a><a href="/1053/tools" class="team">Max Munch &amp; the Morning Cereal</a></li><li><a href="/1128/home" class="league">xprospects</a><a href="/1128/tools" class="team">☕A Cup of Todd Coffey</a></li><li><a href="/1336/home" class="league">5xprospect5</a><a href="/1336/tools" class="team">The Will To Win, RBI, and SB</a></li><li><a href="/1456/home" class="league">Fantasy Aceball Invitational</a><a href="/1456/tools" class="team">Illustrious Museum Niche Fan</a></li><li><a href="/userdashboard">Dashboard</a></li></ul>        </div>
+                <ul class="nav nav--tertiary">
+          <li>
+            <a href="https://community.ottoneu.com/">Community</a>
+          </li>
+          <li>
+            <a href="/user/Blue+Shoes">Profile</a>          </li>
+          <li>
+            <a href="/rules">Rules</a>
+          </li>
+        </ul>
+    
+    <div id="player_note_form_container" style="display:none;"><form id="player_note_form" name="player_note_form" action="javascript:ottoneuNotes.updatePlayerNote();"><h1>Notes on <span id="player_note_name"></span></h1><input type="hidden" id="player_note_id" name="player_note_id" value="" /><textarea class="no-resize" name="player_note_text" id="player_note_text"></textarea><p><input type="submit" value="Save" name="player_note_form_submit" id="player_note_form_submit" class="button" />&nbsp;<a href="#" id="close_player_notes"><i class="fa fa-window-close"></i></a></p></form></div><script type="text/javascript">$(document).ready(function() {ottoneuNotes.init(953);});</script><div id="team_note_form_container" style="display:none;"><form id="team_note_form" name="player_note_form" action="javascript:ottoneuNotes.updateTeamNote();"><h1>Notes on <span id="team_note_name"></span></h1><input type="hidden" id="team_note_id" name="team_note_id" value="" /><textarea class="no-resize" name="team_note_text" id="team_note_text"></textarea><p><input type="submit" value="Save" name="team_note_form_submit" id="team_note_form_submit" class="button" />&nbsp;<a href="#" id="close_team_notes"><i class="fa fa-window-close"></i></a></p></form></div>    <ul class="nav nav--primary"><li class="league-home-tab"><a href="/953/home"><span class='desktop-navigation'>Harry Caray Memorial League</span><span class='mobile-navigation'>League</span></a></li><li><a href="/953/rosterorganizer"><span class='desktop-navigation'>Technocratic Clerk: Serving Geeks</span><span class='mobile-navigation'>Team</span></a></li><li><a class="player-menu" href="/953/search"><span class="player-text">Players</span><i class="fas fa-baseball-ball"></i></a></li><li class="trade "><a href="/953/tradingblock" class="trade"><span class="trade-text">Trade</span><svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" height="19px" version="1.1" viewBox="0 0 20 19" width="20px"><title>Group</title><g stroke="none" stroke-width="1"><g><polygon points="14.0598127 6.34299474 2 6.34299474 2 3.01601345 14.0598127 3.01601345 14.0598127 0 19.3797187 4.68325069 14.0598127 9.36650138"></polygon><polygon points="5.31990599 15.3429947 17.3797187 15.3429947 17.3797187 12.0160134 5.31990599 12.0160134 5.31990599 9 0 13.6832507 5.31990599 18.3665014"></polygon></g></g></svg></a></li><li class= "here"><a class="tools-menu" href="/953/tools"><i class="fas fa-tools"></i></a></li><li class="inbox"><a href="/953/inbox"><svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" height="16px" version="1.1" viewBox="0 0 16 16" width="16px"><title>inbox</title><g stroke="none" stroke-width="1"><g transform="translate(-338.000000, -91.000000)"><path d="M349,103.5 C349,103.776 348.776,104 348.5,104 L343.5,104 C343.223,104 343,103.776 343,103.5 L343,102 C343,101.447 342.553,101 342,101 L340,101 L340,93 L352,93 L352,101 L350,101 C349.447,101 349,101.447 349,102 L349,103.5 L349,103.5 Z M338,92 L338,106 C338,106.553 338.447,107 339,107 L353,107 C353.553,107 354,106.553 354,106 L354,92 C354,91.447 353.553,91 353,91 L339,91 C338.447,91 338,91.447 338,92 L338,92 Z"></path></g></g></svg></a></li>    </ul>  </div>
+  </header>
+<script type="text/javascript">
+    $(document).ready(function() {
+        $('table').addClass('sortable').tablesorter({ widgets: ['zebra'] });
+    } );
+</script>
+<header class="header--secondary"><nav class="nav nav--secondary"><ul><li><a href="/953/tools">Calendar & Finances</a></li><li><a href="/953/teamproduction">Team Production</a></li><li><a href="/953/recordbook">Record Book</a></li><li><a href="/953/draftresults">Draft Results</a></li><li><span>Roster Export:</span></li><li><a href="/953/rosterexport">Web</a></li><li><a href="/953/rosterexport?csv=1">CSV</a></li></ul></nav></header><main>
+    <section class="section-container">
+    <header class="section-container-header">
+      <h3>Important Dates</h3>
+      <h4>These are the key dates for the 2023 Season</h4>
+      <h4>All deadlines are at the end of the day in Eastern Time</h4>
+    </header>
+
+    <ul class="calendar">
+      <li>
+        <strong>Start of Arbitration</strong>
+        <span>
+          October 15, 2022        </span>
+      </li>
+      <li>
+        <strong>End of Arbitration</strong>
+        <span>
+          November 14, 2022        </span>
+      </li>
+      <li>
+        <strong>Keeper Deadline</strong>
+        <span>
+          January 31, 2023        </span>
+      </li>
+      <li>
+        <strong>Auction Draft Day</strong>
+        <span>
+          March 23, 2023 8:00 PM EDT        </span>
+      </li>
+      <li>
+        <strong>Start of Regular Season</strong>
+        <span>
+          March 30, 2023        </span>
+      </li>
+      <li>
+        <strong>Trade Deadline</strong>
+        <span>
+          August 31, 2023        </span>
+      </li>
+      <li>
+        <strong>End of Regular Season</strong>
+        <span>
+          October 1, 2023        </span>
+      </li>
+    </ul>
+  </section>
+
+  <section class="section-container">
+    <header class="section-container-header">
+      <h3>Financial Overview</h3>
+    </header>
+    <div class="table-container">
+      <table width="96%" border=1 id="finances">
+        <thead>
+          <tr>
+            <th>Team</th><th>Players</th><th>Spots</th><th>Base Salaries</th>
+                          <th>Vote Off</th>
+                            <th>Cap Penalties</th><th>Incoming Loans</th><th>Outgoing Loans</th><th>Available Cap Space</th>
+            </tr>
+          </thead>
+          <tbody>
+                          <tr>
+                <td><a href="/953/team?team=6768">Clueless Joes</a></td>
+                <td>21</td>
+                <td>41</td>
+                <td>$294</td>
+                                  <td>$10</td>
+                                    <td>$0</td>
+                  <td>$0</td>
+                  <td>$0</td>
+                  <td>$116</td>
+              </tr>
+                          <tr>
+                <td><a href="/953/team?team=6877">St. Clair Gorillas</a></td>
+                <td>25</td>
+                <td>40</td>
+                <td>$310</td>
+                                  <td>$21</td>
+                                    <td>$0</td>
+                  <td>$0</td>
+                  <td>$0</td>
+                  <td>$111</td>
+              </tr>
+                          <tr>
+                <td><a href="/953/team?team=6934">Feather in Your Cap Space</a></td>
+                <td>37</td>
+                <td>41</td>
+                <td>$334</td>
+                                  <td>$7</td>
+                                    <td>$0</td>
+                  <td>$0</td>
+                  <td>$0</td>
+                  <td>$73</td>
+              </tr>
+                          <tr>
+                <td><a href="/953/team?team=7066">The 1:07 Train to Poundtown</a></td>
+                <td>26</td>
+                <td>40</td>
+                <td>$297</td>
+                                  <td>$7</td>
+                                    <td>$0</td>
+                  <td>$0</td>
+                  <td>$0</td>
+                  <td>$110</td>
+              </tr>
+                          <tr>
+                <td><a href="/953/team?team=7083">Technocratic Clerk: Serving Geeks</a></td>
+                <td>17</td>
+                <td>40</td>
+                <td>$260</td>
+                                  <td>$5</td>
+                                    <td>$0</td>
+                  <td>$0</td>
+                  <td>$0</td>
+                  <td>$145</td>
+              </tr>
+                          <tr>
+                <td><a href="/953/team?team=7087">Mr. September</a></td>
+                <td>14</td>
+                <td>40</td>
+                <td>$156</td>
+                                  <td>$9</td>
+                                    <td>$0</td>
+                  <td>$0</td>
+                  <td>$0</td>
+                  <td>$253</td>
+              </tr>
+                          <tr>
+                <td><a href="/953/team?team=7090">the balking dead</a></td>
+                <td>29</td>
+                <td>40</td>
+                <td>$363</td>
+                                  <td>$11</td>
+                                    <td>$0</td>
+                  <td>$0</td>
+                  <td>$0</td>
+                  <td>$48</td>
+              </tr>
+                          <tr>
+                <td><a href="/953/team?team=7091">Weeghman's Whales</a></td>
+                <td>31</td>
+                <td>40</td>
+                <td>$229</td>
+                                  <td>$8</td>
+                                    <td>$0</td>
+                  <td>$0</td>
+                  <td>$0</td>
+                  <td>$179</td>
+              </tr>
+                          <tr>
+                <td><a href="/953/team?team=7093">Scotty Smalls</a></td>
+                <td>27</td>
+                <td>40</td>
+                <td>$231</td>
+                                  <td>$5</td>
+                                    <td>$0</td>
+                  <td>$0</td>
+                  <td>$0</td>
+                  <td>$174</td>
+              </tr>
+                          <tr>
+                <td><a href="/953/team?team=7095">Trade Proposed by NOT COOL</a></td>
+                <td>16</td>
+                <td>40</td>
+                <td>$162</td>
+                                  <td>$8</td>
+                                    <td>$0</td>
+                  <td>$0</td>
+                  <td>$0</td>
+                  <td>$246</td>
+              </tr>
+                          <tr>
+                <td><a href="/953/team?team=7096">Bushrod Bombers</a></td>
+                <td>21</td>
+                <td>40</td>
+                <td>$286</td>
+                                  <td>$3</td>
+                                    <td>$0</td>
+                  <td>$0</td>
+                  <td>$0</td>
+                  <td>$117</td>
+              </tr>
+                          <tr>
+                <td><a href="/953/team?team=7097">El Patrón</a></td>
+                <td>23</td>
+                <td>40</td>
+                <td>$233</td>
+                                  <td>$9</td>
+                                    <td>$0</td>
+                  <td>$0</td>
+                  <td>$0</td>
+                  <td>$176</td>
+              </tr>
+                      </tbody>
+        </table>
+      </div>
+  </section>
+
+  <section class="section-container">
+    <header class="section-container-header">
+      <h3>Team Depth (MLB only)</h3>
+    </header>
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>Team</th>
+                          <th>C</th>
+                            <th>1B</th>
+                            <th>2B</th>
+                            <th>SS</th>
+                            <th>3B</th>
+                            <th>OF</th>
+                            <th>Util</th>
+                            <th>SP</th>
+                            <th>RP</th>
+                        </tr>
+        </thead>
+        <tbody>
+                      <tr>
+              <td><a href="https://ottoneu.fangraphs.com/953/team?team=6768">Clueless Joes</a></td>
+                              <td>1</td>
+                                <td>2</td>
+                                <td>3</td>
+                                <td>3</td>
+                                <td>1</td>
+                                <td>5</td>
+                                <td>1</td>
+                                <td>7</td>
+                                <td>4</td>
+                            </tr>
+                        <tr>
+              <td><a href="https://ottoneu.fangraphs.com/953/team?team=6877">St. Clair Gorillas</a></td>
+                              <td>2</td>
+                                <td>4</td>
+                                <td>3</td>
+                                <td>2</td>
+                                <td>3</td>
+                                <td>4</td>
+                                <td>2</td>
+                                <td>7</td>
+                                <td>7</td>
+                            </tr>
+                        <tr>
+              <td><a href="https://ottoneu.fangraphs.com/953/team?team=6934">Feather in Your Cap Space</a></td>
+                              <td>2</td>
+                                <td>1</td>
+                                <td>4</td>
+                                <td>5</td>
+                                <td>3</td>
+                                <td>4</td>
+                                <td>0</td>
+                                <td>5</td>
+                                <td>6</td>
+                            </tr>
+                        <tr>
+              <td><a href="https://ottoneu.fangraphs.com/953/team?team=7066">The 1:07 Train to Poundtown</a></td>
+                              <td>2</td>
+                                <td>2</td>
+                                <td>1</td>
+                                <td>1</td>
+                                <td>3</td>
+                                <td>7</td>
+                                <td>0</td>
+                                <td>9</td>
+                                <td>6</td>
+                            </tr>
+                        <tr>
+              <td><a href="https://ottoneu.fangraphs.com/953/team?team=7083">Technocratic Clerk: Serving Geeks</a></td>
+                              <td>1</td>
+                                <td>1</td>
+                                <td>1</td>
+                                <td>3</td>
+                                <td>1</td>
+                                <td>4</td>
+                                <td>0</td>
+                                <td>7</td>
+                                <td>1</td>
+                            </tr>
+                        <tr>
+              <td><a href="https://ottoneu.fangraphs.com/953/team?team=7087">Mr. September</a></td>
+                              <td>1</td>
+                                <td>2</td>
+                                <td>3</td>
+                                <td>2</td>
+                                <td>1</td>
+                                <td>5</td>
+                                <td>0</td>
+                                <td>4</td>
+                                <td>0</td>
+                            </tr>
+                        <tr>
+              <td><a href="https://ottoneu.fangraphs.com/953/team?team=7090">the balking dead</a></td>
+                              <td>3</td>
+                                <td>2</td>
+                                <td>2</td>
+                                <td>1</td>
+                                <td>2</td>
+                                <td>7</td>
+                                <td>0</td>
+                                <td>11</td>
+                                <td>2</td>
+                            </tr>
+                        <tr>
+              <td><a href="https://ottoneu.fangraphs.com/953/team?team=7091">Weeghman's Whales</a></td>
+                              <td>2</td>
+                                <td>4</td>
+                                <td>4</td>
+                                <td>5</td>
+                                <td>3</td>
+                                <td>5</td>
+                                <td>0</td>
+                                <td>8</td>
+                                <td>9</td>
+                            </tr>
+                        <tr>
+              <td><a href="https://ottoneu.fangraphs.com/953/team?team=7093">Scotty Smalls</a></td>
+                              <td>1</td>
+                                <td>3</td>
+                                <td>2</td>
+                                <td>1</td>
+                                <td>2</td>
+                                <td>4</td>
+                                <td>0</td>
+                                <td>7</td>
+                                <td>4</td>
+                            </tr>
+                        <tr>
+              <td><a href="https://ottoneu.fangraphs.com/953/team?team=7095">Trade Proposed by NOT COOL</a></td>
+                              <td>1</td>
+                                <td>3</td>
+                                <td>3</td>
+                                <td>2</td>
+                                <td>4</td>
+                                <td>3</td>
+                                <td>0</td>
+                                <td>4</td>
+                                <td>3</td>
+                            </tr>
+                        <tr>
+              <td><a href="https://ottoneu.fangraphs.com/953/team?team=7096">Bushrod Bombers</a></td>
+                              <td>1</td>
+                                <td>2</td>
+                                <td>2</td>
+                                <td>3</td>
+                                <td>3</td>
+                                <td>4</td>
+                                <td>0</td>
+                                <td>7</td>
+                                <td>3</td>
+                            </tr>
+                        <tr>
+              <td><a href="https://ottoneu.fangraphs.com/953/team?team=7097">El Patrón</a></td>
+                              <td>1</td>
+                                <td>3</td>
+                                <td>0</td>
+                                <td>2</td>
+                                <td>0</td>
+                                <td>7</td>
+                                <td>0</td>
+                                <td>8</td>
+                                <td>5</td>
+                            </tr>
+                    </tbody>
+      </table>
+    </div>
+  </section>
+</main>
+
+
+    <footer class="footer">
+      <nav class="nav">
+        <ul>
+          <li>
+            <a href="http://www.fangraphs.com/tos.aspx">Terms of Service</a>
+          </li>
+          <li>
+            <a href="http://www.fangraphs.com/policy.aspx">Privacy Policy</a>
+          </li>
+          <li>
+            <a href="http://www.fangraphs.com">Fangraphs</a>
+          </li>
+          <li>
+            <a href="/contactus">Contact Us</a>
+          </li>
+          <li>
+            <a href="/support">FAQ</a>
+          </li>
+          <li>
+              <a href="/rules">Rules</a>
+          </li>
+          <li>
+              <a href="/store">Store</a>
+          </li>
+          <li>
+            <a href="https://community.ottoneu.com/">Community</a>
+          </li>
+                    <li>
+            <a href="/user/Blue+Shoes">Profile</a>          </li>
+
+          <li>
+            <a href="/logout">Log out</a>
+          </li>
+                    </ul>
+      </nav>
+    </footer>
+
+    </script>
+    </body>
+    </html>
