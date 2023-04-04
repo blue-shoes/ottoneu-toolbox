@@ -36,6 +36,9 @@ def get_rep_levels(value_calc: ValueCalculation) -> Dict[str,float]:
 def save_calculation(value_calc: ValueCalculation) -> ValueCalculation:
     '''Saves the ValueCalculation to the database and returns a fully loaded version of the now saved ValueCalculation'''
     with Session() as session:
+        for pv in value_calc.values:
+            #Assign PlayerValue Player field from projection for consistency within session.
+            pv.player = value_calc.projection.get_player_projection(pv.player_id).player
         session.add(value_calc)
         session.commit()
         saved = load_calculation(value_calc.index)
