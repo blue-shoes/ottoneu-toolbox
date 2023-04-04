@@ -27,12 +27,12 @@ def get_draft_by_league(lg_id:int) -> Draft:
                 .first()
     return draft
 
-def create_target(draft: Draft, playerid: int, price: int) -> Draft_Target:
+def create_target(draft_id:int, playerid: int, price: int) -> Draft_Target:
     '''Creates a Draft target for the given draft based on player id and prices, saves it to the database, and returns the fully loaded target.'''
     with Session() as session:
         target = Draft_Target()
-        target.draft_id = draft.index
-        target.player_id = playerid
+        target.draft_id = draft_id
+        target.player = player_services.get_player(playerid)
         target.price = price
         session.add(target)
         session.commit()
@@ -47,9 +47,10 @@ def update_target(target: Draft_Target, price: int) -> None:
         target.price = price
         session.commit()
 
-def delete_target(target:Draft_Target) -> None:
-    '''Deletes the given Draft_Target from the database'''
+def delete_target(target_id:int) -> None:
+    '''Deletes the given Draft_Target by id from the database'''
     with Session() as session:
+        target = session.query(Draft_Target).filter_by(index = target_id).first()
         session.delete(target)
         session.commit()
             

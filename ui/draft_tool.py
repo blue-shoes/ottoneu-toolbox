@@ -337,7 +337,7 @@ class DraftTool(tk.Frame):
         if target is None:
             dialog = draft_target.Dialog(self, playerid)
             if dialog.status == OK:
-                target = draft_services.create_target(self.draft, playerid, dialog.price)
+                target = draft_services.create_target(self.draft.index, playerid, dialog.price)
                 self.draft.targets.append(target)
         else: 
             dialog = draft_target.Dialog(self, playerid, target.price)
@@ -351,7 +351,7 @@ class DraftTool(tk.Frame):
     def remove_target(self, playerid):
         target = self.draft.get_target_by_player(playerid)
         self.draft.targets.remove(target)
-        draft_services.delete_target(target)
+        draft_services.delete_target(target.index)
         self.refresh_planning_frame()
         self.set_player_tags_all_tables(playerid)
     
