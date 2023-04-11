@@ -1,8 +1,9 @@
 import tkinter as tk     
 from tkinter import *    
 from tkinter import messagebox as mb
+from abc import ABC, abstractclassmethod
 
-class Dialog(tk.Toplevel):
+class Dialog(ABC, tk.Toplevel):
     def __init__(self, parent):
         super().__init__(parent)
         self.wizard = self.setup()
@@ -13,9 +14,9 @@ class Dialog(tk.Toplevel):
 
         self.wait_window()
 
+    @abstractclassmethod
     def setup(self):
-        #Override in subclasses
-        return None
+        pass
 
 class Wizard(tk.Frame):
     def __init__(self, parent):
