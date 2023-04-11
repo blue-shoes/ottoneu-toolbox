@@ -469,6 +469,9 @@ class CouchManagers_Team:
     cm_team_name:Mapped[str] = mapped_column(default=None)
     ottoneu_team_id:Mapped[int] = mapped_column(nullable=False, default=None)
 
+    def __hash__(self) -> int:
+        return hash(self.index)
+
 @reg.mapped_as_dataclass
 class Adv_Calc_Option:
     '''Class to hold advanced calculation inputs'''
