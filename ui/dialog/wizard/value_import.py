@@ -108,7 +108,7 @@ class Wizard(wizard.Wizard):
                 self.value.hitter_basis = RankingBasis.FG_AC
                 self.value.pitcher_basis = RankingBasis.FG_AC
                 if self.step1_fg.projection is not None:
-                    self.value.projection = self.step1_fg.projection
+                    self.value.projection = projection_services.get_projection(self.step1_fg.projection.index)
                 progd.set_task_title('Parsing')
                 progd.set_completion_percent(15)
                 self.value = calculation_services.get_values_from_fg_auction_files(self.value, hit_df, pitch_df, int(self.step1_fg.rep_level_value_str.get()),progd)
@@ -122,6 +122,8 @@ class Wizard(wizard.Wizard):
                 self.value.name = self.step1.name_tv.get()
                 self.value.description = self.step1.desc_tv.get()
                 self.value.set_input(CDT.REP_LEVEL_SCHEME, float(RepLevelScheme.STATIC_REP_LEVEL.value))
+                if self.step1.projection is not None:
+                    self.value.projection = projection_services.get_projection(self.step1.projection.index)
                 progd.set_task_title('Uploading')
                 progd.set_completion_percent(15)
                 self.value = calculation_services.save_calculation_from_file(self.value, self.step1.df, progd, rep_val=int(self.step1.rep_level_value_str.get()))
