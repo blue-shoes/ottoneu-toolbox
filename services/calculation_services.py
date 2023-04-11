@@ -36,9 +36,29 @@ def get_rep_levels(value_calc: ValueCalculation) -> Dict[str,float]:
 def save_calculation(value_calc: ValueCalculation) -> ValueCalculation:
     '''Saves the ValueCalculation to the database and returns a fully loaded version of the now saved ValueCalculation'''
     with Session() as session:
-        for pv in value_calc.values:
-            #Assign PlayerValue Player field from projection for consistency within session.
-            pv.player = value_calc.projection.get_player_projection(pv.player_id).player
+        if value_calc.projection is not None:
+            seen_players = {}
+            for pv in value_calc.values:
+                #Assign PlayerValue Player field from projection for consistency within session.
+                pp = value_calc.projection.get_player_projection(pv.player_id)
+                if pp is None:
+                    if pv.player_id in seen_players:
+                        pv.player = seen_players[pv.player_id]
+                    else:
+                        player = player_services.get_player(pv.player_id)
+                        seen_players[pv.player_id] = player
+                        pv.player = player
+                else:
+                    pv.player = pp.player
+        else:
+            seen_players = {}
+            for pv in value_calc.values:
+                if pv.player_id in seen_players:
+                    pv.player = seen_players[pv.player_id]
+                else:
+                    player = player_services.get_player(pv.player_id)
+                    seen_players[pv.player_id] = player
+                    pv.player = player
         session.add(value_calc)
         session.commit()
         saved = load_calculation(value_calc.index)
@@ -621,14 +641,14 @@ def init_outputs_from_upload(vc: ValueCalculation, df : DataFrame, game_type:Sco
                         elif vc.hitter_basis == RankingBasis.PPPA:
                             pt.append(pp.get_stat(StatType.PA))
                         else:
-                            raise Exception(f'Hitter basis {vc.hitter_basis.value} not implemented')
+                            raise Exception(f'Hitter basis {vc.hitter_basis} not implemented')
                     else:
                         if vc.pitcher_basis == RankingBasis.PPG:
                             pt.append(pp.get_stat(StatType.G_PIT))
-                        elif vc.hitter_basis == RankingBasis.PIP:
+                        elif vc.pitcher_basis == RankingBasis.PIP:
                             pt.append(pp.get_stat(StatType.IP))
                         else:
-                            raise Exception(f'Pitcher basis {vc.pitcher_basis.value} not implemented')
+                            raise Exception(f'Pitcher basis {vc.pitcher_basis} not implemented')
             else:
                 hit_dol_per_fom = -999
                 pitch_dol_per_fom = -999
@@ -747,7 +767,7 @@ def save_calculation_from_file(vc : ValueCalculation, df : DataFrame, pd=None, r
                 p_pt = pp.get_stat(StatType.IP)
             else:
                 raise Exception(f'Unhandled pitching basis {vc.pitcher_basis}')
-        elif ScoringFormat.is_points_type(vc.format):
+        elif not proj_derive and ScoringFormat.is_points_type(vc.format):
             h_points = row['Points']
             h_pt = row['H_PT']
             if pop_proj:
