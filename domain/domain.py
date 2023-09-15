@@ -112,6 +112,7 @@ class League:
     active:bool = field(default=True, metadata={"sa":Column(Boolean, nullable = False)})
 
     teams = relationship("Team", back_populates="league", cascade="all, delete")
+    projected_keepers = relationship("Projected_Keeper", back_populates="league", cascade="all, delete")
 
     def get_user_team(self):
         '''Returns the user\'s team for the league. None if no team is specified'''
@@ -133,6 +134,12 @@ class League:
             if team.site_id == site_id:
                 return team
         return None
+
+    def is_keeper(self, player_id:int) -> bool:
+        for keeper in self.projected_keepers:
+            if keeper.player_id == player_id:
+                return True
+        return False
 
 @mapper_registry.mapped
 @dataclass
@@ -207,6 +214,20 @@ class Roster_Spot:
 
     g_h:int = 0
     ip:int = 0
+
+@mapper_registry.mapped
+@dataclass
+class Projected_Keeper:
+    __tablename__ = "projected_keeper"
+    __sa_dataclass_metadata_key__ = "sa"
+    id:int = field(init=False, metadata={"sa":Column(Integer, primary_key=True)})
+    league_id:int = field(default=None, metadata={"sa":Column(Integer, ForeignKey("league.index"))})
+    league:League = field(default=None, metadata={"sa":relationship("League", back_populates="projected_keepers")})
+    
+    player_id:int = field(default=None, metadata={"sa":Column(Integer, ForeignKey("player.index"))})
+    player:Player = field(default=None, metadata={"sa":relationship("Player")})
+
+    season:int = field(default=None, metadata={"sa":Column(Integer)})
 
 @mapper_registry.mapped
 @dataclass
