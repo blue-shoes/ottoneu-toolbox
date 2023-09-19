@@ -1,5 +1,8 @@
 from ui import main
 import sys, getopt, os, shutil
+import icecream
+from icecream.icecream import ic
+
 
 def resource_path(end_file):
     """ Get absolute path to resource, works for dev and for PyInstaller """
@@ -7,6 +10,7 @@ def resource_path(end_file):
     return os.path.join(base_path, 'resources', end_file)
 
 if __name__ == "__main__":
+    icecream.install() #Install icecream debugger for use in rest of program
     args = sys.argv[1:]
     try:
         opts, args = getopt.getopt(args, 'dsb:')
