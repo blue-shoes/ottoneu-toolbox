@@ -49,7 +49,6 @@ class Standings(tk.Frame):
         self.standings_table.bind('<<TreeviewSelect>>', click_action)
     
     def refresh_standings(self):
-        league_services.calculate_league_table(self.league, self.value_calc, self.standings_type.get() == 1, self._inflation)
         for team in self.league.teams:
             tags = ''
             if team.users_team:
@@ -63,7 +62,7 @@ class Standings(tk.Frame):
             tot_val = 0.0
             surplus = 0.0
             for rs in team.roster_spots:
-                if self.league.is_keeper(rs.player_id):
+                if not self.use_keepers or self.league.is_keeper(rs.player_id):
                     salaries += rs.salary
                     pv = self.value_calc.get_player_value(rs.player_id, pos=Position.OVERALL)
                     tot_val += pv.value

@@ -606,10 +606,12 @@ class DraftTool(tk.Frame):
                     index -= 1
                 last_time = most_recent
                 self.queue.put(('pos', list(set(update_pos))))
+                self.calc_inflation()
+                league_services.calculate_league_table(self.league, self.value_calculation, self.standings.standings_type.get() == 1, self.inflation)
             sleep(delay)
 
     def refresh_views(self, pos_keys=None):
-        self.calc_inflation()
+        self.inflation_str_var.set(f'Inflation: {"{:.1f}".format((self.inflation - 1.0)*100)}%')
         self.overall_view.refresh()
         if pos_keys == None:
             for pos in (Position.get_offensive_pos() + Position.get_pitching_pos()):
@@ -861,10 +863,6 @@ class DraftTool(tk.Frame):
             for pos in Position.get_pitching_pos():
                 self.pos_values[pos].drop('Salary', axis=1, inplace=True)
                 pd.increment_completion_percent(5)
-        
-        self.standings.league = self.controller.league
-        self.standings.value_calc = self.controller.value_calculation
-        self.standings.standings_table.refresh()
 
         if self.draft.cm_draft is not None:
             self.monitor_status.set(f'Using CM Draft {self.draft.cm_draft.cm_draft_id}')
@@ -881,8 +879,17 @@ class DraftTool(tk.Frame):
         pd.set_task_title('Updating available players...')
         self.update_rostered_players()
         pd.increment_completion_percent(5)
+
+        self.calc_inflation()
+
         pd.set_task_title('Refreshing views...')
         self.set_visible_columns()
+
+        self.standings.league = self.controller.league
+        self.standings.value_calc = self.controller.value_calculation
+        league_services.calculate_league_table(self.league, self.value_calculation, self.standings.standings_type.get() == 1, self.inflation)
+        self.standings.standings_table.refresh()
+
         self.refresh_views()
         pd.complete()
         if restart:
@@ -1287,8 +1294,7 @@ class DraftTool(tk.Frame):
         remaining_valued_roster_spots = self.valued_roster_spots - len(self.rosters)
         self.remaining_value = pos_val['Value'].sum() - remaining_valued_roster_spots
         self.remaining_dollars = (num_teams*400 - self.extra_value) - self.rosters['Salary'].sum() - remaining_valued_roster_spots
-        self.inflation = self.remaining_dollars / self.remaining_value
-        self.inflation_str_var.set(f'Inflation: {"{:.1f}".format((self.inflation - 1.0)*100)}%')
+        self.inflation = self.remaining_dollars / self.remaining_value  
 
     def update_rostered_players(self):
         self.values = self.values.merge(self.rosters[['Salary']], how='left', left_index=True, right_index=True, sort=False).fillna(0)
