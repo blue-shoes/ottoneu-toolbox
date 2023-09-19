@@ -159,7 +159,7 @@ def __add_pt(possibilities:List[Dict[int, int]],
              used_pos:List[Position]=[], 
              used_pt:int=0, 
              rep_lvl:Dict[Position, float]=None,
-             g_limit:float=163) -> None:
+             g_limit:float=162) -> None:
     if target_pos == Position.POS_OF:
         cap = 5*g_limit
     else:
