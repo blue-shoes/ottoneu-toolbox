@@ -1,0 +1,146 @@
+import tkinter as tk
+from tkinter import *              
+from tkinter import ttk 
+
+from domain.domain import League, ValueCalculation, Team, Roster_Spot
+from domain.enum import Position, AvgSalaryFom, Preference as Pref
+from services import league_services
+from ui.table import Table
+
+class Surplus(tk.Frame):
+
+    league:League
+    team:Team
+    value_calc:ValueCalculation
+    inflation:float
+
+    def __init__(self, parent, use_keepers:bool):
+        tk.Frame.__init__(self, parent)
+
+        self.parent = parent
+        self.controller = parent.controller
+        self.use_keepers = use_keepers
+        self.league = None
+        if use_keepers:
+            self.columns = ("Keeper Proj.", 'Player', 'Team', 'Pos', 'Roster', 'Salary', 'Value', 'Inf. Cost', 'Surplus', 'Inf. Surplus')
+        else:
+            self.columns = ('Player', 'Team', 'Pos', 'Roster', 'Salary', 'Value', 'Inf. Cost', 'Surplus', 'Inf. Surplus')
+        self.ottoverse_columns = ('Avg. Price', 'L10 Price', 'Roster %')
+
+        self.team_sv = StringVar()
+        self.team_sv.set("All Teams")
+        self.inflation = 0.0
+
+        self.__create_view()
+    
+    def __create_view(self):
+        header_frame = ttk.Frame(self)
+        header_frame.grid(row=0, column=0)
+
+        #yscrollbar = Scrollbar(header_frame)
+        #yscrollbar.pack(side = RIGHT, fill = Y)
+
+        tk.Label(header_frame, text='Team').grid(row=0, column=0)
+        self.team_list = ttk.Combobox(header_frame, textvariable=self.team_sv)
+        self.__set_team_list()
+        self.team_list.bind("<<ComboboxSelected>>", self.team_changed)
+
+        self.team_list.grid(row=0, column=1)
+
+        ttk.Button(header_frame, text='Trade Evaluation', command=self.trade_evaluation).grid(row=0, column=2)
+
+        #TODO: Add positional filter
+
+        table_frame = ttk.Frame(self, height=400, width=400, borderwidth=4)
+        table_frame.grid(row=1, column=0, sticky='nsew')
+
+        cols = self.columns + self.ottoverse_columns
+        widths = {}
+        widths['Player'] = 125
+        widths['Roster'] = 125
+        align = {}
+        align['Player'] = W
+        align['Roster'] = W
+        self.player_table = Table(table_frame, cols,sortable_columns=cols,reverse_col_sort=cols, column_widths=widths, init_sort_col='Surplus', column_alignments=align, checkbox=True)
+        self.player_table.tag_configure('users', background='#FCE19D')
+        self.player_table.add_scrollbar()
+        self.player_table.set_refresh_method(self.update_player_table)
+    
+    def __set_team_list(self):
+        name_list = []
+        name_list.append('All Teams')
+        name_list.append('Free Agents')
+
+        if self.league is not None:
+            for team in self.league.teams:
+                name_list.append(team.name)
+        self.team_list['values'] = tuple(name_list)
+        self.team_sv.set('All Teams')
+    
+    def team_changed(self, event: Event):
+        self.player_table.refresh()
+
+    def update_player_table(self):
+        if self.team_sv.get() == 'All Teams':
+            for team in self.league.teams:
+                for rs in team.roster_spots:
+                    tags = tuple()
+                    if team.users_team:
+                        tags=('users',)
+                    if self.use_keepers:
+                        if self.league.is_keeper(rs.player_id):
+                            tags = tags + ('kept',)
+                        else:
+                            tags = tags + ('unkept',)
+                    self.player_table.insert('', tk.END, text=rs.player_id, tags=tags, values=self.__get_player_row(rs, team))
+        elif self.team_sv.get() == 'Free Agents':
+            #TODO: Free Agents
+            ...
+        else:
+            for team in self.league.teams:
+                if team.name == self.team_sv.get():
+                    for rs in team.roster_spots:
+                        if self.use_keepers:
+                            if self.league.is_keeper(rs.player_id):
+                                tags = ('kept',)
+                            else:
+                                tags = ('unkept',)
+                        self.player_table.insert('', tk.END, text=rs.player_id, tags=tags, values=self.__get_player_row(rs, team))
+    
+    def __get_player_row(self, rs:Roster_Spot, team:Team) -> tuple[str]:
+        vals = []
+        vals.append(rs.player.name)
+        vals.append(rs.player.team)
+        vals.append(rs.player.position)
+        vals.append(team.name)
+        vals.append(f'${rs.salary}')
+        vc = self.value_calc.get_player_value(rs.player_id, Position.OVERALL)
+        if vc is not None:
+            val = vc.value
+        else:
+            val = 0.0
+        vals.append('$' + "{:.1f}".format(val))
+        vals.append('$' + "{:.1f}".format(val * (1 + self.inflation)))
+        vals.append('$' + "{:.1f}".format(val - rs.salary))
+        vals.append('$' + "{:.1f}".format(val * (1 + self.inflation) - rs.salary))
+
+        si = rs.player.get_salary_info_for_format(self.league.format)
+        if self.controller.preferences.get('General', Pref.AVG_SALARY_FOM) == AvgSalaryFom.MEAN.value:
+            vals.append(f'$' + "{:.1f}".format(si.avg_salary))
+        else:
+            vals.append(f'$' + "{:.1f}".format(si.med_salary))
+        vals.append(f'$' + "{:.1f}".format(si.last_10))
+        vals.append("{:.1f}".format(si.roster_percentage) + '%')
+        return tuple(vals)
+    
+    def trade_evaluation(self):
+        ...
+    
+    def update_league(self, league:League) -> None:
+        self.league = league
+        self.__set_team_list()
+    
+    def update_value_calc(self, value_calc:ValueCalculation) -> None:
+        self.value_calc = value_calc
+
+

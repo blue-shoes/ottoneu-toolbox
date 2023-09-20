@@ -46,6 +46,9 @@ class ValuesCalculation(tk.Frame):
         self.create_proj_val_frame()
         self.create_output_frame()
     
+    def value_change(self):
+        self.on_show()
+
     def on_show(self):
         self.value_calc = self.controller.value_calculation
         self.refresh_ui()

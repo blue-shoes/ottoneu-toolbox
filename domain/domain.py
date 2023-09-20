@@ -221,11 +221,11 @@ class Projected_Keeper:
     __tablename__ = "projected_keeper"
     __sa_dataclass_metadata_key__ = "sa"
     id:int = field(init=False, metadata={"sa":Column(Integer, primary_key=True)})
-    league_id:int = field(default=None, metadata={"sa":Column(Integer, ForeignKey("league.index"))})
+    league_id:int = field(default=None, metadata={"sa":Column(Integer, ForeignKey("league.index"), nullable=False)})
     league:League = field(default=None, metadata={"sa":relationship("League", back_populates="projected_keepers")})
     
-    player_id:int = field(default=None, metadata={"sa":Column(Integer, ForeignKey("player.index"))})
-    player:Player = field(default=None, metadata={"sa":relationship("Player")})
+    player_id:int = field(default=None, metadata={"sa":Column(Integer, ForeignKey("player.index"), nullable=False)})
+    player:Player = field(default=None, metadata={"sa":relationship("Player", lazy="joined")})
 
     season:int = field(default=None, metadata={"sa":Column(Integer)})
 

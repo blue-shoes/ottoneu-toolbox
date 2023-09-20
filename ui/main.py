@@ -14,6 +14,7 @@ from ui.dialog import preferences, progress, league_select, value_select, help, 
 from ui.start import Start
 from ui.draft_tool import DraftTool
 from ui.values import ValuesCalculation
+from ui.league import League_Analysis
 from services import player_services, salary_services, league_services, property_service
 from domain.domain import Property
 from domain.enum import Preference as Pref, PropertyType
@@ -64,6 +65,7 @@ class Main(tk.Tk):
         self.create_frame(Start)
         self.create_frame(ValuesCalculation)
         self.create_frame(DraftTool)
+        self.create_frame(League_Analysis)
 
         logging.debug('Starting main window')
         self.show_start_page()
@@ -154,6 +156,7 @@ class Main(tk.Tk):
         self.main_menu = mm = tk.Menu(mb, tearoff=0)
         self.view_menu = vm = tk.Menu(mm, tearoff=0)
         vm.add_command(label="Value Calculator", command=self.show_player_values)
+        vm.add_command(label="League Analysis", command=self.show_league_analysis)
         vm.add_command(label="Draft Tool", command=self.show_draft_tracker)
         mm.add_cascade(label="Open Window...", menu=vm)
         mm.add_separator()
@@ -247,8 +250,7 @@ class Main(tk.Tk):
         self.show_frame(DraftTool.__name__)
 
     def show_league_analysis(self):
-        # TODO:Implement league analysis
-        mb.showwarning("League analysis not currently supported")
+        self.show_frame(League_Analysis.__name__)
     
     def select_league(self):
         dialog = league_select.Dialog(self)
@@ -257,17 +259,15 @@ class Main(tk.Tk):
             self.league = league_services.refresh_league(dialog.league.index, pd=pd)
             pd.set_completion_percent(100)
             pd.destroy()
-            if self.current_page == DraftTool.__name__:
-                self.frames[DraftTool.__name__].league_change()
+            if hasattr(self.frames[self.current_page], 'league_change') and callable(self.frames[self.current_page].league_change):
+                self.frames[self.current_page].league_change()
     
     def select_value_set(self):
         dialog = value_select.Dialog(self.container, self)
         if dialog.value is not None:
             self.value_calculation = dialog.value
-            if self.current_page == ValuesCalculation.__name__:
-                self.frames[ValuesCalculation.__name__].on_show()
-            elif self.current_page == DraftTool.__name__:
-                self.frames[DraftTool.__name__].value_change()
+            if hasattr(self.frames[self.current_page], 'value_change') and callable(self.frames[self.current_page].value_change):
+                self.frames[self.current_page].value_change()
 
     def exit(self):
         self.destroy()    

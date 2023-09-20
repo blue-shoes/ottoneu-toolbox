@@ -2,14 +2,20 @@ from tkinter import *
 from tkinter import ttk 
 
 class Table(ttk.Treeview):
-    def __init__(self, parent, columns, column_alignments=None, column_widths=None, sortable_columns=None, reverse_col_sort=None, hscroll=True, init_sort_col=None, custom_sort={}):
+
+    def __init__(self, parent, columns, column_alignments=None, column_widths=None, sortable_columns=None, reverse_col_sort=None, hscroll=True, init_sort_col=None, custom_sort={}, checkbox:bool=False):
         super().__init__(parent, columns=columns, show='headings')
+
+        __checked = PhotoImage('checked', data=b'GIF89a\x0e\x00\x0e\x00\xf0\x00\x00\x00\x00\x00\x00\x00\x00!\xf9\x04\x01\x00\x00\x00\x00,\x00\x00\x00\x00\x0e\x00\x0e\x00\x00\x02#\x04\x82\xa9v\xc8\xef\xdc\x83k\x9ap\xe5\xc4\x99S\x96l^\x83qZ\xd7\x8d$\xa8\xae\x99\x15Zl#\xd3\xa9"\x15\x00;', master=self)
+        __unchecked = PhotoImage('unchecked', data=b'GIF89a\x0e\x00\x0e\x00\xf0\x00\x00\x00\x00\x00\x00\x00\x00!\xf9\x04\x01\x00\x00\x00\x00,\x00\x00\x00\x00\x0e\x00\x0e\x00\x00\x02\x1e\x04\x82\xa9v\xc1\xdf"|i\xc2j\x19\xce\x06q\xed|\xd2\xe7\x89%yZ^J\x85\x8d\xb2\x00\x05\x00;', master=self)
+
         self.hscroll = hscroll
         self.reverse_sort = {}
         self.vsb = None
         self.hsb = None
         self.custom_sort = custom_sort
         col_num = 1
+        self.checkbox = checkbox
         for col in columns:
             align = CENTER
             if column_alignments != None:
@@ -43,6 +49,11 @@ class Table(ttk.Treeview):
             self.reverse_sort[self.sort_col] = not self.reverse_sort[self.sort_col]
         else:
             self.sort_col = None
+        if checkbox:
+            self.tag_configure('checked', image='checked')
+            self.tag_configure('unchecked', image='unchecked')
+            style = ttk.Style(self)
+            style.layout('cb.TreeviewRow', [('Treeitem.image', {'side': 'left', 'sticky':''})])
         #self.add_scrollbar()
 
     def get_row_by_text(self, text):
@@ -79,8 +90,31 @@ class Table(ttk.Treeview):
         self.refresh_method = refresh_method
     
     def set_row_select_method(self, select_method):
-        self.bind('<<TreeviewSelect>>', select_method)
+        if self.checkbox:
+            self.bind('<<TreeviewSelect>>', self.__checkbox_method)
+        self.bind('<<TreeviewSelect>>', select_method, add=True)
+
+    def __checkbox_method(self, event, item):
+        """Handle click on items."""
+        if self.identify_row(event.y) == item:
+            if self.identify_column(event.x) == '#1':
+                # toggle checkbox image
+                if self.tag_has('checked', item):
+                    self.__tag_remove(item, 'checked')
+                    self.__tag_add(item, ('unchecked',))
+                else:
+                    self.__tag_remove(item, 'unchecked')
+                    self.__tag_add(item, ('checked',))
     
+    def __tag_add(self, item, tags):
+        new_tags = tuple(self.item(item, 'tags')) + tuple(tags)
+        self.item(item, tags=new_tags)
+
+    def __tag_remove(self, item, tag):
+        tags = list(self.item(item, 'tags'))
+        tags.remove(tag)
+        self.item(item, tags=tags)
+
     def treeview_sort_column(self, col, reverse=None):
         self.sort_col = col
         if reverse is not None:

@@ -1,7 +1,7 @@
 import copy
 from typing import Tuple, List, Dict
 
-from domain.domain import Team, Roster_Spot, Projection, Player
+from domain.domain import Team, Roster_Spot, Projection, Player, Projected_Keeper
 from domain.enum import StatType, ScoringFormat, Position, RankingBasis
 from domain.exception import InputException
 from services import calculation_services, player_services, projection_services
@@ -18,6 +18,7 @@ empty_pt_dict = {Position.POS_C:{},
                 Position.POS_RP:{},}
 
 def optimize_team_pt(team:Team, 
+                     keepers:List[Projected_Keeper],
                      proj:Projection, 
                      format=ScoringFormat, 
                      off_opt_stat:StatType=StatType.R, 
@@ -36,51 +37,53 @@ def optimize_team_pt(team:Team,
     if current_pt is None:
         current_pt = copy.deepcopy(empty_pt_dict)
     team.index_rs()
+    keeper_index = [k.player_id for k in keepers]
     for rs in team.roster_spots:
-        if rs.player.pos_eligible(Position.OFFENSE):
-            #Offense
-            pp = proj.get_player_projection(rs.player.index)
-            if pp is None:
-                continue
-            g = pp.get_stat(StatType.G_HIT)
-            if not ScoringFormat.is_points_type(format):
-                if g is None or g == 0:
-                    o_opt_pg[rs.player] = (0, 0)
-                else:
-                    o_opt_pg[rs.player] = (g, pp.get_stat(off_opt_stat) / g)
-            else:
-                if g is None or g == 0:
-                    o_opt_pg[rs.player] = (0, 0)
-                else:
-                    o_opt_pg[rs.player] = (g, calculation_services.get_batting_point_rate_from_player_projection(pp, RankingBasis.PPG))
-        if rs.player.pos_eligible(Position.PITCHER):
-            #Pitcher
-            pp = proj.get_player_projection(rs.player.index)
-            if pp is None:
-                continue
-            g = pp.get_stat(StatType.G_PIT)
-            gs = pp.get_stat(StatType.GS_PIT)
-            ip = pp.get_stat(StatType.IP)
-            if not ScoringFormat.is_points_type(format):
-                if g is None or g == 0 or ip is None or ip == 0:
-                    p_opt_pg[rs.player] = ((0,0), 0)
-                else:
-                    if pitch_basis == RankingBasis.PIP:
-                        p_opt_pg[rs.player] = (projection_services.get_pitcher_role_ips(pp), pp.get_stat(pit_opt_stat) / ip)
-                    elif pitch_basis == RankingBasis.PPG:
-                        p_opt_pg[rs.player] = ((gs, g-gs), pp.get_stat(pit_opt_stat) / g)
+        if len(keepers) == 0 or rs.player_id in keeper_index:
+            if rs.player.pos_eligible(Position.OFFENSE):
+                #Offense
+                pp = proj.get_player_projection(rs.player.index)
+                if pp is None:
+                    continue
+                g = pp.get_stat(StatType.G_HIT)
+                if not ScoringFormat.is_points_type(format):
+                    if g is None or g == 0:
+                        o_opt_pg[rs.player] = (0, 0)
                     else:
-                        raise InputException(f'Unexpected pitch_basis value {pitch_basis}')
-            else:
-                if g is None or g == 0 or ip is None or ip == 0:
-                    p_opt_pg[rs.player] = ((0,0), 0)
+                        o_opt_pg[rs.player] = (g, pp.get_stat(off_opt_stat) / g)
                 else:
-                    if pitch_basis == RankingBasis.PIP:
-                        p_opt_pg[rs.player] = (projection_services.get_pitcher_role_ips(pp), calculation_services.get_pitching_point_rate_from_player_projection(pp, format=format, basis=RankingBasis.PIP))
-                    elif pitch_basis == RankingBasis.PPG:
-                        p_opt_pg[rs.player] = ((gs, g-gs), calculation_services.get_pitching_point_rate_from_player_projection(pp, format=format, basis=RankingBasis.PPG))
+                    if g is None or g == 0:
+                        o_opt_pg[rs.player] = (0, 0)
                     else:
-                        raise InputException(f'Unexpected pitch_basis value {pitch_basis}')
+                        o_opt_pg[rs.player] = (g, calculation_services.get_batting_point_rate_from_player_projection(pp, RankingBasis.PPG))
+            if rs.player.pos_eligible(Position.PITCHER):
+                #Pitcher
+                pp = proj.get_player_projection(rs.player.index)
+                if pp is None:
+                    continue
+                g = pp.get_stat(StatType.G_PIT)
+                gs = pp.get_stat(StatType.GS_PIT)
+                ip = pp.get_stat(StatType.IP)
+                if not ScoringFormat.is_points_type(format):
+                    if g is None or g == 0 or ip is None or ip == 0:
+                        p_opt_pg[rs.player] = ((0,0), 0)
+                    else:
+                        if pitch_basis == RankingBasis.PIP:
+                            p_opt_pg[rs.player] = (projection_services.get_pitcher_role_ips(pp), pp.get_stat(pit_opt_stat) / ip)
+                        elif pitch_basis == RankingBasis.PPG:
+                            p_opt_pg[rs.player] = ((gs, g-gs), pp.get_stat(pit_opt_stat) / g)
+                        else:
+                            raise InputException(f'Unexpected pitch_basis value {pitch_basis}')
+                else:
+                    if g is None or g == 0 or ip is None or ip == 0:
+                        p_opt_pg[rs.player] = ((0,0), 0)
+                    else:
+                        if pitch_basis == RankingBasis.PIP:
+                            p_opt_pg[rs.player] = (projection_services.get_pitcher_role_ips(pp), calculation_services.get_pitching_point_rate_from_player_projection(pp, format=format, basis=RankingBasis.PIP))
+                        elif pitch_basis == RankingBasis.PPG:
+                            p_opt_pg[rs.player] = ((gs, g-gs), calculation_services.get_pitching_point_rate_from_player_projection(pp, format=format, basis=RankingBasis.PPG))
+                        else:
+                            raise InputException(f'Unexpected pitch_basis value {pitch_basis}')
     o_sorted = sorted(o_opt_pg.items(), key=lambda x:x[1][1], reverse=True)
 
     possibilities = []

@@ -1,5 +1,5 @@
 from pandas import DataFrame
-from domain.domain import League, Team, Roster_Spot, Player, Draft, ValueCalculation
+from domain.domain import League, Team, Roster_Spot, Player, Draft, ValueCalculation, Projected_Keeper
 from domain.enum import ScoringFormat, Position, CalculationDataType, StatType, RankingBasis
 from domain.exception import InputException
 from dao.session import Session
@@ -96,16 +96,22 @@ def get_league_ottoneu_id(league_idx:int) -> int:
 def get_league(league_idx:int, rosters:bool=True) -> League:
     '''Retrieves the league from the database for the given index. If rosters is True, the league's teams and roster_spots are populated. Otherwise a shallow load is returned.'''
     with Session() as session:
-        if rosters:
-            league = (session.query(League)
-                    .options(
-                        joinedload(League.teams)
-                        .joinedload(Team.roster_spots)
-                        .joinedload(Roster_Spot.player)
-                    )
-                    .filter_by(index = league_idx).first())
-        else:
-            league = (session.query(League).filter_by(index = league_idx).first())
+        league = get_league_in_session(session, league_idx, rosters)
+    return league
+
+def get_league_in_session(session:Session, league_idx:int, rosters:bool=True) -> League:
+    if rosters:
+        league = (session.query(League)
+                .options(
+                    joinedload(League.teams)
+                    .joinedload(Team.roster_spots)
+                    .joinedload(Roster_Spot.player)
+                )
+                .filter_by(index = league_idx).first())
+        for keeper in league.projected_keepers:
+            pass
+    else:
+        league = (session.query(League).filter_by(index = league_idx).first())
     return league
 
 def create_league(league_ottoneu_id:int, pd=None) -> League:
@@ -186,7 +192,7 @@ def calculate_league_table(league:League, value_calc:ValueCalculation, fill_pt:b
     if in_season:
         stats ,_, pt = Scrape_Ottoneu().scrape_standings_page(league.index, date_util.get_current_ottoneu_year())
     for team in league.teams:
-        project_team_results(team, value_calc, fill_pt, inflation, stats=stats, accrued_pt=pt)        
+        project_team_results(team, value_calc, fill_pt, inflation, stats=stats, accrued_pt=pt, keepers=league.projected_keepers)        
     if not ScoringFormat.is_points_type(league.format):
         calculate_league_cat_ranks(league)
     team_list = []
@@ -194,7 +200,7 @@ def calculate_league_table(league:League, value_calc:ValueCalculation, fill_pt:b
         team_list.append(team)
     set_team_ranks(league)
 
-def project_team_results(team:Team, value_calc:ValueCalculation, fill_pt:bool=False, inflation:float=None, stats:DataFrame=None, accrued_pt:DataFrame=None) -> None:
+def project_team_results(team:Team, value_calc:ValueCalculation, fill_pt:bool=False, inflation:float=None, stats:DataFrame=None, accrued_pt:DataFrame=None, keepers:List[Projected_Keeper]=[]) -> None:
     if accrued_pt is not None:
         #TODO: Need to adjust targets here
         ...
@@ -203,14 +209,14 @@ def project_team_results(team:Team, value_calc:ValueCalculation, fill_pt:bool=Fa
     if fill_pt:
         rep_lvl = value_calc.get_rep_level_map()
         if ScoringFormat.is_h2h(value_calc.format):
-            pt = roster_services.optimize_team_pt(team, value_calc.projection, value_calc.format, rep_lvl=rep_lvl, rp_limit=value_calc.get_input(CalculationDataType.RP_G_TARGET, 10), sp_limit=value_calc.get_input(CalculationDataType.GS_LIMIT, 10), pitch_basis=value_calc.pitcher_basis, off_g_limit=value_calc.get_input(CalculationDataType.BATTER_G_TARGET, 162))
+            pt = roster_services.optimize_team_pt(team, keepers, value_calc.projection, value_calc.format, rep_lvl=rep_lvl, rp_limit=value_calc.get_input(CalculationDataType.RP_G_TARGET, 10), sp_limit=value_calc.get_input(CalculationDataType.GS_LIMIT, 10), pitch_basis=value_calc.pitcher_basis, off_g_limit=value_calc.get_input(CalculationDataType.BATTER_G_TARGET, 162))
         else:
-            pt = roster_services.optimize_team_pt(team, value_calc.projection, value_calc.format, rep_lvl=rep_lvl, rp_limit=value_calc.get_input(CalculationDataType.RP_IP_TARGET, 350), off_g_limit=value_calc.get_input(CalculationDataType.BATTER_G_TARGET, 162))
+            pt = roster_services.optimize_team_pt(team, keepers, value_calc.projection, value_calc.format, rep_lvl=rep_lvl, rp_limit=value_calc.get_input(CalculationDataType.RP_IP_TARGET, 350), off_g_limit=value_calc.get_input(CalculationDataType.BATTER_G_TARGET, 162))
     else:
         if ScoringFormat.is_h2h(value_calc.format):
-            pt = roster_services.optimize_team_pt(team, value_calc.projection, value_calc.format, rp_limit=value_calc.get_input(CalculationDataType.RP_G_TARGET, 10), sp_limit=value_calc.get_input(CalculationDataType.GS_LIMIT, 10), pitch_basis=value_calc.pitcher_basis, off_g_limit=value_calc.get_input(CalculationDataType.BATTER_G_TARGET, 162))
+            pt = roster_services.optimize_team_pt(team, keepers, value_calc.projection, value_calc.format, rp_limit=value_calc.get_input(CalculationDataType.RP_G_TARGET, 10), sp_limit=value_calc.get_input(CalculationDataType.GS_LIMIT, 10), pitch_basis=value_calc.pitcher_basis, off_g_limit=value_calc.get_input(CalculationDataType.BATTER_G_TARGET, 162))
         else:
-            pt = roster_services.optimize_team_pt(team, value_calc.projection, value_calc.format, rp_limit=value_calc.get_input(CalculationDataType.RP_IP_TARGET, 350), off_g_limit=value_calc.get_input(CalculationDataType.BATTER_G_TARGET, 162))
+            pt = roster_services.optimize_team_pt(team, keepers, value_calc.projection, value_calc.format, rp_limit=value_calc.get_input(CalculationDataType.RP_IP_TARGET, 350), off_g_limit=value_calc.get_input(CalculationDataType.BATTER_G_TARGET, 162))
 
     if ScoringFormat.is_points_type(value_calc.format):
         if stats is not None:
