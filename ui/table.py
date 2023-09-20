@@ -53,7 +53,8 @@ class Table(ttk.Treeview):
             self.tag_configure('checked', image='checked')
             self.tag_configure('unchecked', image='unchecked')
             style = ttk.Style(self)
-            style.layout('cb.TreeviewRow', [('Treeitem.image', {'side': 'left', 'sticky':''})])
+            style.layout('cb.Treeview.Row', [('Treeitem.row',{'sticky':'nswe'}),('Treeitem.image', {'side': 'left', 'sticky':''})])
+            self.bind('<ButtonRelease-1>', self.__checkbox_method)
         #self.add_scrollbar()
 
     def get_row_by_text(self, text):
@@ -89,15 +90,14 @@ class Table(ttk.Treeview):
     def set_refresh_method(self, refresh_method):
         self.refresh_method = refresh_method
     
-    def set_row_select_method(self, select_method):
-        if self.checkbox:
-            self.bind('<<TreeviewSelect>>', self.__checkbox_method)
+    def set_row_select_method(self, select_method):            
         self.bind('<<TreeviewSelect>>', select_method, add=True)
 
-    def __checkbox_method(self, event, item):
+    def __checkbox_method(self, event):
         """Handle click on items."""
-        if self.identify_row(event.y) == item:
-            if self.identify_column(event.x) == '#1':
+        if len(self.selection()) > 0:
+            item = self.selection()[0]
+            if event.widget.identify_column(event.x) == '#1':
                 # toggle checkbox image
                 if self.tag_has('checked', item):
                     self.__tag_remove(item, 'checked')
