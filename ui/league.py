@@ -14,7 +14,7 @@ class League_Analysis(tk.Frame):
     value_calculation:ValueCalculation
 
     def __init__(self, parent, controller):
-        tk.Frame.__init__(self, parent)
+        tk.Frame.__init__(self, parent, height=1000, width=1000)
         self.parent = parent
         self.controller = controller
         self.league = None
@@ -46,28 +46,34 @@ class League_Analysis(tk.Frame):
         self.values_name = StringVar()
         self.inflation_sv = StringVar()
 
+        header_frame = ttk.Frame(self)
+        header_frame.pack(side=TOP, fill='x', expand=False)
+
         if self.controller.league is None:
             self.league_text_var.set("--")
         else:
             self.league_text_var.set(self.controller.league.name)
-        self.lg_lbl = ttk.Label(self, textvariable=self.league_text_var, font='bold')
-        self.lg_lbl.grid(column=0,row=0, pady=5, columnspan=2)
+        self.lg_lbl = ttk.Label(header_frame, textvariable=self.league_text_var, font='bold')
+        self.lg_lbl.pack(side=LEFT)
 
         if self.value_calculation is None:
             self.values_name.set('No value calculation selected')
         else:
             self.values_name.set(f'Selected Values: {self.value_calculation.name}')
-        ttk.Label(self, textvariable=self.values_name).grid(row=0, column=2)
+        ttk.Label(header_frame, textvariable=self.values_name).pack(side=LEFT)
 
-        self.inflation_lbl = ttk.Label(self, textvariable=self.inflation_sv)
-        self.inflation_lbl.grid(column=3,row=0)
+        self.inflation_lbl = ttk.Label(header_frame, textvariable=self.inflation_sv)
+        self.inflation_lbl.pack(side=LEFT)
+
+        big_frame = ttk.Frame(self)
+        big_frame.pack(side=TOP, expand=True, fill='both')
 
         #TODO: make the user_keepers argument dynamic
-        self.standings = standings.Standings(self, use_keepers=True)
-        self.standings.grid(row=1, column=0, rowspan=5)
+        self.standings = standings.Standings(big_frame, use_keepers=True)
+        self.standings.pack(side=LEFT, fill='both', expand=True)
 
-        self.surplus = surplus.Surplus(self, use_keepers=True)
-        self.surplus.grid(row=1, column=1, rowspan=4, columnspan=3)
+        self.surplus = surplus.Surplus(big_frame, use_keepers=True)
+        self.surplus.pack(side=LEFT, fill='both', expand=True)
     
     def league_change(self):
         self.league = self.controller.league

@@ -18,7 +18,7 @@ class Surplus(tk.Frame):
         tk.Frame.__init__(self, parent)
 
         self.parent = parent
-        self.controller = parent.controller
+        #self.controller = parent.controller
         self.use_keepers = use_keepers
         self.league = None
         if use_keepers:
@@ -35,24 +35,21 @@ class Surplus(tk.Frame):
     
     def __create_view(self):
         header_frame = ttk.Frame(self)
-        header_frame.grid(row=0, column=0)
+        header_frame.pack(side=TOP, expand=False, fill='x')
 
-        #yscrollbar = Scrollbar(header_frame)
-        #yscrollbar.pack(side = RIGHT, fill = Y)
-
-        tk.Label(header_frame, text='Team').grid(row=0, column=0)
+        tk.Label(header_frame, text='Team').pack(side=LEFT)
         self.team_list = ttk.Combobox(header_frame, textvariable=self.team_sv)
         self.__set_team_list()
         self.team_list.bind("<<ComboboxSelected>>", self.team_changed)
 
-        self.team_list.grid(row=0, column=1)
+        self.team_list.pack(side=LEFT)
 
-        ttk.Button(header_frame, text='Trade Evaluation', command=self.trade_evaluation).grid(row=0, column=2)
+        ttk.Button(header_frame, text='Trade Evaluation', command=self.trade_evaluation).pack(side=LEFT)
 
         #TODO: Add positional filter
 
-        table_frame = ttk.Frame(self, height=400, width=400, borderwidth=4)
-        table_frame.grid(row=1, column=0, sticky='nsew')
+        table_frame = ttk.Frame(self, height=600, width=400, borderwidth=4)
+        table_frame.pack(side=TOP, fill='both', expand=True)
 
         cols = self.columns + self.ottoverse_columns
         widths = {}
@@ -61,7 +58,7 @@ class Surplus(tk.Frame):
         align = {}
         align['Player'] = W
         align['Roster'] = W
-        self.player_table = Table(table_frame, cols,sortable_columns=cols,reverse_col_sort=cols, column_widths=widths, init_sort_col='Surplus', column_alignments=align, checkbox=True)
+        self.player_table = Table(table_frame, cols,sortable_columns=cols,reverse_col_sort=cols, column_widths=widths, init_sort_col='Surplus', column_alignments=align, checkbox=self.use_keepers)
         self.player_table.tag_configure('users', background='#FCE19D')
         self.player_table.add_scrollbar()
         self.player_table.set_refresh_method(self.update_player_table)
@@ -125,10 +122,10 @@ class Surplus(tk.Frame):
         vals.append('$' + "{:.1f}".format(val * (1 + self.inflation) - rs.salary))
 
         si = rs.player.get_salary_info_for_format(self.league.format)
-        if self.controller.preferences.get('General', Pref.AVG_SALARY_FOM) == AvgSalaryFom.MEAN.value:
-            vals.append(f'$' + "{:.1f}".format(si.avg_salary))
-        else:
-            vals.append(f'$' + "{:.1f}".format(si.med_salary))
+        #if self.controller.preferences.get('General', Pref.AVG_SALARY_FOM) == AvgSalaryFom.MEAN.value:
+        vals.append(f'$' + "{:.1f}".format(si.avg_salary))
+        #else:
+        #    vals.append(f'$' + "{:.1f}".format(si.med_salary))
         vals.append(f'$' + "{:.1f}".format(si.last_10))
         vals.append("{:.1f}".format(si.roster_percentage) + '%')
         return tuple(vals)

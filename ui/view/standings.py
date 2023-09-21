@@ -24,20 +24,21 @@ class Standings(tk.Frame):
         self.create_view()
     
     def create_view(self):
-        #self.tab_control = ttk.Notebook(self, width=570, height=300)
-        self.tab_control = ttk.Notebook(self)
-        self.tab_control.grid(row=0, column=0)
+        self.tab_control = ttk.Notebook(self, height=800)
+        self.tab_control.pack(side=TOP, fill='both', expand=True)
 
         standings_frame = ttk.Frame(self.tab_control)
         self.tab_control.add(standings_frame, text='Standings')
-        #standings_frame.pack(side='left', fill='both', expand=True)
+        standings_frame.pack(side='left', fill='both', expand=True)
 
-        tk.Radiobutton(standings_frame, variable=self.standings_type, value=0, text="Current", command=self.refresh_standings).grid(row=0, column=0)
-        tk.Radiobutton(standings_frame, variable=self.standings_type, value=1, text="Projected", command=self.refresh_standings).grid(row=0, column=1)
+        button_frame = ttk.Frame(standings_frame)
+        button_frame.pack(side=TOP, fill='x', expand=False)
 
-        #table_frame = ttk.Frame(standings_frame, height=400, width=200)
+        tk.Radiobutton(button_frame, variable=self.standings_type, value=0, text="Current", command=self.refresh_standings).pack(side=LEFT)
+        tk.Radiobutton(button_frame, variable=self.standings_type, value=1, text="Projected", command=self.refresh_standings).pack(side=LEFT)
+
         table_frame = ttk.Frame(standings_frame)
-        table_frame.grid(column=0, row=1, columnspan=2, sticky='nsew')
+        table_frame.pack(side=TOP, fill='both', expand=True)
 
         cols = self.cols
         widths = {}
@@ -46,8 +47,7 @@ class Standings(tk.Frame):
         align['Team'] = W
         self.standings_table = st = Table(table_frame, cols,sortable_columns=cols,reverse_col_sort=cols, column_widths=widths, init_sort_col='Rank', column_alignments=align)
         st.tag_configure('users', background='#FCE19D')
-        #st.add_scrollbar()
-        st.grid(row=0, column=0)
+        st.add_scrollbar()
         st.set_refresh_method(self.refresh_standings)
     
     def set_click_action(self, click_action):
