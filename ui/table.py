@@ -1,20 +1,28 @@
 from tkinter import *              
 from tkinter import ttk 
+from PIL import ImageTk, Image
 
 class Table(ttk.Treeview):
 
     def __init__(self, parent, columns, column_alignments=None, column_widths=None, sortable_columns=None, reverse_col_sort=None, hscroll=True, init_sort_col=None, custom_sort={}, checkbox:bool=False):
-        super().__init__(parent, columns=columns, show='headings')
+        if checkbox:
+            super().__init__(parent, columns=columns)
+        else:
+            super().__init__(parent, columns=columns, show='headings')
 
-        __checked = PhotoImage('checked', data=b'GIF89a\x0e\x00\x0e\x00\xf0\x00\x00\x00\x00\x00\x00\x00\x00!\xf9\x04\x01\x00\x00\x00\x00,\x00\x00\x00\x00\x0e\x00\x0e\x00\x00\x02#\x04\x82\xa9v\xc8\xef\xdc\x83k\x9ap\xe5\xc4\x99S\x96l^\x83qZ\xd7\x8d$\xa8\xae\x99\x15Zl#\xd3\xa9"\x15\x00;', master=self)
-        __unchecked = PhotoImage('unchecked', data=b'GIF89a\x0e\x00\x0e\x00\xf0\x00\x00\x00\x00\x00\x00\x00\x00!\xf9\x04\x01\x00\x00\x00\x00,\x00\x00\x00\x00\x0e\x00\x0e\x00\x00\x02\x1e\x04\x82\xa9v\xc1\xdf"|i\xc2j\x19\xce\x06q\xed|\xd2\xe7\x89%yZ^J\x85\x8d\xb2\x00\x05\x00;', master=self)
+        if checkbox:
+            self.__checked = ImageTk.PhotoImage(Image.open('checked.png'))
+            self.__unchecked = ImageTk.PhotoImage(Image.open('unchecked.png'))
 
         self.hscroll = hscroll
         self.reverse_sort = {}
         self.vsb = None
         self.hsb = None
         self.custom_sort = custom_sort
-        col_num = 1
+        if checkbox:
+            col_num = 0
+        else:
+            col_num = 1
         self.checkbox = checkbox
         for col in columns:
             align = CENTER
@@ -25,18 +33,18 @@ class Table(ttk.Treeview):
             if column_widths != None:
                 if col in column_widths:
                     width = column_widths[col]
-            self.column(f"# {col_num}",anchor=align, stretch=NO, width=width)
+            self.column(f"#{col_num}",anchor=align, stretch=NO, width=width)
             if sortable_columns != None:
                 if col in sortable_columns:
                     # From https://stackoverflow.com/a/30724912
-                    self.heading(col, text=col, command=lambda _col=col: self.treeview_sort_column(_col) )
+                    self.heading(f'#{col_num}', text=col, command=lambda _col=col: self.treeview_sort_column(_col) )
                     self.reverse_sort[col] = True
 
                 else:
-                    self.heading(col, text=col)
+                    self.heading(f'#{col_num}', text=col)
                     self.reverse_sort[col] = True
             else:
-                self.heading(col, text=col)
+                self.heading(f'#{col_num}', text=col)
             col_num += 1
         if reverse_col_sort is not None:
             for col in reverse_col_sort:
@@ -50,12 +58,9 @@ class Table(ttk.Treeview):
         else:
             self.sort_col = None
         if checkbox:
-            self.tag_configure('checked', image='checked')
-            self.tag_configure('unchecked', image='unchecked')
-            style = ttk.Style(self)
-            style.layout('cb.Treeview.Row', [('Treeitem.row',{'sticky':'nswe'}),('Treeitem.image', {'side': 'left', 'sticky':''})])
+            self.tag_configure('checked', image=self.__checked)
+            self.tag_configure('unchecked', image=self.__unchecked)
             self.bind('<ButtonRelease-1>', self.__checkbox_method)
-        #self.add_scrollbar()
 
     def get_row_by_text(self, text):
         if isinstance(text, int):
@@ -97,7 +102,7 @@ class Table(ttk.Treeview):
         """Handle click on items."""
         if len(self.selection()) > 0:
             item = self.selection()[0]
-            if event.widget.identify_column(event.x) == '#1':
+            if event.widget.identify_column(event.x) == '#0':
                 # toggle checkbox image
                 if self.tag_has('checked', item):
                     self.__tag_remove(item, 'checked')
@@ -124,7 +129,11 @@ class Table(ttk.Treeview):
             l = self.custom_sort.get(col)()
         else:
             # From https://stackoverflow.com/a/1967793
-            l = [(self.set(k, col), k) for k in self.get_children('')]
+            column_index = self["columns"].index(col)
+            if self.checkbox:
+                column_index -= 1
+            l = [(str(self.item(k)["values"][column_index]), k) for k in self.get_children()]
+            #l = [(self.set(k, col), k) for k in self.get_children('')]
             l.sort(reverse=self.reverse_sort[col], key=lambda x: sort_cmp(x))
 
         # rearrange items in sorted positions

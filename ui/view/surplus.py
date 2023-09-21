@@ -86,10 +86,10 @@ class Surplus(tk.Frame):
                         tags=('users',)
                     if self.use_keepers:
                         if self.league.is_keeper(rs.player_id):
-                            tags = tags + ('kept',)
+                            tags = tags + ('checked',)
                         else:
-                            tags = tags + ('unkept',)
-                    self.player_table.insert('', tk.END, text=rs.player_id, tags=tags, values=self.__get_player_row(rs, team))
+                            tags = tags + ('unchecked',)
+                    self.player_table.insert('', tk.END, tags=tags, values=self.__get_player_row(rs, team), iid=rs.player_id)
         elif self.team_sv.get() == 'Free Agents':
             #TODO: Free Agents
             ...
@@ -99,10 +99,10 @@ class Surplus(tk.Frame):
                     for rs in team.roster_spots:
                         if self.use_keepers:
                             if self.league.is_keeper(rs.player_id):
-                                tags = ('kept',)
+                                tags = ('checked',)
                             else:
-                                tags = ('unkept',)
-                        self.player_table.insert('', tk.END, text=rs.player_id, tags=tags, values=self.__get_player_row(rs, team))
+                                tags = ('unchecked',)
+                        self.player_table.insert('', tk.END, tags=tags, values=self.__get_player_row(rs, team), iid=rs.player_id)
     
     def __get_player_row(self, rs:Roster_Spot, team:Team) -> tuple[str]:
         vals = []
