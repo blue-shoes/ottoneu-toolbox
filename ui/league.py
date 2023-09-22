@@ -14,7 +14,7 @@ class League_Analysis(tk.Frame):
     value_calculation:ValueCalculation
 
     def __init__(self, parent, controller):
-        tk.Frame.__init__(self, parent, height=1000, width=1000)
+        tk.Frame.__init__(self, parent, height=600, width=1300)
         self.parent = parent
         self.controller = controller
         self.league = None
@@ -42,6 +42,8 @@ class League_Analysis(tk.Frame):
         return True
     
     def create_main(self):
+        self.pack_propagate(False)
+
         self.league_text_var = StringVar()
         self.values_name = StringVar()
         self.inflation_sv = StringVar()
@@ -54,16 +56,16 @@ class League_Analysis(tk.Frame):
         else:
             self.league_text_var.set(self.controller.league.name)
         self.lg_lbl = ttk.Label(header_frame, textvariable=self.league_text_var, font='bold')
-        self.lg_lbl.pack(side=LEFT)
+        self.lg_lbl.grid(row=0, column=0)
 
         if self.value_calculation is None:
             self.values_name.set('No value calculation selected')
         else:
             self.values_name.set(f'Selected Values: {self.value_calculation.name}')
-        ttk.Label(header_frame, textvariable=self.values_name).pack(side=LEFT)
+        ttk.Label(header_frame, textvariable=self.values_name).grid(row=0, column=1)
 
         self.inflation_lbl = ttk.Label(header_frame, textvariable=self.inflation_sv)
-        self.inflation_lbl.pack(side=LEFT)
+        self.inflation_lbl.grid(row=0, column=2)
 
         big_frame = ttk.Frame(self)
         big_frame.pack(side=TOP, expand=True, fill='both')
@@ -106,8 +108,8 @@ class League_Analysis(tk.Frame):
         pd.set_task_title('Updating display')
         self.standings.league = self.league
         self.standings.value_calc = self.value_calculation
-        self.standings.standings_table.refresh()
+        self.standings.standings_table.table.refresh()
         self.surplus.update_league(self.league)
         self.surplus.update_value_calc(self.value_calculation)
-        self.surplus.player_table.refresh()
+        self.surplus.player_table.table.refresh()
         pd.complete()

@@ -4,7 +4,7 @@ from tkinter import ttk
 
 from domain.domain import League, ValueCalculation, Team
 from domain.enum import Position
-from ui.table import Table
+from ui.table import ScrollableTreeFrame
 
 class Standings(tk.Frame):
 
@@ -13,7 +13,8 @@ class Standings(tk.Frame):
     value_calc:ValueCalculation
     
     def __init__(self, parent, use_keepers:bool):
-        tk.Frame.__init__(self, parent)
+        tk.Frame.__init__(self, parent, width=100)
+        self.pack_propagate(False)
 
         self.cols = ('Rank','Team','Points', 'Salary', 'Value', 'Surplus', '$ Free')
         self.use_keepers = use_keepers
@@ -37,28 +38,26 @@ class Standings(tk.Frame):
         tk.Radiobutton(button_frame, variable=self.standings_type, value=0, text="Current", command=self.refresh_standings).pack(side=LEFT)
         tk.Radiobutton(button_frame, variable=self.standings_type, value=1, text="Projected", command=self.refresh_standings).pack(side=LEFT)
 
-        table_frame = ttk.Frame(standings_frame)
-        table_frame.pack(side=TOP, fill='both', expand=True)
-
         cols = self.cols
         widths = {}
         widths['Team'] = 125
         align = {}
         align['Team'] = W
-        self.standings_table = st = Table(table_frame, cols,sortable_columns=cols,reverse_col_sort=cols, column_widths=widths, init_sort_col='Rank', column_alignments=align)
-        st.tag_configure('users', background='#FCE19D')
-        st.add_scrollbar()
-        st.set_refresh_method(self.refresh_standings)
+        self.standings_table = st = ScrollableTreeFrame(standings_frame, cols,pack=False,sortable_columns=cols,reverse_col_sort=cols, column_widths=widths, init_sort_col='Rank', column_alignments=align)
+        st.table.tag_configure('users', background='#FCE19D')
+        st.table.add_scrollbar()
+        st.table.set_refresh_method(self.refresh_standings)
+        st.pack(fill='both', expand=True)
     
     def set_click_action(self, click_action):
-        self.standings_table.bind('<<TreeviewSelect>>', click_action)
+        self.standings_table.table.bind('<<TreeviewSelect>>', click_action)
     
     def refresh_standings(self):
         for team in self.league.teams:
             tags = ''
             if team.users_team:
                 tags=('users',)
-            self.standings_table.insert('', tk.END, text=team.site_id, tags=tags, values=self.calc_values(team))
+            self.standings_table.table.insert('', tk.END, text=team.site_id, tags=tags, values=self.calc_values(team))
 
     def calc_salary_info(self, team:Team) -> list:
         vals = []

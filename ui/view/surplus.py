@@ -5,7 +5,7 @@ from tkinter import ttk
 from domain.domain import League, ValueCalculation, Team, Roster_Spot
 from domain.enum import Position, AvgSalaryFom, Preference as Pref
 from services import league_services
-from ui.table import Table
+from ui.table import ScrollableTreeFrame
 
 class Surplus(tk.Frame):
 
@@ -22,7 +22,7 @@ class Surplus(tk.Frame):
         self.use_keepers = use_keepers
         self.league = None
         if use_keepers:
-            self.columns = ("Keeper Proj.", 'Player', 'Team', 'Pos', 'Roster', 'Salary', 'Value', 'Inf. Cost', 'Surplus', 'Inf. Surplus')
+            self.columns = ("Keeper?", 'Player', 'Team', 'Pos', 'Roster', 'Salary', 'Value', 'Inf. Cost', 'Surplus', 'Inf. Surplus')
         else:
             self.columns = ('Player', 'Team', 'Pos', 'Roster', 'Salary', 'Value', 'Inf. Cost', 'Surplus', 'Inf. Surplus')
         self.ottoverse_columns = ('Avg. Price', 'L10 Price', 'Roster %')
@@ -48,9 +48,6 @@ class Surplus(tk.Frame):
 
         #TODO: Add positional filter
 
-        table_frame = ttk.Frame(self, height=600, width=400, borderwidth=4)
-        table_frame.pack(side=TOP, fill='both', expand=True)
-
         cols = self.columns + self.ottoverse_columns
         widths = {}
         widths['Player'] = 125
@@ -58,10 +55,11 @@ class Surplus(tk.Frame):
         align = {}
         align['Player'] = W
         align['Roster'] = W
-        self.player_table = Table(table_frame, cols,sortable_columns=cols,reverse_col_sort=cols, column_widths=widths, init_sort_col='Surplus', column_alignments=align, checkbox=self.use_keepers)
-        self.player_table.tag_configure('users', background='#FCE19D')
-        self.player_table.add_scrollbar()
-        self.player_table.set_refresh_method(self.update_player_table)
+        self.player_table = ScrollableTreeFrame(self, cols,pack=False,sortable_columns=cols,reverse_col_sort=cols, column_widths=widths, init_sort_col='Surplus', column_alignments=align, checkbox=self.use_keepers)
+        self.player_table.table.tag_configure('users', background='#FCE19D')
+        self.player_table.table.add_scrollbar()
+        self.player_table.table.set_refresh_method(self.update_player_table)
+        self.player_table.pack(fill='both', expand=True)
     
     def __set_team_list(self):
         name_list = []
@@ -75,7 +73,7 @@ class Surplus(tk.Frame):
         self.team_sv.set('All Teams')
     
     def team_changed(self, event: Event):
-        self.player_table.refresh()
+        self.player_table.table.refresh()
 
     def update_player_table(self):
         if self.team_sv.get() == 'All Teams':
@@ -89,7 +87,7 @@ class Surplus(tk.Frame):
                             tags = tags + ('checked',)
                         else:
                             tags = tags + ('unchecked',)
-                    self.player_table.insert('', tk.END, tags=tags, values=self.__get_player_row(rs, team), iid=rs.player_id)
+                    self.player_table.table.insert('', tk.END, tags=tags, values=self.__get_player_row(rs, team), iid=rs.player_id)
         elif self.team_sv.get() == 'Free Agents':
             #TODO: Free Agents
             ...
@@ -102,7 +100,7 @@ class Surplus(tk.Frame):
                                 tags = ('checked',)
                             else:
                                 tags = ('unchecked',)
-                        self.player_table.insert('', tk.END, tags=tags, values=self.__get_player_row(rs, team), iid=rs.player_id)
+                        self.player_table.table.insert('', tk.END, tags=tags, values=self.__get_player_row(rs, team), iid=rs.player_id)
     
     def __get_player_row(self, rs:Roster_Spot, team:Team) -> tuple[str]:
         vals = []
