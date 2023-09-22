@@ -4,7 +4,7 @@ from tkinter import ttk
 
 from domain.domain import League, ValueCalculation, Team, Roster_Spot
 from domain.enum import Position, AvgSalaryFom, Preference as Pref
-from services import league_services
+from services import projected_keeper_services
 from ui.table import ScrollableTreeFrame
 
 class Surplus(tk.Frame):
@@ -14,10 +14,11 @@ class Surplus(tk.Frame):
     value_calc:ValueCalculation
     inflation:float
 
-    def __init__(self, parent, use_keepers:bool):
+    def __init__(self, parent, view, use_keepers:bool):
         tk.Frame.__init__(self, parent)
 
         self.parent = parent
+        self.view = view
         #self.controller = parent.controller
         self.use_keepers = use_keepers
         self.league = None
@@ -59,8 +60,34 @@ class Surplus(tk.Frame):
         self.player_table.table.tag_configure('users', background='#FCE19D')
         self.player_table.table.add_scrollbar()
         self.player_table.table.set_refresh_method(self.update_player_table)
+        self.player_table.table.set_checkbox_toggle_method(self.toggle_keeper)
         self.player_table.pack(fill='both', expand=True)
     
+    def toggle_keeper(self, row_id, selected) -> None:
+        row_id = int(row_id)
+        if selected:
+            updated_team=None
+            for team in self.league.teams:
+                for rs in team.roster_spots:
+                    if rs.player.index == row_id:
+                        updated_team = team
+                        self.league.projected_keepers.append(projected_keeper_services.add_keeper_and_return(self.league, rs.player))       
+        else:
+            for keeper in self.league.projected_keepers:
+                if keeper.player_id == row_id:
+                    projected_keeper_services.remove_keeper(keeper)
+                    break
+            self.league.projected_keepers.remove(keeper)
+            updated_team=None
+            for team in self.league.teams:
+                for rs in team.roster_spots:
+                    if rs.player.index == row_id:
+                        updated_team = team
+                        break
+                if updated_team is not None:
+                    break
+        self.view.update(team=updated_team)
+
     def __set_team_list(self):
         name_list = []
         name_list.append('All Teams')

@@ -2,7 +2,7 @@ import tkinter as tk
 from tkinter import *              
 from tkinter import ttk 
 
-from domain.domain import League, ValueCalculation
+from domain.domain import League, ValueCalculation, Team
 from domain.enum import Position
 from services import league_services, projected_keeper_services
 from ui.dialog import progress
@@ -74,7 +74,7 @@ class League_Analysis(tk.Frame):
         self.standings = standings.Standings(big_frame, use_keepers=True)
         self.standings.pack(side=LEFT, fill='both', expand=True)
 
-        self.surplus = surplus.Surplus(big_frame, use_keepers=True)
+        self.surplus = surplus.Surplus(big_frame, view=self, use_keepers=True)
         self.surplus.pack(side=LEFT, fill='both', expand=True)
     
     def league_change(self):
@@ -113,3 +113,11 @@ class League_Analysis(tk.Frame):
         self.surplus.update_value_calc(self.value_calculation)
         self.surplus.player_table.table.refresh()
         pd.complete()
+    
+    def update(self, team:Team=None):
+        if team is None:
+            team_list=None
+        else:
+            team_list = [].append(team)
+        league_services.calculate_league_table(self.league, self.value_calculation, self.standings.standings_type.get() == 1, self.inflation, team_list)
+        self.standings.standings_table.table.refresh()

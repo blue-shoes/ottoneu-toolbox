@@ -196,6 +196,8 @@ class Team:
         self.rs_map = {}
         for rs in self.roster_spots:
             self.rs_map[rs.player.index] = rs
+            rs.g_h = 0
+            rs.ip = 0
 
 @mapper_registry.mapped
 @dataclass

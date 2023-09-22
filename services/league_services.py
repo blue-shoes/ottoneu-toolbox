@@ -181,7 +181,7 @@ def get_league_by_draft(draft:Draft, fill_rosters:bool=False) -> League:
         league = session.query(Draft).options(joinedload(Draft.league)).filter(Draft.index == draft.index).first().league
         return get_league(league.index, fill_rosters)
 
-def calculate_league_table(league:League, value_calc:ValueCalculation, fill_pt:bool=False, inflation:float=None, in_season:bool=False) -> None:
+def calculate_league_table(league:League, value_calc:ValueCalculation, fill_pt:bool=False, inflation:float=None, in_season:bool=False, updated_teams:List[Team]=None) -> None:
     '''Calculates the projected standings table for the League with the given ValueCalculation'''
     if fill_pt and not ScoringFormat.is_points_type(league.format):
         raise InputException('Roto leagues do not support filling playing time (the math makes my brain hurt)')
@@ -191,8 +191,13 @@ def calculate_league_table(league:League, value_calc:ValueCalculation, fill_pt:b
     pt = None
     if in_season:
         stats ,_, pt = Scrape_Ottoneu().scrape_standings_page(league.index, date_util.get_current_ottoneu_year())
-    for team in league.teams:
-        project_team_results(team, value_calc, fill_pt, inflation, stats=stats, accrued_pt=pt, keepers=league.projected_keepers)        
+    if updated_teams is None:
+        for team in league.teams:
+            project_team_results(team, value_calc, fill_pt, inflation, stats=stats, accrued_pt=pt, keepers=league.projected_keepers)   
+    else:
+        for team in league.teams:
+            if team in updated_teams:
+                project_team_results(team, value_calc, fill_pt, inflation, stats=stats, accrued_pt=pt, keepers=league.projected_keepers)   
     if not ScoringFormat.is_points_type(league.format):
         calculate_league_cat_ranks(league)
     team_list = []

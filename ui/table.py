@@ -19,6 +19,7 @@ class Table(ttk.Treeview):
         self.reverse_sort = {}
         self.vsb = None
         self.hsb = None
+        self.__extra_checkbox_method = None
         self.custom_sort = custom_sort
         self.is_pack = pack
         if checkbox:
@@ -115,6 +116,10 @@ class Table(ttk.Treeview):
     
     def set_row_select_method(self, select_method):            
         self.bind('<<TreeviewSelect>>', select_method, add=True)
+    
+    def set_checkbox_toggle_method(self, checkbox_method):
+        '''The checkbox_method must accept the arguments (iid, selected)'''
+        self.__extra_checkbox_method = checkbox_method
 
     def __checkbox_method(self, event):
         """Handle click on items."""
@@ -125,9 +130,13 @@ class Table(ttk.Treeview):
                 if self.tag_has('checked', item):
                     self.__tag_remove(item, 'checked')
                     self.__tag_add(item, ('unchecked',))
+                    selected=False
                 else:
                     self.__tag_remove(item, 'unchecked')
                     self.__tag_add(item, ('checked',))
+                    selected=True
+                if self.__extra_checkbox_method is not None:
+                    self.__extra_checkbox_method(item, selected)
     
     def __tag_add(self, item, tags):
         new_tags = tuple(self.item(item, 'tags')) + tuple(tags)
