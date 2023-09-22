@@ -178,7 +178,7 @@ class Scrape_Ottoneu(scrape_base.Scrape_Base):
         return parsed_row
 
     def scrape_team_production_page(self, lg_id:int, team_id:int) -> list[DataFrame]:
-        ''''Scrapes the production by position tables for a team and return a list of DataFrames with hitting in index 0 and pitching in index 1. Indices are Position'''
+        '''Scrapes the production by position tables for a team and return a list of DataFrames with hitting in index 0 and pitching in index 1. Indices are Position'''
         dfs = []
         prod_url = f'https://ottoneu.fangraphs.com/{lg_id}/teamproduction?teamID={team_id}'
         #response = requests.get(prod_url)
@@ -240,7 +240,6 @@ class Scrape_Ottoneu(scrape_base.Scrape_Base):
         for td in tds:
             if len(list(td.children)) > 1:
                 parsed_row.append(str(td.contents[0]).strip())
-                print('children > 1')
             else:
                 parsed_row.append(td.string)
         return parsed_row
@@ -355,7 +354,7 @@ class Scrape_Ottoneu(scrape_base.Scrape_Base):
         return fin_df
 
     def __parse_finance_rows(self, fin_row, depth_tbl_rows) -> List[str]:
-        '''Retruns the contents of a Team Finance table row. Returns a list of [Team_Id, Team_Name, # Players, # Spots, Base Salary, Cap Penalties, Loans in, Loans out, Available cap space]'''
+        '''Returns the contents of a Team Finance table row. Returns a list of [Team_Id, Team_Name, # Players, # Spots, Base Salary, Cap Penalties, Loans in, Loans out, Available cap space]'''
         tds = fin_row.find_all('td')
         parsed_row = []
         id = tds[0].find('a').get('href').split('=')[1]
@@ -367,7 +366,7 @@ class Scrape_Ottoneu(scrape_base.Scrape_Base):
             if tds[idx].string == '$':
                 parsed_row.append(0)
             else:
-                parsed_row.append(Decimal(sub(r'[^\d.]', '', tds[idx].string)))
+                parsed_row.append(sub(r'[^\d.]', '', tds[idx].string))
         for row in depth_tbl_rows:
             depth_id = row.find('a').get('href').split('=')[1]
             if id == depth_id:
@@ -388,7 +387,7 @@ class Scrape_Ottoneu(scrape_base.Scrape_Base):
         fg_id = header.find('a').get('href').split('=')[1]
         return (player_id, name, team, pos, fg_id)
     
-    def scrape_standings_page(self, lg_id:int, year:int) -> Tuple[DataFrame, DataFrame]:
+    def scrape_standings_page(self, lg_id:int, year:int) -> Tuple[DataFrame, DataFrame, DataFrame]:
         '''Gets the standings page for the input league for the input year. Returns results as a tuple of two DataFrames. First DataFrame represents the league 'Statistics'\
         table. The second DataFrame represents the 'Rankings' table, if one exists. If not, a None is returned for the second DF. DataFrames are indexed by team id.'''
         url = f'https://ottoneu.fangraphs.com/{lg_id}/standings?=date={year}-10-31'
@@ -396,22 +395,37 @@ class Scrape_Ottoneu(scrape_base.Scrape_Base):
         table_sects = soup.find_all('section', {'class':'section-container'})
         stat_df = self.__parse_standings_stats_table(table_sects)
         rank_df = self.__parse_standings_rank_table(table_sects)
-        return (stat_df, rank_df)
+        games_and_ip_df = self.__parse_standings_pt_table(table_sects)
+        return (stat_df, rank_df, games_and_ip_df)
 
     def __parse_standings_rank_table(self, table_sects:ResultSet) -> DataFrame:
         '''Parses the 'Rankings' table from the league statings page. Returns None if the table does not exist (Points leagues)'''
         sect = None
         for section in table_sects:
-            header = section.find('h3').contents[0].string
-            if header == 'Rankings':
+            header = section.find('h3')
+            if header is not None and header.contents is not None and len(header.contents) > 0 and header.contents[0].string == 'Rankings':
+                sect = section
+                break
+        if sect is None:
+            return None
+        return self.__get_stats_table(sect)
+    
+    def __parse_standings_pt_table(self, table_sects:ResultSet) -> DataFrame:
+        '''Parses the 'Games Played and Innings Pitched' table from the league standings page.'''
+        '''Parses the 'Statistics' table from the league statings page.'''
+        sect = None
+        for section in table_sects:
+            header = section.find('h3')
+            if header is not None and header.contents is not None and len(header.contents) > 0 and header.contents[0].string == 'Games Played and Innings Pitched':
                 sect = section
                 break
         if sect is None:
             return None
         return self.__get_stats_table(sect)
 
+
     def __parse_standings_stats_table(self, table_sects:ResultSet) -> DataFrame:
-        '''Parses the 'Statistics' table from the league statings page. Returns None if the table does not exist (Points leagues)'''
+        '''Parses the 'Statistics' table from the league statings page.'''
         for section in table_sects:
             header = section.find('h3').contents[0].string
             if header == 'Statistics':
@@ -439,6 +453,9 @@ class Scrape_Ottoneu(scrape_base.Scrape_Base):
         for td in tds[1:]:
             if len(td.find_all('strong')) > 0:
                 rows.append(td.find_all('strong')[0].contents[0].strip())
+            elif len(td.find_all('span', {'class':'negative-change-from-yesterday'})) > 0\
+                or len(td.find_all('span', {'class':'positive-change-from-yesterday'})) > 0:
+                rows.append(td.contents[0].strip())
             elif len(td.find_all('i', {'class':'fa fa-caret-up'})) > 0:
                 rows.append(f'+{td.find_all("i", {"class":"fa fa-caret-up"})[0].next_sibling.strip()}')
             elif len(td.find_all('i', {'class':'fa fa-caret-down'})) > 0:

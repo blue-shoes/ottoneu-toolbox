@@ -22,6 +22,7 @@ from ui.table import Table, sort_cmp
 from ui.dialog import progress, draft_target, cm_team_assignment
 from ui.dialog.wizard import couchmanagers_import
 from ui.tool.tooltip import CreateToolTip
+from ui.view.standings import Standings
 from services import salary_services, league_services, calculation_services, player_services, draft_services
 from demo import draft_demo
 
@@ -128,6 +129,10 @@ class DraftTool(tk.Frame):
         self.tab_control.grid(row=0, column=0)
 
         self.create_search()
+
+        #TODO: Clean this up
+        self.standings = Standings(self, use_keepers=False)
+        self.standings.grid(row=1,column=2)
 
         button_frame = ttk.Frame(running_list_frame)
         button_frame.grid(row=0, column=1, sticky=tk.N, pady=15)
@@ -672,6 +677,8 @@ class DraftTool(tk.Frame):
                         index -= 1
                     last_time = most_recent
                     self.queue.put(('pos', list(update_pos)))
+                    self.calc_inflation()
+                    league_services.calculate_league_table(self.league, self.value_calculation, self.standings.standings_type.get() == 1, self.inflation)
             except Exception as Argument:
                 logging.exception('Exception processing transaction.')
             finally:
@@ -679,7 +686,7 @@ class DraftTool(tk.Frame):
         logging.info('Exiting Draft Refresh Loop')
 
     def refresh_views(self, pos_keys=None):
-        self.calc_inflation()
+        self.inflation_str_var.set(f'Inflation: {"{:.1f}".format((self.inflation - 1.0)*100)}%')
         self.overall_view.refresh()
         if pos_keys == None:
             for pos in (Position.get_offensive_pos() + Position.get_pitching_pos()):
@@ -949,8 +956,17 @@ class DraftTool(tk.Frame):
         pd.set_task_title('Updating available players...')
         self.update_rostered_players()
         pd.increment_completion_percent(5)
+
+        self.calc_inflation()
+
         pd.set_task_title('Refreshing views...')
         self.set_visible_columns()
+
+        self.standings.league = self.controller.league
+        self.standings.value_calc = self.controller.value_calculation
+        league_services.calculate_league_table(self.league, self.value_calculation, self.standings.standings_type.get() == 1, self.inflation)
+        self.standings.standings_table.refresh()
+
         self.refresh_views()
         pd.complete()
         if restart:
@@ -1359,8 +1375,7 @@ class DraftTool(tk.Frame):
         remaining_valued_roster_spots = len(pos_val)
         self.remaining_value = pos_val['Value'].sum() - remaining_valued_roster_spots
         self.remaining_dollars = (num_teams*400 - self.extra_value) - self.rosters['Salary'].sum() - remaining_valued_roster_spots
-        self.inflation = self.remaining_dollars / self.remaining_value
-        self.inflation_str_var.set(f'Inflation: {"{:.1f}".format((self.inflation - 1.0)*100)}%')
+        self.inflation = self.remaining_dollars / self.remaining_value  
 
     def update_rostered_players(self):
         self.values = self.values.merge(self.rosters[['Salary']], how='left', left_index=True, right_index=True, sort=False).fillna(0)

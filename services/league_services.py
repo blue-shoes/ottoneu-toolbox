@@ -1,10 +1,14 @@
-from domain.domain import League, Team, Roster_Spot, Player, Draft
-from domain.enum import ScoringFormat
+from pandas import DataFrame
+from domain.domain import League, Team, Roster_Spot, Player, Draft, ValueCalculation, Projected_Keeper
+from domain.enum import ScoringFormat, Position, CalculationDataType, StatType, RankingBasis
+from domain.exception import InputException
 from dao.session import Session
 from scrape.scrape_ottoneu import Scrape_Ottoneu
-from services import player_services
+from services import player_services, roster_services, calculation_services
 from sqlalchemy.orm import joinedload
 from typing import List
+from util import date_util, list_util
+from collections import defaultdict
 
 from datetime import datetime
 
@@ -26,6 +30,7 @@ def refresh_league(league_idx:int, pd=None) -> League:
             pd.set_task_title("Updating rosters...")
             pd.increment_completion_percent(5)
         upd_rost = scraper.scrape_roster_export(lg.ottoneu_id)
+        finances = scraper.scrape_finances_page(lg.ottoneu_id)
         if pd is not None:
             pd.increment_completion_percent(30)
         with Session() as session:
@@ -56,6 +61,15 @@ def refresh_league(league_idx:int, pd=None) -> League:
                 team_map[team].roster_spots.append(rs)
                 if team_map[team].name != row['Team Name']:
                     team_map[team].name = row['Team Name']
+            for idx, row in finances.iterrows():
+                team = team_map[idx]
+                team.num_players = row['Players']
+                team.spots = row['Spots'] 
+                team.salaries = row['Base Salaries']
+                team.penalties = row['Cap Penalties']
+                team.loans_in = row['Loans In']
+                team.loans_out = row['Loans Out']
+                team.free_cap = row['Cap Space']
             
             lg.last_refresh = datetime.now()
             session.commit()
@@ -82,16 +96,22 @@ def get_league_ottoneu_id(league_idx:int) -> int:
 def get_league(league_idx:int, rosters:bool=True) -> League:
     '''Retrieves the league from the database for the given index. If rosters is True, the league's teams and roster_spots are populated. Otherwise a shallow load is returned.'''
     with Session() as session:
-        if rosters:
-            league = (session.query(League)
-                    .options(
-                        joinedload(League.teams)
-                        .joinedload(Team.roster_spots)
-                        .joinedload(Roster_Spot.player)
-                    )
-                    .filter_by(index = league_idx).first())
-        else:
-            league = (session.query(League).filter_by(index = league_idx).first())
+        league = get_league_in_session(session, league_idx, rosters)
+    return league
+
+def get_league_in_session(session:Session, league_idx:int, rosters:bool=True) -> League:
+    if rosters:
+        league = (session.query(League)
+                .options(
+                    joinedload(League.teams)
+                    .joinedload(Team.roster_spots)
+                    .joinedload(Roster_Spot.player)
+                )
+                .filter_by(index = league_idx).first())
+        for keeper in league.projected_keepers:
+            pass
+    else:
+        league = (session.query(League).filter_by(index = league_idx).first())
     return league
 
 def create_league(league_ottoneu_id:int, pd=None) -> League:
@@ -160,3 +180,142 @@ def get_league_by_draft(draft:Draft, fill_rosters:bool=False) -> League:
     with Session() as session:
         league = session.query(Draft).options(joinedload(Draft.league)).filter(Draft.index == draft.index).first().league
         return get_league(league.index, fill_rosters)
+
+def calculate_league_table(league:League, value_calc:ValueCalculation, fill_pt:bool=False, inflation:float=None, in_season:bool=False, updated_teams:List[Team]=None) -> None:
+    '''Calculates the projected standings table for the League with the given ValueCalculation'''
+    if fill_pt and not ScoringFormat.is_points_type(league.format):
+        raise InputException('Roto leagues do not support filling playing time (the math makes my brain hurt)')
+    if value_calc.projection is None:
+        raise InputException('ValueCalculation requires a projection to calculate league table')
+    stats = None
+    pt = None
+    if in_season:
+        stats ,_, pt = Scrape_Ottoneu().scrape_standings_page(league.index, date_util.get_current_ottoneu_year())
+    if updated_teams is None:
+        for team in league.teams:
+            project_team_results(team, value_calc, fill_pt, inflation, stats=stats, accrued_pt=pt, keepers=league.projected_keepers)   
+    else:
+        for team in league.teams:
+            if team in updated_teams:
+                project_team_results(team, value_calc, fill_pt, inflation, stats=stats, accrued_pt=pt, keepers=league.projected_keepers)   
+    if not ScoringFormat.is_points_type(league.format):
+        calculate_league_cat_ranks(league)
+    team_list = []
+    for team in league.teams:
+        team_list.append(team)
+    set_team_ranks(league)
+
+def project_team_results(team:Team, value_calc:ValueCalculation, fill_pt:bool=False, inflation:float=None, stats:DataFrame=None, accrued_pt:DataFrame=None, keepers:List[Projected_Keeper]=[]) -> None:
+    if accrued_pt is not None:
+        #TODO: Need to adjust targets here
+        ...
+    if fill_pt and not ScoringFormat.is_points_type(value_calc.format):
+        raise InputException('Roto leagues do not support filling playing time (the math makes my brain hurt)')
+    if fill_pt:
+        rep_lvl = value_calc.get_rep_level_map()
+        if ScoringFormat.is_h2h(value_calc.format):
+            pt = roster_services.optimize_team_pt(team, keepers, value_calc.projection, value_calc.format, rep_lvl=rep_lvl, rp_limit=value_calc.get_input(CalculationDataType.RP_G_TARGET, 10), sp_limit=value_calc.get_input(CalculationDataType.GS_LIMIT, 10), pitch_basis=value_calc.pitcher_basis, off_g_limit=value_calc.get_input(CalculationDataType.BATTER_G_TARGET, 162))
+        else:
+            pt = roster_services.optimize_team_pt(team, keepers, value_calc.projection, value_calc.format, rep_lvl=rep_lvl, rp_limit=value_calc.get_input(CalculationDataType.RP_IP_TARGET, 350), off_g_limit=value_calc.get_input(CalculationDataType.BATTER_G_TARGET, 162))
+    else:
+        if ScoringFormat.is_h2h(value_calc.format):
+            pt = roster_services.optimize_team_pt(team, keepers, value_calc.projection, value_calc.format, rp_limit=value_calc.get_input(CalculationDataType.RP_G_TARGET, 10), sp_limit=value_calc.get_input(CalculationDataType.GS_LIMIT, 10), pitch_basis=value_calc.pitcher_basis, off_g_limit=value_calc.get_input(CalculationDataType.BATTER_G_TARGET, 162))
+        else:
+            pt = roster_services.optimize_team_pt(team, keepers, value_calc.projection, value_calc.format, rp_limit=value_calc.get_input(CalculationDataType.RP_IP_TARGET, 350), off_g_limit=value_calc.get_input(CalculationDataType.BATTER_G_TARGET, 162))
+
+    if ScoringFormat.is_points_type(value_calc.format):
+        if stats is not None:
+            team.points = stats.loc[team.site_id, 'Points']
+        else:
+            team.points = 0
+        if fill_pt:
+            for pos in Position.get_discrete_offensive_pos() + [Position.POS_MI] + Position.get_discrete_pitching_pos():
+                rl = rep_lvl.get(pos)
+                if pos == Position.POS_OF:
+                    cap = 5*value_calc.get_input(CalculationDataType.BATTER_G_TARGET, 162)
+                elif pos in Position.get_offensive_pos():
+                    cap = value_calc.get_input(CalculationDataType.BATTER_G_TARGET, 162)
+                elif pos == Position.POS_SP:
+                    if value_calc.pitcher_basis == RankingBasis.PIP:
+                        cap = 1150
+                    else:
+                        cap = value_calc.get_input(CalculationDataType.GS_LIMIT, 10) * 26
+                else:
+                    if value_calc.pitcher_basis == RankingBasis.PIP:
+                        cap = 350
+                    else:
+                        cap = value_calc.get_input(CalculationDataType.RP_G_TARGET, 10) * 26
+                used_pt = sum(pt.get(pos, {0:0}).values())
+                if used_pt < cap:
+                    additional_pt = cap - used_pt
+                    team.points = team.points + additional_pt * rl
+            if inflation is not None:
+                available_surplus_dol = team.free_cap - (team.spots - team.num_players)
+                team.points = team.points + available_surplus_dol * (1/value_calc.get_output(CalculationDataType.DOLLARS_PER_FOM)) * (1 - inflation/100)
+
+        for rs in team.roster_spots:
+            pp = value_calc.projection.get_player_projection(rs.player.index)
+            if pp is None:
+                continue
+            team.points = team.points + rs.g_h * calculation_services.get_batting_point_rate_from_player_projection(pp)
+            team.points = team.points + rs.ip * calculation_services.get_pitching_point_rate_from_player_projection(pp, value_calc.format, value_calc.pitcher_basis)
+    else:
+        rate_cats = defaultdict(list)
+        if stats is not None:
+            prod_bat, _ = Scrape_Ottoneu().scrape_team_production_page(team.league_id, team.site_id)
+            for cat in StatType.get_format_stat_categories(value_calc.format):
+                if cat in [StatType.AVG, StatType.SLG]:
+                    rate_cats[cat].append((prod_bat['AB'].sum(), stats.loc[team.site_id, StatType.enum_to_display_dict().get(cat)]))
+                elif cat == StatType.OBP:
+                    #As of 3/22/23, 4x4 only has AB available, which is not quite correct for OBP
+                    #to account for this, we increase AB by 12% to estimate PA per recent historical averages (2019-2022)
+                    rate_cats.get(cat).append((prod_bat['AB'].sum() * 1.12, stats.loc[team.site_id, StatType.enum_to_display_dict().get(cat)]))
+                elif cat in  [StatType.ERA, StatType.WHIP, StatType.HR_PER_9]:
+                    rate_cats[cat].append((stats.loc[team.site_id, 'IP'], stats.loc[team.site_id, StatType.enum_to_display_dict().get(cat)]))
+                else:
+                    team.cat_stats[cat] = stats.loc[team.site_id, StatType.enum_to_display_dict().get(cat)]
+        for rs in team.roster_spots:
+            pp = value_calc.projection.get_player_projection(rs.player.index)
+            if pp is None:
+                continue
+            g = pp.get_stat(StatType.G_HIT)
+            ip = pp.get_stat(StatType.IP)
+            for cat in StatType.get_format_stat_categories(value_calc.format):
+                if cat in StatType.hit_to_enum_dict().values() and rs.g_h > 0 and g > 0:
+                    if cat in [StatType.AVG, StatType.SLG]:
+                        ab = (pp.get_stat(StatType.AB) / g) * rs.g_h
+                        rate_cats[cat].append((ab, pp.get_stat(cat)))
+                    elif cat == StatType.OBP:
+                        pa = (pp.get_stat(StatType.PA) / g) * rs.g_h
+                        rate_cats[cat].append((pa, pp.get_stat(cat)))
+                    else:
+                        rate = pp.get_stat(cat) / g
+                        team.cat_stats[cat] = team.cat_stats.get(cat, 0) + rate * rs.g_h
+                elif cat in StatType.pitch_to_enum_dict().values() and rs.ip > 0 and ip > 0:
+                    if cat in [StatType.ERA, StatType.WHIP, StatType.HR_PER_9]:
+                        rate_cats[cat].append((rs.ip, pp.get_stat(cat)))
+                    else:
+                        rate = pp.get_stat(cat) / ip
+                        team.cat_stats[cat] = team.cat_stats.get(cat, 0) + rate * rs.ip
+        for cat, val in rate_cats.items():
+            team.cat_stats[cat] = list_util.weighted_average(val)
+
+def calculate_league_cat_ranks(league:League) -> None:    
+    for cat in StatType.get_format_stat_categories(league.format):
+        cat_list = [team.cat_stats.get(cat) for team in league.teams]
+        if cat in [StatType.ERA, StatType.WHIP, StatType.HR_PER_9]:
+            rank_map = list_util.rank_list_with_ties(cat_list,reverse=False, max_rank=league.num_teams)
+        else:
+            rank_map = list_util.rank_list_with_ties(cat_list,reverse=True, max_rank=league.num_teams)
+        for team in league.teams:
+            team.cat_ranks[cat] = rank_map.get(team.cat_stats.get(cat))
+    for team in league.teams:
+        team.points = sum(team.cat_ranks.values())
+    set_team_ranks(league)
+
+def set_team_ranks(league:League) -> None:
+    sorted_teams = sorted(league.teams, key=lambda x: x.points, reverse=True)
+    rank = 1
+    for team in sorted_teams:
+        team.lg_rank = rank
+        rank = rank + 1

@@ -115,6 +115,8 @@ def get_points(player_proj: PlayerProjection, pos: Position, sabr:bool=False, no
 
 def get_batting_point_rate_from_player_projection(player_proj: PlayerProjection, basis:RankingBasis=RankingBasis.PPG) -> float:
     '''Returns the point rate for the input batter PlayerProjection based on the requested rate basis'''
+    if basis == RankingBasis.PPG and player_proj.get_stat(StatType.PPG) is not None:
+        return player_proj.get_stat(StatType.PPG)
     points = get_points(player_proj, Position.OFFENSE)
     if basis == RankingBasis.PPG:
         games = player_proj.get_stat(StatType.G_HIT)
@@ -130,6 +132,8 @@ def get_batting_point_rate_from_player_projection(player_proj: PlayerProjection,
 
 def get_pitching_point_rate_from_player_projection(player_proj: PlayerProjection, format: ScoringFormat, basis:RankingBasis=RankingBasis.PIP) -> float:
     '''Returns the point rate for the input pitcher PlayerProjection based on the requested rate basis and scoring format'''
+    if basis == RankingBasis.PIP and player_proj.get_stat(StatType.PIP) is not None:
+        return player_proj.get_stat(StatType.PIP)
     points = get_points(player_proj, Position.PITCHER, ScoringFormat.is_sabr(format))
     if basis == RankingBasis.PPG:
         games = player_proj.get_stat(StatType.G_PIT)

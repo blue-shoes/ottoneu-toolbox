@@ -1,10 +1,10 @@
 from __future__ import annotations
 from datetime import datetime
-from typing import List
 from sqlalchemy import ForeignKey, Index
-from sqlalchemy.orm import relationship, registry, Mapped, mapped_column
+from sqlalchemy.orm import relationship, registry, Mapped, mapped_column, reconstructor
 import re
 from domain.enum import CalculationDataType, ProjectionType, RankingBasis, ScoringFormat, StatType, Position, IdType
+from typing import List, Dict
 
 reg = registry()
 
@@ -32,6 +32,9 @@ class Player:
     projections:Mapped[List["PlayerProjection"]] = relationship(default_factory=list, back_populates="player", cascade="all, delete", repr=False)
 
     __table_args__ = (Index('idx_fg_id','FG MajorLeagueID','FG MinorLeagueID'),)
+
+    def __hash__(self) -> int:
+        return hash(self.index)
 
     def get_fg_id(self) -> object:
         '''Returns the FanGraphs Major League id, if available, otherwise returns the FanGraphs Minor League id.'''
@@ -99,6 +102,34 @@ class League:
     active:Mapped[bool] = mapped_column(default=True, nullable = False)
 
     teams:Mapped[List["Team"]] = relationship(default_factory=list, back_populates="league", cascade="all, delete", repr=False)
+    projected_keepers:Mapped[List["Projected_Keeper"]] = relationship(default_factory=list, back_populates="league", cascade="all, delete")
+
+    def get_user_team(self):
+        '''Returns the user\'s team for the league. None if no team is specified'''
+        for team in self.teams:
+            if team.users_team:
+                return team
+        return None
+    
+    def get_team_by_index(self, team_id:int) -> Team:
+        '''Returns the team from the league by OTB index'''
+        for team in self.teams:
+            if team.index == team_id:
+                return team
+        return None
+
+    def get_team_by_site_id(self, site_id:int) -> Team:
+        '''Returns the team from the league by site Id'''
+        for team in self.teams:
+            if team.site_id == site_id:
+                return team
+        return None
+
+    def is_keeper(self, player_id:int) -> bool:
+        for keeper in self.projected_keepers:
+            if keeper.player_id == player_id:
+                return True
+        return False
 
 @reg.mapped_as_dataclass
 class Team:
@@ -114,6 +145,48 @@ class Team:
     
     roster_spots:Mapped[List["Roster_Spot"]] = relationship(default_factory=list, back_populates="team", cascade="all, delete", repr=False)
 
+    num_players:Mapped[int] = mapped_column(default=None)
+    spots:Mapped[int] = mapped_column(default=None)
+    salaries:Mapped[int] = mapped_column(default=None)
+    penalties:Mapped[int] = mapped_column(default=None)
+    loans_in:Mapped[int] = mapped_column(default=None)
+    loans_out:Mapped[int] = mapped_column(default=None)
+    free_cap:Mapped[int] = mapped_column(default=None)
+
+    rs_map:Dict[Player,Roster_Spot] = None
+    points:float=0
+    lg_rank:int=0
+    cat_stats:Dict[StatType,float]=None
+    cat_ranks:Dict[StatType,int]=None
+
+    @reconstructor
+    def init_on_load(self):
+        self.cat_stats = {}
+        self.cat_ranks = {}
+
+    def get_rs_by_player(self, player:Player) -> Roster_Spot:
+        '''Returns the team's Roster_Spot for the input player'''
+        if player is None:
+            return None
+        return self.get_rs_by_player_id(player.index)
+
+    def get_rs_by_player_id(self, player_id:int) -> Roster_Spot:
+        '''Returns the team's Roster_Spot for the input player id'''
+        if self.rs_map is None:
+            for rs in self.roster_spots:
+                if rs.player.index == player_id:
+                    return rs
+            return None
+        else:
+            return self.rs_map.get(player_id, None)
+
+    def index_rs(self) -> None:
+        self.rs_map = {}
+        for rs in self.roster_spots:
+            self.rs_map[rs.player.index] = rs
+            rs.g_h = 0
+            rs.ip = 0
+
 @reg.mapped_as_dataclass
 class Roster_Spot:
     __tablename__ = "roster_spot"
@@ -126,6 +199,21 @@ class Roster_Spot:
     player:Mapped["Player"] = relationship(default=None, back_populates="roster_spots")
 
     salary:Mapped[int] = mapped_column(default=None)
+
+    g_h:int = 0
+    ip:int = 0
+
+@reg.mapped_as_dataclass
+class Projected_Keeper:
+    __tablename__ = "projected_keeper"
+    id:Mapped[int] = mapped_column(init=False, primary_key=True)
+    league_id:Mapped[int] = mapped_column(ForeignKey("league.index"), default=None, nullable=False)
+    league:League = relationship(default=None, back_populates="projected_keepers", repr=False)
+    
+    player_id:Mapped[int] = mapped_column(ForeignKey("player.index"), default=None, nullable=False)
+    player:Player = relationship(default=None)
+
+    season:Mapped[int] = mapped_column(default=None)
 
 @reg.mapped_as_dataclass
 class Salary_Info:
@@ -274,8 +362,17 @@ class ValueCalculation:
                 values.append(pv)
         return values
 
+    def get_rep_level_map(self) -> List[Dict[Position, float]]:
+        '''Returns the output replacement level values for the ValueCalclution with position as the key'''
+        rl_map = {}
+        for pos in Position.get_discrete_offensive_pos() + Position.get_discrete_pitching_pos():
+            rl_map[pos] = self.get_output(CalculationDataType.pos_to_rep_level().get(pos))
+        rl_map[Position.POS_MI] = min(rl_map[Position.POS_2B], rl_map[Position.POS_SS])
+        return rl_map
+
 @reg.mapped_as_dataclass
 class CalculationInput:
+
     __tablename__ = "calculation_input"
     index:Mapped[int] = mapped_column(init=False, primary_key=True)
 

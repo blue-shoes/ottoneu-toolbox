@@ -315,6 +315,18 @@ class ScoringFormat(int, Enum):
     H2H_SABR_POINTS = (6, 'H2H SABR Points', 'H2H SABR')
 
     @classmethod
+    def get_format_stat_categories(self, format:ScoringFormat) -> List[StatType]:
+        if format == ScoringFormat.OLD_SCHOOL_5X5:
+            cats = [StatType.R, StatType.HR, StatType.RBI, StatType.SB, StatType.AVG,
+                    StatType.W, StatType.SV, StatType.SO, StatType.ERA, StatType.WHIP]
+        elif format == ScoringFormat.CLASSIC_4X4:
+            cats = [StatType.R, StatType.HR, StatType.OBP, StatType.SLG,
+                    StatType.SO, StatType.ERA, StatType.WHIP, StatType.HR_PER_9]
+        else:
+            cats = [StatType.POINTS]
+        return cats
+
+    @classmethod
     def is_points_type(self, format:ScoringFormat) -> bool:
         '''Returns if the argument format is a points format'''
         return format in [self.FG_POINTS, self.H2H_FG_POINTS, self.SABR_POINTS, self.H2H_SABR_POINTS]
@@ -457,7 +469,8 @@ class Browser(str, Enum):
     CHROME = ('ChromeHTML', 'Chrome')
     FIREFOX = ('FirefoxURL', 'Firefox')
     EDGE = ('MSEdgeHTM', 'Microsoft Edge')
-    
+    '''Enumeration of available browser types for projection download'''
+
     @classmethod
     def get_enum_from_display(self, display:str) -> Browser:
         '''Returns the Browser for the argument display name. None if no match'''
