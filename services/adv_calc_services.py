@@ -4,10 +4,14 @@ from dao.session import Session
 from domain.domain import Adv_Calc_Option
 from domain.enum import CalculationDataType as CDT
 
-def get_advanced_option(data_type:CDT) -> Adv_Calc_Option:
+def get_advanced_option(data_type:CDT, default:float=None) -> Adv_Calc_Option:
     '''Gets the advanced calculation option based on the data type'''
     with Session() as session:
         adv_opt = session.query(Adv_Calc_Option).filter(Adv_Calc_Option.index == data_type).first()
+    if adv_opt is None:
+        adv_opt = Adv_Calc_Option()
+        adv_opt.index = data_type
+        adv_opt.value = default
     return adv_opt
 
 def set_advanced_option(data_type:CDT, value:float) -> Adv_Calc_Option:

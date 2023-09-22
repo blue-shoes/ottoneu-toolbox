@@ -213,7 +213,7 @@ class Step1_FG(tk.Frame):
         rep_level_entry = ttk.Entry(self, textvariable=self.rep_level_value_str)
         rep_level_entry.grid(column=1,row=7,pady=5, sticky='we', columnspan=2)
         rep_level_entry.config(validate="key", validatecommand=(validation, '%P'))
-        CreateToolTip(self.rep_level_entry, 'Sets the dollar value assigned to the replacement level player by the original calculation')
+        CreateToolTip(rep_level_entry, 'Sets the dollar value assigned to the replacement level player by the original calculation')
 
         ttk.Label(self, text="Selected Projections (optional):").grid(column=0,row=8, pady=5, stick=W)
         self.sel_proj = tk.StringVar()
@@ -353,7 +353,7 @@ class Step1(tk.Frame):
         rep_level_entry = ttk.Entry(self, textvariable=self.rep_level_value_str)
         rep_level_entry.grid(column=1,row=10,pady=5, sticky='we', columnspan=2)
         rep_level_entry.config(validate="key", validatecommand=(validation, '%P'))
-        CreateToolTip(self.rep_level_entry, 'Sets the dollar value assigned to the replacement level player by the original calculation')
+        CreateToolTip(rep_level_entry, 'Sets the dollar value assigned to the replacement level player by the original calculation')
 
     def select_value_file(self):
         filetypes = (

@@ -25,7 +25,7 @@ def parse_dollar(value) -> float:
     if isinstance(value, float) or isinstance(value, int):
         return float(value)
     if '$' in value:
-        vals = value.split['$']
+        vals = value.split('$')
         if len(vals[0]) > 0 and '-' in vals[0]:
             return -float(vals[1])
         else:

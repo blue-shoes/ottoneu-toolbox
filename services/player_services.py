@@ -1,6 +1,7 @@
 from datetime import datetime
 from sqlalchemy.orm import joinedload
 from pybaseball import playerid_reverse_lookup
+import logging
 
 from domain.domain import Player, Salary_Refresh, Salary_Info
 from domain.enum import ScoringFormat, Position
@@ -8,7 +9,7 @@ from scrape.scrape_ottoneu import Scrape_Ottoneu
 from dao.session import Session
 from services import salary_services
 from util import string_util
-from typing import List
+from typing import List, Tuple
 
 def create_player_universe() -> None:
     '''Scrapes the Ottoneu overall Average Salary page to get Ottoverse player infromation and save it to the database, creating Players and SalaryInfos as necessary.'''
@@ -33,7 +34,7 @@ def create_player(player_row:list, ottoneu_id:int=None, fg_id=None) -> Player:
     player = Player()
     if ottoneu_id != None:
         player.ottoneu_id = int(ottoneu_id)
-        player.fg_major_id = player_row['FG MajorLeagueID']
+        player.fg_major_id = str(player_row['FG MajorLeagueID'])
         player.fg_minor_id = player_row['FG MinorLeagueID']
         player.name = player_row['Name']
         player.team = player_row['Org']
@@ -42,7 +43,7 @@ def create_player(player_row:list, ottoneu_id:int=None, fg_id=None) -> Player:
     else:
         # This must have come from a FG leaderboard
         if isinstance(fg_id, int) or  fg_id.isnumeric():
-            player.fg_major_id = int(fg_id)
+            player.fg_major_id = str(fg_id)
         else:
             player.fg_minor_id = fg_id
         player.name = player_row['Name']
@@ -63,12 +64,13 @@ def get_player_by_fg_id(player_id, force_major:bool=False) -> Player:
             player = session.query(Player).filter(Player.fg_minor_id == player_id).first()
     return player
 
-def get_player_by_ottoneu_id(ottoneu_id:int) -> Player:
+def get_player_by_ottoneu_id(ottoneu_id:int, pd=None) -> Player:
     '''Returns player from database based on input Ottoneu player id.'''
     with Session() as session:
         player = session.query(Player).filter(Player.ottoneu_id == ottoneu_id).first()
     if player is None:
-        player = get_player_from_ottoneu_player_page(ottoneu_id, 1)
+        player = get_player_from_ottoneu_player_page(ottoneu_id, 1, pd=pd)
+        player = session.query(Player).filter(Player.ottoneu_id == ottoneu_id).first()
     return player
 
 def is_populated() -> bool:
@@ -118,37 +120,50 @@ def search_by_name(search_str:str, salary_info:bool=True) -> List[Player]:
         else:
             return session.query(Player).filter(Player.search_name.contains(search_str)).all()
 
-def get_player_from_ottoneu_player_page(player_id: int, league_id: int) -> Player:
+def get_player_from_ottoneu_player_page(player_id: int, league_id: int, session:Session=None, pd=None) -> Player:
     '''Scrapes the Ottoneu player page based on Ottoneu player id and League id to retrieve necessary information to populate a player in the Toolbox database.'''
+    logging.info(f'Importing player {player_id} from player page')
+    if pd is not None:
+        pd.set_task_title(f'Populating Ottoneu Id {player_id}')
     player_tuple = Scrape_Ottoneu().get_player_from_player_page(player_id, league_id)
-    with Session() as session:
-        fg_id = player_tuple[4]
-        player = get_player_by_fg_id(fg_id)
-        if player is None:
-            player = Player()
-            player.name = player_tuple[1]
-            player.search_name = string_util.normalize(player.name)
-            session.add(player)
-            if isinstance(fg_id, int) or  fg_id.isnumeric():
-                player.fg_major_id = int(fg_id)
-            else:
-                player.fg_minor_id = fg_id
-        player.ottoneu_id = int(player_tuple[0])
+    if session is None:
+        with Session() as session2:
+            player = update_from_player_page(player_tuple, session2)
+            session2.commit()
+            return player
+    else:
+        return update_from_player_page(player_tuple, session)
         
-        player.team = player_tuple[2]
-        player.position = player_tuple[3]
 
-        player.salary_info = []
-        sal_info = Salary_Info()
-        sal_info.avg_salary = 0
-        sal_info.format = ScoringFormat.ALL
-        sal_info.last_10 = 0
-        sal_info.max_salary = 0
-        sal_info.med_salary = 0
-        sal_info.min_salary = 0
-        sal_info.roster_percentage = 0
-        player.salary_info.append(sal_info)
-        session.add(sal_info)
+def update_from_player_page(player_tuple:Tuple[int, str, str, str, str], session:Session) -> Player:
+    fg_id = player_tuple[4]
+    player = get_player_by_fg_id(fg_id)
+    if player is None:
+        player = Player()
+        player.name = player_tuple[1]
+        player.search_name = string_util.normalize(player.name)
+        session.add(player)
+        if isinstance(fg_id, int) or  fg_id.isnumeric():
+            player.fg_major_id = int(fg_id)
+        else:
+            player.fg_minor_id = fg_id
+    player.ottoneu_id = int(player_tuple[0])
+    
+    player.team = player_tuple[2]
+    player.position = player_tuple[3]
+
+    player.salary_info = []
+    sal_info = Salary_Info()
+    sal_info.avg_salary = 0
+    sal_info.format = ScoringFormat.ALL
+    sal_info.last_10 = 0
+    sal_info.max_salary = 0
+    sal_info.med_salary = 0
+    sal_info.min_salary = 0
+    sal_info.roster_percentage = 0
+    player.salary_info.append(sal_info)
+    session.add(sal_info)
+    #session.commit()
     return player
 
 def get_player_by_mlb_id(player_id:int) -> Player:
