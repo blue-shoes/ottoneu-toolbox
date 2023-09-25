@@ -102,7 +102,7 @@ class League:
     active:Mapped[bool] = mapped_column(default=True, nullable = False)
 
     teams:Mapped[List["Team"]] = relationship(default_factory=list, back_populates="league", cascade="all, delete", repr=False)
-    projected_keepers:Mapped[List["Projected_Keeper"]] = relationship(default_factory=list, back_populates="league", cascade="all, delete")
+    projected_keepers:Mapped[List["Projected_Keeper"]] = relationship(default_factory=list, cascade="all, delete", repr=False)
 
     def get_user_team(self):
         '''Returns the user\'s team for the league. None if no team is specified'''
@@ -183,7 +183,7 @@ class Team:
     def index_rs(self) -> None:
         self.rs_map = {}
         for rs in self.roster_spots:
-            self.rs_map[rs.player.index] = rs
+            self.rs_map[rs.player_id] = rs
             rs.g_h = 0
             rs.ip = 0
 
@@ -196,7 +196,7 @@ class Roster_Spot:
     team:Mapped["Team"] = relationship(default=None, back_populates="roster_spots", repr=False)
 
     player_id:Mapped[int] = mapped_column(ForeignKey("player.index"), default=None)
-    player:Mapped["Player"] = relationship(default=None, back_populates="roster_spots")
+    player:Mapped["Player"] = relationship(default=None, back_populates="roster_spots", lazy="joined")
 
     salary:Mapped[int] = mapped_column(default=None)
 
@@ -208,12 +208,14 @@ class Projected_Keeper:
     __tablename__ = "projected_keeper"
     id:Mapped[int] = mapped_column(init=False, primary_key=True)
     league_id:Mapped[int] = mapped_column(ForeignKey("league.index"), default=None, nullable=False)
-    league:League = relationship(default=None, back_populates="projected_keepers", repr=False)
     
     player_id:Mapped[int] = mapped_column(ForeignKey("player.index"), default=None, nullable=False)
-    player:Player = relationship(default=None)
+    player:Mapped[Player] = relationship(default=None, lazy="joined")
 
     season:Mapped[int] = mapped_column(default=None)
+
+    def __hash__(self) -> int:
+        return hash(self.id)
 
 @reg.mapped_as_dataclass
 class Salary_Info:
