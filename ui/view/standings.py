@@ -68,8 +68,12 @@ class Standings(tk.Frame):
                 if not self.use_keepers or self.league.is_keeper(rs.player_id):
                     salaries += rs.salary
                     pv = self.value_calc.get_player_value(rs.player_id, pos=Position.OVERALL)
-                    tot_val += pv.value
-                    surplus += pv.value - rs.salary
+                    if pv is None:
+                        val = 0
+                    else:
+                        val = pv.value
+                    tot_val += val
+                    surplus += val - rs.salary
             vals.append('$' + "{:.0f}".format(salaries))
             vals.append('$' + "{:.0f}".format(tot_val))
             vals.append('$' + "{:.0f}".format(surplus))
@@ -80,8 +84,12 @@ class Standings(tk.Frame):
             surplus = 0.0
             for rs in team.roster_spots:
                 pv = self.value_calc.get_player_value(rs.player_id, pos=Position.OVERALL)
-                tot_val += pv.value
-                surplus += pv.value - rs.salary
+                if pv is None:
+                    val = 0
+                else:
+                    val = pv.value
+                tot_val += val
+                surplus += val - rs.salary
             vals.append('$' + "{:.0f}".format(tot_val))
             vals.append('$' + "{:.0f}".format(surplus))
             vals.append(f'S{team.free_cap}')
