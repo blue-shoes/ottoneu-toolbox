@@ -45,7 +45,6 @@ class Standings(tk.Frame):
         align['Team'] = W
         self.standings_table = st = ScrollableTreeFrame(standings_frame, cols,pack=False,sortable_columns=cols,reverse_col_sort=cols, column_widths=widths, init_sort_col='Rank', column_alignments=align)
         st.table.tag_configure('users', background='#FCE19D')
-        st.table.add_scrollbar()
         st.table.set_refresh_method(self.refresh_standings)
         st.pack(fill='both', expand=True)
     

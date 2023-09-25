@@ -87,13 +87,22 @@ class Table(ttk.Treeview):
     def add_scrollbar(self):
         if self.is_pack:
             self.pack(side='left', fill='both', expand=True)
-            self.vsb = ttk.Scrollbar(self.parent, orient="vertical", command=self.yview)
-            self.configure(yscrollcommand=self.vsb.set)
-            self.vsb.pack(side='right', fill='y')
-            if self.hscroll:
-                self.hsb = ttk.Scrollbar(self.parent.master, orient="horizontal", command=self.xview)
-                self.configure(xscrollcommand=self.hsb.set)
-                self.hsb.pack(side='bottom', fill='x')
+            if isinstance(self.parent, ScrollableTreeFrame):
+                self.vsb = ttk.Scrollbar(self.parent, orient="vertical", command=self.yview)
+                self.configure(yscrollcommand=self.vsb.set)
+                self.vsb.pack(side='right', fill='y')
+                if self.hscroll:
+                    self.hsb = ttk.Scrollbar(self.parent.master, orient="horizontal", command=self.xview)
+                    self.configure(xscrollcommand=self.hsb.set)
+                    self.hsb.pack(side='bottom', fill='x')
+            else:
+                self.vsb = ttk.Scrollbar(self, orient="vertical", command=self.yview)
+                self.configure(yscrollcommand=self.vsb.set)
+                self.vsb.pack(side='right', fill='y')
+                if self.hscroll:
+                    self.hsb = ttk.Scrollbar(self, orient="horizontal", command=self.xview)
+                    self.configure(xscrollcommand=self.hsb.set)
+                    self.hsb.pack(side='bottom', fill='x')
         else:
             self.grid(column=0,row=0, sticky='nsew')
             self.parent.grid_rowconfigure(0, weight=1)
@@ -217,7 +226,7 @@ class ScrollableTreeFrame(ttk.Frame):
 
     table:Table
 
-    def __init__(self, parent, columns, pack=True, column_alignments=None, column_widths=None, sortable_columns=None, reverse_col_sort=None, hscroll=True, init_sort_col=None, custom_sort={}, checkbox:bool=False, **kw):
+    def __init__(self, parent, columns, column_alignments=None, column_widths=None, sortable_columns=None, reverse_col_sort=None, hscroll=True, init_sort_col=None, custom_sort={}, checkbox:bool=False, pack=True, **kw):
         super().__init__(parent, **kw)
         if pack:
             self.pack_propagate(False)
@@ -232,6 +241,7 @@ class ScrollableTreeFrame(ttk.Frame):
             parent = self
 
         self.table = Table(parent, columns, column_alignments, column_widths, sortable_columns, reverse_col_sort, hscroll, init_sort_col, custom_sort, checkbox, pack)
+        self.table.add_scrollbar()
 
 def bool_to_table(val):
     if val:

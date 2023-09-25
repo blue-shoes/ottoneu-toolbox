@@ -58,7 +58,6 @@ class Surplus(tk.Frame):
         align['Roster'] = W
         self.player_table = ScrollableTreeFrame(self, cols,pack=False,sortable_columns=cols,reverse_col_sort=cols, column_widths=widths, init_sort_col='Surplus', column_alignments=align, checkbox=self.use_keepers)
         self.player_table.table.tag_configure('users', background='#FCE19D')
-        self.player_table.table.add_scrollbar()
         self.player_table.table.set_refresh_method(self.update_player_table)
         self.player_table.table.set_checkbox_toggle_method(self.toggle_keeper)
         self.player_table.pack(fill='both', expand=True)
