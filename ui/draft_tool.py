@@ -18,7 +18,7 @@ from functools import partial
 
 from scrape.scrape_ottoneu import Scrape_Ottoneu 
 from domain.enum import Position, ScoringFormat, StatType, Preference as Pref, AvgSalaryFom, RankingBasis, ProjectionType
-from ui.table import Table, sort_cmp
+from ui.table import Table, sort_cmp, ScrollableTreeFrame
 from ui.dialog import progress, draft_target, cm_team_assignment
 from ui.dialog.wizard import couchmanagers_import
 from ui.tool.tooltip import CreateToolTip
@@ -123,16 +123,18 @@ class DraftTool(tk.Frame):
         self.lg_lbl.grid(column=0,row=0, pady=5, columnspan=2)
 
         running_list_frame = ttk.Frame(self, border=4)
-        running_list_frame.grid(row=2, column=0, columnspan=2, pady=5)
+        running_list_frame.grid(row=2, column=0, columnspan=2, pady=5, sticky='nsew')
+        running_list_frame.rowconfigure(0, weight=1)
+        self.rowconfigure(2, weight=1)
 
-        self.tab_control = ttk.Notebook(running_list_frame, width=570, height=300)
-        self.tab_control.grid(row=0, column=0)
+        self.tab_control = ttk.Notebook(running_list_frame, width=570)
+        self.tab_control.grid(row=0, column=0, sticky='ns')
 
         self.create_search()
 
         #TODO: Clean this up
         self.standings = Standings(self, use_keepers=False)
-        self.standings.grid(row=1,column=2)
+        self.standings.grid(row=1,column=2, sticky='nsew')
 
         button_frame = ttk.Frame(running_list_frame)
         button_frame.grid(row=0, column=1, sticky=tk.N, pady=15)
@@ -157,13 +159,12 @@ class DraftTool(tk.Frame):
         align['Name'] = W
         custom_sort = {}
         custom_sort['Value'] = partial(self.default_value_sort, Position.OVERALL)
-        self.overall_view = ov = Table(overall_frame, cols,sortable_columns=cols, column_widths=widths, init_sort_col='Value', column_alignments=align, custom_sort=custom_sort)
-        ov.grid(column=0)
-        ov.set_row_select_method(self.on_select)
-        ov.set_right_click_method(self.player_rclick)
-        self.set_row_colors(ov)
-        ov.add_scrollbar()
-        ov.set_refresh_method(self.refresh_overall_view)
+        self.overall_view = ov = ScrollableTreeFrame(overall_frame, cols,sortable_columns=cols, column_widths=widths, init_sort_col='Value', column_alignments=align, custom_sort=custom_sort, pack=False)
+        ov.table.set_row_select_method(self.on_select)
+        ov.table.set_right_click_method(self.player_rclick)
+        self.set_row_colors(ov.table)
+        ov.pack(fill='both', expand=True)
+        ov.table.set_refresh_method(self.refresh_overall_view)
 
         for pos in (Position.get_offensive_pos() + Position.get_pitching_pos()):
             pos_frame = ttk.Frame(self.tab_control)
@@ -174,13 +175,12 @@ class DraftTool(tk.Frame):
                 cols = ('Name','Value','Inf. Cost','Pos','Team','Points','SABR Pts','P/IP','SABR PIP','PP/G','SABR PPG', 'Avg. Price', 'L10 Price', 'Roster %', 'K', 'ERA', 'WHIP', 'W', 'SV', 'HR/9')
             custom_sort = {}
             custom_sort['Value'] = partial(self.default_value_sort, pos)
-            self.pos_view[pos] = pv = Table(pos_frame, cols,sortable_columns=cols, column_widths=widths, column_alignments=align, init_sort_col='Value', custom_sort=custom_sort)
-            pv.grid(column=0)
-            pv.set_row_select_method(self.on_select)
-            pv.set_right_click_method(self.player_rclick)
-            self.set_row_colors(pv)
-            pv.set_refresh_method(lambda _pos = pos: self.refresh_pos_table(_pos))
-            pv.add_scrollbar()
+            self.pos_view[pos] = pv = ScrollableTreeFrame(pos_frame, cols,sortable_columns=cols, column_widths=widths, column_alignments=align, init_sort_col='Value', custom_sort=custom_sort, pack=False)
+            pv.pack(fill='both', expand=True)
+            pv.table.set_row_select_method(self.on_select)
+            pv.table.set_right_click_method(self.player_rclick)
+            self.set_row_colors(pv.table)
+            pv.table.set_refresh_method(lambda _pos = pos: self.refresh_pos_table(_pos))
         
         if self.controller.preferences.getboolean('Draft', Pref.DOCK_DRAFT_TARGETS, fallback=False):
             target_frame = ttk.Frame(self.tab_control)
@@ -198,14 +198,13 @@ class DraftTool(tk.Frame):
         cols=['Name', 'Target Price', 'Value', 'Pos']
         rev_sort = ['Target Price', 'Value']
 
-        self.target_table = tt = Table(target_frame, columns=cols, column_alignments=align, 
-            column_widths=widths, sortable_columns=cols, reverse_col_sort=rev_sort, init_sort_col='Value')
-        tt.grid(column=0)
-        tt.set_row_select_method(self.on_select)
-        tt.set_right_click_method(self.target_rclick)
-        self.set_row_colors(tt, targets=False)
-        tt.set_refresh_method(self.refresh_targets)
-        tt.add_scrollbar()
+        self.target_table = tt = ScrollableTreeFrame(target_frame, columns=cols, column_alignments=align, 
+            column_widths=widths, sortable_columns=cols, reverse_col_sort=rev_sort, init_sort_col='Value', pack=False)
+        tt.pack(fill='both', expand=True)
+        tt.table.set_row_select_method(self.on_select)
+        tt.table.set_right_click_method(self.target_rclick)
+        self.set_row_colors(tt.table, targets=False)
+        tt.table.set_refresh_method(self.refresh_targets)
     
     def create_search(self):
         self.values_name = StringVar()
@@ -234,32 +233,33 @@ class DraftTool(tk.Frame):
 
             search_frame = ttk.Frame(self.tab_control, border=4)
             self.tab_control.add(search_frame, text='Search')
-            #search_frame.grid(column=0)
-            ttk.Label(search_frame, text = 'Search:').grid(column=0,row=0,pady=5)
+
+            entry_frame = ttk.Frame(search_frame)
+            entry_frame.pack(side=TOP, fill='x', expand=False)
+            ttk.Label(entry_frame, text='Search:').pack(side=LEFT)
 
             self.search_string = ss = tk.StringVar()
-            ss.trace("w", lambda name, index, mode, sv=ss: self.search_view.refresh())
-            ttk.Entry(search_frame, textvariable=ss).grid(column=1,row=0)
+            ss.trace("w", lambda name, index, mode, sv=ss: self.search_view.table.refresh())
+            ttk.Entry(entry_frame, textvariable=ss).pack(side=LEFT, fill='x', expand=True)
 
             f = ttk.Frame(search_frame, border=4)
-            f.grid(column=0,row=1, columnspan=3)
+            f.pack(side=TOP, fill='both', expand=True)
 
             self.create_search_table(f, 0, 0)
 
-            #search_unrostered_btn = ttk.Checkbutton(search_frame, text="Search 0% Rostered?", variable=self.search_unrostered_bv)
-            search_unrostered_btn = ttk.Checkbutton(search_frame, text="Search 0% Rostered?", variable=self.search_unrostered_bv, command=self.search_view.refresh)
-            search_unrostered_btn.grid(row=0, column=2, sticky=tk.NW, pady=5)
+            search_unrostered_btn = ttk.Checkbutton(entry_frame, text="Search 0% Rostered?", variable=self.search_unrostered_bv, command=self.search_view.table.refresh)
+            search_unrostered_btn.pack(side=LEFT, fill='none', expand=False, padx=5)
             search_unrostered_btn.state(['!alternate'])
             CreateToolTip(search_unrostered_btn, 'Include 0% rostered players in the search results')
         
         else:
 
             search_frame = ttk.Frame(self)
-            search_frame.grid(column=0,row=1, padx=5, sticky=tk.N, pady=17)
+            search_frame.grid(column=0,row=1, padx=5, sticky=tk.NW, pady=17)
             ttk.Label(search_frame, text = 'Player Search: ', font='bold').grid(column=0,row=1,pady=5)
 
             self.search_string = ss = tk.StringVar()
-            ss.trace("w", lambda name, index, mode, sv=ss: self.search_view.refresh())
+            ss.trace("w", lambda name, index, mode, sv=ss: self.search_view.table.refresh())
             ttk.Entry(search_frame, textvariable=ss).grid(column=1,row=1)
 
             self.start_monitor = ttk.Button(search_frame, textvariable=self.start_draft_sv, command=self.start_draft_monitor)
@@ -288,14 +288,15 @@ class DraftTool(tk.Frame):
                 self.values_name.set(f'Selected Values: {self.value_calculation.name}')
             ttk.Label(search_frame, textvariable=self.values_name).grid(row=7, column=0, sticky=tk.NW)
 
-            f = ttk.Frame(self)
-            f.grid(column=1,row=1)
+            f = ttk.Frame(self, width=250)
+            f.grid(column=1,row=1, sticky='nsew')
+            self.columnconfigure(1, weight=1)
             
-            ttk.Label(f, text = 'Search Results', font='bold').grid(column=0, row=0)
+            ttk.Label(f, text = 'Search Results', font='bold').pack(expand=False, fill='x', side=TOP)
 
             self.create_search_table(f, col=0, row=1)
 
-            search_unrostered_btn = ttk.Checkbutton(search_frame, text="Search 0% Rostered?", variable=self.search_unrostered_bv, command=self.search_view.refresh)
+            search_unrostered_btn = ttk.Checkbutton(search_frame, text="Search 0% Rostered?", variable=self.search_unrostered_bv, command=self.search_view.table.refresh)
             search_unrostered_btn.grid(row=2, column=1, sticky=tk.NW, pady=5)
             search_unrostered_btn.state(['!alternate'])
             CreateToolTip(search_unrostered_btn, 'Include 0% rostered players in the search results')
@@ -309,12 +310,12 @@ class DraftTool(tk.Frame):
         align['Name'] = W
         custom_sort = {}
         custom_sort['Value'] = self.default_search_sort
-        self.search_view = sv = Table(parent, columns=cols, column_alignments=align, column_widths=widths, sortable_columns=cols, init_sort_col='Value', custom_sort=custom_sort)    
-        self.search_view.grid(column=col,row=row, padx=5, columnspan=col_span)   
-        sv.set_row_select_method(self.on_select)
-        sv.set_right_click_method(self.player_rclick)
-        self.set_row_colors(sv)
-        sv.set_refresh_method(self.update_player_search)
+        self.search_view = sv = ScrollableTreeFrame(parent, columns=cols, column_alignments=align, column_widths=widths, sortable_columns=cols, init_sort_col='Value', custom_sort=custom_sort, pack=False)      
+        sv.pack(fill='both', expand=True, side=TOP)
+        sv.table.set_row_select_method(self.on_select)
+        sv.table.set_right_click_method(self.player_rclick)
+        self.set_row_colors(sv.table)
+        sv.table.set_refresh_method(self.update_player_search)
 
     def target_rclick(self, event):
         iid = event.widget.identify_row(event.y)
@@ -377,10 +378,10 @@ class DraftTool(tk.Frame):
     
     def set_player_tags_all_tables(self, player_id):
         tags = self.get_row_tags(player_id)
-        self.overall_view.set_tags_by_row_text(player_id, tags)
+        self.overall_view.table.set_tags_by_row_text(player_id, tags)
         for pos in self.pos_view:
-            self.pos_view[pos].set_tags_by_row_text(player_id, tags)
-        self.search_view.set_tags_by_row_text(player_id, tags)
+            self.pos_view[pos].table.set_tags_by_row_text(player_id, tags)
+        self.search_view.table.set_tags_by_row_text(player_id, tags)
 
     def on_select(self, event):
         if len(event.widget.selection()) == 1:
@@ -389,9 +390,9 @@ class DraftTool(tk.Frame):
 
     def default_value_sort(self, pos:Position):
         if pos == Position.OVERALL:
-            pos_table = self.overall_view
+            pos_table = self.overall_view.table
         else:
-            pos_table = self.pos_view.get(pos)
+            pos_table = self.pos_view.get(pos).table
         if self.league.format is None:
             l = [(self.set(k, 'Values'), k) for k in self.get_children('')]
             sorted(l, reverse=self.table.reverse_sort['Values'], key=lambda x: sort_cmp(x)) 
@@ -417,8 +418,8 @@ class DraftTool(tk.Frame):
         return l
 
     def default_search_sort(self):
-        l = [((self.search_view.set(k, 'Value'), self.search_view.set(k,'Roster %')), k) for k in self.search_view.get_children('')]
-        l = sorted(l, reverse=self.search_view.reverse_sort['Value'], key=lambda x: self.sort_dual_columns(x))
+        l = [((self.search_view.table.set(k, 'Value'), self.search_view.table.set(k,'Roster %')), k) for k in self.search_view.table.get_children('')]
+        l = sorted(l, reverse=self.search_view.table.reverse_sort['Value'], key=lambda x: self.sort_dual_columns(x))
         return l
     
     def sort_dual_columns(self, cols):
@@ -687,16 +688,16 @@ class DraftTool(tk.Frame):
 
     def refresh_views(self, pos_keys=None):
         self.inflation_str_var.set(f'Inflation: {"{:.1f}".format((self.inflation - 1.0)*100)}%')
-        self.overall_view.refresh()
+        self.overall_view.table.refresh()
         if pos_keys == None:
             for pos in (Position.get_offensive_pos() + Position.get_pitching_pos()):
-                self.pos_view[pos].refresh()
+                self.pos_view[pos].table.refresh()
         else:
             for pos in pos_keys:
                 logging.debug(f'updating {pos.value}')
-                self.pos_view[pos].refresh()
+                self.pos_view[pos].table.refresh()
         
-        self.search_view.refresh()
+        self.search_view.table.refresh()
         self.refresh_planning_frame()
     
     def refresh_overall_view(self):
@@ -724,7 +725,7 @@ class DraftTool(tk.Frame):
             spppg = "{:.2f}".format(pos_df.iat[i, 14])
             sal_tup = self.get_salary_tuple(int(id))
             tags = self.get_row_tags(id)
-            self.overall_view.insert('', tk.END, text=id, values=(name, value, inf_cost, position, team, pts, sabr_pts, ppg, hppg, pppa, pip, spip, pppg, spppg, sal_tup[0], sal_tup[1], sal_tup[2]), tags=tags)
+            self.overall_view.table.insert('', tk.END, text=id, values=(name, value, inf_cost, position, team, pts, sabr_pts, ppg, hppg, pppa, pip, spip, pppg, spppg, sal_tup[0], sal_tup[1], sal_tup[2]), tags=tags)
 
     def refresh_pos_table(self, pos):
         if self.show_drafted_players.get() == 1:
@@ -753,7 +754,7 @@ class DraftTool(tk.Frame):
                 sb = "{:.0f}".format(pos_df.iat[i, 13])
                 obp = "{:.3f}".format(pos_df.iat[i, 14])
                 slg = "{:.3f}".format(pos_df.iat[i, 15])
-                self.pos_view[pos].insert('', tk.END, text=id, values=(name, value, inf_cost, position, team, pts, rate1, rate2, sal_tup[0], sal_tup[1], sal_tup[2], runs, hr, rbi, avg, sb, obp, slg), tags=tags)
+                self.pos_view[pos].table.insert('', tk.END, text=id, values=(name, value, inf_cost, position, team, pts, rate1, rate2, sal_tup[0], sal_tup[1], sal_tup[2], runs, hr, rbi, avg, sb, obp, slg), tags=tags)
             else:
                 sabr_pts = "{:.1f}".format(pos_df.iat[i, 6])
                 rate1 = "{:.2f}".format(pos_df.iat[i, 8])
@@ -766,7 +767,7 @@ class DraftTool(tk.Frame):
                 w = "{:.0f}".format(pos_df.iat[i, 15])
                 sv = "{:.0f}".format(pos_df.iat[i, 16])
                 hr_per_9 = "{:.2f}".format(pos_df.iat[i, 17])
-                self.pos_view[pos].insert('', tk.END, text=id, values=(name, value, inf_cost, position, team, pts,sabr_pts, rate1, rate2, rate3, rate4, sal_tup[0], sal_tup[1], sal_tup[2], k, era, whip, w, sv, hr_per_9), tags=tags)
+                self.pos_view[pos].table.insert('', tk.END, text=id, values=(name, value, inf_cost, position, team, pts,sabr_pts, rate1, rate2, rate3, rate4, sal_tup[0], sal_tup[1], sal_tup[2], k, era, whip, w, sv, hr_per_9), tags=tags)
     def get_salary_tuple(self, playerid):
         si = self.value_calculation.get_player_value(playerid, pos=Position.OVERALL).player.get_salary_info_for_format(self.league.format)
         if si is None:
@@ -891,10 +892,10 @@ class DraftTool(tk.Frame):
                 roster_percent = "{:.1f}".format(si.roster_percentage) + "%"
 
             tags = self.get_row_tags(id)
-            self.search_view.insert('', tk.END, text=str(id), tags=tags, values=(name, value, salary, inf_cost,pos, team, pts, spts, ppg, hppg, pppa, pip, spip, pppg, spppg, roster_percent))
+            self.search_view.table.insert('', tk.END, text=str(id), tags=tags, values=(name, value, salary, inf_cost,pos, team, pts, spts, ppg, hppg, pppa, pip, spip, pppg, spppg, roster_percent))
    
     def refresh_planning_frame(self):
-        self.target_table.refresh()
+        self.target_table.table.refresh()
 
     def refresh_targets(self):
         for target in self.draft.targets:
@@ -908,7 +909,7 @@ class DraftTool(tk.Frame):
                 value = '$' + "{:.0f}".format(pv.value)
             pos = target.player.position
             tags = self.get_row_tags(id)
-            self.target_table.insert('', tk.END, text=id, tags=tags, values=(name, t_price, value, pos))
+            self.target_table.table.insert('', tk.END, text=id, tags=tags, values=(name, t_price, value, pos))
         
     def initialize_draft(self, same_values=False): 
         self.calculate_extra_value() 
@@ -965,7 +966,7 @@ class DraftTool(tk.Frame):
         self.standings.league = self.controller.league
         self.standings.value_calc = self.controller.value_calculation
         league_services.calculate_league_table(self.league, self.value_calculation, self.standings.standings_type.get() == 1, self.inflation)
-        self.standings.standings_table.refresh()
+        self.standings.standings_table.table.refresh()
 
         self.refresh_views()
         pd.complete()
@@ -982,10 +983,10 @@ class DraftTool(tk.Frame):
         stock_overall = player_cols + salary_cols
         stock_search = ('Name','Value','Inf. Cost','Salary','Pos','Team')
         if self.value_calculation.projection is None or not self.calc_format_matches_league():
-            self.overall_view.set_display_columns(stock_overall)
+            self.overall_view.table.set_display_columns(stock_overall)
             for pos in self.pos_view:
-                self.pos_view[pos].set_display_columns(stock_overall)
-            self.search_view.set_display_columns(stock_search + ('Roster %',))
+                self.pos_view[pos].table.set_display_columns(stock_overall)
+            self.search_view.table.set_display_columns(stock_search + ('Roster %',))
         elif ScoringFormat.is_points_type(self.league.format):
             sabr = ScoringFormat.is_sabr(self.league.format)
             if sabr:
@@ -1019,29 +1020,29 @@ class DraftTool(tk.Frame):
                 pitch_rate = tuple()
             else:
                 raise Exception(f"Unhandled pitcher_basis {self.value_calculation.pitcher_basis}")
-            self.overall_view.set_display_columns(player_cols + p_points + hit_rate + pitch_rate + salary_cols)
+            self.overall_view.table.set_display_columns(player_cols + p_points + hit_rate + pitch_rate + salary_cols)
             for pos in self.pos_view:
                 if pos in Position.get_offensive_pos():
-                    self.pos_view[pos].set_display_columns(player_cols + ('Points',) + pos_hit_rate + salary_cols)
+                    self.pos_view[pos].table.set_display_columns(player_cols + ('Points',) + pos_hit_rate + salary_cols)
                 else:
-                    self.pos_view[pos].set_display_columns(player_cols + p_points + pitch_rate + salary_cols)
-            self.search_view.set_display_columns(stock_search + p_points + hit_rate + pitch_rate + ('Roster %',))
+                    self.pos_view[pos].table.set_display_columns(player_cols + p_points + pitch_rate + salary_cols)
+            self.search_view.table.set_display_columns(stock_search + p_points + hit_rate + pitch_rate + ('Roster %',))
         elif self.league.format == ScoringFormat.OLD_SCHOOL_5X5:
-            self.overall_view.set_display_columns(stock_overall)
+            self.overall_view.table.set_display_columns(stock_overall)
             for pos in self.pos_view:
                 if pos in Position.get_offensive_pos():
-                    self.pos_view[pos].set_display_columns(player_cols + hit_5x5_cols + salary_cols)
+                    self.pos_view[pos].table.set_display_columns(player_cols + hit_5x5_cols + salary_cols)
                 else:
-                    self.pos_view[pos].set_display_columns(player_cols + pitch_5x5_cols + salary_cols)
-            self.search_view.set_display_columns(stock_search + ('Roster %',))
+                    self.pos_view[pos].table.set_display_columns(player_cols + pitch_5x5_cols + salary_cols)
+            self.search_view.table.set_display_columns(stock_search + ('Roster %',))
         elif self.league.format == ScoringFormat.CLASSIC_4X4:
-            self.overall_view.set_display_columns(stock_overall)
+            self.overall_view.table.set_display_columns(stock_overall)
             for pos in self.pos_view:
                 if pos in Position.get_offensive_pos():
-                    self.pos_view[pos].set_display_columns(player_cols + hit_4x4_cols + salary_cols)
+                    self.pos_view[pos].table.set_display_columns(player_cols + hit_4x4_cols + salary_cols)
                 else:
-                    self.pos_view[pos].set_display_columns(player_cols + pitch_4x4_cols + salary_cols)
-            self.search_view.set_display_columns(stock_search + ('Roster %',))
+                    self.pos_view[pos].table.set_display_columns(player_cols + pitch_4x4_cols + salary_cols)
+            self.search_view.table.set_display_columns(stock_search + ('Roster %',))
         else:
             raise Exception(f"Unknown league type {self.league.format}")
     
