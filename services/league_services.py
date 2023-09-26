@@ -301,12 +301,9 @@ def project_team_results(team:Team, value_calc:ValueCalculation, fill_pt:bool=Fa
             team.cat_stats[cat] = list_util.weighted_average(val)
 
 def calculate_league_cat_ranks(league:League) -> None:    
-    for cat in StatType.get_format_stat_categories(league.format):
+    for cat in ScoringFormat.get_format_stat_categories(league.format):
         cat_list = [team.cat_stats.get(cat) for team in league.teams]
-        if cat in [StatType.ERA, StatType.WHIP, StatType.HR_PER_9]:
-            rank_map = list_util.rank_list_with_ties(cat_list,reverse=False, max_rank=league.num_teams)
-        else:
-            rank_map = list_util.rank_list_with_ties(cat_list,reverse=True, max_rank=league.num_teams)
+        rank_map = list_util.rank_list_with_ties(cat_list,reverse=cat.higher_better, max_rank=league.num_teams)
         for team in league.teams:
             team.cat_ranks[cat] = rank_map.get(team.cat_stats.get(cat))
     for team in league.teams:
