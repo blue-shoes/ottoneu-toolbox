@@ -3,8 +3,9 @@ from tkinter import *
 from tkinter import ttk 
 
 from domain.domain import League, ValueCalculation, Team
-from domain.enum import Position
+from domain.enum import Position, ScoringFormat
 from ui.table import ScrollableTreeFrame
+from ui.tool.tooltip import CreateToolTip
 
 class Standings(tk.Frame):
 
@@ -36,7 +37,9 @@ class Standings(tk.Frame):
         button_frame.pack(side=TOP, fill='x', expand=False)
 
         tk.Radiobutton(button_frame, variable=self.standings_type, value=0, text="Current", command=self.refresh_standings).pack(side=LEFT)
-        tk.Radiobutton(button_frame, variable=self.standings_type, value=1, text="Projected", command=self.refresh_standings).pack(side=LEFT)
+        self.proj_button = tk.Radiobutton(button_frame, variable=self.standings_type, value=1, text="Projected", command=self.refresh_standings)
+        self.proj_button.pack(side=LEFT)
+        CreateToolTip(self.proj_button, 'Calculates projected point total based on known replacement levels, remaining salary cap, and league inflation.')
 
         cols = self.cols
         widths = {}
@@ -57,6 +60,14 @@ class Standings(tk.Frame):
             if team.users_team:
                 tags=('users',)
             self.standings_table.table.insert('', tk.END, text=team.site_id, tags=tags, values=self.calc_values(team))
+    
+    def update_league(self, league:League) -> None:
+        self.league = league
+        if not ScoringFormat.is_points_type(league.format):
+            self.standings_type.set(0)
+            self.proj_button.configure(state='disable')
+        else:
+            self.proj_button.configure(state='active')
 
     def calc_salary_info(self, team:Team) -> list:
         vals = []

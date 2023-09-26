@@ -3,7 +3,7 @@ from tkinter import *
 from tkinter import ttk 
 
 from domain.domain import League, ValueCalculation, Team
-from domain.enum import Position
+from domain.enum import Position, ScoringFormat
 from services import league_services, projected_keeper_services
 from ui.dialog import progress
 from ui.view import standings, surplus
@@ -101,13 +101,13 @@ class League_Analysis(tk.Frame):
         if self.league.projected_keepers is None or len(self.league.projected_keepers) == 0:
             self.initialize_keepers()
         pd = progress.ProgressDialog(self.parent, 'Initializing League Analysis')
+        self.standings.update_league(self.league)
+        self.standings.value_calc = self.value_calculation
         pd.set_completion_percent(10)
         pd.set_task_title("Optimizing lineups")
-        league_services.calculate_league_table(self.league, self.value_calculation, self.standings.standings_type.get() == 1, self.inflation)
+        league_services.calculate_league_table(self.league, self.value_calculation, fill_pt=(self.standings.standings_type.get() == 1), inflation=self.inflation)
         pd.set_completion_percent(90)
         pd.set_task_title('Updating display')
-        self.standings.league = self.league
-        self.standings.value_calc = self.value_calculation
         self.standings.standings_table.table.refresh()
         self.surplus.update_league(self.league)
         self.surplus.update_value_calc(self.value_calculation)
