@@ -213,9 +213,10 @@ class StatType(int, Enum):
     stat_list:List[str]
     hitter: bool
     format: str
+    higher_better: bool
 
     def __new__(
-        cls, id: int, stat_list: List[str], hitter: bool, format:str = "{:.0f}"
+        cls, id: int, stat_list: List[str], hitter: bool, format:str = "{:.0f}", higher_better:bool = True
     ) -> StatType:
         obj = int.__new__(cls, id)
         obj._value_ = id
@@ -224,6 +225,7 @@ class StatType(int, Enum):
         obj.stat_list = stat_list
         obj.hitter = hitter
         obj.format = format
+        obj.higher_better = higher_better
         return obj
 
     G_HIT = (0, ['G', 'G_C', 'G_FB', 'G_SB', 'G_3B', 'G_SS', 'G_LF', 'G_CF', 'G_RF', 'G_DH'], True)
@@ -237,10 +239,10 @@ class StatType(int, Enum):
     R = (8, ['R'], True)
     RBI = (9, ['RBI'], True)
     BB = (10, ['BB'], True)
-    SO = (11, ['SO'], True)
+    SO = (11, ['SO'], False)
     HBP = (12, ['HBP'], True)
     SB = (13, ['SB'], True)
-    CS = (14, ['CS'], True)
+    CS = (14, ['CS'], True, "{:.0f}", False)
     AVG = (15, ['AVG', 'BA'], True, "{:.3f}")
     OBP = (16, ['OBP'], True, "{:.3f}")
     SLG = (17, ['SLG'], True, "{:.3f}")
@@ -251,24 +253,24 @@ class StatType(int, Enum):
     GS_PIT = (22, ['GS'], False)
     IP = (23, ['IP'], False, "{:.1f}")
     W = (24, ['W'], False)
-    L = (25, ['L'], False)
+    L = (25, ['L'], False, "{:.0f}", False)
     QS = (26, ['QS'], False)
     SV = (27, ['SV'], False)
     HLD = (28, ['HLD', 'Holds'], False)
-    H_ALLOWED = (29, ['H'], False)
-    ER = (30, ['ER'], False)
-    HR_ALLOWED = (31, ['HR', 'HRA'], False)
-    K = (32, ['SO'], False)
-    BB_ALLOWED = (33, ['BB'], False)
-    HBP_ALLOWED = (34, ['HBP'], False)
-    WHIP = (35, ['WHIP'], False, "{:.2f}")
+    H_ALLOWED = (29, ['H'], False, "{:.0f}", False)
+    ER = (30, ['ER'], False, "{:.0f}", False)
+    HR_ALLOWED = (31, ['HR', 'HRA'], False, "{:.0f}", False)
+    K = (32, ['SO'], True, "{:.0f}", False)
+    BB_ALLOWED = (33, ['BB'], False, "{:.0f}", False)
+    HBP_ALLOWED = (34, ['HBP'], False, "{:.0f}", False)
+    WHIP = (35, ['WHIP'], False, "{:.2f}", False)
     K_PER_9 = (36, ['K/9'], False, "{:.2f}")
-    BB_PER_9 = (37, ['BB/9'], False, "{:.2f}")
-    ERA = (38, ['ERA'], False, "{:.2f}")
-    FIP = (39, ['FIP'], False, "{:.2f}")
+    BB_PER_9 = (37, ['BB/9'], False, "{:.2f}", False)
+    ERA = (38, ['ERA'], False, "{:.2f}", False)
+    FIP = (39, ['FIP'], False, "{:.2f}", False)
     BABIP_H = (40, ['BABIP'], True, "{:.3f}")
-    BABIP_P = (41, ['BABIP'], False, "{:.3f}")
-    HR_PER_9 = (42, ['HR/9'], False, "{:.2f}")
+    BABIP_P = (41, ['BABIP'], False, "{:.3f}", False)
+    HR_PER_9 = (42, ['HR/9'], False, "{:.2f}", False)
     POINTS = (43, ['Points'], True, "{:.1f}")
     PPG = (44, ['PPG'], True, "{:.2f}")
     PIP = (45, ['PIP'], True, "{:.2f}")
