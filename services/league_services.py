@@ -193,11 +193,11 @@ def calculate_league_table(league:League, value_calc:ValueCalculation, fill_pt:b
         stats ,_, pt = Scrape_Ottoneu().scrape_standings_page(league.index, date_util.get_current_ottoneu_year())
     if updated_teams is None:
         for team in league.teams:
-            project_team_results(team, value_calc, fill_pt, inflation, stats=stats, accrued_pt=pt, keepers=league.projected_keepers)   
+            project_team_results(team, value_calc, league.format, fill_pt, inflation, stats=stats, accrued_pt=pt, keepers=league.projected_keepers)   
     else:
         for team in league.teams:
             if team in updated_teams:
-                project_team_results(team, value_calc, fill_pt, inflation, stats=stats, accrued_pt=pt, keepers=league.projected_keepers)   
+                project_team_results(team, value_calc, league.format, fill_pt, inflation, stats=stats, accrued_pt=pt, keepers=league.projected_keepers)   
     if not ScoringFormat.is_points_type(league.format):
         calculate_league_cat_ranks(league)
     team_list = []
@@ -205,25 +205,25 @@ def calculate_league_table(league:League, value_calc:ValueCalculation, fill_pt:b
         team_list.append(team)
     set_team_ranks(league)
 
-def project_team_results(team:Team, value_calc:ValueCalculation, fill_pt:bool=False, inflation:float=None, stats:DataFrame=None, accrued_pt:DataFrame=None, keepers:List[Projected_Keeper]=[]) -> None:
+def project_team_results(team:Team, value_calc:ValueCalculation, format:ScoringFormat, fill_pt:bool=False, inflation:float=None, stats:DataFrame=None, accrued_pt:DataFrame=None, keepers:List[Projected_Keeper]=[]) -> None:
     if accrued_pt is not None:
         #TODO: Need to adjust targets here
         ...
-    if fill_pt and not ScoringFormat.is_points_type(value_calc.format):
+    if fill_pt and not ScoringFormat.is_points_type(format):
         raise InputException('Roto leagues do not support filling playing time (the math makes my brain hurt)')
     if fill_pt:
         rep_lvl = value_calc.get_rep_level_map()
-        if ScoringFormat.is_h2h(value_calc.format):
-            pt = roster_services.optimize_team_pt(team, keepers, value_calc.projection, value_calc.format, rep_lvl=rep_lvl, rp_limit=value_calc.get_input(CalculationDataType.RP_G_TARGET, 10), sp_limit=value_calc.get_input(CalculationDataType.GS_LIMIT, 10), pitch_basis=value_calc.pitcher_basis, off_g_limit=value_calc.get_input(CalculationDataType.BATTER_G_TARGET, 162))
+        if ScoringFormat.is_h2h(format):
+            pt = roster_services.optimize_team_pt(team, keepers, value_calc.projection, format, rep_lvl=rep_lvl, rp_limit=value_calc.get_input(CalculationDataType.RP_G_TARGET, 10), sp_limit=value_calc.get_input(CalculationDataType.GS_LIMIT, 10), pitch_basis=value_calc.pitcher_basis, off_g_limit=value_calc.get_input(CalculationDataType.BATTER_G_TARGET, 162))
         else:
-            pt = roster_services.optimize_team_pt(team, keepers, value_calc.projection, value_calc.format, rep_lvl=rep_lvl, rp_limit=value_calc.get_input(CalculationDataType.RP_IP_TARGET, 350), off_g_limit=value_calc.get_input(CalculationDataType.BATTER_G_TARGET, 162))
+            pt = roster_services.optimize_team_pt(team, keepers, value_calc.projection, format, rep_lvl=rep_lvl, rp_limit=value_calc.get_input(CalculationDataType.RP_IP_TARGET, 350), off_g_limit=value_calc.get_input(CalculationDataType.BATTER_G_TARGET, 162))
     else:
-        if ScoringFormat.is_h2h(value_calc.format):
-            pt = roster_services.optimize_team_pt(team, keepers, value_calc.projection, value_calc.format, rp_limit=value_calc.get_input(CalculationDataType.RP_G_TARGET, 10), sp_limit=value_calc.get_input(CalculationDataType.GS_LIMIT, 10), pitch_basis=value_calc.pitcher_basis, off_g_limit=value_calc.get_input(CalculationDataType.BATTER_G_TARGET, 162))
+        if ScoringFormat.is_h2h(format):
+            pt = roster_services.optimize_team_pt(team, keepers, value_calc.projection, format, rp_limit=value_calc.get_input(CalculationDataType.RP_G_TARGET, 10), sp_limit=value_calc.get_input(CalculationDataType.GS_LIMIT, 10), pitch_basis=value_calc.pitcher_basis, off_g_limit=value_calc.get_input(CalculationDataType.BATTER_G_TARGET, 162))
         else:
-            pt = roster_services.optimize_team_pt(team, keepers, value_calc.projection, value_calc.format, rp_limit=value_calc.get_input(CalculationDataType.RP_IP_TARGET, 350), off_g_limit=value_calc.get_input(CalculationDataType.BATTER_G_TARGET, 162))
+            pt = roster_services.optimize_team_pt(team, keepers, value_calc.projection, format, rp_limit=value_calc.get_input(CalculationDataType.RP_IP_TARGET, 350), off_g_limit=value_calc.get_input(CalculationDataType.BATTER_G_TARGET, 162))
 
-    if ScoringFormat.is_points_type(value_calc.format):
+    if ScoringFormat.is_points_type(format):
         if stats is not None:
             team.points = stats.loc[team.site_id, 'Points']
         else:
@@ -258,12 +258,12 @@ def project_team_results(team:Team, value_calc:ValueCalculation, fill_pt:bool=Fa
             if pp is None:
                 continue
             team.points = team.points + rs.g_h * calculation_services.get_batting_point_rate_from_player_projection(pp)
-            team.points = team.points + rs.ip * calculation_services.get_pitching_point_rate_from_player_projection(pp, value_calc.format, value_calc.pitcher_basis)
+            team.points = team.points + rs.ip * calculation_services.get_pitching_point_rate_from_player_projection(pp, format, value_calc.pitcher_basis)
     else:
         rate_cats = defaultdict(list)
         if stats is not None:
             prod_bat, _ = Scrape_Ottoneu().scrape_team_production_page(team.league_id, team.site_id)
-            for cat in StatType.get_format_stat_categories(value_calc.format):
+            for cat in StatType.get_format_stat_categories(format):
                 if cat in [StatType.AVG, StatType.SLG]:
                     rate_cats[cat].append((prod_bat['AB'].sum(), stats.loc[team.site_id, StatType.enum_to_display_dict().get(cat)]))
                 elif cat == StatType.OBP:
@@ -280,8 +280,8 @@ def project_team_results(team:Team, value_calc:ValueCalculation, fill_pt:bool=Fa
                 continue
             g = pp.get_stat(StatType.G_HIT)
             ip = pp.get_stat(StatType.IP)
-            for cat in StatType.get_format_stat_categories(value_calc.format):
-                if cat in StatType.hit_to_enum_dict().values() and rs.g_h > 0 and g > 0:
+            for cat in ScoringFormat.get_format_stat_categories(format):
+                if cat.hitter and rs.g_h > 0 and g > 0:
                     if cat in [StatType.AVG, StatType.SLG]:
                         ab = (pp.get_stat(StatType.AB) / g) * rs.g_h
                         rate_cats[cat].append((ab, pp.get_stat(cat)))
@@ -291,7 +291,7 @@ def project_team_results(team:Team, value_calc:ValueCalculation, fill_pt:bool=Fa
                     else:
                         rate = pp.get_stat(cat) / g
                         team.cat_stats[cat] = team.cat_stats.get(cat, 0) + rate * rs.g_h
-                elif cat in StatType.pitch_to_enum_dict().values() and rs.ip > 0 and ip > 0:
+                elif not cat.hitter and rs.ip > 0 and ip > 0:
                     if cat in [StatType.ERA, StatType.WHIP, StatType.HR_PER_9]:
                         rate_cats[cat].append((rs.ip, pp.get_stat(cat)))
                     else:
