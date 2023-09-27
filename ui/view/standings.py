@@ -20,6 +20,8 @@ class Standings(tk.Frame):
         tk.Frame.__init__(self, parent, width=100)
         if view is None:
             self.view = parent
+        else:
+            self.view = view
         self.pack_propagate(False)
 
         self.cols = ('Rank','Team','Points', 'Salary', 'Value', 'Surplus', '$ Free')
@@ -111,7 +113,7 @@ class Standings(tk.Frame):
                 surplus += val - rs.salary
             vals.append('$' + "{:.0f}".format(tot_val))
             vals.append('$' + "{:.0f}".format(surplus))
-            vals.append(f'S{team.free_cap}')
+            vals.append(f'${team.free_cap}')
         return vals
     
     def calc_values(self, team:Team) -> list:
