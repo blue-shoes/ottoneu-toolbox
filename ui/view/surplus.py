@@ -6,6 +6,7 @@ from domain.domain import League, ValueCalculation, Team, Roster_Spot
 from domain.enum import Position, AvgSalaryFom, Preference as Pref
 from services import projected_keeper_services
 from ui.table import ScrollableTreeFrame
+from util import date_util
 
 class Surplus(tk.Frame):
 
@@ -14,7 +15,7 @@ class Surplus(tk.Frame):
     value_calc:ValueCalculation
     inflation:float
 
-    def __init__(self, parent, view, use_keepers:bool):
+    def __init__(self, parent, view):
         tk.Frame.__init__(self, parent)
 
         self.parent = parent
@@ -22,7 +23,7 @@ class Surplus(tk.Frame):
         #self.controller = parent.controller
         self.use_keepers = use_keepers
         self.league = None
-        if use_keepers:
+        if date_util.is_offseason():
             self.columns = ("Keeper?", 'Player', 'Team', 'Pos', 'Roster', 'Salary', 'Value', 'Inf. Cost', 'Surplus', 'Inf. Surplus')
         else:
             self.columns = ('Player', 'Team', 'Pos', 'Roster', 'Salary', 'Value', 'Inf. Cost', 'Surplus', 'Inf. Surplus')
@@ -56,7 +57,7 @@ class Surplus(tk.Frame):
         align = {}
         align['Player'] = W
         align['Roster'] = W
-        self.player_table = ScrollableTreeFrame(self, cols,pack=False,sortable_columns=cols,reverse_col_sort=cols, column_widths=widths, init_sort_col='Surplus', column_alignments=align, checkbox=self.use_keepers)
+        self.player_table = ScrollableTreeFrame(self, cols,pack=False,sortable_columns=cols,reverse_col_sort=cols, column_widths=widths, init_sort_col='Surplus', column_alignments=align, checkbox=date_util.is_offseason())
         self.player_table.table.tag_configure('users', background='#FCE19D')
         self.player_table.table.set_refresh_method(self.update_player_table)
         self.player_table.table.set_checkbox_toggle_method(self.toggle_keeper)
@@ -108,7 +109,7 @@ class Surplus(tk.Frame):
                     tags = tuple()
                     if team.users_team:
                         tags=('users',)
-                    if self.use_keepers:
+                    if date_util.is_offseason():
                         if self.league.is_keeper(rs.player_id):
                             tags = tags + ('checked',)
                         else:
@@ -121,7 +122,7 @@ class Surplus(tk.Frame):
             for team in self.league.teams:
                 if team.name == self.team_sv.get():
                     for rs in team.roster_spots:
-                        if self.use_keepers:
+                        if date_util.is_offseason():
                             if self.league.is_keeper(rs.player_id):
                                 tags = ('checked',)
                             else:

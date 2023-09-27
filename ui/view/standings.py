@@ -6,6 +6,7 @@ from domain.domain import League, ValueCalculation, Team
 from domain.enum import Position, ScoringFormat
 from ui.table import ScrollableTreeFrame
 from ui.tool.tooltip import CreateToolTip
+from util import date_util
 
 
 class Standings(tk.Frame):
@@ -14,13 +15,14 @@ class Standings(tk.Frame):
     league:League
     value_calc:ValueCalculation
     
-    def __init__(self, parent, view, use_keepers:bool):
+    def __init__(self, parent, view=None):
+        '''Creates a new Standings View. If the controlling view is different from the view parent (i.e. the overall view is sub-framed), set the view= variable to the controlling view.'''
         tk.Frame.__init__(self, parent, width=100)
-        self.view = view
+        if view is None:
+            self.view = parent
         self.pack_propagate(False)
 
         self.cols = ('Rank','Team','Points', 'Salary', 'Value', 'Surplus', '$ Free')
-        self.use_keepers = use_keepers
 
         self.standings_type = IntVar()
         self.standings_type.set(1)
@@ -76,12 +78,13 @@ class Standings(tk.Frame):
 
     def calc_salary_info(self, team:Team) -> list:
         vals = []
-        if self.use_keepers:
+        if date_util.is_offseason() and self.standings_type == 1:
+            # Use the league.projected_keepers list
             salaries = 0.0
             tot_val = 0.0
             surplus = 0.0
             for rs in team.roster_spots:
-                if not self.use_keepers or self.league.is_keeper(rs.player_id):
+                if self.league.is_keeper(rs.player_id):
                     salaries += rs.salary
                     pv = self.value_calc.get_player_value(rs.player_id, pos=Position.OVERALL)
                     if pv is None:

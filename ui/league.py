@@ -7,11 +7,13 @@ from domain.enum import Position, ScoringFormat
 from services import league_services, projected_keeper_services
 from ui.dialog import progress
 from ui.view import standings, surplus
+from util import date_util
 
 class League_Analysis(tk.Frame):
 
     league:League
     value_calculation:ValueCalculation
+    offseason:bool
 
     def __init__(self, parent, controller):
         tk.Frame.__init__(self, parent, height=600, width=1300)
@@ -20,6 +22,8 @@ class League_Analysis(tk.Frame):
         self.league = None
         self.value_calculation = None
         self.inflation = 0.0
+
+        self.offseason = date_util.is_offseason()
 
         self.create_main()
     
@@ -71,10 +75,10 @@ class League_Analysis(tk.Frame):
         big_frame.pack(side=TOP, expand=True, fill='both')
 
         #TODO: make the user_keepers argument dynamic
-        self.standings = standings.Standings(big_frame, view=self, use_keepers=True)
+        self.standings = standings.Standings(big_frame, view=self)
         self.standings.pack(side=LEFT, fill='both', expand=True)
 
-        self.surplus = surplus.Surplus(big_frame, view=self, use_keepers=True)
+        self.surplus = surplus.Surplus(big_frame, view=self)
         self.surplus.pack(side=LEFT, fill='both', expand=True)
     
     def league_change(self):
@@ -101,11 +105,15 @@ class League_Analysis(tk.Frame):
         if self.league.projected_keepers is None or len(self.league.projected_keepers) == 0:
             self.initialize_keepers()
         pd = progress.ProgressDialog(self.parent, 'Initializing League Analysis')
+        self.handle_inflation()
         self.standings.update_league(self.league)
         self.standings.value_calc = self.value_calculation
         pd.set_completion_percent(10)
         pd.set_task_title("Optimizing lineups")
-        league_services.calculate_league_table(self.league, self.value_calculation, fill_pt=(self.standings.standings_type.get() == 1), inflation=self.inflation)
+        league_services.calculate_league_table(self.league, self.value_calculation, \
+                                                fill_pt=(self.standings.standings_type.get() == 1), \
+                                                inflation=self.inflation,\
+                                                use_keepers=self.__is_use_keepers())
         pd.set_completion_percent(90)
         pd.set_task_title('Updating display')
         self.standings.standings_table.table.refresh()
@@ -113,6 +121,9 @@ class League_Analysis(tk.Frame):
         self.surplus.update_value_calc(self.value_calculation)
         self.surplus.player_table.table.refresh()
         pd.complete()
+    
+    def __is_use_keepers(self) -> bool:
+        return (self.offseason and self.standings.standings_type.get() == 1)
     
     def update(self, team:Team=None):
         if team is None:

@@ -133,7 +133,7 @@ class DraftTool(tk.Frame):
         self.create_search()
 
         #TODO: Clean this up
-        self.standings = Standings(self, self, use_keepers=False)
+        self.standings = Standings(self)
         self.standings.grid(row=1,column=2, sticky='nsew')
 
         button_frame = ttk.Frame(running_list_frame)
