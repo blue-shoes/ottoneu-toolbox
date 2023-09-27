@@ -126,6 +126,8 @@ class League:
         return None
 
     def is_keeper(self, player_id:int) -> bool:
+        if self.projected_keepers is None:
+            return False
         for keeper in self.projected_keepers:
             if keeper.player_id == player_id:
                 return True
