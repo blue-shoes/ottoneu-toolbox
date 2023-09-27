@@ -39,7 +39,7 @@ class Table(ttk.Treeview):
                     width = column_widths[col]
             self.column(f"#{col_num}",anchor=align, stretch=NO, width=width)
             if sortable_columns != None:
-                if col in sortable_columns:
+                if col in sortable_columns and col_num != 0:
                     # From https://stackoverflow.com/a/30724912
                     self.heading(f'#{col_num}', text=col, command=lambda _col=col: self.treeview_sort_column(_col) )
                     self.reverse_sort[col] = True
