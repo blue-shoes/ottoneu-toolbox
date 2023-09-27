@@ -136,12 +136,12 @@ class Surplus(tk.Frame):
         vals.append(pv.player.name)
         vals.append(pv.player.team)
         vals.append(pv.player.position)
-        vals.append() # Ottoneu Team
-        vals.append() # Salary
+        vals.append('') # Ottoneu Team
+        vals.append('') # Salary
         vals.append('$' + "{:.1f}".format(pv.value))
         vals.append('$' + "{:.1f}".format(pv.value * (1 + self.inflation)))
-        vals.append() # Surplus
-        vals.append() # Inflated Surplus
+        vals.append('') # Surplus
+        vals.append('') # Inflated Surplus
 
         vals.extend(self.__get_salary_info(pv.player))
 
