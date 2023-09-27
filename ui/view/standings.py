@@ -4,7 +4,7 @@ from tkinter import ttk
 
 from domain.domain import League, ValueCalculation, Team
 from domain.enum import Position, ScoringFormat
-from ui.table import ScrollableTreeFrame
+from ui.table.table import ScrollableTreeFrame
 from ui.tool.tooltip import CreateToolTip
 from util import date_util
 
@@ -27,9 +27,9 @@ class Standings(tk.Frame):
         self.standings_type = IntVar()
         self.standings_type.set(1)
 
-        self.create_view()
+        self.__create_view()
     
-    def create_view(self):
+    def __create_view(self):
         self.tab_control = ttk.Notebook(self, height=800)
         self.tab_control.pack(side=TOP, fill='both', expand=True)
 

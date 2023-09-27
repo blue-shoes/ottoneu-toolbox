@@ -9,7 +9,7 @@ from tkinter import messagebox as mb
 from pathlib import Path
 import pandas as pd
 
-from ui.table import Table
+from ui.table.table import Table
 from domain.domain import ValueCalculation
 from domain.enum import CalculationDataType as CDT, RankingBasis, RepLevelScheme, StatType, Position, ProjectionType, ScoringFormat
 from services import projection_services, calculation_services, adv_calc_services

@@ -3,7 +3,7 @@ from tkinter import *
 from tkinter import ttk 
 from tkinter import messagebox as mb
 from ui.dialog.wizard import league_import
-from ui.table import Table
+from ui.table.table import Table
 import logging
 
 from ui.dialog import progress

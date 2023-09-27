@@ -5,7 +5,7 @@ from tkinter import messagebox as mb
 
 from ui.dialog import progress
 from ui.dialog.wizard import projection_import
-from ui.table import Table, bool_to_table
+from ui.table.table import Table, bool_to_table
 from domain.enum import ProjectionType
 
 from services import projection_services, calculation_services

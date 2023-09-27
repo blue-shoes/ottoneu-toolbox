@@ -4,7 +4,7 @@ from tkinter import ttk
 from tkinter import messagebox as mb
 
 from ui.dialog.wizard import value_import
-from ui.table import Table
+from ui.table.table import Table
 from ui.dialog import progress
 from domain.enum import CalculationDataType, ScoringFormat
 

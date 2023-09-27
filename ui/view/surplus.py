@@ -6,7 +6,7 @@ from typing import List
 from domain.domain import League, ValueCalculation, Team, Roster_Spot, PlayerValue, Player
 from domain.enum import Position, AvgSalaryFom, Preference as Pref
 from services import projected_keeper_services
-from ui.table import ScrollableTreeFrame
+from ui.table.table import ScrollableTreeFrame
 from util import date_util
 
 class Surplus(tk.Frame):
