@@ -133,7 +133,7 @@ class DraftTool(tk.Frame):
         self.create_search()
 
         #TODO: Clean this up
-        self.standings = Standings(self, use_keepers=False)
+        self.standings = Standings(self, self, use_keepers=False)
         self.standings.grid(row=1,column=2, sticky='nsew')
 
         button_frame = ttk.Frame(running_list_frame)
@@ -456,6 +456,10 @@ class DraftTool(tk.Frame):
                 self.resolve_cm_draft_with_rosters(init=False)
             else:
                 self.check_new_cm_teams()
+    
+    def update(self):
+        league_services.calculate_league_table(self.league, self.value_calculation, fill_pt=(self.standings.standings_type.get() == 1), inflation=self.inflation)
+        self.standings.refresh_standings()
 
     def update_ui(self):
         if self.run_event.is_set() and self.queue.empty():

@@ -71,7 +71,7 @@ class League_Analysis(tk.Frame):
         big_frame.pack(side=TOP, expand=True, fill='both')
 
         #TODO: make the user_keepers argument dynamic
-        self.standings = standings.Standings(big_frame, use_keepers=True)
+        self.standings = standings.Standings(big_frame, view=self, use_keepers=True)
         self.standings.pack(side=LEFT, fill='both', expand=True)
 
         self.surplus = surplus.Surplus(big_frame, view=self, use_keepers=True)

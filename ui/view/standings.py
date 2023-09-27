@@ -7,14 +7,16 @@ from domain.enum import Position, ScoringFormat
 from ui.table import ScrollableTreeFrame
 from ui.tool.tooltip import CreateToolTip
 
+
 class Standings(tk.Frame):
 
     _inflation:float = 0
     league:League
     value_calc:ValueCalculation
     
-    def __init__(self, parent, use_keepers:bool):
+    def __init__(self, parent, view, use_keepers:bool):
         tk.Frame.__init__(self, parent, width=100)
+        self.view = view
         self.pack_propagate(False)
 
         self.cols = ('Rank','Team','Points', 'Salary', 'Value', 'Surplus', '$ Free')
@@ -36,8 +38,8 @@ class Standings(tk.Frame):
         button_frame = ttk.Frame(standings_frame)
         button_frame.pack(side=TOP, fill='x', expand=False)
 
-        tk.Radiobutton(button_frame, variable=self.standings_type, value=0, text="Current", command=self.refresh_standings).pack(side=LEFT)
-        self.proj_button = tk.Radiobutton(button_frame, variable=self.standings_type, value=1, text="Projected", command=self.refresh_standings)
+        tk.Radiobutton(button_frame, variable=self.standings_type, value=0, text="Current", command=self.refresh_radio).pack(side=LEFT)
+        self.proj_button = tk.Radiobutton(button_frame, variable=self.standings_type, value=1, text="Projected", command=self.refresh_radio)
         self.proj_button.pack(side=LEFT)
         CreateToolTip(self.proj_button, 'Calculates projected point total based on known replacement levels, remaining salary cap, and league inflation.')
 
@@ -54,6 +56,9 @@ class Standings(tk.Frame):
     def set_click_action(self, click_action):
         self.standings_table.table.bind('<<TreeviewSelect>>', click_action)
     
+    def refresh_radio(self):
+        self.view.update()
+
     def refresh_standings(self):
         for team in self.league.teams:
             tags = ''
