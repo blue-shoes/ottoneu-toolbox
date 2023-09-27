@@ -130,7 +130,14 @@ class League:
             return False
         for keeper in self.projected_keepers:
             if keeper.player_id == player_id:
-                return True
+                return self.is_rostered(player_id=player_id)
+        return False
+
+    def is_rostered(self, player_id:int) -> bool:
+        for team in self.teams:
+            for rs in team.roster_spots:
+                if rs.player_id == player_id:
+                    return True
         return False
 
 @reg.mapped_as_dataclass
