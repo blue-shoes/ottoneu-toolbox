@@ -1,8 +1,9 @@
 import tkinter as tk
 from tkinter import *              
 from tkinter import ttk 
+from typing import List
 
-from domain.domain import League, ValueCalculation, Team, Roster_Spot
+from domain.domain import League, ValueCalculation, Team, Roster_Spot, PlayerValue, Player
 from domain.enum import Position, AvgSalaryFom, Preference as Pref
 from services import projected_keeper_services
 from ui.table import ScrollableTreeFrame
@@ -20,8 +21,7 @@ class Surplus(tk.Frame):
 
         self.parent = parent
         self.view = view
-        #self.controller = parent.controller
-        self.use_keepers = use_keepers
+        self.controller = view.controller
         self.league = None
         if date_util.is_offseason():
             self.columns = ("Keeper?", 'Player', 'Team', 'Pos', 'Roster', 'Salary', 'Value', 'Inf. Cost', 'Surplus', 'Inf. Surplus')
@@ -146,15 +146,21 @@ class Surplus(tk.Frame):
         vals.append('$' + "{:.1f}".format(val - rs.salary))
         vals.append('$' + "{:.1f}".format(val * (1 + self.inflation) - rs.salary))
 
-        si = rs.player.get_salary_info_for_format(self.league.format)
-        #if self.controller.preferences.get('General', Pref.AVG_SALARY_FOM) == AvgSalaryFom.MEAN.value:
-        vals.append(f'$' + "{:.1f}".format(si.avg_salary))
-        #else:
-        #    vals.append(f'$' + "{:.1f}".format(si.med_salary))
-        vals.append(f'$' + "{:.1f}".format(si.last_10))
-        vals.append("{:.1f}".format(si.roster_percentage) + '%')
+        vals.extend(self.__get_salary_info(rs.player))
+        
         return tuple(vals)
     
+    def __get_salary_info(self, player:Player) -> List[str]:
+        vals = []
+        si = player.get_salary_info_for_format(self.league.format)
+        if self.controller.preferences.get('General', Pref.AVG_SALARY_FOM) == AvgSalaryFom.MEAN.value:
+            vals.append(f'$' + "{:.1f}".format(si.avg_salary))
+        else:
+            vals.append(f'$' + "{:.1f}".format(si.med_salary))
+        vals.append(f'$' + "{:.1f}".format(si.last_10))
+        vals.append("{:.1f}".format(si.roster_percentage) + '%')
+        return vals
+
     def trade_evaluation(self):
         ...
     
