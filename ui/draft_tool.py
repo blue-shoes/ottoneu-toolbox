@@ -106,8 +106,8 @@ class DraftTool(tk.Frame):
     def calculate_extra_value(self):
         captured_value = 0
         self.valued_roster_spots = 0
-        for pv in self.value_calculation.values:
-            if pv.position != Position.OVERALL or pv.value < 1:
+        for pv in self.value_calculation.get_position_values(Position.OVERALL):
+            if pv.value < 1:
                 continue
             captured_value += pv.value
             self.valued_roster_spots += 1
