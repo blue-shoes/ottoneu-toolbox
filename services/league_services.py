@@ -316,3 +316,57 @@ def set_team_ranks(league:League) -> None:
     for team in sorted_teams:
         team.lg_rank = rank
         rank = rank + 1
+
+def calculate_league_inflation(league:League, value_calc:ValueCalculation) -> float:
+    remaining_pv = []
+    captured_value = 0.0
+    use_keepers = not (league.projected_keepers == None or len(league.projected_keepers) == 0)
+    for pv in value_calc.get_position_values(Position.OVERALL):
+        if pv.value >= 0:
+            captured_value += pv.value
+        found = False
+        rs = None
+        for team in league.teams:
+            for _rs in team.roster_spots:
+                if _rs.player_id == pv.player_id:
+                    found = True
+                    rs = _rs
+                    break
+            if found:
+                break
+        if found and use_keepers:
+            found = False
+            for keeper in league.projected_keepers:
+                if keeper.player_id == pv.player_id:
+                    found = True
+                    break
+
+        if found:
+            if rs.salary > pv.value:
+                if pv.value < 1:
+                    captured_value += (rs.salary - 1) / 2
+                elif pv.value < 10:
+                    captured_value += (rs.salary - pv.value) / (2*pv.value)
+        else:
+            if pv.value >= 1:
+                remaining_pv.append(pv)
+
+    remaining_valued_roster_spots = len(remaining_pv)
+    remaining_value = sum([pv.value for pv in remaining_pv]) - remaining_valued_roster_spots
+
+    extra_value = league.num_teams*400 - captured_value
+
+    remaining_dollars = (league.num_teams*400 - extra_value) - calculate_total_league_salary(league, use_keepers) - remaining_valued_roster_spots
+    #ic(remaining_valued_roster_spots, remaining_value, captured_value, extra_value, remaining_dollars, (remaining_dollars/remaining_value))
+    return (remaining_dollars / remaining_value) - 1
+
+def calculate_total_league_salary(league:League, use_keepers:bool=False) -> float:
+    '''Returns the total amount of salary currently rostered by the league. The use_keepers flag will only count players currently in the league's projected_keepers list.'''
+    salary = 0.0
+    for team in league.teams:
+            for rs in team.roster_spots:
+                if use_keepers:
+                   if not league.is_keeper(rs.player_id):
+                       continue
+                salary += rs.salary
+    return salary
