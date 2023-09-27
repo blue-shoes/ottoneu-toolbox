@@ -116,8 +116,10 @@ class Surplus(tk.Frame):
                             tags = tags + ('unchecked',)
                     self.player_table.table.insert('', tk.END, tags=tags, values=self.__get_player_row(rs, team), iid=rs.player_id)
         elif self.team_sv.get() == 'Free Agents':
-            #TODO: Free Agents
-            ...
+            for pv in self.value_calc.get_position_values(pos=Position.OVERALL):
+                if date_util.is_offseason() and not self.league.is_keeper(pv.player_id):
+                    continue
+                self.player_table.table.insert('', tk.END, tags=tags, values=self.__get_fa_row(pv), iid=rs.player_id)
         else:
             for team in self.league.teams:
                 if team.name == self.team_sv.get():
@@ -128,6 +130,22 @@ class Surplus(tk.Frame):
                             else:
                                 tags = ('unchecked',)
                         self.player_table.table.insert('', tk.END, tags=tags, values=self.__get_player_row(rs, team), iid=rs.player_id)
+    
+    def __get_fa_row(self, pv:PlayerValue) -> tuple[str]:
+        vals=[]
+        vals.append(pv.player.name)
+        vals.append(pv.player.team)
+        vals.append(pv.player.position)
+        vals.append() # Ottoneu Team
+        vals.append() # Salary
+        vals.append('$' + "{:.1f}".format(pv.value))
+        vals.append('$' + "{:.1f}".format(pv.value * (1 + self.inflation)))
+        vals.append() # Surplus
+        vals.append() # Inflated Surplus
+
+        vals.extend(self.__get_salary_info(pv.player))
+
+        return tuple(vals)
     
     def __get_player_row(self, rs:Roster_Spot, team:Team) -> tuple[str]:
         vals = []
