@@ -18,6 +18,7 @@ class Table(ttk.Treeview):
         self.parent = parent
         self.hscroll = hscroll
         self.reverse_sort = {}
+        self.column_map = {}
         self.vsb = None
         self.hsb = None
         self.__extra_checkbox_method = None
@@ -37,6 +38,7 @@ class Table(ttk.Treeview):
             if column_widths != None:
                 if col in column_widths:
                     width = column_widths[col]
+            self.column_map[col] = col_num
             self.column(f"#{col_num}",anchor=align, stretch=NO, width=width)
             if sortable_columns != None:
                 if col in sortable_columns and col_num != 0:
@@ -197,7 +199,13 @@ class Table(ttk.Treeview):
             self.treeview_sort_column(self.sort_col, not self.reverse_sort[self.sort_col])
     
     def set_display_columns(self, columns):
-        self['displaycolumns'] = columns
+        display_col = []
+        for col in columns:
+            if self.checkbox:
+                display_col.append(max(0, self.column_map[col]-1))
+            else:
+                display_col.append(self.column_map[col])
+        self['displaycolumns'] = tuple(display_col)
     
     def hide_columns(self, to_hide):
         new_dc = self['displaycolumns']
