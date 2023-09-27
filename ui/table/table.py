@@ -1,6 +1,7 @@
 from tkinter import *              
 from tkinter import ttk 
 from PIL import ImageTk, Image
+import sys, os
 
 class Table(ttk.Treeview):
 
@@ -11,8 +12,8 @@ class Table(ttk.Treeview):
             super().__init__(parent, columns=columns, show='headings')
 
         if checkbox:
-            self.__checked = ImageTk.PhotoImage(Image.open('checked.png'))
-            self.__unchecked = ImageTk.PhotoImage(Image.open('unchecked.png'))
+            self.__checked = ImageTk.PhotoImage(Image.open(resource_path('checked.png')))
+            self.__unchecked = ImageTk.PhotoImage(Image.open(resource_path('unchecked.png')))
 
         self.parent = parent
         self.hscroll = hscroll
@@ -262,3 +263,8 @@ def sort_cmp(t1):
         return float(v1)
     except ValueError:
         return v1
+
+def resource_path(end_file) -> str:
+    """ Get absolute path to resource, works for dev and for PyInstaller """
+    base_path = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
+    return os.path.join(base_path, 'resources', end_file) 
