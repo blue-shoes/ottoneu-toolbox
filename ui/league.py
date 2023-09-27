@@ -98,6 +98,11 @@ class League_Analysis(tk.Frame):
                 if pv is not None and pv.value > rs.salary:
                     self.league = projected_keeper_services.add_keeper(self.league, rs.player)
     
+    def handle_inflation(self):
+        self.inflation = league_services.calculate_league_inflation(self.league, self.value_calculation, use_keepers=self.__is_use_keepers())
+        self.inflation_sv.set(f'League Inflation: {"{:.1f}".format(self.inflation * 100)}%')
+        self.surplus.inflation = self.inflation
+
     def load_tables(self):
         self.league_text_var.set(self.controller.league.name)
         self.values_name.set(f'Value Set: {self.value_calculation.name}')
