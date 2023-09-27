@@ -29,6 +29,9 @@ class Surplus(tk.Frame):
             self.columns = ('Player', 'Team', 'Pos', 'Roster', 'Salary', 'Value', 'Inf. Cost', 'Surplus', 'Inf. Surplus')
         self.ottoverse_columns = ('Avg. Price', 'L10 Price', 'Roster %')
 
+        self.columns = self.columns + self.ottoverse_columns
+        self.fa_columns = ('Player', 'Team', 'Pos', 'Value', 'Inf. Cost') + self.ottoverse_columns
+
         self.team_sv = StringVar()
         self.team_sv.set("All Teams")
         self.inflation = 0.0
@@ -50,7 +53,7 @@ class Surplus(tk.Frame):
 
         #TODO: Add positional filter
 
-        cols = self.columns + self.ottoverse_columns
+        cols = self.columns
         widths = {}
         widths['Player'] = 125
         widths['Roster'] = 125
@@ -93,6 +96,9 @@ class Surplus(tk.Frame):
         name_list.append('All Teams')
         name_list.append('Free Agents')
 
+        if date_util.is_offseason():
+            name_list.append('Projected FA')
+
         if self.league is not None:
             for team in self.league.teams:
                 name_list.append(team.name)
@@ -115,11 +121,24 @@ class Surplus(tk.Frame):
                         else:
                             tags = tags + ('unchecked',)
                     self.player_table.table.insert('', tk.END, tags=tags, values=self.__get_player_row(rs, team), iid=rs.player_id)
+            self.player_table.table.treeview_sort_column('Surplus', reverse=True)
+            self.player_table.table.set_display_columns(self.columns)
         elif self.team_sv.get() == 'Free Agents':
             for pv in self.value_calc.get_position_values(pos=Position.OVERALL):
-                if date_util.is_offseason() and not self.league.is_keeper(pv.player_id):
+                if self.league.is_rostered(pv.player_id):
                     continue
-                self.player_table.table.insert('', tk.END, tags=tags, values=self.__get_fa_row(pv), iid=rs.player_id)
+                tags = tuple()
+                self.player_table.table.insert('', tk.END, tags=tags, values=self.__get_fa_row(pv), iid=pv.player_id)
+            self.player_table.table.treeview_sort_column('Value', reverse=True)
+            self.player_table.table.set_display_columns(self.fa_columns)
+        elif self.team_sv.get() == 'Projected FA':
+            for pv in self.value_calc.get_position_values(pos=Position.OVERALL):
+                if date_util.is_offseason() and self.league.is_keeper(pv.player_id):
+                    continue
+                tags = tuple()
+                self.player_table.table.insert('', tk.END, tags=tags, values=self.__get_fa_row(pv), iid=pv.player_id)
+                self.player_table.table.treeview_sort_column('Value', reverse=True)
+                self.player_table.table.set_display_columns(self.fa_columns)
         else:
             for team in self.league.teams:
                 if team.name == self.team_sv.get():
@@ -130,6 +149,9 @@ class Surplus(tk.Frame):
                             else:
                                 tags = ('unchecked',)
                         self.player_table.table.insert('', tk.END, tags=tags, values=self.__get_player_row(rs, team), iid=rs.player_id)
+                    break
+            self.player_table.table.treeview_sort_column('Surplus', reverse=True)
+            self.player_table.table.set_display_columns(self.columns)
     
     def __get_fa_row(self, pv:PlayerValue) -> tuple[str]:
         vals=[]
