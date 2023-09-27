@@ -5,7 +5,7 @@ from icecream.icecream import ic
 
 import logging
 
-def resource_path(end_file):
+def resource_path(end_file) -> str:
     """ Get absolute path to resource, works for dev and for PyInstaller """
     base_path = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
     return os.path.join(base_path, 'resources', end_file)
