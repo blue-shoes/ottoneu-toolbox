@@ -104,6 +104,13 @@ class League:
     teams:Mapped[List["Team"]] = relationship(default_factory=list, back_populates="league", cascade="all, delete", repr=False)
     projected_keepers:Mapped[List["Projected_Keeper"]] = relationship(default_factory=list, cascade="all, delete", repr=False)
 
+    # Transient inflation values
+    remaining_valued_roster_spots:int=0
+    remaining_player_value:float=0
+    captured_value:float=0
+    kept_salary:float=0
+    inflation:float=0
+
     def get_user_team(self):
         '''Returns the user\'s team for the league. None if no team is specified'''
         for team in self.teams:

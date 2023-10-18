@@ -1,5 +1,5 @@
 from pandas import DataFrame
-from domain.domain import League, Team, Roster_Spot, Player, Draft, ValueCalculation, Projected_Keeper
+from domain.domain import League, Team, Roster_Spot, Player, Draft, ValueCalculation, Projected_Keeper, PlayerValue
 from domain.enum import ScoringFormat, Position, CalculationDataType, StatType, RankingBasis
 from domain.exception import InputException
 from dao.session import Session
@@ -356,14 +356,43 @@ def calculate_league_inflation(league:League, value_calc:ValueCalculation, use_k
             if pv.value >= 1:
                 remaining_pv.append(pv)
 
-    remaining_valued_roster_spots = len(remaining_pv)
-    remaining_value = sum([pv.value for pv in remaining_pv]) - remaining_valued_roster_spots
+    league.remaining_player_value = sum([pv.value for pv in remaining_pv])
+    league.remaining_valued_roster_spots = len(remaining_pv)
+    league.captured_value = captured_value
 
-    extra_value = league.num_teams*400 - captured_value
+    league.kept_salary = calculate_total_league_salary(league, use_keepers)
 
-    remaining_dollars = (league.num_teams*400 - extra_value) - calculate_total_league_salary(league, use_keepers) - remaining_valued_roster_spots
-    #ic(remaining_valued_roster_spots, remaining_value, captured_value, extra_value, remaining_dollars, (remaining_dollars/remaining_value))
-    return (remaining_dollars / remaining_value) - 1
+    return get_league_inflation(league)
+
+def update_league_inflation(league:League, pv:PlayerValue, rs:Roster_Spot) -> float:
+    captured_value = 0
+
+    if rs.salary > pv.value:
+        if pv.value < 1:
+            captured_value += (rs.salary - 1) / 2
+        elif pv.value < 10:
+            captured_value += (rs.salary - pv.value) / (2*pv.value)
+
+    if league.is_keeper(rs.player_id):
+        mult = 1
+    else:
+        mult = -1
+    league.captured_value += captured_value * mult
+    league.kept_salary += rs.salary * mult
+    if pv.value > 0:
+        league.remaining_player_value -= pv.value * mult
+        league.remaining_valued_roster_spots -= 1 * mult
+    
+    return get_league_inflation(league)
+
+def get_league_inflation(league:League) -> float:
+    remaining_value = league.remaining_player_value - league.remaining_valued_roster_spots
+
+    extra_value = league.num_teams*400 - league.captured_value
+
+    remaining_dollars = (league.num_teams*400 - extra_value) - league.kept_salary - league.remaining_valued_roster_spots
+    league.inflation = remaining_dollars / remaining_value - 1
+    return league.inflation
 
 def calculate_total_league_salary(league:League, use_keepers:bool=False) -> float:
     '''Returns the total amount of salary currently rostered by the league. The use_keepers flag will only count players currently in the league's projected_keepers list.'''

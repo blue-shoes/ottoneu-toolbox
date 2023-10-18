@@ -67,6 +67,7 @@ class Surplus(tk.Frame):
         self.player_table.pack(fill='both', expand=True)
     
     def toggle_keeper(self, row_id, selected) -> None:
+        roster_spot = None
         row_id = int(row_id)
         if selected:
             updated_team=None
@@ -74,7 +75,8 @@ class Surplus(tk.Frame):
                 for rs in team.roster_spots:
                     if rs.player.index == row_id:
                         updated_team = team
-                        self.league.projected_keepers.append(projected_keeper_services.add_keeper_and_return(self.league, rs.player))       
+                        self.league.projected_keepers.append(projected_keeper_services.add_keeper_and_return(self.league, rs.player))     
+                        roster_spot = rs  
         else:
             for keeper in self.league.projected_keepers:
                 if keeper.player_id == row_id:
@@ -86,10 +88,11 @@ class Surplus(tk.Frame):
                 for rs in team.roster_spots:
                     if rs.player.index == row_id:
                         updated_team = team
+                        roster_spot = rs
                         break
                 if updated_team is not None:
                     break
-        self.view.update(team=updated_team)
+        self.view.update(team=updated_team, roster_spot=roster_spot)
 
     def __set_team_list(self):
         name_list = []
@@ -153,6 +156,19 @@ class Surplus(tk.Frame):
             self.player_table.table.treeview_sort_column('Surplus', reverse=True)
             self.player_table.table.set_display_columns(self.columns)
     
+    def update_inflation(self, inflation:float) -> None:
+        self.inflation = inflation
+        for player_id in self.player_table.table.get_children():
+            vals = self.player_table.table.item(player_id)['values']
+            pv = float(vals[5].split('$')[1])
+            inf_pv = pv * (1 + self.inflation)
+            self.player_table.table.set(player_id, [6], '$' + "{:.1f}".format(inf_pv))
+            sal = vals[4]
+            if sal != '':
+                sal = float(sal.split('$')[1])
+                inf_surp = pv * (1 + self.inflation) - sal
+                self.player_table.table.set(player_id, [8], '$' + "{:.1f}".format(inf_surp))
+
     def __get_fa_row(self, pv:PlayerValue) -> tuple[str]:
         vals=[]
         vals.append(pv.player.name)

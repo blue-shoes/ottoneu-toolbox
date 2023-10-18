@@ -2,7 +2,9 @@ import tkinter as tk
 from tkinter import *              
 from tkinter import ttk 
 
-from domain.domain import League, ValueCalculation, Team
+from math import ceil
+
+from domain.domain import League, ValueCalculation, Team, Roster_Spot
 from domain.enum import Position, ScoringFormat
 from services import league_services, projected_keeper_services
 from ui.dialog import progress
@@ -96,25 +98,58 @@ class League_Analysis(tk.Frame):
             for rs in team.roster_spots:
                 pv = self.value_calculation.get_player_value(rs.player_id, Position.OVERALL)
                 if pv is not None and pv.value > rs.salary:
-                    self.league = projected_keeper_services.add_keeper(self.league, rs.player)
+                    self.league.projected_keepers.append(projected_keeper_services.add_keeper_and_return(self.league, rs.player))
+
+    def handle_inflation(self, roster_spot:Roster_Spot):
+        self.inflation = league_services.update_league_inflation(self.league, self.value_calculation.get_player_value(roster_spot.player_id, Position.OVERALL), roster_spot)
+        self.inflation_sv.set(f'League Inflation: {"{:.1f}".format(self.inflation * 100)}%')
+        self.surplus.update_inflation(self.inflation)
     
-    def handle_inflation(self):
+    def initialize_inflation(self):
         self.inflation = league_services.calculate_league_inflation(self.league, self.value_calculation, use_keepers=self.__is_use_keepers())
         self.inflation_sv.set(f'League Inflation: {"{:.1f}".format(self.inflation * 100)}%')
         self.surplus.inflation = self.inflation
+        if len(self.league.projected_keepers) > 0:
+            self.optimize_keepers()
+
+    def optimize_keepers(self):
+        while(True):
+            discrepancies = []
+            overpredict=False
+            underpredict=False
+            for team in self.league.teams:
+                for rs in team.roster_spots:
+                    pv = self.value_calculation.get_player_value(rs.player_id, Position.OVERALL)
+                    if pv is None:
+                        continue
+                    if pv.value * (1 + self.inflation) > rs.salary and not self.league.is_keeper(pv.player_id):
+                        discrepancies.append((pv.value * (1 + self.inflation) - rs.salary, rs.player_id))
+                        overpredict=True
+                    elif pv.value * (1 + self.inflation) < rs.salary and self.league.is_keeper(pv.player_id):
+                        discrepancies.append((rs.salary - (pv.value * (1 + self.inflation)), rs.player_id))
+                        underpredict=True
+            len(discrepancies), overpredict, underpredict, ceil(2*len(discrepancies)/3)
+            if len(discrepancies) < 2 or (overpredict and underpredict):
+                break
+            sorted_list = sorted(discrepancies, reverse=True)
+            for i in range(0, ceil(2*len(sorted_list)/3)):
+                if overpredict:
+                    self.league.projected_keepers.append(projected_keeper_services.add_keeper_by_player_id(self.league, sorted_list[i][1]))
+                else:
+                    self.league.projected_keepers.remove(projected_keeper_services.remove_keeper_by_league_and_player(self.league, sorted_list[i][1]))
 
     def load_tables(self):
         self.league_text_var.set(self.controller.league.name)
         self.values_name.set(f'Value Set: {self.value_calculation.name}')
         projected_keeper_services.get_league_keepers(self.league)
-        if self.league.projected_keepers is None or len(self.league.projected_keepers) == 0:
+        if self.offseason and (self.league.projected_keepers is None or len(self.league.projected_keepers) == 0):
             self.initialize_keepers()
         pd = progress.ProgressDialog(self.parent, 'Initializing League Analysis')
-        self.handle_inflation()
+        pd.set_task_title("Optimizing lineups")
+        self.initialize_inflation()
         self.standings.update_league(self.league)
         self.standings.value_calc = self.value_calculation
         pd.set_completion_percent(10)
-        pd.set_task_title("Optimizing lineups")
         league_services.calculate_league_table(self.league, self.value_calculation, \
                                                 fill_pt=(self.standings.standings_type.get() == 1), \
                                                 inflation=self.inflation,\
@@ -130,10 +165,13 @@ class League_Analysis(tk.Frame):
     def __is_use_keepers(self) -> bool:
         return (self.offseason and self.standings.standings_type.get() == 1)
     
-    def update(self, team:Team=None):
+    def update(self, team:Team=None, roster_spot:Roster_Spot=None):
         if team is None:
             team_list=None
         else:
             team_list = [].append(team)
+        #TODO: calculate_league_table is not responsive enough. Need to handle it better
         league_services.calculate_league_table(self.league, self.value_calculation, self.standings.standings_type.get() == 1, self.inflation, team_list)
+        self.handle_inflation(roster_spot)
         self.standings.standings_table.table.refresh()
+        self.surplus.player_table.table.refresh()
