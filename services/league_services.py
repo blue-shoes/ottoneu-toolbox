@@ -195,7 +195,7 @@ def calculate_league_table(league:League, value_calc:ValueCalculation, fill_pt:b
         keepers = []
     if in_season:
         stats ,_, pt = Scrape_Ottoneu().scrape_standings_page(league.index, date_util.get_current_ottoneu_year())
-    if updated_teams is None:
+    if updated_teams is None or inflation is not None:
         for team in league.teams:
             project_team_results(team, value_calc, league.format, fill_pt, inflation, stats=stats, accrued_pt=pt, keepers=keepers)   
     else:
