@@ -199,13 +199,14 @@ class Table(ttk.Treeview):
             self.treeview_sort_column(self.sort_col, not self.reverse_sort[self.sort_col])
     
     def set_display_columns(self, columns):
-        display_col = []
-        for col in columns:
-            if self.checkbox:
+        if self.checkbox:
+            display_col = []
+            for col in columns:
+                if self.column_map[col] == 0: continue
                 display_col.append(max(0, self.column_map[col]-1))
-            else:
-                display_col.append(self.column_map[col])
-        self['displaycolumns'] = tuple(display_col)
+            self['displaycolumns'] = tuple(display_col)
+        else:
+            self['displaycolumns'] = columns
     
     def hide_columns(self, to_hide):
         new_dc = self['displaycolumns']
