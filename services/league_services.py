@@ -247,14 +247,14 @@ def project_team_results(team:Team, value_calc:ValueCalculation, format:ScoringF
                     cap = value_calc.get_input(CalculationDataType.BATTER_G_TARGET, 162)
                 elif pos == Position.POS_SP:
                     if value_calc.pitcher_basis == RankingBasis.PIP:
-                        cap = 1150
+                        cap = value_calc.get_input(CalculationDataType.IP_TARGET, 1500) - value_calc.get_input(CalculationDataType.RP_IP_TARGET, 350)
                     else:
-                        cap = value_calc.get_input(CalculationDataType.GS_LIMIT, 10) * 26
+                        cap = value_calc.get_input(CalculationDataType.GS_LIMIT, 10) * value_calc.get_input(CalculationDataType.H2H_WEEKS, 26)
                 else:
                     if value_calc.pitcher_basis == RankingBasis.PIP:
-                        cap = 350
+                        cap = value_calc.get_input(CalculationDataType.RP_IP_TARGET, 350)
                     else:
-                        cap = value_calc.get_input(CalculationDataType.RP_G_TARGET, 10) * 26
+                        cap = value_calc.get_input(CalculationDataType.RP_G_TARGET, 10) * value_calc.get_input(CalculationDataType.H2H_WEEKS, 26)
                 used_pt = sum(pt.get(pos, {0:0}).values())
                 if used_pt < cap:
                     additional_pt = cap - used_pt

@@ -94,6 +94,7 @@ class CalculationDataType(Enum):
     SP_WITH_ALL_IP = 43
     RP_WITH_ALL_IP = 44
     BATTER_G_TARGET = 45
+    H2H_WEEKS = 46
 
     @classmethod
     def pos_to_num_rostered(self) -> Dict[Position, CalculationDataType]:
