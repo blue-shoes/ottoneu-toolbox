@@ -200,7 +200,7 @@ def calculate_league_table(league:League, value_calc:ValueCalculation, fill_pt:b
             project_team_results(team, value_calc, league.format, fill_pt, inflation, stats=stats, accrued_pt=pt, keepers=keepers)   
     else:
         for team in league.teams:
-            if team in updated_teams:
+            if __list_contains_team(team, updated_teams):
                 project_team_results(team, value_calc, league.format, fill_pt, inflation, stats=stats, accrued_pt=pt, keepers=keepers)   
     if not ScoringFormat.is_points_type(league.format):
         calculate_league_cat_ranks(league)
@@ -208,6 +208,12 @@ def calculate_league_table(league:League, value_calc:ValueCalculation, fill_pt:b
     for team in league.teams:
         team_list.append(team)
     set_team_ranks(league)
+
+def __list_contains_team(team:Team, team_list:List[Team]) -> bool:
+    for test_team in team_list:
+        if team.index == test_team.index:
+            return True
+    return False
 
 def project_team_results(team:Team, value_calc:ValueCalculation, format:ScoringFormat, fill_pt:bool=False, inflation:float=None, stats:DataFrame=None, accrued_pt:DataFrame=None, keepers:List[Projected_Keeper]=[]) -> None:
     if accrued_pt is not None:
