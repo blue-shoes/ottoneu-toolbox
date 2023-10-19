@@ -23,14 +23,13 @@ class Surplus(tk.Frame):
         self.view = view
         self.controller = view.controller
         self.league = None
-        if date_util.is_offseason():
-            self.columns = ("Keeper?", 'Player', 'Team', 'Pos', 'Roster', 'Salary', 'Value', 'Inf. Cost', 'Surplus', 'Inf. Surplus')
-        else:
-            self.columns = ('Player', 'Team', 'Pos', 'Roster', 'Salary', 'Value', 'Inf. Cost', 'Surplus', 'Inf. Surplus')
         self.ottoverse_columns = ('Avg. Price', 'L10 Price', 'Roster %')
-
-        self.columns = self.columns + self.ottoverse_columns
-        self.fa_columns = ('Player', 'Team', 'Pos', 'Value', 'Inf. Cost') + self.ottoverse_columns
+        if date_util.is_offseason():
+            self.columns = ("Keeper?", 'Player', 'Team', 'Pos', 'Roster', 'Salary', 'Value', 'Inf. Cost', 'Surplus', 'Inf. Surplus') + self.ottoverse_columns
+            self.fa_columns = ("Keeper?", 'Player', 'Team', 'Pos', 'Value', 'Inf. Cost') + self.ottoverse_columns
+        else:
+            self.columns = ('Player', 'Team', 'Pos', 'Roster', 'Salary', 'Value', 'Inf. Cost', 'Surplus', 'Inf. Surplus') + self.ottoverse_columns
+            self.fa_columns = ('Player', 'Team', 'Pos', 'Value', 'Inf. Cost') + self.ottoverse_columns
 
         self.team_sv = StringVar()
         self.team_sv.set("All Teams")
@@ -130,15 +129,15 @@ class Surplus(tk.Frame):
             for pv in self.value_calc.get_position_values(pos=Position.OVERALL):
                 if self.league.is_rostered(pv.player_id):
                     continue
-                tags = tuple()
+                tags = ('disabled',)
                 self.player_table.table.insert('', tk.END, tags=tags, values=self.__get_fa_row(pv), iid=pv.player_id)
             self.player_table.table.treeview_sort_column('Value', reverse=True)
             self.player_table.table.set_display_columns(self.fa_columns)
         elif self.team_sv.get() == 'Projected FA':
             for pv in self.value_calc.get_position_values(pos=Position.OVERALL):
-                if date_util.is_offseason() and self.league.is_keeper(pv.player_id):
+                if self.league.is_keeper(pv.player_id):
                     continue
-                tags = tuple()
+                tags = ('disabled',)
                 self.player_table.table.insert('', tk.END, tags=tags, values=self.__get_fa_row(pv), iid=pv.player_id)
             self.player_table.table.treeview_sort_column('Value', reverse=True)
             self.player_table.table.set_display_columns(self.fa_columns)
