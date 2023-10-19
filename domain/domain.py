@@ -1,5 +1,6 @@
 from __future__ import annotations
 from datetime import datetime
+from dataclasses import field
 from sqlalchemy import ForeignKey, Index
 from sqlalchemy.orm import relationship, registry, Mapped, mapped_column, reconstructor
 import re
@@ -161,24 +162,24 @@ class Team:
     
     roster_spots:Mapped[List["Roster_Spot"]] = relationship(default_factory=list, back_populates="team", cascade="all, delete", repr=False)
 
-    num_players:Mapped[int] = mapped_column(default=None)
-    spots:Mapped[int] = mapped_column(default=None)
-    salaries:Mapped[int] = mapped_column(default=None)
-    penalties:Mapped[int] = mapped_column(default=None)
-    loans_in:Mapped[int] = mapped_column(default=None)
-    loans_out:Mapped[int] = mapped_column(default=None)
-    free_cap:Mapped[int] = mapped_column(default=None)
+    num_players:Mapped[int] = mapped_column(default=None, repr=False)
+    spots:Mapped[int] = mapped_column(default=None, repr=False)
+    salaries:Mapped[int] = mapped_column(default=None, repr=False)
+    penalties:Mapped[int] = mapped_column(default=None, repr=False)
+    loans_in:Mapped[int] = mapped_column(default=None, repr=False)
+    loans_out:Mapped[int] = mapped_column(default=None, repr=False)
+    free_cap:Mapped[int] = mapped_column(default=None, repr=False)
 
-    rs_map:Dict[Player,Roster_Spot] = None
-    points:float=0
-    lg_rank:int=0
-    cat_stats:Dict[StatType,float]=None
-    cat_ranks:Dict[StatType,int]=None
+    rs_map:Dict[Player,Roster_Spot] = field(default_factory=dict, repr=False)
+    points:float=field(default=0, repr=False)
+    lg_rank:int=field(default=0, repr=False)
+    cat_stats:Dict[StatType,float]= field(default_factory=dict, repr=False)
+    cat_ranks:Dict[StatType,int]= field(default_factory=dict, repr=False)
 
-    @reconstructor
-    def init_on_load(self):
-        self.cat_stats = {}
-        self.cat_ranks = {}
+    #@reconstructor
+    #def init_on_load(self):
+    #    self.cat_stats = {}
+    #    self.cat_ranks = {}
 
     def get_rs_by_player(self, player:Player) -> Roster_Spot:
         '''Returns the team's Roster_Spot for the input player'''
