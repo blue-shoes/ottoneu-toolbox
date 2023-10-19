@@ -140,8 +140,8 @@ class Surplus(tk.Frame):
                     continue
                 tags = tuple()
                 self.player_table.table.insert('', tk.END, tags=tags, values=self.__get_fa_row(pv), iid=pv.player_id)
-                self.player_table.table.treeview_sort_column('Value', reverse=True)
-                self.player_table.table.set_display_columns(self.fa_columns)
+            self.player_table.table.treeview_sort_column('Value', reverse=True)
+            self.player_table.table.set_display_columns(self.fa_columns)
         else:
             for team in self.league.teams:
                 if team.name == self.team_sv.get():
