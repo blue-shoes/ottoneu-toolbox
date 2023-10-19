@@ -14,6 +14,7 @@ class Table(ttk.Treeview):
         if checkbox:
             self.__checked = ImageTk.PhotoImage(Image.open(resource_path('checked.png')))
             self.__unchecked = ImageTk.PhotoImage(Image.open(resource_path('unchecked.png')))
+            self.__disabled = ImageTk.PhotoImage(Image.open(resource_path('disabled.png')))
 
         self.parent = parent
         self.hscroll = hscroll
@@ -66,6 +67,7 @@ class Table(ttk.Treeview):
         if checkbox:
             self.tag_configure('checked', image=self.__checked)
             self.tag_configure('unchecked', image=self.__unchecked)
+            self.tag_configure('disabled', image=self.__disabled)
             self.bind('<ButtonRelease-1>', self.__checkbox_method)
 
     def get_row_by_text(self, text):
@@ -137,7 +139,7 @@ class Table(ttk.Treeview):
         """Handle click on items."""
         if len(self.selection()) > 0:
             item = self.selection()[0]
-            if event.widget.identify_column(event.x) == '#0':
+            if event.widget.identify_column(event.x) == '#0' and self.tag_has('checked', item) or self.tag_has('unchecked', item):
                 # toggle checkbox image
                 if self.tag_has('checked', item):
                     self.__tag_remove(item, 'checked')
