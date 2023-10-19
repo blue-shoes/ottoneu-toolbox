@@ -1,6 +1,8 @@
 import tkinter as tk     
 from tkinter import *              
 from tkinter import ttk 
+import threading
+from typing import List
 
 from math import ceil
 
@@ -165,13 +167,22 @@ class League_Analysis(tk.Frame):
     def __is_use_keepers(self) -> bool:
         return (self.offseason and self.standings.standings_type.get() == 1)
     
+    def update_league_table(self, team_list:List):
+        league_services.calculate_league_table(self.league, self.value_calculation, self.standings.standings_type.get() == 1, self.inflation, updated_teams=team_list, use_keepers=self.__is_use_keepers())
+    
+    def check_if_league_table_ready(self, calc_thread:threading.Thread):
+        if calc_thread.is_alive():
+            self.after(200, self.check_if_league_table_ready, calc_thread)
+        else:
+            self.standings.standings_table.table.refresh()
+
     def update(self, team:Team=None, roster_spot:Roster_Spot=None):
         if team is None:
             team_list=None
         else:
-            team_list = [].append(team)
-        #TODO: calculate_league_table is not responsive enough. Need to handle it better
-        league_services.calculate_league_table(self.league, self.value_calculation, self.standings.standings_type.get() == 1, self.inflation, team_list)
+            team_list = [team]
         self.handle_inflation(roster_spot)
-        self.standings.standings_table.table.refresh()
+        thread = threading.Thread(target=self.update_league_table, args=(team_list,))
+        thread.start()
+        self.after(200, self.check_if_league_table_ready, thread)
         self.surplus.player_table.table.refresh()
