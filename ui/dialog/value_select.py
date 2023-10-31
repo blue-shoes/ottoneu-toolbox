@@ -19,7 +19,19 @@ class Dialog(tk.Toplevel):
         self.page_controller = page_controller
         frm = tk.Frame(self, borderwidth=4)
 
-        self.value_list = calculation_services.get_values_for_year(year=year)
+        tk.Label(frm, text="Select value set season: ").grid(row=0,column=0)
+        self.season = tk.StringVar()
+        season_cb = ttk.Combobox(frm, textvariable=self.season)
+        seasons = calculation_services.get_available_seasons()
+        str_seasons = []
+        for season in seasons:
+            str_seasons.append(str(season))
+        season_cb['values'] = str_seasons
+        season_cb.grid(row=0,column=1)
+        self.season.set(str_seasons[0])
+        season_cb.bind("<<ComboboxSelected>>", self.update_season)
+
+        self.value_list = calculation_services.get_values_for_year(year=seasons[0])
 
         cols = ('Name', 'Format', '# Teams', 'Details')
         align = {}
@@ -33,7 +45,7 @@ class Dialog(tk.Toplevel):
         span = 3
         if redirect:
             span = 4
-        lt.grid(row=0, columnspan=span)
+        lt.grid(row=1, columnspan=span)
         lt.set_row_select_method(self.on_select)
         lt.set_refresh_method(self.populate_table)
         lt.set_double_click_method(self.double_click)
@@ -41,11 +53,11 @@ class Dialog(tk.Toplevel):
 
         self.populate_table()
 
-        ttk.Button(frm, text="OK", command=self.set_value).grid(row=1, column=0)
-        ttk.Button(frm, text="Cancel", command=self.cancel).grid(row=1, column=1)
-        ttk.Button(frm, text="Import From File...", command=self.import_values).grid(row=1,column=2)
+        ttk.Button(frm, text="OK", command=self.set_value).grid(row=2, column=0)
+        ttk.Button(frm, text="Cancel", command=self.cancel).grid(row=2, column=1)
+        ttk.Button(frm, text="Import From File...", command=self.import_values).grid(row=2,column=2)
         if redirect:
-            ttk.Button(frm, text="Create New Values...", command=self.open_create_values).grid(row=1,column=3)
+            ttk.Button(frm, text="Create New Values...", command=self.open_create_values).grid(row=2,column=3)
 
         frm.pack()
 
@@ -67,6 +79,10 @@ class Dialog(tk.Toplevel):
     def open_create_values(self):
         self.page_controller.show_player_values()
         self.destroy()
+     
+    def update_season(self, event: Event):
+        self.value_list = calculation_services.get_values_for_year(int(self.season.get()))
+        self.value_table.refresh()
     
     def populate_table(self):
         for value in self.value_list:
