@@ -79,7 +79,7 @@ class Dialog(tk.Toplevel):
             self.lift()
             self.focus_force()
 
-    def update_season(self):
+    def update_season(self, event: Event):
         self.proj_list = projection_services.get_projections_for_year(int(self.season.get()))
         self.proj_table.refresh()
     
