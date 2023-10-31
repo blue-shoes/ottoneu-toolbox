@@ -906,3 +906,14 @@ def get_values_with_projection_id(proj_id) -> List[ValueCalculation]:
     '''Gets all ValueCalculations in the databse with the input projection id'''
     with Session() as session:
         return session.query(ValueCalculation).join(ValueCalculation.projection).filter(Projection.index == proj_id).all()
+
+def get_available_seasons() -> List[int]:
+    '''Returns list of all seasons that have at least one value calculation associated with them, sorted in descending order.'''
+    with Session() as session:
+        timestamps = session.query(ValueCalculation.timestamp).all()
+    tmp_seasons = []
+    for ts in timestamps:
+        year = ts.timestamp.year if ts.timestamp.month < 10 else ts.timestamp.year + 1
+        if not year in tmp_seasons:
+            tmp_seasons.append(year)
+    return sorted(tmp_seasons, reverse=True)
