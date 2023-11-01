@@ -406,15 +406,12 @@ def update_league_inflation(league:League, pv:PlayerValue, rs:Roster_Spot) -> fl
     if pv.value > 0:
         league.remaining_player_value -= pv.value * mult
         league.remaining_valued_roster_spots -= 1 * mult
-    
     return get_league_inflation(league)
 
 def get_league_inflation(league:League) -> float:
     remaining_value = league.remaining_player_value - league.remaining_valued_roster_spots
 
-    extra_value = league.num_teams*400 - league.captured_value
-
-    remaining_dollars = (league.num_teams*400 - extra_value) - league.kept_salary - league.remaining_valued_roster_spots
+    remaining_dollars = league.captured_value - league.kept_salary - league.remaining_valued_roster_spots
     league.inflation = remaining_dollars / remaining_value - 1
     return league.inflation
 
