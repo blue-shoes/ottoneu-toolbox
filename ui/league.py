@@ -78,16 +78,25 @@ class League_Analysis(tk.Frame):
         self.inflation_lbl = ttk.Label(header_frame, textvariable=self.inflation_sv)
         self.inflation_lbl.grid(row=0, column=2)
 
+        if self.offseason:
+            ttk.Button(header_frame, text='Optimize Keepers', command=self.optimize_keepers).grid(row=0, column=3)
+            ttk.Button(header_frame, text='Clear Keepers', command=self.clear_keepers).grid(row=0, column=4)
+            ttk.Button(header_frame, text='Set All Keepers', command=self.set_all_keepers).grid(row=0, column=5)
+        else:
+            ttk.Checkbutton(header_frame, text='Enable offseason mode?', variable=self.offseason, command=self.toggle_offseason).grid(row=0, column=3)
+
         big_frame = ttk.Frame(self)
         big_frame.pack(side=TOP, expand=True, fill='both')
 
-        #TODO: make the user_keepers argument dynamic
         self.standings = standings.Standings(big_frame, view=self)
         self.standings.pack(side=LEFT, fill='both', expand=True)
 
         self.surplus = surplus.Surplus(big_frame, view=self)
         self.surplus.pack(side=LEFT, fill='both', expand=True)
     
+    def toggle_offseason(self):
+        ...
+
     def league_change(self):
         self.league = self.controller.league
         if self.offseason and (self.league.projected_keepers is None or len(self.league.projected_keepers) == 0):
@@ -108,7 +117,10 @@ class League_Analysis(tk.Frame):
                     self.league.projected_keepers.append(projected_keeper_services.add_keeper_and_return(self.league, rs.player))
 
     def handle_inflation(self, roster_spot:Roster_Spot):
-        self.inflation = league_services.update_league_inflation(self.league, self.value_calculation.get_player_value(roster_spot.player_id, Position.OVERALL), roster_spot)
+        if roster_spot is None:
+            self.inflation = league_services.calculate_league_inflation(self.league, self.value_calculation, use_keepers=self.__is_use_keepers())
+        else:
+            self.inflation = league_services.update_league_inflation(self.league, self.value_calculation.get_player_value(roster_spot.player_id, Position.OVERALL), roster_spot)
         self.inflation_sv.set(f'League Inflation: {"{:.1f}".format(self.inflation * 100)}%')
         self.surplus.update_inflation(self.inflation)
     
@@ -118,7 +130,13 @@ class League_Analysis(tk.Frame):
         self.surplus.inflation = self.inflation
 
     def optimize_keepers(self):
+        pd = progress.ProgressDialog(self.parent, 'Optimizing Keepers')
+        if self.league.projected_keepers is not None:
+            orig_keepers = [pk.player_id for pk in self.league.projected_keepers]
+        else:
+            orig_keepers = []
         while(True):
+            pd.increment_completion_percent(5)
             discrepancies = []
             overpredict=False
             underpredict=False
@@ -130,10 +148,9 @@ class League_Analysis(tk.Frame):
                     if pv.value * (1 + self.inflation) > rs.salary and not self.league.is_keeper(pv.player_id):
                         discrepancies.append((pv.value * (1 + self.inflation) - rs.salary, rs.player_id))
                         overpredict=True
-                    elif pv.value * (1 + self.inflation) < rs.salary and self.league.is_keeper(pv.player_id):
+                    elif pv.value * (1 + self.inflation) < rs.salary and self.league.is_keeper(pv.player_id) and not pv.player_id in orig_keepers:
                         discrepancies.append((rs.salary - (pv.value * (1 + self.inflation)), rs.player_id))
                         underpredict=True
-            len(discrepancies), overpredict, underpredict, ceil(2*len(discrepancies)/3)
             if len(discrepancies) < 2 or (overpredict and underpredict):
                 break
             sorted_list = sorted(discrepancies, reverse=True)
@@ -142,7 +159,23 @@ class League_Analysis(tk.Frame):
                     self.league.projected_keepers.append(projected_keeper_services.add_keeper_by_player_id(self.league, sorted_list[i][1]))
                 else:
                     self.league.projected_keepers.remove(projected_keeper_services.remove_keeper_by_league_and_player(self.league, sorted_list[i][1]))
+            self.inflation = league_services.calculate_league_inflation(self.league, self.value_calculation, use_keepers=self.__is_use_keepers())
+        pd.complete()
+        self.load_tables()
 
+    def clear_keepers(self):
+        for pk in self.league.projected_keepers:
+            projected_keeper_services.remove_keeper(pk)
+        self.league.projected_keepers.clear()
+        self.load_tables()
+    
+    def set_all_keepers(self):
+        for team in self.league.teams:
+            for rs in team.roster_spots:
+                if not self.league.is_keeper(rs.player_id):
+                    self.league.projected_keepers.append(projected_keeper_services.add_keeper_by_player_id(self.league, rs.player_id))
+        self.load_tables()
+    
     def load_tables(self):
         self.league_text_var.set(self.controller.league.name)
         self.values_name.set(f'Value Set: {self.value_calculation.name}')
