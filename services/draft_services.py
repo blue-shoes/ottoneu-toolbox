@@ -3,7 +3,7 @@ from pandas import DataFrame
 from typing import List, Tuple
 
 from dao.session import Session
-from domain.domain import Draft, Draft_Target, CouchManagers_Draft, CouchManagers_Team
+from domain.domain import Draft, Draft_Target, CouchManagers_Draft, CouchManagers_Team, League
 from scrape.scrape_couchmanagers import Scrape_CouchManagers
 from services import player_services
 from util import date_util
@@ -17,7 +17,7 @@ def get_draft_by_league(lg_id:int) -> Draft:
             .first()
         if draft is None:
             draft = Draft()
-            draft.league_id = lg_id
+            draft.league = session.query(League).filter_by(index = lg_id).first()
             draft.year = year
             draft.targets = []
             session.add(draft)
