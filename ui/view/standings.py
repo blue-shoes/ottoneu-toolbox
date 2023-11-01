@@ -80,7 +80,7 @@ class Standings(tk.Frame):
 
     def calc_salary_info(self, team:Team) -> list:
         vals = []
-        if date_util.is_offseason() and self.standings_type == 1:
+        if date_util.is_offseason() and self.standings_type.get() == 1:
             # Use the league.projected_keepers list
             salaries = 0.0
             tot_val = 0.0
