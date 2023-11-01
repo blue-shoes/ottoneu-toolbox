@@ -28,7 +28,8 @@ def optimize_team_pt(team:Team,
                      off_g_limit:float=162,
                      pitch_basis:RankingBasis=RankingBasis.PIP,
                      rep_lvl:Dict[Position, float]=None,
-                     current_pt:Dict[Position, Dict[int,int]]=None) -> Dict[Position, Dict[int,int]]:
+                     current_pt:Dict[Position, Dict[int,int]]=None,
+                     use_keepers:bool=False) -> Dict[Position, Dict[int,int]]:
     '''Creates a season lineup that maximizes the off_opt_stat and pit_opt_stat for the roster. Providing a rep_lvl dictionary will prevent players below replacement
     level from accruing stats/playing time. Providing a current_pt dictionary will inform how much playing time has alraedy been accrued by the team and will solve
     for the remaining playing time.'''
@@ -39,7 +40,7 @@ def optimize_team_pt(team:Team,
     team.index_rs()
     keeper_index = [k.player_id for k in keepers]
     for rs in team.roster_spots:
-        if len(keepers) == 0 or rs.player_id in keeper_index:
+        if not use_keepers or rs.player_id in keeper_index:
             if rs.player.pos_eligible(Position.OFFENSE):
                 #Offense
                 pp = proj.get_player_projection(rs.player.index)
