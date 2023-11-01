@@ -42,6 +42,9 @@ class League_Analysis(tk.Frame):
         self.league = self.controller.league
         self.value_calculation = self.controller.value_calculation
 
+        if self.offseason and (self.league.projected_keepers is None or len(self.league.projected_keepers) == 0):
+            self.initialize_keepers()
+
         self.load_tables()
 
         return True
@@ -87,6 +90,8 @@ class League_Analysis(tk.Frame):
     
     def league_change(self):
         self.league = self.controller.league
+        if self.offseason and (self.league.projected_keepers is None or len(self.league.projected_keepers) == 0):
+            self.initialize_keepers()
         self.load_tables()
     
     def value_change(self):
@@ -111,8 +116,6 @@ class League_Analysis(tk.Frame):
         self.inflation = league_services.calculate_league_inflation(self.league, self.value_calculation, use_keepers=self.__is_use_keepers())
         self.inflation_sv.set(f'League Inflation: {"{:.1f}".format(self.inflation * 100)}%')
         self.surplus.inflation = self.inflation
-        if len(self.league.projected_keepers) > 0:
-            self.optimize_keepers()
 
     def optimize_keepers(self):
         while(True):
@@ -144,14 +147,13 @@ class League_Analysis(tk.Frame):
         self.league_text_var.set(self.controller.league.name)
         self.values_name.set(f'Value Set: {self.value_calculation.name}')
         projected_keeper_services.get_league_keepers(self.league)
-        if self.offseason and (self.league.projected_keepers is None or len(self.league.projected_keepers) == 0):
-            self.initialize_keepers()
         pd = progress.ProgressDialog(self.parent, 'Initializing League Analysis')
-        pd.set_task_title("Optimizing lineups")
+        pd.set_completion_percent(5)
+        pd.set_task_title('Calculating standings')
         self.initialize_inflation()
         self.standings.update_league(self.league)
         self.standings.value_calc = self.value_calculation
-        pd.set_completion_percent(10)
+        pd.increment_completion_percent(10)
         league_services.calculate_league_table(self.league, self.value_calculation, \
                                                 fill_pt=(self.standings.standings_type.get() == 1), \
                                                 inflation=self.inflation,\
