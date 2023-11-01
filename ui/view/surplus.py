@@ -59,7 +59,8 @@ class Surplus(tk.Frame):
         align = {}
         align['Player'] = W
         align['Roster'] = W
-        self.player_table = ScrollableTreeFrame(self, cols,pack=False,sortable_columns=cols,reverse_col_sort=cols, column_widths=widths, init_sort_col='Surplus', column_alignments=align, checkbox=date_util.is_offseason())
+        rev_cols = ('Player', 'Team', 'Pos', 'Roster')
+        self.player_table = ScrollableTreeFrame(self, cols,pack=False,sortable_columns=cols,reverse_col_sort=rev_cols, column_widths=widths, init_sort_col='Surplus', column_alignments=align, checkbox=date_util.is_offseason())
         self.player_table.table.tag_configure('users', background='#FCE19D')
         self.player_table.table.set_refresh_method(self.update_player_table)
         self.player_table.table.set_checkbox_toggle_method(self.toggle_keeper)
@@ -123,7 +124,6 @@ class Surplus(tk.Frame):
                         else:
                             tags = tags + ('unchecked',)
                     self.player_table.table.insert('', tk.END, tags=tags, values=self.__get_player_row(rs, team), iid=rs.player_id)
-            self.player_table.table.treeview_sort_column('Surplus', reverse=True)
             self.player_table.table.set_display_columns(self.columns)
         elif self.team_sv.get() == 'Free Agents':
             for pv in self.value_calc.get_position_values(pos=Position.OVERALL):
@@ -131,7 +131,8 @@ class Surplus(tk.Frame):
                     continue
                 tags = ('disabled',)
                 self.player_table.table.insert('', tk.END, tags=tags, values=self.__get_fa_row(pv), iid=pv.player_id)
-            self.player_table.table.treeview_sort_column('Value', reverse=True)
+            if self.player_table.table.sort_col.contains('Surplus'):
+                self.player_table.table.treeview_sort_column('Value', reverse=True)
             self.player_table.table.set_display_columns(self.fa_columns)
         elif self.team_sv.get() == 'Projected FA':
             for pv in self.value_calc.get_position_values(pos=Position.OVERALL):
@@ -139,7 +140,8 @@ class Surplus(tk.Frame):
                     continue
                 tags = ('disabled',)
                 self.player_table.table.insert('', tk.END, tags=tags, values=self.__get_fa_row(pv), iid=pv.player_id)
-            self.player_table.table.treeview_sort_column('Value', reverse=True)
+            if 'Surplus' in self.player_table.table.sort_col:
+                self.player_table.table.treeview_sort_column('Value', reverse=True)
             self.player_table.table.set_display_columns(self.fa_columns)
         else:
             for team in self.league.teams:
@@ -152,7 +154,6 @@ class Surplus(tk.Frame):
                                 tags = ('unchecked',)
                         self.player_table.table.insert('', tk.END, tags=tags, values=self.__get_player_row(rs, team), iid=rs.player_id)
                     break
-            self.player_table.table.treeview_sort_column('Surplus', reverse=True)
             self.player_table.table.set_display_columns(self.columns)
     
     def update_inflation(self, inflation:float) -> None:

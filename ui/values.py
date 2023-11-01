@@ -31,6 +31,7 @@ classic_hitting_columns = ('G', 'PA', 'AB', 'OBP', 'SLG', 'HR', 'R')
 classic_pitching_columns = ('G', 'GS', 'IP', 'ERA', 'WHIP', 'HR/9', 'SO')
 all_hitting_stats = ('G', 'PA', 'AB', 'H', '2B', '3B', 'HR', 'BB', 'HBP', 'SB','CS', 'R', 'RBI', 'SB', 'AVG', 'OBP', 'SLG')
 all_pitching_stats = ('G', 'GS', 'IP', 'SO','H','BB','HBP','HR','SV','HLD', 'W', 'ERA', 'WHIP', 'HR/9')
+rev_cols = ('Name', 'Team', 'Pos', 'ERA', 'WHIP', 'HR/9')
 
 class ValuesCalculation(tk.Frame):
     def __init__(self, parent, controller):
@@ -314,7 +315,7 @@ class ValuesCalculation(tk.Frame):
 
         #self.overall_table = ot = Table(overall_frame, self.player_columns + self.overall_columns, column_widths=col_width, column_alignments=col_align, sortable_columns=self.player_columns + self.overall_columns)
         cols = player_columns + h_fom_columns + p_fom_columns + point_cols
-        self.overall_table = ot = Table(overall_frame, cols, column_widths=col_width, column_alignments=col_align, sortable_columns=cols)
+        self.overall_table = ot = Table(overall_frame, cols, column_widths=col_width, column_alignments=col_align, sortable_columns=cols, reverse_col_sort=rev_cols)
         self.tables[Position.OVERALL] = ot
         ot.set_refresh_method(self.refresh_overall)
         ot.grid(row=0, column=0)
@@ -322,7 +323,7 @@ class ValuesCalculation(tk.Frame):
 
         hit_cols = player_columns + h_fom_columns + point_cols + all_hitting_stats
 
-        self.bat_table = Table(bat_frame, hit_cols, column_widths=col_width, column_alignments=col_align, sortable_columns=hit_cols)
+        self.bat_table = Table(bat_frame, hit_cols, column_widths=col_width, column_alignments=col_align, sortable_columns=hit_cols, reverse_col_sort=rev_cols)
         self.tables[Position.OFFENSE] = self.bat_table
         self.bat_table.set_refresh_method(lambda: self.refresh_hitters(Position.OFFENSE))
         self.bat_table.grid(row=0, column=0)
@@ -330,7 +331,7 @@ class ValuesCalculation(tk.Frame):
 
         pitch_cols = player_columns + p_fom_columns + point_cols + all_pitching_stats
 
-        self.arm_table = Table(arm_frame, pitch_cols, column_widths=col_width, column_alignments=col_align, sortable_columns=pitch_cols)
+        self.arm_table = Table(arm_frame, pitch_cols, column_widths=col_width, column_alignments=col_align, sortable_columns=pitch_cols, reverse_col_sort=rev_cols)
         self.tables[Position.PITCHER] = self.arm_table
         self.arm_table.set_refresh_method(lambda: self.refresh_pitchers(Position.PITCHER))
         self.arm_table.grid(row=0,column=0)
@@ -339,7 +340,7 @@ class ValuesCalculation(tk.Frame):
         for pos in Position.get_discrete_offensive_pos():
             frame = ttk.Frame(self.tab_control)
             self.tab_control.add(frame, text=pos.value)
-            pt = Table(frame, hit_cols, column_widths=col_width, column_alignments=col_align, sortable_columns=hit_cols)
+            pt = Table(frame, hit_cols, column_widths=col_width, column_alignments=col_align, sortable_columns=hit_cols, reverse_col_sort=rev_cols)
             self.tables[pos] = pt
             pt.set_refresh_method(lambda _pos=pos: self.refresh_hitters(_pos))
             pt.grid(row=0, column=0)
@@ -348,7 +349,7 @@ class ValuesCalculation(tk.Frame):
         for pos in Position.get_discrete_pitching_pos():
             frame = ttk.Frame(self.tab_control)
             self.tab_control.add(frame, text=pos.value)
-            pt = Table(frame, pitch_cols, column_widths=col_width, column_alignments=col_align, sortable_columns=pitch_cols)
+            pt = Table(frame, pitch_cols, column_widths=col_width, column_alignments=col_align, sortable_columns=pitch_cols, reverse_col_sort=rev_cols)
             self.tables[pos] = pt
             pt.set_refresh_method(lambda _pos=pos: self.refresh_pitchers(_pos))
             pt.grid(row=0, column=0)
