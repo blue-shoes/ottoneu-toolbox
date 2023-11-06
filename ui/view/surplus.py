@@ -131,7 +131,7 @@ class Surplus(tk.Frame):
                     continue
                 tags = ('disabled',)
                 self.player_table.table.insert('', tk.END, tags=tags, values=self.__get_fa_row(pv), iid=pv.player_id)
-            if self.player_table.table.sort_col.contains('Surplus'):
+            if 'Surplus' in self.player_table.table.sort_col:
                 self.player_table.table.treeview_sort_column('Value', reverse=True)
             self.player_table.table.set_display_columns(self.fa_columns)
         elif self.team_sv.get() == 'Projected FA':
