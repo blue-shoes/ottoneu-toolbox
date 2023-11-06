@@ -176,10 +176,10 @@ class Team:
     cat_stats:Dict[StatType,float]= field(default_factory=dict, repr=False)
     cat_ranks:Dict[StatType,int]= field(default_factory=dict, repr=False)
 
-    #@reconstructor
-    #def init_on_load(self):
-    #    self.cat_stats = {}
-    #    self.cat_ranks = {}
+    @reconstructor
+    def init_on_load(self):
+        self.cat_stats = {}
+        self.cat_ranks = {}
 
     def get_rs_by_player(self, player:Player) -> Roster_Spot:
         '''Returns the team's Roster_Spot for the input player'''
