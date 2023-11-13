@@ -394,9 +394,12 @@ class ValuesCalculation(tk.Frame):
                 return
             self.custom_scoring = dialog.scoring
             self.custom_scoring_lbl.set(dialog.scoring.name)
+        else:
+            self.custom_scoring = None
+            self.custom_scoring_lbl.set('')
         self.set_display_columns()
         self.set_advanced_button_status()
-        if ScoringFormat.is_points_type(ScoringFormat.get_format_by_full_name(self.game_type.get())):
+        if (self.custom_scoring is not None and self.custom_scoring.points_format) or ScoringFormat.is_points_type(ScoringFormat.get_format_by_full_name(self.game_type.get())):
             self.hitter_basis_cb['values'] = ('P/G','P/PA')
             if self.hitter_basis.get() not in self.hitter_basis_cb['values']:
                 self.hitter_basis.set('P/G')
@@ -1016,6 +1019,8 @@ class ValuesCalculation(tk.Frame):
         self.value_calc.projection = self.projection
         self.value_calc.format = ScoringFormat.get_format_by_full_name(self.game_type.get())
         self.value_calc.inputs = []
+        if self.value_calc.format == ScoringFormat.CUSTOM:
+            self.value_calc.set_input(CDT.CUSTOM_SCORING_FORMAT, int(self.custom_scoring.id))
         self.value_calc.set_input(CDT.NUM_TEAMS, float(self.num_teams_str.get()))
         if self.manual_split.get():
             self.value_calc.set_input(CDT.HITTER_SPLIT, float(self.hitter_allocation.get()))
