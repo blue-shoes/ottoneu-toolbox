@@ -212,69 +212,78 @@ class StatType(int, Enum):
     id:int
     display:str
     stat_list:List[str]
+    rank:int
     hitter: bool
     format: str
+    rate: bool
     higher_better: bool
 
     def __new__(
-        cls, id: int, stat_list: List[str], hitter: bool, format:str = "{:.0f}", higher_better:bool = True
+        cls, id: int, stat_list: List[str], rank:int, hitter: bool, format:str = "{:.0f}", rate:bool = False, higher_better:bool = True
     ) -> StatType:
         obj = int.__new__(cls, id)
         obj._value_ = id
 
         obj.display = stat_list[0]
         obj.stat_list = stat_list
+        obj.rank = rank
         obj.hitter = hitter
         obj.format = format
+        obj.rate = rate
         obj.higher_better = higher_better
         return obj
 
-    G_HIT = (0, ['G', 'G_C', 'G_FB', 'G_SB', 'G_3B', 'G_SS', 'G_LF', 'G_CF', 'G_RF', 'G_DH'], True)
-    GS_HIT = (1, ['GS'], True)
-    PA = (2, ['PA'], True)
-    AB = (3, ['AB'], True)
-    H = (4, ['H'], True)
-    DOUBLE = (5, ['2B'], True)
-    TRIPLE = (6, ['3B'], True)
-    HR = (7, ['HR'], True)
-    R = (8, ['R'], True)
-    RBI = (9, ['RBI'], True)
-    BB = (10, ['BB'], True)
-    SO = (11, ['SO'], False)
-    HBP = (12, ['HBP'], True)
-    SB = (13, ['SB'], True)
-    CS = (14, ['CS'], True, "{:.0f}", False)
-    AVG = (15, ['AVG', 'BA'], True, "{:.3f}")
-    OBP = (16, ['OBP'], True, "{:.3f}")
-    SLG = (17, ['SLG'], True, "{:.3f}")
-    OPS = (18, ['OPS'], True, "{:.3f}")
-    WOBA = (19, ['wOBA'], True, "{:.3f}")
-    WRC_PLUS = (20, ['wRC+'], True, "{:.3f}")
-    G_PIT = (21, ['G'], False)
-    GS_PIT = (22, ['GS'], False)
-    IP = (23, ['IP'], False, "{:.1f}")
-    W = (24, ['W'], False)
-    L = (25, ['L'], False, "{:.0f}", False)
-    QS = (26, ['QS'], False)
-    SV = (27, ['SV'], False)
-    HLD = (28, ['HLD', 'Holds'], False)
-    H_ALLOWED = (29, ['H'], False, "{:.0f}", False)
-    ER = (30, ['ER'], False, "{:.0f}", False)
-    HR_ALLOWED = (31, ['HR', 'HRA'], False, "{:.0f}", False)
-    K = (32, ['SO'], True, "{:.0f}", False)
-    BB_ALLOWED = (33, ['BB'], False, "{:.0f}", False)
-    HBP_ALLOWED = (34, ['HBP'], False, "{:.0f}", False)
-    WHIP = (35, ['WHIP'], False, "{:.2f}", False)
-    K_PER_9 = (36, ['K/9'], False, "{:.2f}")
-    BB_PER_9 = (37, ['BB/9'], False, "{:.2f}", False)
-    ERA = (38, ['ERA'], False, "{:.2f}", False)
-    FIP = (39, ['FIP'], False, "{:.2f}", False)
-    BABIP_H = (40, ['BABIP'], True, "{:.3f}")
-    BABIP_P = (41, ['BABIP'], False, "{:.3f}", False)
-    HR_PER_9 = (42, ['HR/9'], False, "{:.2f}", False)
-    POINTS = (43, ['Points'], True, "{:.1f}")
-    PPG = (44, ['PPG'], True, "{:.2f}")
-    PIP = (45, ['PIP'], True, "{:.2f}")
+    G_HIT = (0, ['G', 'G_C', 'G_FB', 'G_SB', 'G_3B', 'G_SS', 'G_LF', 'G_CF', 'G_RF', 'G_DH'], 1, True)
+    GS_HIT = (1, ['GS'], 2, True)
+    PA = (2, ['PA'], 3, True)
+    AB = (3, ['AB'], 4, True)
+    H = (4, ['H'], 7, True)
+    DOUBLE = (5, ['2B'], 8, True)
+    TRIPLE = (6, ['3B'], 9, True)
+    HR = (7, ['HR'], 10, True)
+    R = (8, ['R'], 5, True)
+    RBI = (9, ['RBI'], 6, True)
+    BB = (10, ['BB'], 11, True)
+    SO = (11, ['SO'], 12, False)
+    HBP = (12, ['HBP'], 13, True)
+    SB = (13, ['SB'], 14, True)
+    CS = (14, ['CS'], 15, True, "{:.0f}", False)
+    AVG = (15, ['AVG', 'BA'], 17, True, "{:.3f}", True)
+    OBP = (16, ['OBP'], 18, True, "{:.3f}", True)
+    SLG = (17, ['SLG'], 19, True, "{:.3f}", True)
+    OPS = (18, ['OPS'], 20, True, "{:.3f}", True)
+    WOBA = (19, ['wOBA'], 22, True, "{:.3f}", True)
+    WRC_PLUS = (20, ['wRC+'], 23, True, "{:.0f}", True)
+    G_PIT = (21, ['G'], 1, False)
+    GS_PIT = (22, ['GS'], 2, False)
+    IP = (23, ['IP'], 3, False, "{:.1f}")
+    W = (24, ['W'], 4, False)
+    L = (25, ['L'], 5, False, "{:.0f}", False, False)
+    QS = (26, ['QS'], 6, False)
+    SV = (27, ['SV'], 12, False)
+    HLD = (28, ['HLD', 'Holds'], 13, False)
+    H_ALLOWED = (29, ['H'], 8, False, "{:.0f}", False, False)
+    ER = (30, ['ER'], 18, False, "{:.0f}", False, False)
+    HR_ALLOWED = (31, ['HR', 'HRA'], 11, False, "{:.0f}", False, False)
+    K = (32, ['SO'], 7, True)
+    BB_ALLOWED = (33, ['BB'], 9, False, "{:.0f}", False, False)
+    HBP_ALLOWED = (34, ['HBP'], 10, False, "{:.0f}", False, False)
+    WHIP = (35, ['WHIP'], 20, False, "{:.2f}", True, False)
+    K_PER_9 = (36, ['K/9'], 21, False, "{:.2f}", True)
+    BB_PER_9 = (37, ['BB/9'], 22, False, "{:.2f}", True, False)
+    ERA = (38, ['ERA'], 19, False, "{:.2f}", True, False)
+    FIP = (39, ['FIP'], 25, False, "{:.2f}", True, False)
+    BABIP_H = (40, ['BABIP'], 21, True, "{:.3f}", True)
+    BABIP_P = (41, ['BABIP'], 24, False, "{:.3f}", True, False)
+    HR_PER_9 = (42, ['HR/9'], 23, False, "{:.2f}", True, False)
+    POINTS = (43, ['Points'], -1, True, "{:.1f}")
+    PPG = (44, ['PPG'], -1, True, "{:.2f}", True)
+    PIP = (45, ['PIP'], -1, True, "{:.2f}", True)
+    NET_SB = (46, ['Net SB', 'NSB'], 16, True)
+    NET_SAVES = (47, ['Net SV', 'NSV'], 16, False)
+    NET_SVH = (48, ['Net SVH', 'NSVH'], 17, False)
+    BS = (49, ['BS'], 14, False)
+    SVH = (50, ['SVH'], 15, False)
 
     @classmethod
     def get_hit_stattype(self, display:str) -> StatType:
@@ -291,6 +300,32 @@ class StatType(int, Enum):
             if not st.hitter and display in st.stat_list:
                 return st
         return None
+
+    @classmethod
+    def get_all_hit_stattype(self, no_rates:bool = False) -> List[StatType]:
+        '''Returns a list of all StatTypes for hitters. If no_rates is True, any rate stats are excluded'''
+        sts = []
+        for st in StatType:
+            if st.hitter:
+                if no_rates and st.rate:
+                    continue
+                if st.rank < 0:
+                    continue
+                sts.append(st)
+        return sorted(sts, key=lambda st: st.rank)
+    
+    @classmethod
+    def get_all_pitch_stattype(self, no_rates:bool = False) -> List[StatType]:
+        '''Returns a list of all StatTypes for pitchers. If no_rates is True, any rate stats are excluded'''
+        sts = []
+        for st in StatType:
+            if not st.hitter:
+                if no_rates and st.rate:
+                    continue
+                if st.rank < 0:
+                    continue
+                sts.append(st)
+        return sorted(sts, key=lambda st: st.rank)
 
 class ScoringFormat(int, Enum):
     '''Enumeration of all Ottoneu Scoring Formats'''
