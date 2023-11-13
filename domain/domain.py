@@ -390,6 +390,29 @@ class ValueCalculation:
         return rl_map
 
 @reg.mapped_as_dataclass
+class CustomScoring:
+
+    __tablename__ = "custom_scoring"
+    id:Mapped[int] = mapped_column(init=False, primary_key=True)
+    name:Mapped[str] = mapped_column(default=None)
+    description:Mapped[str] = mapped_column(default=None)
+    points_format:Mapped[bool] = mapped_column(default=False)
+
+    stats:Mapped[List["CustomScoringCategory"]] = relationship(default_factory=list, cascade="all, delete", repr=False, lazy="joined")
+
+@reg.mapped_as_dataclass
+class CustomScoringCategory:
+
+    __tablename__ = "custom_scoring_categories"
+
+    id:Mapped[int] = mapped_column(init=False, primary_key=True)
+    category:Mapped[StatType] = mapped_column(default=None)
+    points:Mapped[float] = mapped_column(default=0)
+    
+    scoring_set_id:Mapped[int] = mapped_column(ForeignKey("custom_scoring.id"), default=None)
+    scoring_set:Mapped["CustomScoring"] = relationship(default=None, back_populates="stats", repr=False)
+
+@reg.mapped_as_dataclass
 class CalculationInput:
 
     __tablename__ = "calculation_input"
