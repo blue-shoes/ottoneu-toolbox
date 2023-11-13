@@ -5,8 +5,9 @@ from os import path
 from copy import deepcopy
 from typing import List
 
-from domain.domain import ValueCalculation
+from domain.domain import ValueCalculation, CustomScoring
 from domain.enum import RepLevelScheme, RankingBasis, CalculationDataType as CDT, ScoringFormat, Position, StatType
+from services import custom_scoring_services
 from util import dataframe_util
 
 pd.options.mode.chained_assignment = None # from https://stackoverflow.com/a/20627316
@@ -18,6 +19,7 @@ class ArmValues():
     default_surplus_pos = {"SP": 0, "RP": 0}
     weeks = 26
     max_rost_num = {}
+    scoring:CustomScoring = None
 
     def __init__(self, value_calc:ValueCalculation, intermediate_calc=False, target_arm=196, rp_limit=999):
         self.intermediate_calculations = intermediate_calc
@@ -33,6 +35,8 @@ class ArmValues():
         self.min_rp_ip = value_calc.get_input(CDT.RP_IP_TO_RANK)
         self.rank_basis = value_calc.pitcher_basis
         self.format = value_calc.format
+        if self.format == ScoringFormat.CUSTOM:
+            self.scoring = custom_scoring_services.get_scoring_format(value_calc.get_input(CDT.CUSTOM_SCORING_FORMAT))
         self.stat_avg = {}
         self.stat_std = {}
         
@@ -63,7 +67,13 @@ class ArmValues():
             #Ask forgiveness, not permission
             hbp = 0.0951*row['BB']+0.4181
         
-        if(self.SABR):
+        if self.format == ScoringFormat.CUSTOM:
+            points = 0 
+            for cat in self.scoring.stats:
+                if cat.category.hitter: continue
+                points += cat.points * row[cat.category.display]
+                return points
+        elif(self.SABR):
             #Otto pitching points (SABR) from https://ottoneu.fangraphs.com/support
             return 5.0*row['IP']+2.0*row['SO']-3.0*row['BB']-3.0*hbp-13.0*row['HR']+5.0*save+4.0*hold
         else:
@@ -617,9 +627,13 @@ class ArmValues():
         denom = self.ip_per_team
         p_denom = row['IP']
 
-        return self.stat_avg[stat] - ((self.stat_avg[stat] * (denom-p_denom) 
+        val = ((self.stat_avg[stat] * (denom-p_denom) 
             + row[stat.display] * p_denom)) \
-            / denom
+            / denom - self.stat_avg[stat]
+        if stat.higher_better:
+            return val
+        else:
+            return -val
 
     def per_ip_rate(self, row, stat:StatType) -> float:
         '''Calculates the per ip column for the stat type'''
@@ -640,35 +654,48 @@ class ArmValues():
         self.ip_per_team = above_rep_lvl['IP'].sum() / self.num_teams
         self.g_per_team = above_rep_lvl['G'].sum() / self.num_teams
 
-        self.stat_avg[StatType.ERA] = dataframe_util.weighted_avg(above_rep_lvl, 'ERA', 'IP')
-        proj['ERA_Delta'] = proj.apply(self.calc_rate_delta, axis=1, args=(StatType.ERA,))
-        self.stat_avg[StatType.WHIP] = dataframe_util.weighted_avg(above_rep_lvl, 'WHIP', 'IP')
-        proj['WHIP_Delta'] = proj.apply(self.calc_rate_delta, axis=1, args=(StatType.WHIP,))
-
-        if RankingBasis.is_roto_fractional(self.rank_basis):
-            proj['SO/IP'] = proj.apply(self.per_ip_rate, axis=1, args=(StatType.SO,))
-            if self.format == ScoringFormat.OLD_SCHOOL_5X5:
-                proj['SV/G'] = proj.apply(self.per_game_rate, axis=1, args=(StatType.SV,))
-                proj['W/G'] = proj.apply(self.per_game_rate, axis=1, args=(StatType.W,))
-                cat_to_col = {StatType.K : 'SO/IP', StatType.W : 'W/G', StatType.SV : 'SV/G', StatType.WHIP : 'WHIP_Delta', StatType.ERA : "ERA_Delta"}
-            else:
-                self.stat_avg[StatType.HR_PER_9] = dataframe_util.weighted_avg(above_rep_lvl, 'HR/9', 'IP')
-                proj['HR/9_Delta'] = proj.apply(self.calc_rate_delta, axis=1, args=(StatType.HR_PER_9,))
-                cat_to_col = {StatType.K : 'SO/IP', StatType.ERA : 'ERA_Delta', StatType.WHIP : 'WHIP_Delta', StatType.HR_PER_9 : 'HR/9_Delta'}
+        if self.format == ScoringFormat.CUSTOM:
+            cat_to_col = {}
+            for cat in self.scoring.stats:
+                if cat.category.hitter: continue
+                if cat.category.rate_denom is None:
+                    if RankingBasis.is_roto_fractional(self.rank_basis):
+                        proj[f'{cat.category.display}/IP'] = proj.apply(self.per_ip_rate, axis=1, args=(cat.category,))
+                    cat_to_col[cat.category] = cat.category.display
+                else:
+                    self.stat_avg[cat.category] = dataframe_util.weighted_avg(above_rep_lvl, cat.category.display, cat.category.rate_denom.display)
+                    proj[f'{cat.category.display}_Delta'] = proj.apply(self.calc_rate_delta, axis=1, args=(cat.category,))
+                    cat_to_col[cat.category] = f'{cat.category.display}_Delta'
         else:
-            if self.format == ScoringFormat.OLD_SCHOOL_5X5:
-                cat_to_col = {StatType.K : 'SO', StatType.W : 'W', StatType.SV : 'SV', StatType.WHIP : 'WHIP_Delta', StatType.ERA : "ERA_Delta"}
+            self.stat_avg[StatType.ERA] = dataframe_util.weighted_avg(above_rep_lvl, 'ERA', 'IP')
+            proj['ERA_Delta'] = proj.apply(self.calc_rate_delta, axis=1, args=(StatType.ERA,))
+            self.stat_avg[StatType.WHIP] = dataframe_util.weighted_avg(above_rep_lvl, 'WHIP', 'IP')
+            proj['WHIP_Delta'] = proj.apply(self.calc_rate_delta, axis=1, args=(StatType.WHIP,))
+
+            if RankingBasis.is_roto_fractional(self.rank_basis):
+                proj['SO/IP'] = proj.apply(self.per_ip_rate, axis=1, args=(StatType.SO,))
+                if self.format == ScoringFormat.OLD_SCHOOL_5X5:
+                    proj['SV/G'] = proj.apply(self.per_game_rate, axis=1, args=(StatType.SV,))
+                    proj['W/G'] = proj.apply(self.per_game_rate, axis=1, args=(StatType.W,))
+                    cat_to_col = {StatType.K : 'SO/IP', StatType.W : 'W/G', StatType.SV : 'SV/G', StatType.WHIP : 'WHIP_Delta', StatType.ERA : "ERA_Delta"}
+                else:
+                    self.stat_avg[StatType.HR_PER_9] = dataframe_util.weighted_avg(above_rep_lvl, 'HR/9', 'IP')
+                    proj['HR/9_Delta'] = proj.apply(self.calc_rate_delta, axis=1, args=(StatType.HR_PER_9,))
+                    cat_to_col = {StatType.K : 'SO/IP', StatType.ERA : 'ERA_Delta', StatType.WHIP : 'WHIP_Delta', StatType.HR_PER_9 : 'HR/9_Delta'}
             else:
-                self.stat_avg[StatType.HR_PER_9] = dataframe_util.weighted_avg(above_rep_lvl, 'HR/9', 'IP')
-                proj['HR/9_Delta'] = proj.apply(self.calc_rate_delta, axis=1, args=(StatType.HR_PER_9,))
-                cat_to_col = {StatType.K : 'SO', StatType.ERA : 'ERA_Delta', StatType.WHIP : 'WHIP_Delta', StatType.HR_PER_9 : 'HR/9_Delta'}
+                if self.format == ScoringFormat.OLD_SCHOOL_5X5:
+                    cat_to_col = {StatType.K : 'SO', StatType.W : 'W', StatType.SV : 'SV', StatType.WHIP : 'WHIP_Delta', StatType.ERA : "ERA_Delta"}
+                else:
+                    self.stat_avg[StatType.HR_PER_9] = dataframe_util.weighted_avg(above_rep_lvl, 'HR/9', 'IP')
+                    proj['HR/9_Delta'] = proj.apply(self.calc_rate_delta, axis=1, args=(StatType.HR_PER_9,))
+                    cat_to_col = {StatType.K : 'SO', StatType.ERA : 'ERA_Delta', StatType.WHIP : 'WHIP_Delta', StatType.HR_PER_9 : 'HR/9_Delta'}
         above_rep_lvl = proj.loc[alr]
         means = above_rep_lvl[list(cat_to_col.values())].mean()
         stds = above_rep_lvl[list(cat_to_col.values())].std()
-        for cat in cat_to_col:
-            if cat not in [StatType.HR_PER_9, StatType.WHIP, StatType.ERA]:
-                self.stat_avg[cat] = means[cat_to_col.get(cat)]
-            self.stat_std[cat] = stds[cat_to_col.get(cat)]
+        for cat, col in cat_to_col.items():
+            if cat.rate_denom is None:
+                self.stat_avg[cat] = means[col]
+            self.stat_std[cat] = stds[col]
         
         col = self.rank_basis.display
         proj[col] = proj.apply(self.calc_z_score, axis=1)
@@ -684,14 +711,26 @@ class ArmValues():
             ip_suffix = g_suffix = ''
             ip_rat = g_rat = 1
         zScore = 0
-        zScore += (row[f'SO{ip_suffix}'] - self.stat_avg.get(StatType.K)) / self.stat_std.get(StatType.K) * ip_rat
-        zScore += row['ERA_Delta'] / self.stat_std.get(StatType.ERA)
-        zScore += row['WHIP_Delta'] / self.stat_std.get(StatType.WHIP)
-        if self.format == ScoringFormat.OLD_SCHOOL_5X5:
-            zScore += (row[f'W{g_suffix}'] - self.stat_avg.get(StatType.W)) / self.stat_std.get(StatType.W) * g_rat
-            zScore += (row[f'SV{g_suffix}'] - self.stat_avg.get(StatType.SV)) / self.stat_std.get(StatType.SV) * g_rat
+        if self.format == ScoringFormat.CUSTOM:
+            for cat in self.scoring.stats:
+                if cat.category.hitter: continue
+                if cat.category.rate_denom is None:
+                    if cat.category.higher_better:
+                        mult = 1
+                    else:
+                        mult = -1
+                    zScore += mult * (row[f'{cat.category.display}{ip_suffix}'] - self.stat_avg.get(cat.category)) / self.stat_std.get(cat.category) * ip_rat
+                else:
+                    zScore += row[f'{cat.category.display}_Delta'] / self.stat_std.get(cat.category)
         else:
-            zScore += row['HR/9_Delta'] / self.stat_std.get(StatType.HR_PER_9)
+            zScore += (row[f'SO{ip_suffix}'] - self.stat_avg.get(StatType.K)) / self.stat_std.get(StatType.K) * ip_rat
+            zScore += row['ERA_Delta'] / self.stat_std.get(StatType.ERA)
+            zScore += row['WHIP_Delta'] / self.stat_std.get(StatType.WHIP)
+            if self.format == ScoringFormat.OLD_SCHOOL_5X5:
+                zScore += (row[f'W{g_suffix}'] - self.stat_avg.get(StatType.W)) / self.stat_std.get(StatType.W) * g_rat
+                zScore += (row[f'SV{g_suffix}'] - self.stat_avg.get(StatType.SV)) / self.stat_std.get(StatType.SV) * g_rat
+            else:
+                zScore += row['HR/9_Delta'] / self.stat_std.get(StatType.HR_PER_9)
         return zScore
 
     def calc_fom(self, df:DataFrame) -> DataFrame:
