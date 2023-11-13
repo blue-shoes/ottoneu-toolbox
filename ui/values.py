@@ -8,13 +8,14 @@ from tkinter import filedialog as fd
 from tkinter import messagebox as mb
 from pathlib import Path
 import pandas as pd
+from typing import Dict, List
 
 from ui.table.table import Table
-from domain.domain import ValueCalculation
+from domain.domain import ValueCalculation, PlayerProjection
 from domain.enum import CalculationDataType as CDT, RankingBasis, RepLevelScheme, StatType, Position, ProjectionType, ScoringFormat
-from services import projection_services, calculation_services, adv_calc_services
-from ui.dialog import projection_select, progress, name_desc, advanced_calc
-from ui.dialog.wizard import projection_import
+from services import projection_services, calculation_services, adv_calc_services, custom_scoring_services
+from ui.dialog import projection_select, progress, name_desc, advanced_calc, format_select
+from ui.dialog.wizard import projection_import, custom_scoring
 from ui.tool.tooltip import CreateToolTip
 from util import string_util
 
@@ -23,14 +24,16 @@ player_columns = ('Value', 'Name', 'Team', 'Pos')
 h_fom_columns = ('P/G', 'HP/G', 'P/PA')
 p_fom_columns = ('P/IP', 'PP/G', 'SABR P/IP', 'SABR PP/G', 'NSH P/IP', 'NSH PP/G', 'NSH SABR P/IP', 'NSH SABR PP/G')
 point_cols = ('FG Pts', 'SABR Pts', 'NSH FG Pts', 'NSH SABR Pts')
-points_hitting_columns = ('G', 'PA', 'AB', 'H', '2B', '3B', 'HR', 'BB', 'HBP', 'SB','CS')
-points_pitching_columns = ('G', 'GS', 'IP', 'SO','H','BB','HBP','HR','SV','HLD')
-old_school_hitting_columns = ('G', 'PA', 'AB', 'R', 'HR', 'RBI', 'SB', 'AVG')
-old_school_pitching_columns = ('G', 'GS', 'IP', 'W', 'SV', 'SO', 'ERA', 'WHIP')
-classic_hitting_columns = ('G', 'PA', 'AB', 'OBP', 'SLG', 'HR', 'R')
-classic_pitching_columns = ('G', 'GS', 'IP', 'ERA', 'WHIP', 'HR/9', 'SO')
-all_hitting_stats = ('G', 'PA', 'AB', 'H', '2B', '3B', 'HR', 'BB', 'HBP', 'SB','CS', 'R', 'RBI', 'SB', 'AVG', 'OBP', 'SLG')
-all_pitching_stats = ('G', 'GS', 'IP', 'SO','H','BB','HBP','HR','SV','HLD', 'W', 'ERA', 'WHIP', 'HR/9')
+points_hitting_columns = ('H', '2B', '3B', 'HR', 'BB', 'HBP', 'SB','CS')
+points_pitching_columns = ('SO','H','BB','HBP','HR','SV','HLD')
+old_school_hitting_columns = ('R', 'HR', 'RBI', 'SB', 'AVG')
+old_school_pitching_columns = ('W', 'SV', 'SO', 'ERA', 'WHIP')
+classic_hitting_columns = ('OBP', 'SLG', 'HR', 'R')
+classic_pitching_columns = ('ERA', 'WHIP', 'HR/9', 'SO')
+all_hitting_stats = tuple([st.display for st in StatType.get_all_hit_stattype()])
+all_pitching_stats = tuple([st.display for st in StatType.get_all_pitch_stattype()])
+pt_hitter_columns = ('G', 'PA', 'AB')
+pt_pitcher_columns = ('G', 'GS', 'IP')
 rev_cols = ('Name', 'Team', 'Pos', 'ERA', 'WHIP', 'HR/9')
 
 class ValuesCalculation(tk.Frame):
@@ -38,10 +41,10 @@ class ValuesCalculation(tk.Frame):
         tk.Frame.__init__(self, parent)
         self.parent = parent
         self.controller = controller
-        self.value_calc = self.controller.value_calculation
-        self.rep_level_dict = {}
-        self.tables = {}
-        self.input_svs = []
+        self.value_calc:ValueCalculation = self.controller.value_calculation
+        self.rep_level_dict:Dict[Position, StringVar] = {}
+        self.tables:Dict[Position, Table] = {}
+        self.input_svs:List[StringVar] = []
 
         self.create_input_frame()
         self.create_proj_val_frame()
@@ -77,6 +80,8 @@ class ValuesCalculation(tk.Frame):
             self.game_type.set(ScoringFormat.FG_POINTS.full_name)
             self.sel_proj.set("None")
             self.projection = None
+            self.custom_scoring = None
+            self.custom_scoring_lbl.set("")
             self.num_teams_str.set("12")
             self.manual_split.set(False)
             self.hitter_allocation.set("60")
@@ -111,6 +116,12 @@ class ValuesCalculation(tk.Frame):
             else:
                 self.sel_proj.set(v.projection.name)
             self.projection = v.projection
+            if v.get_input(CDT.CUSTOM_SCORING_FORMAT) is not None:
+                self.custom_scoring = custom_scoring_services.get_scoring_format(v.get_input(CDT.CUSTOM_SCORING_FORMAT))
+                self.custom_scoring_lbl.set(self.custom_scoring.name)
+            else:
+                self.custom_scoring = None
+                self.custom_scoring_lbl.set('')
             self.num_teams_str.set(int(v.get_input(CDT.NUM_TEAMS)))
             if v.get_input(CDT.HITTER_SPLIT) is None:
                 self.manual_split.set(False)
@@ -184,14 +195,19 @@ class ValuesCalculation(tk.Frame):
         btn.grid(column=2,row=0)
         CreateToolTip(btn, "Select a stored projection to use for value calculations or import a new one.")
 
-        ttk.Label(inpf, text="Game Type:").grid(column=0,row=2,pady=5)
+        ttk.Label(inpf, text="Scoring Format:").grid(column=0,row=2,pady=5)
         self.game_type = StringVar()
         self.game_type.set(ScoringFormat.FG_POINTS.full_name)
         gt_combo = ttk.Combobox(inpf, textvariable=self.game_type)
         gt_combo.bind("<<ComboboxSelected>>", self.update_game_type)
 
-        gt_combo['values'] = (ScoringFormat.FG_POINTS.full_name, ScoringFormat.SABR_POINTS.full_name, ScoringFormat.H2H_FG_POINTS.full_name, ScoringFormat.H2H_SABR_POINTS.full_name, ScoringFormat.OLD_SCHOOL_5X5.full_name, ScoringFormat.CLASSIC_4X4.full_name)
+        gt_combo['values'] = (ScoringFormat.FG_POINTS.full_name, ScoringFormat.SABR_POINTS.full_name, ScoringFormat.H2H_FG_POINTS.full_name, ScoringFormat.H2H_SABR_POINTS.full_name, ScoringFormat.OLD_SCHOOL_5X5.full_name, ScoringFormat.CLASSIC_4X4.full_name, ScoringFormat.CUSTOM.full_name)
         gt_combo.grid(column=1,row=2,pady=5)
+
+        self.custom_scoring_lbl = StringVar()
+        self.custom_scoring_lbl.set("")
+        self.custom_scoring = None
+        ttk.Label(inpf, textvariable=self.custom_scoring_lbl).grid(column=2, row=2)
 
         ttk.Label(inpf, text="Number of Teams:").grid(column=0, row=3,pady=5)
         self.num_teams_str = StringVar()
@@ -366,7 +382,18 @@ class ValuesCalculation(tk.Frame):
         self.set_display_columns()
         self.set_advanced_button_status()
 
-    def update_game_type(self, event: Event):
+    def update_game_type(self, _:Event):
+        if ScoringFormat.get_format_by_full_name(self.game_type.get()) == ScoringFormat.CUSTOM:
+            count = custom_scoring_services.get_format_count()
+            if count == 0:
+                dialog = custom_scoring.Dialog(self)
+            else:
+                dialog = format_select.Dialog(self)
+            if dialog.scoring is None:
+                self.game_type.set(ScoringFormat.FG_POINTS.full_name)
+                return
+            self.custom_scoring = dialog.scoring
+            self.custom_scoring_lbl.set(dialog.scoring.name)
         self.set_display_columns()
         self.set_advanced_button_status()
         if ScoringFormat.is_points_type(ScoringFormat.get_format_by_full_name(self.game_type.get())):
@@ -515,7 +542,7 @@ class ValuesCalculation(tk.Frame):
         val.append(pv.player.position)
         return val
 
-    def get_player_row(self, pp, hitter, cols, pos):
+    def get_player_row(self, pp:PlayerProjection, hitter:bool, cols, pos):
         val = []
         if len(self.value_calc.values) > 0:
             pv = self.value_calc.get_player_value(pp.player.index, pos)
@@ -890,27 +917,37 @@ class ValuesCalculation(tk.Frame):
                     else:
                         overall.append(f"{prefix}P/IP")
                         pitch.append(f"{prefix}P/IP")
-                if ScoringFormat.is_points_type(scoring_format):
-                    if ScoringFormat.is_sabr(scoring_format):
-                        overall.append(f"{prefix}SABR Pts")
-                        pitch.append(f"{prefix}SABR Pts")
-                    else:
-                        overall.append(f"{prefix}FG Pts")
-                        pitch.append(f"{prefix}FG Pts")
-                    hit.append("FG Pts")
-                    if self.projection.type != ProjectionType.VALUE_DERIVED:
-                        hit.extend(points_hitting_columns)
-                        pitch.extend(points_pitching_columns)
+                if ScoringFormat.is_sabr(scoring_format):
+                    overall.append(f"{prefix}SABR Pts")
+                    pitch.append(f"{prefix}SABR Pts")
+                else:
+                    overall.append(f"{prefix}FG Pts")
+                    pitch.append(f"{prefix}FG Pts")
+                hit.append("FG Pts")
+                if self.projection.type != ProjectionType.VALUE_DERIVED:
+                    hit.extend(pt_hitter_columns)
+                    hit.extend(points_hitting_columns)
+                    pitch.extend(pt_pitcher_columns)
+                    pitch.extend(points_pitching_columns)
             elif scoring_format == ScoringFormat.OLD_SCHOOL_5X5:
-                for col in old_school_hitting_columns:
-                    hit.append(col)
-                for col in old_school_pitching_columns:
-                    pitch.append(col)
+                hit.extend(pt_hitter_columns)
+                hit.extend(old_school_hitting_columns)
+                pitch.extend(pt_pitcher_columns)
+                pitch.extend(old_school_pitching_columns)
             elif scoring_format == ScoringFormat.CLASSIC_4X4:
-                for col in classic_hitting_columns:
-                    hit.append(col)
-                for col in classic_pitching_columns:
-                    pitch.append(col)
+                hit.extend(pt_hitter_columns)
+                hit.extend(classic_hitting_columns)
+                pitch.extend(pt_pitcher_columns)
+                pitch.extend(classic_pitching_columns)
+            elif scoring_format == ScoringFormat.CUSTOM and self.custom_scoring is not None:
+                hit.extend(pt_hitter_columns)
+                pitch.extend(pt_pitcher_columns)
+                for cat in self.custom_scoring.stats:
+                    stat = cat.category
+                    if stat.hitter and stat.display not in pt_hitter_columns:
+                        hit.append(stat.display)
+                    if not stat.hitter and stat.display not in pt_pitcher_columns:
+                        pitch.append(stat.display)
         self.overall_table.set_display_columns(tuple(overall))
         for pos in self.tables:
             if pos in Position.get_offensive_pos():
