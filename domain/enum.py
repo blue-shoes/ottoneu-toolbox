@@ -95,6 +95,7 @@ class CalculationDataType(Enum):
     RP_WITH_ALL_IP = 44
     BATTER_G_TARGET = 45
     H2H_WEEKS = 46
+    CUSTOM_SCORING_FORMAT = 47
 
     @classmethod
     def pos_to_num_rostered(self) -> Dict[Position, CalculationDataType]:
@@ -351,6 +352,7 @@ class ScoringFormat(int, Enum):
     SABR_POINTS = (4, 'SABR Points', 'SABR')
     H2H_FG_POINTS = (5, 'H2H FanGraphs Points', 'H2H FGP')
     H2H_SABR_POINTS = (6, 'H2H SABR Points', 'H2H SABR')
+    CUSTOM = (7, 'Custom', 'Custom')
 
     @classmethod
     def get_format_stat_categories(self, format:ScoringFormat) -> List[StatType]:
@@ -395,7 +397,8 @@ class ScoringFormat(int, Enum):
                 self.FG_POINTS,
                 self.SABR_POINTS,
                 self.H2H_FG_POINTS,
-                self.H2H_SABR_POINTS] 
+                self.H2H_SABR_POINTS,
+                self.CUSTOM] 
 
 class Position(Enum):
     '''Enumeration of Ottoneu positions'''
