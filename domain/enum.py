@@ -216,11 +216,10 @@ class StatType(int, Enum):
     rank:int
     hitter: bool
     format: str
-    rate: bool
     higher_better: bool
 
     def __new__(
-        cls, id: int, stat_list: List[str], rank:int, hitter: bool, format:str = "{:.0f}", rate:bool = False, higher_better:bool = True
+        cls, id: int, stat_list: List[str], rank:int, hitter: bool, format:str = "{:.0f}", higher_better:bool = True
     ) -> StatType:
         obj = int.__new__(cls, id)
         obj._value_ = id
@@ -230,7 +229,6 @@ class StatType(int, Enum):
         obj.rank = rank
         obj.hitter = hitter
         obj.format = format
-        obj.rate = rate
         obj.higher_better = higher_better
         return obj
 
@@ -249,34 +247,34 @@ class StatType(int, Enum):
     HBP = (12, ['HBP'], 13, True)
     SB = (13, ['SB'], 14, True)
     CS = (14, ['CS'], 15, True, "{:.0f}", False)
-    AVG = (15, ['AVG', 'BA'], 17, True, "{:.3f}", True)
-    OBP = (16, ['OBP'], 18, True, "{:.3f}", True)
-    SLG = (17, ['SLG'], 19, True, "{:.3f}", True)
-    OPS = (18, ['OPS'], 20, True, "{:.3f}", True)
-    WOBA = (19, ['wOBA'], 22, True, "{:.3f}", True)
-    WRC_PLUS = (20, ['wRC+'], 23, True, "{:.0f}", True)
+    AVG = (15, ['AVG', 'BA'], 17, True, "{:.3f}")
+    OBP = (16, ['OBP'], 18, True, "{:.3f}")
+    SLG = (17, ['SLG'], 19, True, "{:.3f}")
+    OPS = (18, ['OPS'], 20, True, "{:.3f}")
+    WOBA = (19, ['wOBA'], 22, True, "{:.3f}")
+    WRC_PLUS = (20, ['wRC+'], 23, True, "{:.0f}")
     G_PIT = (21, ['G'], 1, False)
     GS_PIT = (22, ['GS'], 2, False)
     IP = (23, ['IP'], 3, False, "{:.1f}")
     W = (24, ['W'], 4, False)
-    L = (25, ['L'], 5, False, "{:.0f}", False, False)
+    L = (25, ['L'], 5, False, "{:.0f}", False)
     QS = (26, ['QS'], 6, False)
     SV = (27, ['SV'], 12, False)
     HLD = (28, ['HLD', 'Holds'], 13, False)
-    H_ALLOWED = (29, ['H'], 8, False, "{:.0f}", False, False)
-    ER = (30, ['ER'], 18, False, "{:.0f}", False, False)
-    HR_ALLOWED = (31, ['HR', 'HRA'], 11, False, "{:.0f}", False, False)
+    H_ALLOWED = (29, ['H'], 8, False, "{:.0f}", False)
+    ER = (30, ['ER'], 18, False, "{:.0f}", False)
+    HR_ALLOWED = (31, ['HR', 'HRA'], 11, False, "{:.0f}", False)
     K = (32, ['SO'], 7, True)
-    BB_ALLOWED = (33, ['BB'], 9, False, "{:.0f}", False, False)
-    HBP_ALLOWED = (34, ['HBP'], 10, False, "{:.0f}", False, False)
-    WHIP = (35, ['WHIP'], 20, False, "{:.2f}", True, False)
-    K_PER_9 = (36, ['K/9'], 21, False, "{:.2f}", True)
-    BB_PER_9 = (37, ['BB/9'], 22, False, "{:.2f}", True, False)
-    ERA = (38, ['ERA'], 19, False, "{:.2f}", True, False)
-    FIP = (39, ['FIP'], 25, False, "{:.2f}", True, False)
-    BABIP_H = (40, ['BABIP'], 21, True, "{:.3f}", True)
-    BABIP_P = (41, ['BABIP'], 24, False, "{:.3f}", True, False)
-    HR_PER_9 = (42, ['HR/9'], 23, False, "{:.2f}", True, False)
+    BB_ALLOWED = (33, ['BB'], 9, False, "{:.0f}", False)
+    HBP_ALLOWED = (34, ['HBP'], 10, False, "{:.0f}", False)
+    WHIP = (35, ['WHIP'], 20, False, "{:.2f}", False)
+    K_PER_9 = (36, ['K/9'], 21, False, "{:.2f}")
+    BB_PER_9 = (37, ['BB/9'], 22, False, "{:.2f}", False)
+    ERA = (38, ['ERA'], 19, False, "{:.2f}", False)
+    FIP = (39, ['FIP'], 25, False, "{:.2f}", False)
+    BABIP_H = (40, ['BABIP'], 21, True, "{:.3f}")
+    BABIP_P = (41, ['BABIP'], 24, False, "{:.3f}", False)
+    HR_PER_9 = (42, ['HR/9'], 23, False, "{:.2f}", False)
     POINTS = (43, ['Points'], -1, True, "{:.1f}")
     PPG = (44, ['PPG'], -1, True, "{:.2f}", True)
     PIP = (45, ['PIP'], -1, True, "{:.2f}", True)
@@ -285,6 +283,26 @@ class StatType(int, Enum):
     NET_SVH = (48, ['Net SVH', 'NSVH'], 17, False)
     BS = (49, ['BS'], 14, False)
     SVH = (50, ['SVH'], 15, False)
+
+    @property
+    def rate_denom(self) -> StatType:
+        lookup = {
+            StatType.AVG: StatType.AB,
+            StatType.OBP: StatType.PA,
+            StatType.SLG: StatType.AB,
+            StatType.OPS: StatType.PA,
+            StatType.WOBA: StatType.PA,
+            StatType.WRC_PLUS: StatType.PA,
+            StatType.WHIP: StatType.IP,
+            StatType.ERA: StatType.IP,
+            StatType.K_PER_9: StatType.IP,
+            StatType.BB_PER_9: StatType.IP,
+            StatType.FIP: StatType.IP,
+            StatType.HR_PER_9: StatType.IP,
+            StatType.BABIP_H: StatType.AB,
+            StatType.BABIP_P:StatType.IP
+        }
+        return lookup.get(self, None)
 
     @classmethod
     def get_hit_stattype(self, display:str) -> StatType:
