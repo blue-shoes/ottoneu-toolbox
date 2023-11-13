@@ -1,4 +1,4 @@
-from pandas import DataFrame
+from pandas import DataFrame, Index
 from domain.domain import PlayerProjection, Projection, ProjectionData, Player
 from scrape import scrape_fg, scrape_davenport
 from domain.enum import ProjectionType, StatType, IdType, Position
@@ -314,6 +314,8 @@ def normalize_batter_projections(proj: Projection, df: DataFrame) -> List[str]:
         df['OBP'] = df.apply(calc_obp, axis=1)
     if 'SLG' not in df.columns and set(['H', '2B', '3B', 'HR', 'AB']).issubset(df.columns):
         df['SLG'] = df.apply(calc_slg, axis=1)
+    if __must_derive_stat(StatType.NET_SB, [StatType.SB, StatType.CS], df.columns):
+        df[StatType.NET_SB.display] = df.apply(__calc_nsb, axis=1)
     
     min_col_set = ['G', 'PA', 'AB']
     if not set(min_col_set).issubset(df.columns):
@@ -416,19 +418,27 @@ def normalize_pitcher_projections(proj: Projection, df: DataFrame) -> List[str]:
         # If HBP allowed is blank, fill with pre-calculated regression vs BB
         df[StatType.HBP_ALLOWED.display] = df[StatType.BB_ALLOWED.display].apply(lambda bb: 0.0951*bb+0.4181)
     if 'FIP' not in df.columns and set(['IP', 'SO', 'BB', 'HBP', 'HR']).issubset(df.columns):
-        df['FIP'] = df.apply(calc_fip, axis=1)
+        df['FIP'] = df.apply(__calc_fip, axis=1)
     if 'ERA' not in df.columns and set(['IP', 'ER']).issubset(df.columns):
-        df['ERA'] = df.apply(calc_era, axis=1)
+        df['ERA'] = df.apply(__calc_era, axis=1)
     if 'WHIP' not in df.columns and set(['IP', 'H', 'BB']).issubset(df.columns):
-        df['WHIP'] = df.apply(calc_whip, axis=1)
+        df['WHIP'] = df.apply(__calc_whip, axis=1)
     if 'HR/9' not in df.columns and set(['IP', 'HR']).issubset(df.columns):
-        df['HR/9'] = df.apply(calc_hr_per_9, axis=1)
+        df['HR/9'] = df.apply(__calc_hr_per_9, axis=1)
     if 'BB/9' not in df.columns and set(['IP', 'BB']).issubset(df.columns):
-        df['BB/9'] = df.apply(calc_bb_per_9, axis=1)
+        df['BB/9'] = df.apply(__calc_bb_per_9, axis=1)
     if 'K/9' not in df.columns and set(['IP', 'SO']).issubset(df.columns):
-        df['K/9'] = df.apply(calc_k_per_9, axis=1)
+        df['K/9'] = df.apply(__calc_k_per_9, axis=1)
     if 'HLD' not in df.columns:
         df['HLD'] = 0
+    if 'SVH' not in df.columns and set(['SV', 'HLD']).issubset(df.columns):
+        df['SVH'] = df.apply(__sum_saves_holds, axis=1)
+    if 'BS' not in df.columns and set(['G', 'GS', 'SV', 'HLD', 'ERA']).issubset(df.columns):
+        df['BS'] = df.apply(__estimate_bs, axis=1)
+    if __must_derive_stat(StatType.NET_SAVES, [StatType.SV, StatType.BS], df.columns):
+        df[StatType.NET_SAVES.display] = df.apply(__calc_net_saves, axis=1)
+    if __must_derive_stat(StatType.NET_SVH, [StatType.SV, StatType.HLD, StatType.BS], df.columns):
+        df[StatType.NET_SVH.display] = df.apply(__calc_net_save_holds, axis=1)
 
     min_col_set = ['G', 'GS', 'IP']
     if not set(min_col_set).issubset(df.columns):
@@ -448,30 +458,54 @@ def normalize_pitcher_projections(proj: Projection, df: DataFrame) -> List[str]:
     
     return issue_list
 
-def calc_fip(row) -> float:
+def __calc_net_saves(row) -> int:
+    '''Calculates the net saves column'''
+    return row['SV'] - row['BS']
+
+def __calc_net_save_holds(row) -> int:
+    '''Calculates the net save/holds column'''
+    return row['SV'] + row['HLD'] - row['BS']
+
+def __sum_saves_holds(row) -> int:
+    '''Sums save and hold columns'''
+    return row['SV'] + row['HLD']
+
+def __estimate_bs(row) -> int:
+    '''Estimates blown saves total based on regression vs relief games, saves, holds, and ERA performed for relief seasons from 2021-23'''
+    g_rp = row['G'] - row['GS']
+    if g_rp == 0:
+        return 0
+    reg_bs = int(-0.8425 + 0.0314*g_rp + 0.112 * row['SV'] + 0.0848 * row['HLD'] + 0.1323 * row['ERA'])
+    return min(max(0, reg_bs), g_rp - row['SV'] - row['HLD'])
+
+def __calc_nsb(row) -> float:
+    '''Calculates net stolen bases'''
+    return row[StatType.SB.display] - row[StatType.CS.display]
+
+def __calc_fip(row) -> float:
     '''Approximates pitcher FIP based on other columns. Assums a FIP constant of 3.15.'''
     #Estimated FIP constant of 3.15. This should work well enough for our purposes, which is determining starter/reliever
     #PIP splits
     cfip = 3.15
     return (13*row['HR'] + 3*(row['BB'] + row['HBP']) - 2*row['SO']) / row['IP'] + cfip
 
-def calc_era(row) -> float:
+def __calc_era(row) -> float:
     '''Calculates pitcher ERA based on other columns'''
     return row['ER'] / row['IP'] * 9
 
-def calc_whip(row) -> float:
+def __calc_whip(row) -> float:
     '''Calculates pitcher WHIP based on other columns'''
     return (row['H'] + row['BB']) / row['IP']
 
-def calc_hr_per_9(row) -> float:
+def __calc_hr_per_9(row) -> float:
     '''Calculates pitcher HR/9 based on other columns'''
     return row['HR'] / row['IP'] * 9
 
-def calc_bb_per_9(row) -> float:
+def __calc_bb_per_9(row) -> float:
     '''Calculates pitcher BB/9 based on other columns'''
     return row['BB'] / row['IP'] * 9
 
-def calc_k_per_9(row) -> float:
+def __calc_k_per_9(row) -> float:
     '''Calculates pitcher K/9 based on other columns'''
     return row['SO'] / row['IP'] * 9
 
@@ -515,27 +549,44 @@ def create_projection_from_download(projection: Projection, type:ProjectionType,
     return projs[0], projs[1]
     #return save_projection(projection, projs, progress)
 
-def projection_check(projs) -> None:
+def __must_derive_stat(stat_type:StatType, base_stats:List[StatType], df_cols:Index) -> bool:
+    if any(x in stat_type.stat_list for x in df_cols): return False
+    for st in base_stats:
+        if not any(x in st.stat_list for x in df_cols): return False
+    return True
+
+def projection_check(projs:List[DataFrame]) -> None:
     '''Performs checks for uploaded projections'''
     # Perform checks here, update data as needed
+    hit_proj = projs[0]
+    if __must_derive_stat(StatType.NET_SB, [StatType.SB, StatType.CS], hit_proj.columns):
+        hit_proj[StatType.NET_SB.display] = hit_proj.apply(__calc_nsb, axis=1)
     pitch_proj = projs[1]
     if 'FIP' not in pitch_proj.columns and set(['IP', 'SO', 'BB', 'HBP', 'HR']).issubset(pitch_proj.columns):
-        pitch_proj['FIP'] = pitch_proj.apply(calc_fip, axis=1)
+        pitch_proj['FIP'] = pitch_proj.apply(__calc_fip, axis=1)
     if 'HBP' not in pitch_proj.columns and 'BB' in pitch_proj.columns:
         # If HBP allowed is blank, fill with pre-calculated regression vs BB
         pitch_proj[StatType.HBP_ALLOWED.display] = pitch_proj[StatType.BB_ALLOWED.display].apply(lambda bb: 0.0951*bb+0.4181)
     if 'FIP' not in pitch_proj.columns and set(['IP', 'SO', 'BB', 'HBP', 'HR']).issubset(pitch_proj.columns):
-        pitch_proj['FIP'] = pitch_proj.apply(calc_fip, axis=1)
+        pitch_proj['FIP'] = pitch_proj.apply(__calc_fip, axis=1)
     if 'ERA' not in pitch_proj.columns and set(['IP', 'ER']).issubset(pitch_proj.columns):
-        pitch_proj['ERA'] = pitch_proj.apply(calc_era, axis=1)
+        pitch_proj['ERA'] = pitch_proj.apply(__calc_era, axis=1)
     if 'WHIP' not in pitch_proj.columns and set(['IP', 'H', 'BB']).issubset(pitch_proj.columns):
-        pitch_proj['WHIP'] = pitch_proj.apply(calc_whip, axis=1)
+        pitch_proj['WHIP'] = pitch_proj.apply(__calc_whip, axis=1)
     if 'HR/9' not in pitch_proj.columns and set(['IP', 'HR']).issubset(pitch_proj.columns):
-        pitch_proj['HR/9'] = pitch_proj.apply(calc_hr_per_9, axis=1)
+        pitch_proj['HR/9'] = pitch_proj.apply(__calc_hr_per_9, axis=1)
     if 'BB/9' not in pitch_proj.columns and set(['IP', 'BB']).issubset(pitch_proj.columns):
-        pitch_proj['BB/9'] = pitch_proj.apply(calc_bb_per_9, axis=1)
+        pitch_proj['BB/9'] = pitch_proj.apply(__calc_bb_per_9, axis=1)
     if 'K/9' not in pitch_proj.columns and set(['IP', 'SO']).issubset(pitch_proj.columns):
-        pitch_proj['K/9'] = pitch_proj.apply(calc_k_per_9, axis=1)
+        pitch_proj['K/9'] = pitch_proj.apply(__calc_k_per_9, axis=1)
+    if 'SVH' not in pitch_proj.columns and set(['SV', 'HLD']).issubset(pitch_proj.columns):
+        pitch_proj['SVH'] = pitch_proj.apply(__sum_saves_holds, axis=1)
+    if 'BS' not in pitch_proj.columns and set(['G', 'GS', 'SV', 'HLD', 'ERA']).issubset(pitch_proj.columns):
+        pitch_proj['BS'] = pitch_proj.apply(__estimate_bs, axis=1)
+    if __must_derive_stat(StatType.NET_SAVES, [StatType.SV, StatType.BS], pitch_proj.columns):
+        pitch_proj[StatType.NET_SAVES.display] = pitch_proj.apply(__calc_net_saves, axis=1)
+    if __must_derive_stat(StatType.NET_SVH, [StatType.SV, StatType.HLD, StatType.BS], pitch_proj.columns):
+        pitch_proj[StatType.NET_SVH.display] = pitch_proj.apply(__calc_net_save_holds, axis=1)
     
 
 def get_projection_count() -> int:
