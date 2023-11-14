@@ -668,7 +668,7 @@ class ValuesCalculation(tk.Frame):
     def refresh_hitters(self, pos):
         if self.projection is not None:
             for pp in self.projection.player_projections:
-                if pp.player.pos_eligible(pos):
+                if pp.player.pos_eligible(pos) and not pp.pitcher:
                     if self.projection.type == ProjectionType.VALUE_DERIVED:
                         val = self.get_player_row(pp, True, all_hitting_stats, pos)
                     elif pp.get_stat(StatType.AB) is not None:
@@ -685,7 +685,7 @@ class ValuesCalculation(tk.Frame):
         if self.projection is not None:
             for pp in self.projection.player_projections:
                 if self.projection.type == ProjectionType.VALUE_DERIVED:
-                    if pp.player.pos_eligible(pos):
+                    if pp.player.pos_eligible(pos) and pp.pitcher:
                         val = self.get_player_row(pp, False, all_pitching_stats, pos)
                         self.tables[pos].insert('', tk.END, text=str(pp.player_id), values=val)
                 elif pp.get_stat(StatType.IP) is not None:
