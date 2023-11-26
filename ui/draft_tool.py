@@ -714,8 +714,12 @@ class DraftTool(tk.Frame):
             if id in self.removed_players and not self.show_removed_players.get():
                 continue
             name = pos_df.iat[i, 2]
-            value = '$' + "{:.0f}".format(pos_df.iat[i, 1])
-            inf_cost = '$' + "{:.0f}".format(pos_df.iat[i, 1] * self.inflation)
+            val = pos_df.iat[i, 1]
+            value = '$' + "{:.0f}".format(val)
+            if val < 1:
+                inf_cost = f'${val}'
+            else:
+                inf_cost = '$' + "{:.0f}".format((val-1) * self.inflation + 1)
             position = pos_df.iat[i, 4]
             team = pos_df.iat[i, 3]
             pts = "{:.1f}".format(pos_df.iat[i, 5])
@@ -741,8 +745,12 @@ class DraftTool(tk.Frame):
             if id in self.removed_players and self.show_removed_players.get() != 1:
                 continue
             name = pos_df.iat[i, 2]
-            value = '$' + "{:.0f}".format(pos_df.iat[i, 1])
-            inf_cost = '$' + "{:.0f}".format(pos_df.iat[i, 1] * self.inflation)
+            val = pos_df.iat[i, 1]
+            value = '$' + "{:.0f}".format(val)
+            if val < 1:
+                inf_cost = f'${val}'
+            else:
+                inf_cost = '$' + "{:.0f}".format((val-1) * self.inflation + 1)
             position = pos_df.iat[i, 4]
             team = pos_df.iat[i, 3]
             pts = "{:.1f}".format(pos_df.iat[i, 5])
@@ -818,9 +826,12 @@ class DraftTool(tk.Frame):
             pos = player.position
             team = player.team
             if id in self.values.index:
-                value = self.value_calculation.get_player_value(id, Position.OVERALL).value
-                inf_cost = '$' + "{:.0f}".format(value * self.inflation)
-                value = '$' + "{:.0f}".format(value)
+                val = self.value_calculation.get_player_value(id, Position.OVERALL).value
+                value = '$' + "{:.0f}".format(val)
+                if val < 1:
+                    inf_cost = f'${val}'
+                else:
+                    inf_cost = '$' + "{:.0f}".format((val-1) * self.inflation + 1)
             else:
                 value = '$0'
                 inf_cost = '$0'

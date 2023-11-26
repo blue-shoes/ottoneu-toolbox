@@ -198,9 +198,15 @@ class Surplus(tk.Frame):
         else:
             val = 0.0
         vals.append('$' + "{:.1f}".format(val))
-        vals.append('$' + "{:.1f}".format(val * (1 + self.inflation)))
+        if val > 1:
+            vals.append('$' + "{:.1f}".format(max(val-1, 0) * (1 + self.inflation) + 1))
+        else:
+            vals.append('$' + "{:.1f}".format(val))
         vals.append('$' + "{:.1f}".format(val - rs.salary))
-        vals.append('$' + "{:.1f}".format(val * (1 + self.inflation) - rs.salary))
+        if val > 1:
+            vals.append('$' + "{:.1f}".format(max(val-1, 0) * (1 + self.inflation) - rs.salary + 1))
+        else:
+            vals.append('$' + "{:.1f}".format(val - rs.salary))
 
         vals.extend(self.__get_salary_info(rs.player))
         
