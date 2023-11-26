@@ -120,7 +120,7 @@ class Scrape_Base(object):
             prefs["profile.default_content_settings.popups"]=0
             prefs["download.default_directory"]=self.download_dir
             options.add_experimental_option("prefs", prefs)
-            service = ChromeService(ChromeDriverManager().install())
+            service = ChromeService()
             service.creationflags = CREATE_NO_WINDOW
             self.driver = webdriver.Chrome(service=service, options=options)
             self.driver.set_window_size(1920, 1080)
@@ -130,7 +130,7 @@ class Scrape_Base(object):
             options.add_experimental_option('prefs', {
                 "download.default_directory": self.download_dir,
                 "download.prompt_for_download": False})
-            service = EdgeService(EdgeChromiumDriverManager().install())
+            service = EdgeService()
             service.creationflags = CREATE_NO_WINDOW
             self.driver = webdriver.Edge(service=service, options=options)
         elif 'FirefoxURL' in self.browser:
