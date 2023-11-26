@@ -339,7 +339,7 @@ class StatType(int, Enum):
         sts = []
         for st in StatType:
             if not st.hitter:
-                if no_rates and st.rate:
+                if no_rates and st.rate_denom is not None:
                     continue
                 if st.rank < 0:
                     continue
