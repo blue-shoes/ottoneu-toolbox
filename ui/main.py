@@ -20,7 +20,7 @@ from domain.domain import Property
 from domain.enum import Preference as Pref, PropertyType
 from dao import db_update
    
-__version__ = '1.2.6'
+__version__ = '1.2.7'
 
 class Main(tk.Tk):
 
@@ -87,6 +87,7 @@ class Main(tk.Tk):
     def startup_tasks(self) -> bool:
         progress_dialog = progress.ProgressDialog(self.container, "Startup Tasks")
         db_vers = property_service.get_db_version()
+        sql_dir = self.resource_path('scripts')
         if db_vers is None:
             db_vers = Property()
             db_vers.name = PropertyType.DB_VERSION.value
@@ -104,7 +105,6 @@ class Main(tk.Tk):
             progress_dialog.set_task_title('Updating Database Structure...')
             progress_dialog.increment_completion_percent(5)
             to_run = []
-            sql_dir = self.resource_path('scripts')
             for filename in os.listdir(sql_dir):
                 vers = StrictVersion(filename.split('.sql')[0])
                 if vers > db_strict_vers and vers <= StrictVersion(v):
@@ -131,6 +131,8 @@ class Main(tk.Tk):
                 progress_dialog.set_task_title("Populating Player Database")
                 salary_services.update_salary_info(pd=progress_dialog)
                 progress_dialog.increment_completion_percent(33)
+                # We also put values into the advanced calc options table
+                db_update.run_db_updates([os.path.join(sql_dir, 'adv_calc_setup.sql')])
             refresh = salary_services.get_last_refresh()
             if refresh is None or (datetime.datetime.now() - refresh.last_refresh).days > self.preferences.getint('General', Pref.SALARY_REFRESH_FREQUENCY, fallback=30):
                 progress_dialog.set_task_title("Updating Player Database")
