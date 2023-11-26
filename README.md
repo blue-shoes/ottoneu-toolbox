@@ -48,16 +48,17 @@ of the value upload.
 The Draft Tool allows users to monitor available players in near-real-time in an Ottoneu draft. The ability to search for players within the Ottoneu universe is 
 given at the top, including partial matching and handling of diacritics. Tables of the top available overall players and by Ottoneu position are provided below. 
 The tables are updated in-draft at a rate of once a minute when the user begins draft monitoring using the available start button, removing players and update the 
-league inflation rate.
+league inflation rate. Managers may create a Target list via right-click and assigning a target price for individual players, who are then listed on the right and highlighted
+in other lists.
 
-![image](https://user-images.githubusercontent.com/61890211/160003776-1a0b6d03-1fd7-40c4-a19c-3ebf1eca3c2e.png)
+![image](https://github.com/blue-shoes/ottoneu-toolbox/assets/61890211/568779c1-7295-45ca-bdff-8e830e3a2696)
 
 ## Work in Progress
 Potential feature expansions for the Ottoneu Toolbox include:
 - Addition of 4x4 and 5x5 formats for value calculations
-- Ability to view stats/projections for individual players on-demand
 - Expansion to in-season league analysis of rosters, trades, free agents, etc.
 - Addition of Davenport Projections
+- Custom scoring formats for non-Ottoneu Leagues when creating values
 
 ## Framework details
 The Toolbox is backed by a SQLite database using SQLAlchemy ORM mappings. Graphics provided via Tkinter. Web scraping with BeautifulSoup and Selenium.
