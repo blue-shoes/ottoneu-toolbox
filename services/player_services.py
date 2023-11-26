@@ -25,6 +25,7 @@ def create_player_universe() -> None:
 def update_player(player: Player, u_player:list) -> None:
     '''Updates player with new FanGraphs major league id, team, and eligible positions. Expected to be called using values from Ottoneu Average Salaries dataset.'''
     player.fg_major_id = u_player['FG MajorLeagueID']
+    player.fg_minor_id = u_player['FG MinorLeagueID']
     player.team = u_player['Org']
     player.position = u_player['Position(s)']
 
