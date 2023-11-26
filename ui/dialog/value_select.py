@@ -8,7 +8,7 @@ from ui.table.table import Table
 from ui.dialog import progress
 from domain.enum import CalculationDataType, ScoringFormat
 
-from services import calculation_services
+from services import calculation_services, custom_scoring_services
 
 class Dialog(tk.Toplevel):
     def __init__(self, parent, page_controller, active=True, year=None, redirect=True):
@@ -86,7 +86,11 @@ class Dialog(tk.Toplevel):
     
     def populate_table(self):
         for value in self.value_list:
-            self.value_table.insert('', tk.END, text=str(value.index), values=(value.name, value.format.short_name, int(value.get_input(CalculationDataType.NUM_TEAMS)), value.description))
+            if value.format == ScoringFormat.CUSTOM:
+                v_type = custom_scoring_services.get_scoring_format(value.get_input(CalculationDataType.CUSTOM_SCORING_FORMAT)).name
+            else:
+                v_type = value.format.short_name
+            self.value_table.insert('', tk.END, text=str(value.index), values=(value.name, v_type, int(value.get_input(CalculationDataType.NUM_TEAMS)), value.description))
 
     def double_click(self, event):
         self.on_select(event)
