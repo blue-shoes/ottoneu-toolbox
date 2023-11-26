@@ -27,7 +27,7 @@ def update_salary_info(format=ScoringFormat.ALL, pd=None) -> None:
                 #Resolve against FG id, if possible
                 if u_player['FG MajorLeagueID'] != '':
                     player = session.query(Player).filter(Player.fg_major_id == u_player['FG MajorLeagueID']).first()
-                else:
+                elif u_player['FG MinorLeagueID'] != '':
                     player = session.query(Player).filter(Player.fg_minor_id == u_player['FG MinorLeagueID']).first()
             if player is None:
                 #Player does not exist in universe, need to add
