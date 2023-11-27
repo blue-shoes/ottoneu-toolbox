@@ -134,10 +134,14 @@ class Dialog(tk.Toplevel):
         self.lift()
         pd = progress.ProgressDialog(self.parent, 'Deleting Projection')
         pd.set_completion_percent(15)
+        p_id = projection.index
         projection_services.delete_projection_by_id(projection.index)
-        self.proj_list.remove(projection)
+        for idx, proj in enumerate(self.proj_list):
+            if proj.index == p_id:
+                self.proj_list.pop(idx)
+                break
         self.proj_table.refresh()
-        self.deleted_proj_ids.append(projection.index)
+        self.deleted_proj_ids.append(p_id)
         pd.complete()
 
     def cancel(self):
