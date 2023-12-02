@@ -509,6 +509,7 @@ class Preference(str, Enum):
     DOCK_DRAFT_TARGETS = 'dock_draft_targets',
     DOCK_DRAFT_PLAYER_SEARCH = 'dock_draft_player_search',
     DEFAULT_BROWSER = 'default_proj_browser'
+    INFLATION_METHOD = 'inflation_methodology'
 
 class Browser(str, Enum):
     '''Enumeration of available browser types for projection download'''
@@ -537,3 +538,8 @@ class Browser(str, Enum):
             if b.display == display:
                 return b
         return None
+
+class InflationMethod(str, Enum):
+    CONVENTIONAL = 'Conventional'
+    ROSTER_SPOTS_ONLY = 'Roster Spots Only'
+    MARGINAL_VALUE = 'Marginal Value'
