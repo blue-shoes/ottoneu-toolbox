@@ -106,11 +106,13 @@ class League:
     projected_keepers:Mapped[List["Projected_Keeper"]] = relationship(default_factory=list, cascade="all, delete", repr=False)
 
     # Transient inflation values
-    remaining_valued_roster_spots:int=0
-    remaining_player_value:float=0
-    captured_value:float=0
-    kept_salary:float=0
-    inflation:float=0
+    inflation:float = field(default=0, repr=False)    
+    total_salary:float = field(default=0, repr=False)
+    total_value:float = field(default=0, repr=False)
+    num_rostered:int = field(default=0, repr=False)
+    num_valued_rostered:int = field(default=0, repr=False)
+    captured_marginal_value:float = field(default=0, repr=False)
+    npp_spent:float = field(default=0, repr=False)
 
     def get_user_team(self):
         '''Returns the user\'s team for the league. None if no team is specified'''
@@ -147,6 +149,16 @@ class League:
                 if rs.player_id == player_id:
                     return True
         return False
+    
+    def init_inflation_calc(self):
+        '''Initialized the required fields to begin an inflation calculation for the league'''
+        self.total_salary = 0
+        self.total_value = 0
+        self.kept_value = 0
+        self.num_rostered = 0
+        self.num_valued_rostered = 0
+        self.captured_marginal_value = 0
+        self.npp_spent = 0
 
 @reg.mapped_as_dataclass
 class Team:
