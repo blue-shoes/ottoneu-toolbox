@@ -7,7 +7,7 @@ from typing import List
 from math import ceil
 
 from domain.domain import League, ValueCalculation, Team, Roster_Spot
-from domain.enum import Position, ScoringFormat
+from domain.enum import Position, ScoringFormat, InflationMethod, Preference as Pref
 from services import league_services, projected_keeper_services
 from ui.dialog import progress
 from ui.view import standings, surplus
@@ -18,11 +18,13 @@ class League_Analysis(tk.Frame):
     league:League
     value_calculation:ValueCalculation
     offseason:bool
+    inflation_method:InflationMethod
 
     def __init__(self, parent, controller):
         tk.Frame.__init__(self, parent, height=600, width=1300)
         self.parent = parent
         self.controller = controller
+        self.inflation_method = self.controller.preferences.get('General', Pref.INFLATION_METHOD, fallback=InflationMethod.ROSTER_SPOTS_ONLY.value)
         self.league = None
         self.value_calculation = None
         self.inflation = 0.0
@@ -118,14 +120,15 @@ class League_Analysis(tk.Frame):
 
     def handle_inflation(self, roster_spot:Roster_Spot):
         if roster_spot is None:
-            self.inflation = league_services.calculate_league_inflation(self.league, self.value_calculation, use_keepers=self.__is_use_keepers())
+            self.inflation = league_services.calculate_league_inflation(self.league, self.value_calculation, inf_method=self.inflation_method, use_keepers=self.__is_use_keepers())
         else:
-            self.inflation = league_services.update_league_inflation(self.league, self.value_calculation.get_player_value(roster_spot.player_id, Position.OVERALL), roster_spot)
+            add_player = self.__is_use_keepers() and self.league.is_keeper(roster_spot.player_id)
+            self.inflation = league_services.update_league_inflation(self.league, self.value_calculation.get_player_value(roster_spot.player_id, Position.OVERALL), roster_spot, inf_method=self.inflation_method, add_player=add_player)
         self.inflation_sv.set(f'League Inflation: {"{:.1f}".format(self.inflation * 100)}%')
         self.surplus.update_inflation(self.inflation)
     
     def initialize_inflation(self):
-        self.inflation = league_services.calculate_league_inflation(self.league, self.value_calculation, use_keepers=self.__is_use_keepers())
+        self.inflation = league_services.calculate_league_inflation(self.league, self.value_calculation, inf_method=self.inflation_method, use_keepers=self.__is_use_keepers())
         self.inflation_sv.set(f'League Inflation: {"{:.1f}".format(self.inflation * 100)}%')
         self.surplus.inflation = self.inflation
 
