@@ -407,6 +407,7 @@ def update_league_inflation(league:League, pv:PlayerValue, rs:Roster_Spot, inf_m
         league.num_valued_rostered += mult
     else:
         league.npp_spent += npp-1 * mult
+    league.npp_spent = min(league.npp_spent, league.max_npp)
     return get_league_inflation(league, inf_method)
 
 def get_league_inflation(league:League, inf_method:InflationMethod) -> float:

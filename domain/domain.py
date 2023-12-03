@@ -113,6 +113,7 @@ class League:
     num_valued_rostered:int = field(default=0, repr=False)
     captured_marginal_value:float = field(default=0, repr=False)
     npp_spent:float = field(default=0, repr=False)
+    max_npp:float = field(default=0, repr=False)
 
     def get_user_team(self):
         '''Returns the user\'s team for the league. None if no team is specified'''
@@ -159,6 +160,7 @@ class League:
         self.num_valued_rostered = 0
         self.captured_marginal_value = 0
         self.npp_spent = 0
+        self.max_npp = 0
 
 @reg.mapped_as_dataclass
 class Team:
