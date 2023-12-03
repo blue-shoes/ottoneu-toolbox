@@ -6,6 +6,7 @@ from tkinter.messagebox import OK
 import os
 import os.path
 import pandas as pd
+from pandas import DataFrame
 import numpy as np
 import util.string_util
 import queue
@@ -17,7 +18,8 @@ from datetime import datetime, timedelta
 from functools import partial
 
 from scrape.scrape_ottoneu import Scrape_Ottoneu 
-from domain.enum import Position, ScoringFormat, StatType, Preference as Pref, AvgSalaryFom, RankingBasis, ProjectionType
+from domain.domain import League, Player
+from domain.enum import Position, ScoringFormat, StatType, Preference as Pref, AvgSalaryFom, RankingBasis, ProjectionType, InflationMethod
 from ui.table.table import Table, sort_cmp, ScrollableTreeFrame
 from ui.dialog import progress, draft_target, cm_team_assignment
 from ui.dialog.wizard import couchmanagers_import
@@ -25,6 +27,7 @@ from ui.tool.tooltip import CreateToolTip
 from ui.view.standings import Standings
 from services import salary_services, league_services, calculation_services, player_services, draft_services
 from demo import draft_demo
+from util import string_util
 
 player_cols = ('Name','Value','Inf. Cost','Pos','Team')
 hit_5x5_cols = ('R', 'HR', 'RBI', 'SB', 'AVG')
@@ -33,6 +36,9 @@ hit_4x4_cols = ('R', 'HR', 'OBP', 'SLG')
 pitch_4x4_cols = ('K', 'HR/9', 'ERA', 'WHIP')
 
 class DraftTool(tk.Frame):
+
+    league:League
+
     def __init__(self, parent, controller):
         tk.Frame.__init__(self, parent)
         self.parent = parent
@@ -59,6 +65,7 @@ class DraftTool(tk.Frame):
         self.start_draft_sv.set('Start Draft Monitor')
         self.stop_draft_sv = StringVar()
         self.stop_draft_sv.set('Stop Draft Monitor')
+        self.inflation_method = self.controller.preferences.get('General', Pref.INFLATION_METHOD, fallback=InflationMethod.ROSTER_SPOTS_ONLY.value)
 
         self.create_main()
     
@@ -102,16 +109,6 @@ class DraftTool(tk.Frame):
             self.controller.value_calculation = calculation_services.load_calculation(self.controller.value_calculation.index)
             self.value_calculation = self.controller.value_calculation
         pd.complete()
-
-    def calculate_extra_value(self):
-        captured_value = 0
-        self.valued_roster_spots = 0
-        for pv in self.value_calculation.get_position_values(Position.OVERALL):
-            if pv.value < 1:
-                continue
-            captured_value += pv.value
-            self.valued_roster_spots += 1
-        self.extra_value = self.league.num_teams * 400 - captured_value
 
     def create_main(self):
         self.league_text_var = StringVar()
@@ -568,30 +565,35 @@ class DraftTool(tk.Frame):
         prog.increment_completion_percent(50)
         pos_val = self.values.loc[~(self.values['Value'] < 1)]
         rows = []
-        for idx, cm_player in cm_rosters_df.iterrows():
-            if cm_player['ottid'] == 0:
-                self.extra_value = self.extra_value - cm_player['Amount']
-                continue
-            found = False
+        for _, cm_player in cm_rosters_df.iterrows():
             if cm_player['ottid'] in set(self.rosters['ottoneu ID']):
                 continue
-            if not found:
-                row = []
-                player = player_services.get_player_by_ottoneu_id(cm_player['ottid'])
-                row.append(player.index)
-                row.append(self.draft.cm_draft.get_toolbox_team_index_by_cm_team_id(cm_player['Team Number']))
-                row.append(cm_player['ottid'])
-                salary = cm_player['Amount']
-                row.append(salary)
-                rows.append(row)
-                if not init:
-                    if player.index in self.values.index:
-                        self.values.at[player.index, 'Salary'] = salary
-                        pos = player_services.get_player_positions(player)
-                        for p in pos:                                    
-                            self.pos_values[p].at[player.index, 'Salary'] = salary
-                    if player.index not in pos_val.index:
-                        self.extra_value = self.extra_value - salary
+            salary = string_util.parse_dollar(cm_player['Amount'])
+            self.league.total_salary += salary
+            self.league.num_rostered += 1
+            if cm_player['ottid'] == 0:
+                if salary > 7:
+                    self.league.npp_spent += 4
+                else:
+                    self.league.npp_spent += min(salary, 3 + (salary-3) - 0.125 * pow(salary-3,2)) - 1
+                continue
+            row = []
+            player = player_services.get_player_by_ottoneu_id(cm_player['ottid'])
+            row.append(player.index)
+            row.append(self.draft.cm_draft.get_toolbox_team_index_by_cm_team_id(cm_player['Team Number']))
+            row.append(cm_player['ottid'])
+            row.append(salary)
+            rows.append(row)
+            val = string_util.parse_dollar(self.values.at[player.index, 'Value'])
+            self.league.total_value += val
+            if player.index in pos_val.index:
+                self.league.num_valued_rostered += 1
+            if not init:
+                if player.index in self.values.index:
+                    self.values.at[player.index, 'Salary'] = salary
+                    pos = player_services.get_player_positions(player)
+                    for p in pos:                                    
+                        self.pos_values[p].at[player.index, 'Salary'] = f'$' + "{:.1f}".format(salary)
         if rows is None or len(rows) == 0:
             prog.complete()
             return
@@ -603,13 +605,20 @@ class DraftTool(tk.Frame):
             self.refresh_views()
         prog.complete()
     
-    def add_trans_to_rosters(self, last_trans, index, player):
+    def add_trans_to_rosters(self, last_trans:DataFrame, index:int, player:Player):
         row=last_trans.iloc[index]
+        if player.index in self.values.index:
+            val = string_util.parse_dollar(self.values.at[player.index, 'Value'])
+        else:
+            val = 0
         if row['Salary'] == '$0':
             # Cut
             self.rosters.drop(player.index)
+            self.inflation = league_services.update_league_inflation_last_trans(self.league, val, salary=0, inf_method=self.inflation_method, add_player=False)
         else:
-            self.rosters.loc[player.index] = [row['Team ID'],row['Ottoneu ID'],int(row['Salary'].split('$')[1])]
+            salary = string_util.parse_dollar(row['Salary'])
+            self.rosters.loc[player.index] = [row['Team ID'],row['Ottoneu ID'],salary]
+            self.inflation = league_services.update_league_inflation_last_trans(self.league, val, salary=salary, inf_method=self.inflation_method)
 
     def refresh_thread(self):
         last_time = datetime.now() - timedelta(minutes=30)
@@ -638,9 +647,11 @@ class DraftTool(tk.Frame):
                     while index >= 0:
                         if last_trans.iloc[index]['Date'] > last_time:
                             otto_id = last_trans.iloc[index]['Ottoneu ID']
+                            salary = string_util.parse_dollar(last_trans.iloc[index]['Salary'])
                             player = player_services.get_player_by_ottoneu_id(int(otto_id))
                             if player is None:
                                 logging.info(f'Otto id {otto_id} not in database')
+                                self.inflation = league_services.update_league_inflation_last_trans(self.league, value=0, salary=salary, inf_method=self.inflation_method)
                                 index -= 1
                                 continue
                             else:
@@ -660,7 +671,6 @@ class DraftTool(tk.Frame):
                             if last_trans.iloc[index]['Type'].upper() == 'ADD':
                                 salary = int(last_trans.iloc[index]['Salary'].split('$')[1])
                                 self.values.at[player.index, 'Salary'] = salary
-                                self.update_remaining_extra_value(self.values.at[player.index, 'Value'], salary)
                                 for p in pos:  
                                     if p in Position.get_pitching_pos():
                                         #Because of how we treat pitching, update all pitcher tables if it's a pitcher
@@ -669,7 +679,6 @@ class DraftTool(tk.Frame):
                                     else:          
                                         self.pos_values[p].at[player.index, 'Salary'] = salary
                             elif 'CUT' in last_trans.iloc[index]['Type'].upper():
-                                self.revert_extra_value(self.values.at[player.index, 'Value'], self.values.at[player.index, 'Salary'])
                                 self.values.at[player.index, 'Salary'] = 0
                                 self.rosters.drop(player.index)
                                 for p in pos:
@@ -682,7 +691,6 @@ class DraftTool(tk.Frame):
                         index -= 1
                     last_time = most_recent
                     self.queue.put(('pos', list(update_pos)))
-                    self.calc_inflation()
                     league_services.calculate_league_table(self.league, self.value_calculation, self.standings.standings_type.get() == 1, self.inflation)
             except Exception as Argument:
                 logging.exception('Exception processing transaction.')
@@ -703,6 +711,7 @@ class DraftTool(tk.Frame):
         
         self.search_view.table.refresh()
         self.refresh_planning_frame()
+        self.standings.refresh_standings()
     
     def refresh_overall_view(self):
         if self.show_drafted_players.get() == 1:
@@ -718,6 +727,8 @@ class DraftTool(tk.Frame):
             value = '$' + "{:.0f}".format(val)
             if val < 1:
                 inf_cost = f'${val}'
+            elif self.inflation_method == InflationMethod.CONVENTIONAL:
+                inf_cost = '$' + "{:.0f}".format(val * self.inflation)
             else:
                 inf_cost = '$' + "{:.0f}".format((val-1) * self.inflation + 1)
             position = pos_df.iat[i, 4]
@@ -749,6 +760,8 @@ class DraftTool(tk.Frame):
             value = '$' + "{:.0f}".format(val)
             if val < 1:
                 inf_cost = f'${val}'
+            elif self.inflation_method == InflationMethod.CONVENTIONAL:
+                inf_cost = '$' + "{:.0f}".format(val * self.inflation)
             else:
                 inf_cost = '$' + "{:.0f}".format((val-1) * self.inflation + 1)
             position = pos_df.iat[i, 4]
@@ -830,6 +843,8 @@ class DraftTool(tk.Frame):
                 value = '$' + "{:.0f}".format(val)
                 if val < 1:
                     inf_cost = f'${val}'
+                elif self.inflation_method == InflationMethod.CONVENTIONAL:
+                    inf_cost = '$' + "{:.0f}".format(val * self.inflation)
                 else:
                     inf_cost = '$' + "{:.0f}".format((val-1) * self.inflation + 1)
             else:
@@ -925,9 +940,8 @@ class DraftTool(tk.Frame):
             pos = target.player.position
             tags = self.get_row_tags(id)
             self.target_table.table.insert('', tk.END, text=id, tags=tags, values=(name, t_price, value, pos))
-        
+    
     def initialize_draft(self, same_values=False): 
-        self.calculate_extra_value() 
         restart = False
         if not self.run_event.is_set():
             self.stop_draft_monitor()
@@ -973,7 +987,8 @@ class DraftTool(tk.Frame):
         self.update_rostered_players()
         pd.increment_completion_percent(5)
 
-        self.calc_inflation()
+        self.league.init_inflation_calc()
+        self.inflation = league_services.calculate_league_inflation(self.league, self.value_calculation, self.inflation_method)
 
         pd.set_task_title('Refreshing views...')
         self.set_visible_columns()
@@ -1384,36 +1399,10 @@ class DraftTool(tk.Frame):
             rows.append(row)
         return rows
 
-    def calc_inflation(self):
-        num_teams = self.controller.league.num_teams
-        pos_df = self.values.loc[self.values['Salary'] == 0]
-        pos_val = pos_df.loc[~(pos_df['Value'] < 1)]
-        remaining_valued_roster_spots = len(pos_val)
-        self.remaining_value = pos_val['Value'].sum() - remaining_valued_roster_spots
-        self.remaining_dollars = (num_teams*400 - self.extra_value) - self.rosters['Salary'].sum() - remaining_valued_roster_spots
-        self.inflation = self.remaining_dollars / self.remaining_value  
-
     def update_rostered_players(self):
         self.values = self.values.merge(self.rosters[['Salary']], how='left', left_index=True, right_index=True, sort=False).fillna(0)
-        for idx, row in self.values.iterrows():
-            self.update_remaining_extra_value(row['Value'], row['Salary'])
         for pos in self.pos_values:
             self.pos_values[pos] = self.pos_values[pos].merge(self.rosters[['Salary']], how='left', left_index=True, right_index=True, sort=False).fillna(0)
-    
-    def update_remaining_extra_value(self, value:float, salary:float) -> None:
-        if salary > 0:
-            if value <= 0:
-                self.extra_value = self.extra_value - salary
-            elif value < 10 and value < salary:
-                subtract = (salary - value) / (2*value)
-                self.extra_value = self.extra_value - subtract
-    
-    def revert_extra_value(self, value:float, old_salary:float) -> None:
-        if value <= 0:
-            self.extra_value = self.extra_value + old_salary
-        elif value < 10 and value < old_salary:
-            readd = (old_salary - value) / (2*value)
-            self.extra_value = self.extra_value + readd
 
     def league_change(self):
         while self.controller.league is None:

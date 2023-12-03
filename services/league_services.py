@@ -345,11 +345,12 @@ def set_team_ranks(league:League) -> None:
         team.lg_rank = rank
         rank = rank + 1
 
-def calculate_league_inflation(league:League, value_calc:ValueCalculation, inf_method:InflationMethod, use_keepers:bool=False) -> float:
+def calculate_league_inflation(league:League, value_calc:ValueCalculation, inf_method:InflationMethod, use_keepers:bool=False, reinitialize:bool=True) -> float:
     '''Initializes the League's inflation level based on the method selected in user preferences. Calculates and stores the relevant 
     inputs to all methodologies in the League object. If use_keepers is False, all roster spots are used in the calculation. If it is
     True, only selected keepers are used.'''
-    league.init_inflation_calc()
+    if reinitialize:
+        league.init_inflation_calc()
     if use_keepers:
         use_keepers = league.projected_keepers is not None
     for pv in value_calc.get_position_values(Position.OVERALL):
@@ -376,7 +377,33 @@ def calculate_league_inflation(league:League, value_calc:ValueCalculation, inf_m
                 else:
                     npp = min(rs.salary, 3 + (rs.salary-3) - 0.125 * pow(rs.salary-3,2))
                 league.npp_spent += npp-1
+    league.max_npp = (400-40) * league.num_teams - league.captured_marginal_value
+    league.npp_spent = min(league.npp_spent, league.max_npp)
+    return get_league_inflation(league, inf_method)
 
+def update_league_inflation_last_trans(league:League, value:float, salary:float, inf_method:InflationMethod, add_player:bool=True) -> float:
+    '''Updates the league's inflation rate based on the change of one player and their projected value and salary. If add_player is True, the player is newly rostered. If
+    it is False, the player is removed from rosters.'''
+    if value < 1:
+        if salary > 7:
+            npp = 5
+        elif salary < 3:
+            npp = salary
+        else:
+            npp = 3 + (salary-3) - 0.125 * pow(salary-3,2)
+
+    if add_player:
+        mult = 1
+    else:
+        mult = -1
+    league.total_salary += salary * mult
+    league.total_value += value * mult
+    league.num_rostered += mult
+    if value > 0:
+        league.num_valued_rostered += mult
+    else:
+        league.npp_spent += npp-1 * mult
+    league.npp_spent = min(league.npp_spent, league.max_npp)
     return get_league_inflation(league, inf_method)
 
 def update_league_inflation(league:League, pv:PlayerValue, rs:Roster_Spot, inf_method:InflationMethod, add_player:bool=True) -> float:
