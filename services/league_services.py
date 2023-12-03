@@ -392,8 +392,10 @@ def update_league_inflation(league:League, pv:PlayerValue, rs:Roster_Spot, inf_m
     if val < 1:
         if rs.salary > 7:
             npp = 5
+        elif rs.salary < 3:
+            npp = rs.salary
         else:
-            npp = min(rs.salary, 3 + (rs.salary-3) - 0.125 * pow(rs.salary-3,2))
+            npp = 3 + (rs.salary-3) - 0.125 * pow(rs.salary-3,2)
 
     if add_player:
         mult = 1
