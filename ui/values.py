@@ -37,6 +37,9 @@ pt_pitcher_columns = ('G', 'GS', 'IP')
 rev_cols = ('Name', 'Team', 'Pos', 'ERA', 'WHIP', 'HR/9')
 
 class ValuesCalculation(tk.Frame):
+
+    value_calc:ValueCalculation
+
     def __init__(self, parent, controller):
         tk.Frame.__init__(self, parent)
         self.parent = parent
@@ -59,6 +62,12 @@ class ValuesCalculation(tk.Frame):
         if self.controller.value_calculation is None:
             self.controller.value_calculation = ValueCalculation()
             self.value_calc = self.controller.value_calculation
+        if self.value_calc.format == ScoringFormat.CUSTOM:
+            self.custom_scoring = custom_scoring_services.get_scoring_format(int(self.value_calc.get_input(CDT.CUSTOM_SCORING_FORMAT)))
+            self.custom_scoring_button.grid(column=2, row=2)
+        else:
+            self.custom_scoring_button.grid_forget()
+        self.last_game_type.set(self.game_type.get())
         return True
     
     def leave_page(self):
@@ -200,6 +209,8 @@ class ValuesCalculation(tk.Frame):
         self.game_type.set(ScoringFormat.FG_POINTS.full_name)
         gt_combo = ttk.Combobox(inpf, textvariable=self.game_type)
         gt_combo.bind("<<ComboboxSelected>>", self.update_game_type)
+        self.last_game_type = StringVar()
+        self.last_game_type.set(self.game_type.get())
 
         gt_combo['values'] = (ScoringFormat.FG_POINTS.full_name, ScoringFormat.SABR_POINTS.full_name, ScoringFormat.H2H_FG_POINTS.full_name, ScoringFormat.H2H_SABR_POINTS.full_name, ScoringFormat.OLD_SCHOOL_5X5.full_name, ScoringFormat.CLASSIC_4X4.full_name, ScoringFormat.CUSTOM.full_name)
         gt_combo.grid(column=1,row=2,pady=5)
@@ -207,7 +218,8 @@ class ValuesCalculation(tk.Frame):
         self.custom_scoring_lbl = StringVar()
         self.custom_scoring_lbl.set("")
         self.custom_scoring = None
-        ttk.Label(inpf, textvariable=self.custom_scoring_lbl).grid(column=2, row=2)
+        self.custom_scoring_button = csb = ttk.Button(inpf, textvariable=self.custom_scoring_lbl, command=self.set_custom_scoring_format)
+        csb.grid(column=2, row=2)
 
         ttk.Label(inpf, text="Number of Teams:").grid(column=0, row=3,pady=5)
         self.num_teams_str = StringVar()
@@ -307,6 +319,7 @@ class ValuesCalculation(tk.Frame):
         self.advanced_btn.grid(row=row, column=1)
 
         inpf.update()
+        csb.grid_forget()
 
     def create_proj_val_frame(self):
         self.proj_val_frame = pvf = ttk.Frame(self)
@@ -382,24 +395,30 @@ class ValuesCalculation(tk.Frame):
         self.set_display_columns()
         self.set_advanced_button_status()
 
+    def set_custom_scoring_format(self) -> None:
+        count = custom_scoring_services.get_format_count()
+        if count == 0:
+            dialog = custom_scoring.Dialog(self)
+        else:
+            dialog = format_select.Dialog(self)
+        if dialog.scoring is None:
+            self.game_type.set(self.last_game_type.get())
+            return
+        self.custom_scoring = dialog.scoring
+        self.custom_scoring_lbl.set(dialog.scoring.name)
+        self.custom_scoring_button.grid(column=2, row=2)
+
     def update_game_type(self, _:Event):
         if ScoringFormat.get_format_by_full_name(self.game_type.get()) == ScoringFormat.CUSTOM:
-            count = custom_scoring_services.get_format_count()
-            if count == 0:
-                dialog = custom_scoring.Dialog(self)
-            else:
-                dialog = format_select.Dialog(self)
-            if dialog.scoring is None:
-                self.game_type.set(ScoringFormat.FG_POINTS.full_name)
-                return
-            self.custom_scoring = dialog.scoring
-            self.custom_scoring_lbl.set(dialog.scoring.name)
+            self.set_custom_scoring_format()
         else:
             self.custom_scoring = None
             self.custom_scoring_lbl.set('')
+            self.custom_scoring_button.grid_forget()
+        sf = ScoringFormat.get_format_by_full_name(self.game_type.get())
         self.set_display_columns()
         self.set_advanced_button_status()
-        if (self.custom_scoring is not None and self.custom_scoring.points_format) or ScoringFormat.is_points_type(ScoringFormat.get_format_by_full_name(self.game_type.get())):
+        if (sf == ScoringFormat.CUSTOM and self.custom_scoring is not None and self.custom_scoring.points_format) or ScoringFormat.is_points_type(sf):
             self.hitter_basis_cb['values'] = ('P/G','P/PA')
             if self.hitter_basis.get() not in self.hitter_basis_cb['values']:
                 self.hitter_basis.set('P/G')
@@ -422,6 +441,7 @@ class ValuesCalculation(tk.Frame):
                 self.update_rep_level_scheme()
             self.sv_hld_entry['state'] = DISABLED
             self.sv_hld_lbl['state'] = DISABLED
+        self.last_game_type.set(self.game_type.get())
 
     def select_projection(self):
         count = projection_services.get_projection_count()
