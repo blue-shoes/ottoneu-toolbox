@@ -508,7 +508,7 @@ class ValuesCalculation(tk.Frame):
             val.append("{:.1f}".format(pp.get_stat(StatType.POINTS)))
             val.append("{:.1f}".format(pp.get_stat(StatType.POINTS)))
         else:
-            o_points = calculation_services.get_points(pp, Position.OFFENSE, sabr=ScoringFormat.is_sabr(ScoringFormat.get_format_by_full_name(self.game_type.get())))
+            o_points = calculation_services.get_points(pp, Position.OFFENSE, sabr=ScoringFormat.is_sabr(ScoringFormat.get_format_by_full_name(self.game_type.get())), custom_format=self.custom_scoring)
             games = pp.get_stat(StatType.G_HIT)
             if games is None or games == 0:
                 val.append("0.00")
@@ -522,10 +522,10 @@ class ValuesCalculation(tk.Frame):
             else:
                 val.append("{:.2f}".format(o_points / pa))
             
-            p_points = calculation_services.get_points(pp, Position.PITCHER, sabr=False)
-            s_p_points = calculation_services.get_points(pp, Position.PITCHER, sabr=True)
-            nsh_p_points = calculation_services.get_points(pp, Position.PITCHER, sabr=False, no_svh=True)
-            nsh_s_p_points = calculation_services.get_points(pp, Position.PITCHER, sabr=True, no_svh=True)
+            p_points = calculation_services.get_points(pp, Position.PITCHER, sabr=False, custom_format=self.custom_scoring)
+            s_p_points = calculation_services.get_points(pp, Position.PITCHER, sabr=True, custom_format=self.custom_scoring)
+            nsh_p_points = calculation_services.get_points(pp, Position.PITCHER, sabr=False, no_svh=True, custom_format=self.custom_scoring)
+            nsh_s_p_points = calculation_services.get_points(pp, Position.PITCHER, sabr=True, no_svh=True, custom_format=self.custom_scoring)
             ip = pp.get_stat(StatType.IP)
             games = pp.get_stat(StatType.G_PIT)
             if ip is None or ip == 0 or games is None or games == 0:
@@ -589,7 +589,7 @@ class ValuesCalculation(tk.Frame):
                 nsh_f_points = f_points
                 nsh_s_points = f_points
             else:
-                f_points = calculation_services.get_points(pp, pos, sabr=False)
+                f_points = calculation_services.get_points(pp, pos, sabr=False, custom_format=self.custom_scoring)
                 s_points = f_points
                 nsh_f_points = f_points
                 nsh_s_points = f_points
@@ -617,10 +617,10 @@ class ValuesCalculation(tk.Frame):
                 nsh_f_points = f_points
                 nsh_s_points = f_points
             else:
-                f_points = calculation_services.get_points(pp, pos, sabr=False)
-                s_points = calculation_services.get_points(pp, pos, sabr=True)
-                nsh_f_points = calculation_services.get_points(pp, pos, sabr=False, no_svh=True)
-                nsh_s_points = calculation_services.get_points(pp, pos, sabr=True, no_svh=True)
+                f_points = calculation_services.get_points(pp, pos, sabr=False, custom_format=self.custom_scoring)
+                s_points = calculation_services.get_points(pp, pos, sabr=True, custom_format=self.custom_scoring)
+                nsh_f_points = calculation_services.get_points(pp, pos, sabr=False, no_svh=True, custom_format=self.custom_scoring)
+                nsh_s_points = calculation_services.get_points(pp, pos, sabr=True, no_svh=True, custom_format=self.custom_scoring)
                 ip = pp.get_stat(StatType.IP)
                 games = pp.get_stat(StatType.G_PIT)
                 if ip is None or ip == 0 or games is None or games == 0:

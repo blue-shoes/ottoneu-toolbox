@@ -1,6 +1,6 @@
 from pandas import DataFrame
 from dao.session import Session
-from domain.domain import ValueCalculation, Projection, PlayerProjection, ProjectionData
+from domain.domain import ValueCalculation, Projection, PlayerProjection, ProjectionData, CustomScoring
 from domain.enum import Position, CalculationDataType as CDT, StatType, ScoringFormat, RankingBasis, IdType, RepLevelScheme, ProjectionType
 from domain.exception import InputException
 from value.player_values import PlayerValues
@@ -90,34 +90,49 @@ def get_values_for_year(year:int=None) -> List[ValueCalculation]:
     with Session() as session:
         return session.query(ValueCalculation).filter(ValueCalculation.timestamp > start, ValueCalculation.timestamp < end).all()
 
-def get_points(player_proj: PlayerProjection, pos: Position, sabr:bool=False, no_svh:bool=False) -> float:
+def get_points(player_proj: PlayerProjection, pos: Position, sabr:bool=False, no_svh:bool=False, custom_format:CustomScoring=None) -> float:
     '''Returns the point value for a player projection. Pitcher point values FanGraphs Points by default, but can be changed with sabr flag.'''
     try:
         if pos in Position.get_offensive_pos():
-            return -1.0*player_proj.get_stat(StatType.AB) + 5.6*player_proj.get_stat(StatType.H) + 2.9*player_proj.get_stat(StatType.DOUBLE) \
-                + 5.7*player_proj.get_stat(StatType.TRIPLE) + 9.4*player_proj.get_stat(StatType.HR) +3.0*player_proj.get_stat(StatType.BB) \
-                + 3.0*player_proj.get_stat(StatType.HBP) + 1.9*player_proj.get_stat(StatType.SB) - 2.8*player_proj.get_stat(StatType.CS)
+            if custom_format is None or not custom_format.points_format:
+                return -1.0*player_proj.get_stat(StatType.AB) + 5.6*player_proj.get_stat(StatType.H) + 2.9*player_proj.get_stat(StatType.DOUBLE) \
+                    + 5.7*player_proj.get_stat(StatType.TRIPLE) + 9.4*player_proj.get_stat(StatType.HR) +3.0*player_proj.get_stat(StatType.BB) \
+                    + 3.0*player_proj.get_stat(StatType.HBP) + 1.9*player_proj.get_stat(StatType.SB) - 2.8*player_proj.get_stat(StatType.CS)
+            points = 0
+            for cat in custom_format.stats:
+                if cat.category.hitter:
+                    points += cat.points * player_proj.get_stat(cat.category)
+            return points
+
         if pos in Position.get_pitching_pos():
-            if no_svh:
-                svh = 0
-            else:
-                svh = 5.0*player_proj.get_stat(StatType.SV) + 4.0*player_proj.get_stat(StatType.HLD)
-            if sabr:
-                return 5.0*player_proj.get_stat(StatType.IP) + 2.0*player_proj.get_stat(StatType.SO) - 3.0*player_proj.get_stat(StatType.BB_ALLOWED) \
-                    - 3.0*player_proj.get_stat(StatType.HBP_ALLOWED) - 13.0*player_proj.get_stat(StatType.HR_ALLOWED) \
-                    + svh
-            else:
-                return 7.4*player_proj.get_stat(StatType.IP) + 2.0*player_proj.get_stat(StatType.SO) - 2.6*player_proj.get_stat(StatType.H_ALLOWED) \
-                    - 3.0*player_proj.get_stat(StatType.BB_ALLOWED) - 3.0*player_proj.get_stat(StatType.HBP_ALLOWED) - 12.3*player_proj.get_stat(StatType.HR_ALLOWED) \
-                    + svh
+            if custom_format is None or not custom_format.points_format:
+                if no_svh:
+                    svh = 0
+                else:
+                    svh = 5.0*player_proj.get_stat(StatType.SV) + 4.0*player_proj.get_stat(StatType.HLD)
+                if sabr:
+                    return 5.0*player_proj.get_stat(StatType.IP) + 2.0*player_proj.get_stat(StatType.SO) - 3.0*player_proj.get_stat(StatType.BB_ALLOWED) \
+                        - 3.0*player_proj.get_stat(StatType.HBP_ALLOWED) - 13.0*player_proj.get_stat(StatType.HR_ALLOWED) \
+                        + svh
+                else:
+                    return 7.4*player_proj.get_stat(StatType.IP) + 2.0*player_proj.get_stat(StatType.SO) - 2.6*player_proj.get_stat(StatType.H_ALLOWED) \
+                        - 3.0*player_proj.get_stat(StatType.BB_ALLOWED) - 3.0*player_proj.get_stat(StatType.HBP_ALLOWED) - 12.3*player_proj.get_stat(StatType.HR_ALLOWED) \
+                        + svh
+            if not custom_format.points_format:
+                raise InputException('Input CustomScoring is not a points format')
+            points = 0
+            for cat in custom_format.stats:
+                if not cat.category.hitter:
+                    points += cat.points * player_proj.get_stat(cat.category)
+            return points
     except TypeError:
         return 0.0
 
-def get_batting_point_rate_from_player_projection(player_proj: PlayerProjection, basis:RankingBasis=RankingBasis.PPG) -> float:
+def get_batting_point_rate_from_player_projection(player_proj: PlayerProjection, basis:RankingBasis=RankingBasis.PPG, custom_format:CustomScoring=None) -> float:
     '''Returns the point rate for the input batter PlayerProjection based on the requested rate basis'''
     if basis == RankingBasis.PPG and player_proj.get_stat(StatType.PPG) is not None:
         return player_proj.get_stat(StatType.PPG)
-    points = get_points(player_proj, Position.OFFENSE)
+    points = get_points(player_proj, Position.OFFENSE, custom_format=custom_format)
     if basis == RankingBasis.PPG:
         games = player_proj.get_stat(StatType.G_HIT)
         if games is None or games == 0:
@@ -130,11 +145,14 @@ def get_batting_point_rate_from_player_projection(player_proj: PlayerProjection,
         return points / pa
     return 0
 
-def get_pitching_point_rate_from_player_projection(player_proj: PlayerProjection, format: ScoringFormat, basis:RankingBasis=RankingBasis.PIP) -> float:
+def get_pitching_point_rate_from_player_projection(player_proj: PlayerProjection, format: ScoringFormat, basis:RankingBasis=RankingBasis.PIP, custom_format:CustomScoring=None) -> float:
     '''Returns the point rate for the input pitcher PlayerProjection based on the requested rate basis and scoring format'''
     if basis == RankingBasis.PIP and player_proj.get_stat(StatType.PIP) is not None:
         return player_proj.get_stat(StatType.PIP)
-    points = get_points(player_proj, Position.PITCHER, ScoringFormat.is_sabr(format))
+    if custom_format is None:
+        points = get_points(player_proj, Position.PITCHER, ScoringFormat.is_sabr(format))
+    else:
+        points = get_points(player_proj, Position.PITCHER, custom_format=custom_format)
     if basis == RankingBasis.PPG:
         games = player_proj.get_stat(StatType.G_PIT)
         if games is None or games == 0:

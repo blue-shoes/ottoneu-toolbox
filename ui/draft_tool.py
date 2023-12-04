@@ -14,18 +14,19 @@ import logging
 import threading
 from time import sleep
 from datetime import datetime, timedelta
+from typing import Dict
 
 from functools import partial
 
 from scrape.scrape_ottoneu import Scrape_Ottoneu 
-from domain.domain import League, Player
-from domain.enum import Position, ScoringFormat, StatType, Preference as Pref, AvgSalaryFom, RankingBasis, ProjectionType, InflationMethod
+from domain.domain import League, Player, ValueCalculation
+from domain.enum import Position, ScoringFormat, StatType, Preference as Pref, AvgSalaryFom, RankingBasis, ProjectionType, InflationMethod, CalculationDataType
 from ui.table.table import Table, sort_cmp, ScrollableTreeFrame
 from ui.dialog import progress, draft_target, cm_team_assignment
 from ui.dialog.wizard import couchmanagers_import
 from ui.tool.tooltip import CreateToolTip
 from ui.view.standings import Standings
-from services import salary_services, league_services, calculation_services, player_services, draft_services
+from services import salary_services, league_services, calculation_services, player_services, draft_services, custom_scoring_services
 from demo import draft_demo
 from util import string_util
 
@@ -38,6 +39,9 @@ pitch_4x4_cols = ('K', 'HR/9', 'ERA', 'WHIP')
 class DraftTool(tk.Frame):
 
     league:League
+    value_calculation:ValueCalculation
+    pos_view:Dict[Position, ScrollableTreeFrame]
+    pos_values:Dict[Position, DataFrame]
 
     def __init__(self, parent, controller):
         tk.Frame.__init__(self, parent)
@@ -84,7 +88,8 @@ class DraftTool(tk.Frame):
         self.league_text_var.set(f'{self.controller.league.name} Draft')
         self.values_name.set(f'Selected Values: {self.value_calculation.name}')
 
-        self.salary_information_refresh()
+        if self.league.is_ottoneu():
+            self.salary_information_refresh()
 
         self.draft = draft_services.get_draft_by_league(self.controller.league.index)
 
@@ -106,8 +111,6 @@ class DraftTool(tk.Frame):
         format_salary_refresh = salary_services.get_last_refresh(self.controller.league.format)
         if format_salary_refresh is None or (datetime.now() - format_salary_refresh.last_refresh) > timedelta(days=1):
             salary_services.update_salary_info(format=self.league.format)
-            self.controller.value_calculation = calculation_services.load_calculation(self.controller.value_calculation.index)
-            self.value_calculation = self.controller.value_calculation
         pd.complete()
 
     def create_main(self):
@@ -393,6 +396,8 @@ class DraftTool(tk.Frame):
         if self.league.format is None:
             l = [(self.set(k, 'Values'), k) for k in self.get_children('')]
             sorted(l, reverse=self.table.reverse_sort['Values'], key=lambda x: sort_cmp(x)) 
+        if not self.league.is_ottoneu():
+            return l
         if self.value_calculation.projection is None:
             col2 = 'Roster %'
         else:
@@ -793,20 +798,23 @@ class DraftTool(tk.Frame):
                 sv = "{:.0f}".format(pos_df.iat[i, 16])
                 hr_per_9 = "{:.2f}".format(pos_df.iat[i, 17])
                 self.pos_view[pos].table.insert('', tk.END, text=id, values=(name, value, inf_cost, position, team, pts,sabr_pts, rate1, rate2, rate3, rate4, sal_tup[0], sal_tup[1], sal_tup[2], k, era, whip, w, sv, hr_per_9), tags=tags)
+    
     def get_salary_tuple(self, playerid):
-        si = self.value_calculation.get_player_value(playerid, pos=Position.OVERALL).player.get_salary_info_for_format(self.league.format)
-        if si is None:
-            avg = '$0.0'
-            l10 = '$0.0'
-            roster = '0.0%'
-        else:
-            if self.controller.preferences.get('General', Pref.AVG_SALARY_FOM, fallback=AvgSalaryFom.MEAN.value) == AvgSalaryFom.MEAN.value:
-                avg = f'$' + "{:.1f}".format(si.avg_salary)
+        if self.league.is_ottoneu():
+            si = self.value_calculation.get_player_value(playerid, pos=Position.OVERALL).player.get_salary_info_for_format(self.league.format)
+            if si is None:
+                avg = '$0.0'
+                l10 = '$0.0'
+                roster = '0.0%'
             else:
-                avg = f'$' + "{:.1f}".format(si.med_salary)
-            l10 = f'$' + "{:.1f}".format(si.last_10)
-            roster = "{:.1f}".format(si.roster_percentage) + '%'
-        return (avg, l10, roster)
+                if self.controller.preferences.get('General', Pref.AVG_SALARY_FOM, fallback=AvgSalaryFom.MEAN.value) == AvgSalaryFom.MEAN.value:
+                    avg = f'$' + "{:.1f}".format(si.avg_salary)
+                else:
+                    avg = f'$' + "{:.1f}".format(si.med_salary)
+                l10 = f'$' + "{:.1f}".format(si.last_10)
+                roster = "{:.1f}".format(si.roster_percentage) + '%'
+            return (avg, l10, roster)
+        return ('$0', '$0', '0%')
 
     def get_row_tags(self, playerid):
         if playerid in self.rosters.index:
@@ -830,10 +838,17 @@ class DraftTool(tk.Frame):
             players = [] 
         else:
             players = player_services.search_by_name(text)
+        if self.value_calculation.format == ScoringFormat.CUSTOM:
+            custom_scoring = custom_scoring_services.get_scoring_format(int(self.value_calculation.get_input(CalculationDataType.CUSTOM_SCORING_FORMAT)))
+        else:
+            custom_scoring = None
         for player in players:
-            si = player.get_salary_info_for_format(self.league.format)
-            if (si is None or si.roster_percentage == 0) and not self.search_unrostered_bv.get():
-                continue
+            if self.league.is_ottoneu():
+                si = player.get_salary_info_for_format(self.league.format)
+                if (si is None or si.roster_percentage == 0) and not self.search_unrostered_bv.get():
+                    continue
+            else:
+                si = None
             id = player.index
             name = player.name
             pos = player.position
@@ -868,9 +883,9 @@ class DraftTool(tk.Frame):
                         pppg = '0.00'
                         spppg = '0.00'
                     else:
-                        h_pts = calculation_services.get_points(pp, Position.OFFENSE)
-                        p_pts = calculation_services.get_points(pp, Position.PITCHER, False)
-                        s_p_pts = calculation_services.get_points(pp, Position.PITCHER, True)
+                        h_pts = calculation_services.get_points(pp, Position.OFFENSE, custom_format=custom_scoring)
+                        p_pts = calculation_services.get_points(pp, Position.PITCHER, False, custom_format=custom_scoring)
+                        s_p_pts = calculation_services.get_points(pp, Position.PITCHER, True, custom_format=custom_scoring)
                         pts = "{:.1f}".format(h_pts + p_pts)
                         spts = "{:.1f}".format(h_pts + s_p_pts)
                         h_g = pp.get_stat(StatType.G_HIT)
@@ -987,8 +1002,16 @@ class DraftTool(tk.Frame):
         self.update_rostered_players()
         pd.increment_completion_percent(5)
 
-        self.league.init_inflation_calc()
-        self.inflation = league_services.calculate_league_inflation(self.league, self.value_calculation, self.inflation_method)
+        if self.league.is_ottoneu():
+            self.league.init_inflation_calc()
+            self.inflation = league_services.calculate_league_inflation(self.league, self.value_calculation, self.inflation_method)
+            if self.controller.preferences.getboolean('Draft', Pref.DOCK_DRAFT_PLAYER_SEARCH, fallback=False):
+                self.inflation_lbl.grid(column=3,row=0)
+            else:
+                self.inflation_lbl.grid(column=0,row=6)
+        else:
+            self.inflation = 0
+            self.inflation_lbl.grid_forget()
 
         pd.set_task_title('Refreshing views...')
         self.set_visible_columns()
@@ -1004,21 +1027,36 @@ class DraftTool(tk.Frame):
             self.start_draft_monitor()
     
     def calc_format_matches_league(self) -> bool:
-        if ScoringFormat.is_points_type(self.league.format):
-            return ScoringFormat.is_points_type(self.value_calculation.format)
-        return self.league.format == self.value_calculation.format
+        if self.league.is_ottoneu():
+            if ScoringFormat.is_points_type(self.league.format):
+                return ScoringFormat.is_points_type(self.value_calculation.format)
+            return self.league.format == self.value_calculation.format
+        return True
 
     def set_visible_columns(self) -> None:
-        salary_cols = ('Avg. Price', 'L10 Price', 'Roster %')
+        if self.league.is_ottoneu():
+            salary_cols = ('Avg. Price', 'L10 Price', 'Roster %')
+        else:
+            salary_cols = tuple()
         stock_overall = player_cols + salary_cols
         stock_search = ('Name','Value','Inf. Cost','Salary','Pos','Team')
+        if self.value_calculation.format == ScoringFormat.CUSTOM:
+            custom_scoring = custom_scoring_services.get_scoring_format(int(self.value_calculation.get_input(CalculationDataType.CUSTOM_SCORING_FORMAT)))
+        else:
+            custom_scoring = None
         if self.value_calculation.projection is None or not self.calc_format_matches_league():
             self.overall_view.table.set_display_columns(stock_overall)
             for pos in self.pos_view:
                 self.pos_view[pos].table.set_display_columns(stock_overall)
-            self.search_view.table.set_display_columns(stock_search + ('Roster %',))
-        elif ScoringFormat.is_points_type(self.league.format):
-            sabr = ScoringFormat.is_sabr(self.league.format)
+            if self.league.is_ottoneu():
+                self.search_view.table.set_display_columns(stock_search + ('Roster %',))
+            else:
+                self.search_view.table.set_display_columns(stock_search)
+        elif (not self.league.is_ottoneu and ScoringFormat.is_points_type(self.value_calculation.format)) or (custom_scoring is not None and custom_scoring.points_format) or ScoringFormat.is_points_type(self.league.format):
+            if self.league.is_ottoneu():
+                sabr = ScoringFormat.is_sabr(self.league.format)
+            else:
+                sabr = ScoringFormat.is_sabr(self.value_calculation.format)
             if sabr:
                 p_points = ('SABR Pts',)
             else:
@@ -1056,25 +1094,53 @@ class DraftTool(tk.Frame):
                     self.pos_view[pos].table.set_display_columns(player_cols + ('Points',) + pos_hit_rate + salary_cols)
                 else:
                     self.pos_view[pos].table.set_display_columns(player_cols + p_points + pitch_rate + salary_cols)
-            self.search_view.table.set_display_columns(stock_search + p_points + hit_rate + pitch_rate + ('Roster %',))
-        elif self.league.format == ScoringFormat.OLD_SCHOOL_5X5:
+            if self.league.is_ottoneu():
+                self.search_view.table.set_display_columns(stock_search + p_points + hit_rate + pitch_rate + ('Roster %',))
+            else:
+                self.search_view.table.set_display_columns(stock_search + p_points + hit_rate + pitch_rate)
+        elif (not self.league.is_ottoneu and self.value_calculation.format == ScoringFormat.OLD_SCHOOL_5X5) or self.league.format == ScoringFormat.OLD_SCHOOL_5X5:
             self.overall_view.table.set_display_columns(stock_overall)
             for pos in self.pos_view:
                 if pos in Position.get_offensive_pos():
                     self.pos_view[pos].table.set_display_columns(player_cols + hit_5x5_cols + salary_cols)
                 else:
                     self.pos_view[pos].table.set_display_columns(player_cols + pitch_5x5_cols + salary_cols)
-            self.search_view.table.set_display_columns(stock_search + ('Roster %',))
-        elif self.league.format == ScoringFormat.CLASSIC_4X4:
+            if self.league.is_ottoneu():
+                self.search_view.table.set_display_columns(stock_search + ('Roster %',))
+            else:
+                self.search_view.table.set_display_columns(stock_search)
+        elif (not self.league.is_ottoneu and self.value_calculation.format == ScoringFormat.CLASSIC_4X4) or self.league.format == ScoringFormat.CLASSIC_4X4:
             self.overall_view.table.set_display_columns(stock_overall)
             for pos in self.pos_view:
                 if pos in Position.get_offensive_pos():
                     self.pos_view[pos].table.set_display_columns(player_cols + hit_4x4_cols + salary_cols)
                 else:
                     self.pos_view[pos].table.set_display_columns(player_cols + pitch_4x4_cols + salary_cols)
-            self.search_view.table.set_display_columns(stock_search + ('Roster %',))
+            if self.league.is_ottoneu():
+                self.search_view.table.set_display_columns(stock_search + ('Roster %',))
+            else:
+                self.search_view.table.set_display_columns(stock_search)
+        elif self.value_calculation.format == ScoringFormat.CUSTOM:
+            #TODO: Figure out these cat columns
+            hit = []
+            pitch = []
+            for cat in custom_scoring.stats:
+                stat = cat.category
+                if stat.hitter and stat.display not in player_cols:
+                    hit.append(stat.display)
+                if not stat.hitter and stat.display not in player_cols:
+                    pitch.append(stat.display)
+            for pos in self.pos_view:
+                if pos in Position.get_offensive_pos():
+                    self.pos_view[pos].table.set_display_columns(player_cols + hit)
+                else:
+                    self.pos_view[pos].table.set_display_columns(player_cols + pitch)
+            self.search_view.table.set_display_columns(stock_search)
         else:
-            raise Exception(f"Unknown league type {self.league.format}")
+            if self.league.is_ottoneu():
+                raise Exception(f"Unknown league type {self.league.format}")
+            else:
+                raise Exception(f"Unhandled scoring format for non-Ottoneu Leauge {self.value_calculation.format}")
     
     def create_roster_df(self):
         rows = self.get_roster_rows()
@@ -1119,6 +1185,10 @@ class DraftTool(tk.Frame):
     
     def get_overall_value_rows(self):
         rows = []
+        if self.value_calculation.format == ScoringFormat.CUSTOM:
+            custom_scoring = custom_scoring_services.get_scoring_format(int(self.value_calculation.get_input(CalculationDataType.CUSTOM_SCORING_FORMAT)))
+        else:
+            custom_scoring = None
         for pv in self.value_calculation.get_position_values(Position.OVERALL):
             row = []
             row.append(pv.player.index)
@@ -1153,9 +1223,9 @@ class DraftTool(tk.Frame):
                         row.append(0)
                         row.append(0)
                     else:
-                        o_points = calculation_services.get_points(pp, Position.OFFENSE)
-                        p_points = calculation_services.get_points(pp, Position.PITCHER,False)
-                        s_p_points = calculation_services.get_points(pp, Position.PITCHER,True)
+                        o_points = calculation_services.get_points(pp, Position.OFFENSE, custom_format=custom_scoring)
+                        p_points = calculation_services.get_points(pp, Position.PITCHER,False, custom_format=custom_scoring)
+                        s_p_points = calculation_services.get_points(pp, Position.PITCHER,True, custom_format=custom_scoring)
                         row.append(o_points + p_points)
                         row.append(o_points + s_p_points)
                         # Currently have a 'PAR' column that might be defunct
@@ -1198,6 +1268,10 @@ class DraftTool(tk.Frame):
         return rows
 
     def get_offensive_rows(self, pos):
+        if self.value_calculation.format == ScoringFormat.CUSTOM:
+            custom_scoring = custom_scoring_services.get_scoring_format(int(self.value_calculation.get_input(CalculationDataType.CUSTOM_SCORING_FORMAT)))
+        else:
+            custom_scoring = None
         rows = []
         for pv in self.value_calculation.get_position_values(pos):
             row = []
@@ -1217,7 +1291,7 @@ class DraftTool(tk.Frame):
                             row.append(pp.get_stat(StatType.PPG))
                             row.append(0)
                         else:
-                            o_points = calculation_services.get_points(pp, Position.OFFENSE,self.league.format == ScoringFormat.SABR_POINTS)
+                            o_points = calculation_services.get_points(pp, Position.OFFENSE,self.league.format == ScoringFormat.SABR_POINTS, custom_format=custom_scoring)
                             row.append(o_points)
                             # Currently have a 'PAR' column that might be defunct
                             row.append("0")
@@ -1295,6 +1369,10 @@ class DraftTool(tk.Frame):
         return rows
     
     def get_pitching_rows(self, pos):
+        if self.value_calculation.format == ScoringFormat.CUSTOM:
+            custom_scoring = custom_scoring_services.get_scoring_format(int(self.value_calculation.get_input(CalculationDataType.CUSTOM_SCORING_FORMAT)))
+        else:
+            custom_scoring = None
         rows = []
         for pv in self.value_calculation.get_position_values(pos):
             row = []
@@ -1317,8 +1395,8 @@ class DraftTool(tk.Frame):
                             row.append(0)
                             row.append(0)
                         else:
-                            p_points = calculation_services.get_points(pp, Position.PITCHER,True)
-                            s_p_points = calculation_services.get_points(pp, Position.PITCHER,False)
+                            p_points = calculation_services.get_points(pp, Position.PITCHER,True, custom_format=custom_scoring)
+                            s_p_points = calculation_services.get_points(pp, Position.PITCHER,False, custom_format=custom_scoring)
                             row.append(p_points)
                             row.append(s_p_points)
                             # Currently have a 'PAR' column that might be defunct
@@ -1410,8 +1488,9 @@ class DraftTool(tk.Frame):
         if self.controller.league is not None and self.league != self.controller.league:
             self.league = self.controller.league
             self.league_text_var.set(f'League {self.controller.league.name} Draft')
-            self.draft = draft_services.get_draft_by_league(self.controller.league.index)
-            self.salary_information_refresh()
+            if self.league.is_ottoneu():
+                self.draft = draft_services.get_draft_by_league(self.controller.league.index)
+                self.salary_information_refresh()
             self.initialize_draft(same_values=True)
     
     def value_change(self):

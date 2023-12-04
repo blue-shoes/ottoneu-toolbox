@@ -155,12 +155,14 @@ class League:
         '''Initialized the required fields to begin an inflation calculation for the league'''
         self.total_salary = 0
         self.total_value = 0
-        self.kept_value = 0
         self.num_rostered = 0
         self.num_valued_rostered = 0
         self.captured_marginal_value = 0
         self.npp_spent = 0
         self.max_npp = 0
+    
+    def is_ottoneu(self):
+        return self.ottoneu_id != -1
 
 @reg.mapped_as_dataclass
 class Team:
