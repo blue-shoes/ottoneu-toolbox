@@ -2,6 +2,7 @@ from datetime import datetime
 from sqlalchemy.orm import joinedload
 from pybaseball import playerid_reverse_lookup
 import logging
+import numpy
 
 from domain.domain import Player, Salary_Refresh, Salary_Info
 from domain.enum import ScoringFormat, Position
@@ -58,8 +59,8 @@ def get_player_by_fg_id(player_id, force_major:bool=False) -> Player:
     with Session() as session:
         if force_major:
             player = session.query(Player).filter(Player.fg_major_id == player_id).first()
-        elif isinstance(player_id, int) or player_id.isdigit():
-            player = session.query(Player).filter(Player.fg_major_id == player_id).first()
+        elif isinstance(player_id, int) or isinstance(player_id, numpy.int64) or isinstance(player_id, numpy.int32) or player_id.isdigit():
+            player = session.query(Player).filter(Player.fg_major_id == int(player_id)).first()
         else:
             player = session.query(Player).filter(Player.fg_minor_id == player_id).first()
     return player

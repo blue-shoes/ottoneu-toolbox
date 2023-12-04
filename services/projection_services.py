@@ -337,17 +337,26 @@ def normalize_batter_projections(proj: Projection, df: DataFrame) -> List[str]:
 
 def calc_average(row) -> float:
     '''Calculates hitter batting average based on other columns.'''
-    return row['H'] / row['AB']
+    try:
+        return row['H'] / row['AB']
+    except ZeroDivisionError:
+        return 0
 
 def calc_obp(row) -> float:
     '''Calculates approximation of hitter OBP based on other columns. Does not account for sacrifices or catcher's interferance.'''
     #This is not strictly the formula for OBP, as the denominator should remove sac bunts, catcher's interference, etc.
     #But this is close enough for our purposes.
-    return (row['H'] + row['BB'] + row['HBP']) / row['PA']
+    try:
+        return (row['H'] + row['BB'] + row['HBP']) / row['PA']
+    except ZeroDivisionError:
+        return 0
 
 def calc_slg(row) -> float:
     '''Calculates hitter slugging based on other columns.'''
-    return (row['H'] + row['2B'] + 2*row['3B'] + 3*row['HR']) / row['AB']
+    try:
+        return (row['H'] + row['2B'] + 2*row['3B'] + 3*row['HR']) / row['AB']
+    except ZeroDivisionError:
+        return 0
 
 def normalize_pitcher_projections(proj: Projection, df: DataFrame) -> List[str]:
     '''Normalizes and error checks a passed pitcher projection DataFrame for later parsing by the Toolbox. Returns a list of errors/issues with the upload.'''
@@ -486,28 +495,47 @@ def __calc_fip(row) -> float:
     '''Approximates pitcher FIP based on other columns. Assums a FIP constant of 3.15.'''
     #Estimated FIP constant of 3.15. This should work well enough for our purposes, which is determining starter/reliever
     #PIP splits
-    cfip = 3.15
-    return (13*row['HR'] + 3*(row['BB'] + row['HBP']) - 2*row['SO']) / row['IP'] + cfip
+    try:
+        cfip = 3.15
+        return (13*row['HR'] + 3*(row['BB'] + row['HBP']) - 2*row['SO']) / row['IP'] + cfip
+    except ZeroDivisionError:
+        return 9.99
 
 def __calc_era(row) -> float:
     '''Calculates pitcher ERA based on other columns'''
-    return row['ER'] / row['IP'] * 9
+    try:
+        return row['ER'] / row['IP'] * 9
+    except ZeroDivisionError:
+        return 9.99
 
 def __calc_whip(row) -> float:
     '''Calculates pitcher WHIP based on other columns'''
-    return (row['H'] + row['BB']) / row['IP']
+    try:
+        return (row['H'] + row['BB']) / row['IP']
+    except ZeroDivisionError:
+        return 9.99
 
 def __calc_hr_per_9(row) -> float:
     '''Calculates pitcher HR/9 based on other columns'''
-    return row['HR'] / row['IP'] * 9
+    try:
+        return row['HR'] / row['IP'] * 9
+    except ZeroDivisionError:
+        return 9.99
 
 def __calc_bb_per_9(row) -> float:
     '''Calculates pitcher BB/9 based on other columns'''
-    return row['BB'] / row['IP'] * 9
+    try:
+        return row['BB'] / row['IP'] * 9
+    except ZeroDivisionError:
+        return 9.99
 
 def __calc_k_per_9(row) -> float:
     '''Calculates pitcher K/9 based on other columns'''
-    return row['SO'] / row['IP'] * 9
+    try:
+        return row['SO'] / row['IP'] * 9
+    except ZeroDivisionError:
+        return 0
+        
 
 def create_projection_from_download(projection: Projection, type:ProjectionType, ros:bool=False, dc_pt:bool=False, year:int=None, progress=None) -> Tuple[DataFrame, DataFrame]:
     '''Creates a Projection based on automatic download and returns the hitter and pitcher dataframes requested.'''
@@ -615,12 +643,14 @@ def convert_to_df(proj:Projection) -> List[DataFrame]:
     for pp in proj.player_projections:
         if len(pos_col) > 0 and len(pitch_col) > 0:
             break
-        if pp.pitcher and len(pitch_col) == 0:
+        if pp.pitcher or pp.two_way and len(pitch_col) == 0:
             for pd in pp.projection_data:
-                pitch_col.append(pd.stat_type)
+                if not pd.stat_type.hitter:
+                    pitch_col.append(pd.stat_type)
         elif not pp.pitcher and not pp.two_way and len(pos_col) == 0:
             for pd in pp.projection_data:
-                pos_col.append(pd.stat_type)
+                if pd.stat_type.hitter:
+                    pos_col.append(pd.stat_type)
     
     pos_rows = []
     pitch_rows = []

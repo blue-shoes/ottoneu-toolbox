@@ -601,7 +601,10 @@ class ValuesCalculation(tk.Frame):
                 else:
                     val.append("{:.2f}".format(f_points / games)) # p/g
                     val.append("{:.2f}".format(f_points / games)) # hp/g
-                    val.append("{:.2f}".format(f_points / pp.get_stat(StatType.PA))) # p/pa
+                    try:
+                        val.append("{:.2f}".format(f_points / pp.get_stat(StatType.PA))) # p/pa
+                    except ZeroDivisionError:
+                        val.append(0)
         else:
             if self.projection.type == ProjectionType.VALUE_DERIVED:
                 val.append(pp.get_stat(StatType.PIP)) # p/ip
@@ -633,13 +636,25 @@ class ValuesCalculation(tk.Frame):
                     val.append("0.00") # s_p/ip
                     val.append("0.00") # s_pp/g
                 else:
-                    val.append("{:.2f}".format(f_points/ip))
+                    try:
+                        val.append("{:.2f}".format(f_points/ip))
+                    except ZeroDivisionError:
+                        val.append(0)
                     val.append("{:.2f}".format(f_points/games))
-                    val.append("{:.2f}".format(s_points/ip))
+                    try:
+                        val.append("{:.2f}".format(s_points/ip))
+                    except ZeroDivisionError:
+                        val.append(0)
                     val.append("{:.2f}".format(s_points/games))
-                    val.append("{:.2f}".format(nsh_f_points/ip))
+                    try:
+                        val.append("{:.2f}".format(nsh_f_points/ip))
+                    except ZeroDivisionError:
+                        val.append(0)
                     val.append("{:.2f}".format(nsh_f_points/games))
-                    val.append("{:.2f}".format(nsh_s_points/ip))
+                    try:
+                        val.append("{:.2f}".format(nsh_s_points/ip))
+                    except ZeroDivisionError:
+                        val.append(0)
                     val.append("{:.2f}".format(nsh_s_points/games))
         val.append("{:.1f}".format(f_points))
         val.append("{:.1f}".format(s_points))

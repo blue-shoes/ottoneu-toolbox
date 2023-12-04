@@ -409,11 +409,14 @@ class ArmValues():
         '''Determines if pitcher has sufficient innings to be included in replacement level calculations. Split role
         pitchers have their innings rationed to role and are checked against an interpolated value.'''
         #Filter pitchers from the data set who don't reach requisite innings. These thresholds are arbitrary.
-        if row['Position(s)'] == 'SP':
-            return row['IP'] >= self.min_sp_ip
-        if row['Position(s)'] == 'RP':
-            return row['IP'] >= self.min_rp_ip
-        if row['G'] == 0: return False
+        try:
+            if row['Position(s)'] == 'SP':
+                return row['IP'] >= self.min_sp_ip
+            if row['Position(s)'] == 'RP':
+                return row['IP'] >= self.min_rp_ip
+            if row['G'] == 0: return False
+        except KeyError:
+            return False
         #Got to here, this is a SP/RP with > 0 G. Ration their innings threshold based on their projected GS/G ratio
         start_ratio = row['GS'] / row['G']
         return row['IP'] > (self.min_sp_ip - self.min_rp_ip)*start_ratio + self.min_rp_ip
