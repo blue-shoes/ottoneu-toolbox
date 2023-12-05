@@ -596,23 +596,26 @@ class DraftTool(tk.Frame):
             return
         if not init:
             self.__refresh_views(drafted=drafted)
-        return drafted
         prog.complete()
+        return drafted
     
     def __add_trans_to_rosters(self, player:Player, salary:int, team_id:int, add_player:bool=True):
         self.rostered_ids.append(player.index)
         for team in self.league.teams:
-            if team.league_id == team_id:
+            if team.site_id == team_id:
                 rs = Roster_Spot()
                 rs.player = player
+                rs.player_id = player.index
                 rs.salary = salary
                 team.roster_spots.append(rs)
+                break
         pv = self.value_calculation.get_player_value(player.index, Position.OVERALL)
         if pv is not None and pv.value > 0:
             val = pv.value
         else:
             val = 0
-        self.inflation = league_services.update_league_inflation_last_trans(self.league, val, salary=0, inf_method=self.inflation_method, add_player=add_player)
+        if self.league.is_ottoneu():
+            self.inflation = league_services.update_league_inflation_last_trans(self.league, val, salary=0, inf_method=self.inflation_method, add_player=add_player)
 
     def __refresh_thread(self):
         last_time = datetime.now() - timedelta(minutes=30)
@@ -647,10 +650,11 @@ class DraftTool(tk.Frame):
                             player = player_services.get_player_by_ottoneu_id(int(otto_id))
                             if player is None:
                                 logging.info(f'Otto id {otto_id} not in database')
-                                if 'CUT' in last_trans.iloc[index]['Type'].upper():
-                                    self.inflation = league_services.update_league_inflation_last_trans(self.league, value=0, salary=salary, inf_method=self.inflation_method, add_player=False)
-                                else:
-                                    self.inflation = league_services.update_league_inflation_last_trans(self.league, value=0, salary=salary, inf_method=self.inflation_method)
+                                if self.league.is_ottoneu():
+                                    if 'CUT' in last_trans.iloc[index]['Type'].upper():
+                                        self.inflation = league_services.update_league_inflation_last_trans(self.league, value=0, salary=salary, inf_method=self.inflation_method, add_player=False)
+                                    else:
+                                        self.inflation = league_services.update_league_inflation_last_trans(self.league, value=0, salary=salary, inf_method=self.inflation_method)
                                 index -= 1
                                 continue
                             
@@ -670,7 +674,8 @@ class DraftTool(tk.Frame):
                                         if found:
                                             salary = rs.salary
                                             pv = self.value_calculation.get_player_value(player.index, Position.OVERALL)
-                                            self.inflation = league_services.update_league_inflation_last_trans(self.league, value=pv.value, salary=salary, inf_method=self.inflation_method, add_player=False)
+                                            if self.league.is_ottoneu():
+                                                self.inflation = league_services.update_league_inflation_last_trans(self.league, value=pv.value, salary=salary, inf_method=self.inflation_method, add_player=False)
                                             team.roster_spots.remove(rs)
                                         break
                         index -= 1
@@ -1063,6 +1068,11 @@ class DraftTool(tk.Frame):
             self.__stop_draft_monitor()
         pd = progress.ProgressDialog(self.parent, 'Initializing Draft Session')
 
+        if self.rostered_detached_id_map is not None and len(self.rostered_detached_id_map) > 0:
+            self.__show_hide_toggle(self.rostered_ids, self.rostered_detached_id_map, True)
+        if self.removed_detached_id_map is not None and len(self.removed_detached_id_map) > 0:
+            self.__show_hide_toggle(self.removed_players, self.removed_detached_id_map, True)
+
         self.rostered_ids = []
         rostered = []
         self.rostered_detached_id_map = {}
@@ -1094,7 +1104,7 @@ class DraftTool(tk.Frame):
             else:
                 self.inflation_lbl.grid(column=0,row=6)
         else:
-            self.inflation = 0
+            self.inflation = 1
             self.inflation_lbl.grid_forget()
 
         pd.set_task_title('Refreshing views...')
@@ -1144,7 +1154,7 @@ class DraftTool(tk.Frame):
                 self.search_view.table.set_display_columns(stock_search + ('Roster %',))
             else:
                 self.search_view.table.set_display_columns(stock_search)
-        elif (not self.league.is_ottoneu and ScoringFormat.is_points_type(self.value_calculation.format)) or (custom_scoring is not None and custom_scoring.points_format) or ScoringFormat.is_points_type(self.league.format):
+        elif (not self.league.is_ottoneu() and ScoringFormat.is_points_type(self.value_calculation.format)) or (custom_scoring is not None and custom_scoring.points_format) or ScoringFormat.is_points_type(self.league.format):
             if self.league.is_ottoneu():
                 sabr = ScoringFormat.is_sabr(self.league.format)
             else:
@@ -1190,7 +1200,7 @@ class DraftTool(tk.Frame):
                 self.search_view.table.set_display_columns(stock_search + p_points + hit_rate + pitch_rate + ('Roster %',))
             else:
                 self.search_view.table.set_display_columns(stock_search + p_points + hit_rate + pitch_rate)
-        elif (not self.league.is_ottoneu and self.value_calculation.format == ScoringFormat.OLD_SCHOOL_5X5) or self.league.format == ScoringFormat.OLD_SCHOOL_5X5:
+        elif (not self.league.is_ottoneu() and self.value_calculation.format == ScoringFormat.OLD_SCHOOL_5X5) or self.league.format == ScoringFormat.OLD_SCHOOL_5X5:
             self.overall_view.table.set_display_columns(stock_overall)
             for pos, view in self.pos_view.items():
                 if pos in Position.get_offensive_pos():
@@ -1201,7 +1211,7 @@ class DraftTool(tk.Frame):
                 self.search_view.table.set_display_columns(stock_search + ('Roster %',))
             else:
                 self.search_view.table.set_display_columns(stock_search)
-        elif (not self.league.is_ottoneu and self.value_calculation.format == ScoringFormat.CLASSIC_4X4) or self.league.format == ScoringFormat.CLASSIC_4X4:
+        elif (not self.league.is_ottoneu() and self.value_calculation.format == ScoringFormat.CLASSIC_4X4) or self.league.format == ScoringFormat.CLASSIC_4X4:
             self.overall_view.table.set_display_columns(stock_overall)
             for pos, view in self.pos_view.items():
                 if pos in Position.get_offensive_pos():
@@ -1232,7 +1242,7 @@ class DraftTool(tk.Frame):
             if self.league.is_ottoneu():
                 raise Exception(f"Unknown league type {self.league.format}")
             else:
-                raise Exception(f"Unhandled scoring format for non-Ottoneu Leauge {self.value_calculation.format}")
+                raise Exception(f"Unhandled scoring format for non-Ottoneu League {self.value_calculation.format.short_name}")
 
     def league_change(self):
         while self.controller.league is None:

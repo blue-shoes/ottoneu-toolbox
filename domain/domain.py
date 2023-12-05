@@ -154,7 +154,7 @@ class League:
     def get_player_salary(self, player_id:int) -> int:
         for team in self.teams:
             for rs in team.roster_spots:
-                if rs.player_id == player_id:
+                if rs.player.index == player_id:
                     return rs.salary
         return 0
     
