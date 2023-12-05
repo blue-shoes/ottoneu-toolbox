@@ -4,22 +4,18 @@ from tkinter import ttk
 import tkinter.messagebox as mb
 from tkinter.messagebox import OK
 import os
-import os.path
 import pandas as pd
-from pandas import DataFrame
-import numpy as np
-import util.string_util
 import queue
 import logging
 import threading
 from time import sleep
 from datetime import datetime, timedelta
-from typing import Dict
+from typing import Dict, List
 
 from functools import partial
 
 from scrape.scrape_ottoneu import Scrape_Ottoneu 
-from domain.domain import League, Player, ValueCalculation
+from domain.domain import League, Player, ValueCalculation, PlayerValue, Roster_Spot
 from domain.enum import Position, ScoringFormat, StatType, Preference as Pref, AvgSalaryFom, RankingBasis, ProjectionType, InflationMethod, CalculationDataType
 from ui.table.table import Table, sort_cmp, ScrollableTreeFrame
 from ui.dialog import progress, draft_target, cm_team_assignment
@@ -35,13 +31,18 @@ hit_5x5_cols = ('R', 'HR', 'RBI', 'SB', 'AVG')
 pitch_5x5_cols = ('W', 'SV', 'K', 'ERA', 'WHIP')
 hit_4x4_cols = ('R', 'HR', 'OBP', 'SLG')
 pitch_4x4_cols = ('K', 'HR/9', 'ERA', 'WHIP')
+all_hitting_stats = tuple([st.display for st in StatType.get_all_hit_stattype()])
+all_pitching_stats = tuple([st.display for st in StatType.get_all_pitch_stattype()])
 
 class DraftTool(tk.Frame):
 
     league:League
     value_calculation:ValueCalculation
     pos_view:Dict[Position, ScrollableTreeFrame]
-    pos_values:Dict[Position, DataFrame]
+    run_event:threading.Event
+    rostered_ids:List[int]
+    rostered_detached_id_map:Dict[ScrollableTreeFrame, List[str]]
+    removed_detached_id_map:Dict[ScrollableTreeFrame, List[str]]
 
     def __init__(self, parent, controller):
         tk.Frame.__init__(self, parent)
@@ -59,8 +60,8 @@ class DraftTool(tk.Frame):
         self.show_removed_players.set(False)
         self.search_unrostered_bv = tk.BooleanVar()
         self.search_unrostered_bv.set(False)
-        self.targeted_players = pd.DataFrame()
         self.removed_players = []
+        self.rostered_ids = []
         self.league = None
         self.value_calculation = None
         self.cm_text = StringVar()
@@ -70,8 +71,10 @@ class DraftTool(tk.Frame):
         self.stop_draft_sv = StringVar()
         self.stop_draft_sv.set('Stop Draft Monitor')
         self.inflation_method = self.controller.preferences.get('General', Pref.INFLATION_METHOD, fallback=InflationMethod.ROSTER_SPOTS_ONLY.value)
+        self.rostered_detached_id_map = {}
+        self.removed_detached_id_map = {}
 
-        self.create_main()
+        self.__create_main()
     
     def on_show(self):
         if self.controller.league is None or not league_services.league_exists(self.controller.league):
@@ -93,7 +96,7 @@ class DraftTool(tk.Frame):
 
         self.draft = draft_services.get_draft_by_league(self.controller.league.index)
 
-        self.initialize_draft(same_values)
+        self.__initialize_draft(same_values)
 
         #Clean up previous demo run
         if os.path.exists(draft_demo.demo_trans):
@@ -113,7 +116,7 @@ class DraftTool(tk.Frame):
             salary_services.update_salary_info(format=self.league.format)
         pd.complete()
 
-    def create_main(self):
+    def __create_main(self):
         self.league_text_var = StringVar()
         if self.controller.league is None:
             self.league_text_var.set("Draft")
@@ -130,7 +133,7 @@ class DraftTool(tk.Frame):
         self.tab_control = ttk.Notebook(running_list_frame, width=570)
         self.tab_control.grid(row=0, column=0, sticky='ns')
 
-        self.create_search()
+        self.__create_search()
 
         #TODO: Clean this up
         self.standings = Standings(self)
@@ -139,11 +142,11 @@ class DraftTool(tk.Frame):
         button_frame = ttk.Frame(running_list_frame)
         button_frame.grid(row=0, column=1, sticky=tk.N, pady=15)
 
-        show_drafted_btn = ttk.Checkbutton(button_frame, text="Show rostered players?", variable=self.show_drafted_players, command=self.refresh_views)
+        show_drafted_btn = ttk.Checkbutton(button_frame, text="Show rostered players?", variable=self.show_drafted_players, command=self.__toggle_show_drafted)
         show_drafted_btn.grid(row=0, column=1, sticky=tk.NW, pady=5)
         show_drafted_btn.state(['!alternate'])
 
-        show_removed_btn = ttk.Checkbutton(button_frame, text="Show removed players?", variable=self.show_removed_players, command=self.refresh_views)
+        show_removed_btn = ttk.Checkbutton(button_frame, text="Show removed players?", variable=self.show_removed_players, command=self.__toggle_show_removed)
         show_removed_btn.grid(row=1, column=1, sticky=tk.NW)
         show_removed_btn.state(['!alternate'])
 
@@ -158,13 +161,13 @@ class DraftTool(tk.Frame):
         align = {}
         align['Name'] = W
         custom_sort = {}
-        custom_sort['Value'] = partial(self.default_value_sort, Position.OVERALL)
+        custom_sort['Value'] = partial(self.__default_value_sort, Position.OVERALL)
         self.overall_view = ov = ScrollableTreeFrame(overall_frame, cols,sortable_columns=cols, column_widths=widths, init_sort_col='Value', column_alignments=align, custom_sort=custom_sort, pack=False)
-        ov.table.set_row_select_method(self.on_select)
-        ov.table.set_right_click_method(self.player_rclick)
-        self.set_row_colors(ov.table)
+        ov.table.set_row_select_method(self.__on_select)
+        ov.table.set_right_click_method(self.__player_rclick)
+        self.__set_row_colors(ov.table)
         ov.pack(fill='both', expand=True)
-        ov.table.set_refresh_method(self.refresh_overall_view)
+        ov.table.set_refresh_method(self.__refresh_overall_view)
 
         for pos in (Position.get_offensive_pos() + Position.get_pitching_pos()):
             pos_frame = ttk.Frame(self.tab_control)
@@ -174,13 +177,13 @@ class DraftTool(tk.Frame):
             else:
                 cols = ('Name','Value','Inf. Cost','Pos','Team','Points','SABR Pts','P/IP','SABR PIP','PP/G','SABR PPG', 'Avg. Price', 'L10 Price', 'Roster %', 'K', 'ERA', 'WHIP', 'W', 'SV', 'HR/9')
             custom_sort = {}
-            custom_sort['Value'] = partial(self.default_value_sort, pos)
+            custom_sort['Value'] = partial(self.__default_value_sort, pos)
             self.pos_view[pos] = pv = ScrollableTreeFrame(pos_frame, cols,sortable_columns=cols, column_widths=widths, column_alignments=align, init_sort_col='Value', custom_sort=custom_sort, pack=False)
             pv.pack(fill='both', expand=True)
-            pv.table.set_row_select_method(self.on_select)
-            pv.table.set_right_click_method(self.player_rclick)
-            self.set_row_colors(pv.table)
-            pv.table.set_refresh_method(lambda _pos = pos: self.refresh_pos_table(_pos))
+            pv.table.set_row_select_method(self.__on_select)
+            pv.table.set_right_click_method(self.__player_rclick)
+            self.__set_row_colors(pv.table)
+            pv.table.set_refresh_method(lambda _pos = pos: self.__refresh_pos_table(_pos))
         
         if self.controller.preferences.getboolean('Draft', Pref.DOCK_DRAFT_TARGETS, fallback=False):
             target_frame = ttk.Frame(self.tab_control)
@@ -201,28 +204,28 @@ class DraftTool(tk.Frame):
         self.target_table = tt = ScrollableTreeFrame(target_frame, columns=cols, column_alignments=align, 
             column_widths=widths, sortable_columns=cols, reverse_col_sort=rev_sort, init_sort_col='Value', pack=False)
         tt.pack(fill='both', expand=True)
-        tt.table.set_row_select_method(self.on_select)
-        tt.table.set_right_click_method(self.target_rclick)
-        self.set_row_colors(tt.table, targets=False)
-        tt.table.set_refresh_method(self.refresh_targets)
+        tt.table.set_row_select_method(self.__on_select)
+        tt.table.set_right_click_method(self.__target_rclick)
+        self.__set_row_colors(tt.table, targets=False)
+        tt.table.set_refresh_method(self.__refresh_targets)
     
-    def create_search(self):
+    def __create_search(self):
         self.values_name = StringVar()
         if self.controller.preferences.getboolean('Draft', Pref.DOCK_DRAFT_PLAYER_SEARCH, fallback=False):
             monitor_frame = ttk.Frame(self)
             monitor_frame.grid(row=1, column=0, columnspan=2)
-            self.start_monitor = ttk.Button(monitor_frame, textvariable=self.start_draft_sv, command=self.start_draft_monitor)
+            self.start_monitor = ttk.Button(monitor_frame, textvariable=self.start_draft_sv, command=self.__start_draft_monitor)
             self.start_monitor.grid(column=0,row=0)
             CreateToolTip(self.start_monitor, 'Begin watching league for new draft results')
             self.monitor_status = tk.StringVar()
             self.monitor_status.set('Not started')
             self.monitor_status_lbl = tk.Label(monitor_frame, textvariable=self.monitor_status, fg='red')
             self.monitor_status_lbl.grid(column=2,row=0)
-            self.stop_monitor = ttk.Button(monitor_frame, textvariable=self.stop_draft_sv, command=self.stop_draft_monitor)
+            self.stop_monitor = ttk.Button(monitor_frame, textvariable=self.stop_draft_sv, command=self.__stop_draft_monitor)
             self.stop_monitor.grid(column=1,row=0)
             self.stop_monitor['state'] = DISABLED
             CreateToolTip(self.stop_monitor, 'Stop watching league for new draft results')
-            self.link_cm_btn = btn = ttk.Button(monitor_frame, textvariable=self.cm_text, command=self.link_couchmanagers)
+            self.link_cm_btn = btn = ttk.Button(monitor_frame, textvariable=self.cm_text, command=self.__link_couchmanagers)
             btn.grid(column=2, row=0)
             CreateToolTip(btn, 'Link a CouchManagers draft to this league.')
 
@@ -245,7 +248,7 @@ class DraftTool(tk.Frame):
             f = ttk.Frame(search_frame, border=4)
             f.pack(side=TOP, fill='both', expand=True)
 
-            self.create_search_table(f, 0, 0)
+            self.__create_search_table(f, 0, 0)
 
             search_unrostered_btn = ttk.Checkbutton(entry_frame, text="Search 0% Rostered?", variable=self.search_unrostered_bv, command=self.search_view.table.refresh)
             search_unrostered_btn.pack(side=LEFT, fill='none', expand=False, padx=5)
@@ -253,7 +256,6 @@ class DraftTool(tk.Frame):
             CreateToolTip(search_unrostered_btn, 'Include 0% rostered players in the search results')
         
         else:
-
             search_frame = ttk.Frame(self)
             search_frame.grid(column=0,row=1, padx=5, sticky=tk.NW, pady=17)
             ttk.Label(search_frame, text = 'Player Search: ', font='bold').grid(column=0,row=1,pady=5)
@@ -262,18 +264,18 @@ class DraftTool(tk.Frame):
             ss.trace("w", lambda name, index, mode, sv=ss: self.search_view.table.refresh())
             ttk.Entry(search_frame, textvariable=ss).grid(column=1,row=1)
 
-            self.start_monitor = ttk.Button(search_frame, textvariable=self.start_draft_sv, command=self.start_draft_monitor)
+            self.start_monitor = ttk.Button(search_frame, textvariable=self.start_draft_sv, command=self.__start_draft_monitor)
             self.start_monitor.grid(column=0,row=3)
             CreateToolTip(self.start_monitor, 'Begin watching league for new draft results')
             self.monitor_status = tk.StringVar()
             self.monitor_status.set('Monitor not started')
             self.monitor_status_lbl = tk.Label(search_frame, textvariable=self.monitor_status, fg='red')
             self.monitor_status_lbl.grid(column=1,row=3)
-            self.stop_monitor = ttk.Button(search_frame, textvariable=self.stop_draft_sv, command=self.stop_draft_monitor)
+            self.stop_monitor = ttk.Button(search_frame, textvariable=self.stop_draft_sv, command=self.__stop_draft_monitor)
             self.stop_monitor.grid(column=0,row=4)
             CreateToolTip(self.stop_monitor, 'Stop watching league for new draft results')
             self.stop_monitor['state'] = DISABLED
-            self.link_cm_btn = btn = ttk.Button(search_frame, textvariable=self.cm_text, command=self.link_couchmanagers)
+            self.link_cm_btn = btn = ttk.Button(search_frame, textvariable=self.cm_text, command=self.__link_couchmanagers)
             btn.grid(column=0, row=5)
             CreateToolTip(btn, 'Link a CouchManagers draft to this league.')
 
@@ -294,14 +296,14 @@ class DraftTool(tk.Frame):
             
             ttk.Label(f, text = 'Search Results', font='bold').pack(expand=False, fill='x', side=TOP)
 
-            self.create_search_table(f, col=0, row=1)
+            self.__create_search_table(f, col=0, row=1)
 
             search_unrostered_btn = ttk.Checkbutton(search_frame, text="Search 0% Rostered?", variable=self.search_unrostered_bv, command=self.search_view.table.refresh)
             search_unrostered_btn.grid(row=2, column=1, sticky=tk.NW, pady=5)
             search_unrostered_btn.state(['!alternate'])
             CreateToolTip(search_unrostered_btn, 'Include 0% rostered players in the search results')
     
-    def create_search_table(self, parent, col, row, col_span=1):
+    def __create_search_table(self, parent, col, row, col_span=1):
         cols = ('Name','Value','Salary','Inf. Cost','Pos','Team','Points','SABR Pts', 'P/G','HP/G','P/PA','P/IP', 'SABR PIP','PP/G', 'SABR PPG', 'Roster %')
         widths = {}
         widths['Name'] = 125
@@ -309,43 +311,39 @@ class DraftTool(tk.Frame):
         align = {}
         align['Name'] = W
         custom_sort = {}
-        custom_sort['Value'] = self.default_search_sort
+        custom_sort['Value'] = self.__default_search_sort
         self.search_view = sv = ScrollableTreeFrame(parent, columns=cols, column_alignments=align, column_widths=widths, sortable_columns=cols, init_sort_col='Value', custom_sort=custom_sort, pack=False)      
         sv.pack(fill='both', expand=True, side=TOP)
-        sv.table.set_row_select_method(self.on_select)
-        sv.table.set_right_click_method(self.player_rclick)
-        self.set_row_colors(sv.table)
-        sv.table.set_refresh_method(self.update_player_search)
+        sv.table.set_row_select_method(self.__on_select)
+        sv.table.set_right_click_method(self.__player_rclick)
+        self.__set_row_colors(sv.table)
+        sv.table.set_refresh_method(self.__update_player_search)
 
-    def target_rclick(self, event):
-        iid = event.widget.identify_row(event.y)
-        event.widget.selection_set(iid)
-        playerid = int(event.widget.item(event.widget.selection()[0])["text"])
+    def __target_rclick(self, event):
+        playerid = int(event.widget.identify_row(event.y))
         popup = tk.Menu(self.parent, tearoff=0)
-        popup.add_command(label="Change Target Price", command=lambda: self.target_player(playerid))
-        popup.add_command(label="Remove Target", command=lambda: self.remove_target(playerid))
+        popup.add_command(label="Change Target Price", command=lambda: self.__target_player(playerid))
+        popup.add_command(label="Remove Target", command=lambda: self.__remove_target(playerid))
         try:
             popup.post(event.x_root, event.y_root)
         finally:
             popup.grab_release()
 
-    def player_rclick(self, event):
-        iid = event.widget.identify_row(event.y)
-        event.widget.selection_set(iid)
-        playerid = int(event.widget.item(event.widget.selection()[0])["text"])
+    def __player_rclick(self, event):
+        playerid = int(event.widget.identify_row(event.y))
         popup = tk.Menu(self.parent, tearoff=0)
-        popup.add_command(label="Target Player", command=lambda: self.target_player(int(playerid)))
+        popup.add_command(label="Target Player", command=lambda: self.__target_player(int(playerid)))
         popup.add_separator()
         if playerid in self.removed_players:
-            popup.add_command(label='Restore Player', command=lambda: self.restore_player(int(playerid)))
+            popup.add_command(label='Restore Player', command=lambda: self.__restore_player(int(playerid)))
         else:
-            popup.add_command(label='Remove Player', command=lambda: self.remove_player(int(playerid)))
+            popup.add_command(label='Remove Player', command=lambda: self.__remove_player(int(playerid)))
         try:
             popup.post(event.x_root, event.y_root)
         finally:
             popup.grab_release()
     
-    def target_player(self, playerid):
+    def __target_player(self, playerid):
         target = self.draft.get_target_by_player(playerid)
         if target is None:
             dialog = draft_target.Dialog(self, playerid)
@@ -358,37 +356,53 @@ class DraftTool(tk.Frame):
                 draft_services.update_target(target, dialog.price)
                 self.draft.set_target(playerid, dialog.price)
         if dialog.status == OK:
-            self.refresh_planning_frame()
-            self.set_player_tags_all_tables(playerid)
+            self.__refresh_planning_frame()
+            self.__set_player_tags_all_tables(playerid)
     
-    def remove_target(self, playerid):
+    def __remove_target(self, playerid):
         target = self.draft.get_target_by_player(playerid)
         self.draft.targets.remove(target)
         draft_services.delete_target(target.index)
-        self.refresh_planning_frame()
-        self.set_player_tags_all_tables(playerid)
+        self.__refresh_planning_frame()
+        self.__set_player_tags_all_tables(playerid)
     
-    def remove_player(self, playerid):
+    def __remove_player(self, playerid):
         self.removed_players.append(playerid)
-        self.refresh_views()
+        self.__set_player_tags_all_tables(playerid)
+        if not self.show_removed_players.get():
+            str_pid = str(playerid)
+            for view, row_list in self.removed_detached_id_map.items():
+                if str_pid in view.table.get_children():
+                    row_list.append(str_pid)
+                    view.table.detach(str_pid)
     
-    def restore_player(self, playerid):
+    def __restore_player(self, playerid):
         self.removed_players.remove(playerid)
-        self.refresh_views()
+        if not self.show_removed_players.get():
+            str_pid = str(playerid)
+            for view, row_list in self.removed_detached_id_map.items():
+                if str_pid in row_list:
+                    row_list.remove(str_pid)
+                    view.table.reattach(str_pid, '', tk.END)
+                    view.table.resort()
+        self.__set_player_tags_all_tables(playerid)
     
-    def set_player_tags_all_tables(self, player_id):
-        tags = self.get_row_tags(player_id)
-        self.overall_view.table.set_tags_by_row_text(player_id, tags)
-        for pos in self.pos_view:
-            self.pos_view[pos].table.set_tags_by_row_text(player_id, tags)
-        self.search_view.table.set_tags_by_row_text(player_id, tags)
+    def __set_player_tags_all_tables(self, player_id):
+        tags = self.__get_row_tags(player_id)
+        pid_str = str(player_id)
+        if pid_str in self.overall_view.table.get_children():
+            self.overall_view.table.item(pid_str, tags=tags)
+        for _, view in self.pos_view.items():
+            if pid_str in view.table.get_children():
+                view.table.item(pid_str, tags=tags)
+        if pid_str in self.search_view.table.get_children():
+            self.search_view.table.item(pid_str, tags=tags)
 
-    def on_select(self, event):
+    def __on_select(self, event:Event):
         if len(event.widget.selection()) == 1:
-            print(f'Selection is {int(event.widget.item(event.widget.selection()[0])["text"])}')
-    
+            print(f'Selection is {int(event.widget.selection()[0])}')
 
-    def default_value_sort(self, pos:Position):
+    def __default_value_sort(self, pos:Position):
         if pos == Position.OVERALL:
             pos_table = self.overall_view.table
         else:
@@ -416,15 +430,15 @@ class DraftTool(tk.Frame):
                     #TODO: I'd like this to be WHIP, but need to make it not reverse sort then
                     col2 = 'K'
         l = [((pos_table.set(k, 'Value'), pos_table.set(k,col2)), k) for k in pos_table.get_children('')]
-        l = sorted(l, reverse=pos_table.reverse_sort['Value'], key=lambda x: self.sort_dual_columns(x))
+        l = sorted(l, reverse=pos_table.reverse_sort['Value'], key=lambda x: self.__sort_dual_columns(x))
         return l
 
-    def default_search_sort(self):
+    def __default_search_sort(self):
         l = [((self.search_view.table.set(k, 'Value'), self.search_view.table.set(k,'Roster %')), k) for k in self.search_view.table.get_children('')]
-        l = sorted(l, reverse=self.search_view.table.reverse_sort['Value'], key=lambda x: self.sort_dual_columns(x))
+        l = sorted(l, reverse=self.search_view.table.reverse_sort['Value'], key=lambda x: self.__sort_dual_columns(x))
         return l
     
-    def sort_dual_columns(self, cols):
+    def __sort_dual_columns(self, cols):
         primary = float(cols[0][0][1:])
         val = cols[0][1][:-1]
         if val is None or val == '':
@@ -433,7 +447,7 @@ class DraftTool(tk.Frame):
             secondary = float(val)
         return (primary, secondary)
 
-    def start_draft_monitor(self):
+    def __start_draft_monitor(self):
         if self.draft.cm_draft is None:
             self.monitor_status.set('Draft Started')
             self.monitor_status_lbl.config(fg='green')
@@ -442,12 +456,12 @@ class DraftTool(tk.Frame):
             if self.run_event.is_set():
                 self.run_event.clear()
                 logging.info('---Starting Draft Monitor---')
-                self.monitor_thread = threading.Thread(target = self.refresh_thread)
+                self.monitor_thread = threading.Thread(target = self.__refresh_thread)
                 self.monitor_thread.daemon = True
                 self.monitor_thread.start()
                 
                 self.parent.update_idletasks()
-                self.parent.after(1000, self.update_ui)
+                self.parent.after(1000, self.__update_ui)
 
             if self.demo_source:
                 self.demo_thread = threading.Thread(target=draft_demo.demo_draft, args=(self.league, self.run_event))
@@ -455,15 +469,15 @@ class DraftTool(tk.Frame):
                 self.demo_thread.start()
         else:
             if self.draft.cm_draft.setup:
-                self.resolve_cm_draft_with_rosters(init=False)
+                self.__resolve_cm_draft_with_rosters(init=False)
             else:
-                self.check_new_cm_teams()
+                self.__check_new_cm_teams()
     
     def update(self):
         league_services.calculate_league_table(self.league, self.value_calculation, fill_pt=(self.standings.standings_type.get() == 1), inflation=self.inflation)
         self.standings.refresh_standings()
 
-    def update_ui(self):
+    def __update_ui(self):
         if self.run_event.is_set() and self.queue.empty():
             self.stop_monitor['state'] = DISABLED
             return
@@ -471,15 +485,14 @@ class DraftTool(tk.Frame):
             if str(self.stop_monitor['state']) == DISABLED:
                 self.stop_monitor['state'] = ACTIVE
             if not self.queue.empty():
-                key, data = self.queue.get()
-                logging.debug(f'Updating the following positions: {data}')
-                self.refresh_views(data)
+                _, data = self.queue.get()
+                self.__refresh_views(data[0], data[1])
         except Exception as Argument:
             logging.exception('Exception updating Draft Tool UI.')
         finally:
-            self.parent.after(1000, self.update_ui)
+            self.parent.after(1000, self.__update_ui)
     
-    def stop_draft_monitor(self):
+    def __stop_draft_monitor(self):
         if self.draft.cm_draft is None:
             logging.info('!!!Stopping Draft Monitor!!!')
             self.run_event.set()
@@ -489,11 +502,11 @@ class DraftTool(tk.Frame):
             self.monitor_status_lbl.config(fg='red')
             self.parent.update_idletasks()
         else:
-            self.unlink_couchmanagers()
+            self.__unlink_couchmanagers()
     
-    def link_couchmanagers(self):
+    def __link_couchmanagers(self):
         if self.draft.cm_draft is not None:
-            if not self.unlink_couchmanagers():
+            if not self.__unlink_couchmanagers():
                 return
         dialog = couchmanagers_import.Dialog(self.master, self.draft)
         if dialog.draft is not None and dialog.draft.cm_draft is not None:
@@ -510,17 +523,17 @@ class DraftTool(tk.Frame):
             self.stop_monitor['state'] = ACTIVE
             CreateToolTip(self.stop_monitor, 'Removes the connection to the CouchManagers draft for the league and reverts to the Ottoneu-only rosters.')
             if self.draft.cm_draft.setup:
-                self.resolve_cm_draft_with_rosters(init=False)
+                self.__resolve_cm_draft_with_rosters(init=False)
             else:
-                self.check_new_cm_teams()
+                self.__check_new_cm_teams()
 
-    def unlink_couchmanagers(self):
+    def __unlink_couchmanagers(self):
         if mb.askyesno('Link New CouchManagers?', 'This will delete the current CouchManagers information for this draft. Continue?'):
             setup = self.draft.cm_draft.setup
             draft_services.delete_couchmanagers_draft(self.draft.cm_draft)
             self.draft.cm_draft = None
             if setup:
-                self.initialize_draft(same_values=True)
+                self.__initialize_draft(same_values=True)
             self.monitor_status.set('Not started')
             self.monitor_status_lbl.config(fg='red')
             self.start_draft_sv.set('Start Draft Monitor')
@@ -531,7 +544,7 @@ class DraftTool(tk.Frame):
             return True
         return False
     
-    def check_new_cm_teams(self):
+    def __check_new_cm_teams(self):
         prog = progress.ProgressDialog(self, 'Getting CM Draft Info...')
         prog.set_completion_percent(33)
         cm_teams = draft_services.get_couchmanagers_teams(self.draft.cm_draft.cm_draft_id)
@@ -553,11 +566,11 @@ class DraftTool(tk.Frame):
             if dialog.status == OK:
                 self.draft = dialog.draft
                 if self.draft.cm_draft.setup:
-                    self.resolve_cm_draft_with_rosters()
+                    self.__resolve_cm_draft_with_rosters()
                     self.monitor_status.set(f'Using CM Draft {self.draft.cm_draft.cm_draft_id}')
                     self.monitor_status_lbl.config(fg='green')
                 
-    def resolve_cm_draft_with_rosters(self, init:bool=True):
+    def __resolve_cm_draft_with_rosters(self, init:bool=True) -> List[Player]:
         prog = progress.ProgressDialog(self.parent, 'Updating Slow Draft Results...')
         prog.set_task_title('Getting CouchManagers Results...')
         prog.increment_completion_percent(15)
@@ -568,64 +581,40 @@ class DraftTool(tk.Frame):
             return
         prog.set_task_title('Resolving rosters...')
         prog.increment_completion_percent(50)
-        pos_val = self.values.loc[~(self.values['Value'] < 1)]
-        rows = []
+        drafted = []
         for _, cm_player in cm_rosters_df.iterrows():
-            if cm_player['ottid'] in set(self.rosters['ottoneu ID']):
+            if self.league.is_rostered_by_ottoneu_id(cm_player['ottid']):
                 continue
             salary = string_util.parse_dollar(cm_player['Amount'])
-            self.league.total_salary += salary
-            self.league.num_rostered += 1
-            if cm_player['ottid'] == 0:
-                if salary > 7:
-                    self.league.npp_spent += 4
-                else:
-                    self.league.npp_spent += min(salary, 3 + (salary-3) - 0.125 * pow(salary-3,2)) - 1
-                continue
-            row = []
             player = player_services.get_player_by_ottoneu_id(cm_player['ottid'])
-            row.append(player.index)
-            row.append(self.draft.cm_draft.get_toolbox_team_index_by_cm_team_id(cm_player['Team Number']))
-            row.append(cm_player['ottid'])
-            row.append(salary)
-            rows.append(row)
-            val = string_util.parse_dollar(self.values.at[player.index, 'Value'])
-            self.league.total_value += val
-            if player.index in pos_val.index:
-                self.league.num_valued_rostered += 1
-            if not init:
-                if player.index in self.values.index:
-                    self.values.at[player.index, 'Salary'] = salary
-                    pos = player_services.get_player_positions(player)
-                    for p in pos:                                    
-                        self.pos_values[p].at[player.index, 'Salary'] = f'$' + "{:.1f}".format(salary)
-        if rows is None or len(rows) == 0:
+            team_id = self.draft.cm_draft.get_toolbox_team_index_by_cm_team_id(cm_player['Team Number'])
+            self.__add_trans_to_rosters(player, salary, team_id)
+            drafted.append(player)
+
+        if len(drafted) == 0:
             prog.complete()
             return
-        df = pd.DataFrame(rows)
-        df.columns = ['index', 'TeamID', 'ottoneu ID', 'Salary']
-        df.set_index('index', inplace=True)
-        self.rosters = pd.concat([self.rosters, df])
         if not init:
-            self.refresh_views()
+            self.__refresh_views(drafted=drafted)
+        return drafted
         prog.complete()
     
-    def add_trans_to_rosters(self, last_trans:DataFrame, index:int, player:Player):
-        row=last_trans.iloc[index]
-        if player.index in self.values.index:
-            val = string_util.parse_dollar(self.values.at[player.index, 'Value'])
+    def __add_trans_to_rosters(self, player:Player, salary:int, team_id:int, add_player:bool=True):
+        self.rostered_ids.append(player.index)
+        for team in self.league.teams:
+            if team.league_id == team_id:
+                rs = Roster_Spot()
+                rs.player = player
+                rs.salary = salary
+                team.roster_spots.append(rs)
+        pv = self.value_calculation.get_player_value(player.index, Position.OVERALL)
+        if pv is not None and pv.value > 0:
+            val = pv.value
         else:
             val = 0
-        if row['Salary'] == '$0':
-            # Cut
-            self.rosters.drop(player.index)
-            self.inflation = league_services.update_league_inflation_last_trans(self.league, val, salary=0, inf_method=self.inflation_method, add_player=False)
-        else:
-            salary = string_util.parse_dollar(row['Salary'])
-            self.rosters.loc[player.index] = [row['Team ID'],row['Ottoneu ID'],salary]
-            self.inflation = league_services.update_league_inflation_last_trans(self.league, val, salary=salary, inf_method=self.inflation_method)
+        self.inflation = league_services.update_league_inflation_last_trans(self.league, val, salary=0, inf_method=self.inflation_method, add_player=add_player)
 
-    def refresh_thread(self):
+    def __refresh_thread(self):
         last_time = datetime.now() - timedelta(minutes=30)
         delay = 45
         if self.demo_source:
@@ -637,7 +626,7 @@ class DraftTool(tk.Frame):
         while(not self.run_event.is_set()):
             try:
                 if not self.demo_source:
-                    last_trans = Scrape_Ottoneu().scrape_recent_trans_api(self.controller.league.ottoneu_id)
+                    last_trans = Scrape_Ottoneu().scrape_recent_trans_api(self.league.ottoneu_id)
                 else:
                     logging.debug("demo_source")
                     if not os.path.exists(draft_demo.demo_trans):
@@ -648,54 +637,45 @@ class DraftTool(tk.Frame):
                 most_recent = last_trans.iloc[0]['Date']
                 if most_recent > last_time:
                     index = len(last_trans)-1
-                    update_pos = set()
+                    drafted = []
+                    cut = []
                     while index >= 0:
                         if last_trans.iloc[index]['Date'] > last_time:
                             otto_id = last_trans.iloc[index]['Ottoneu ID']
                             salary = string_util.parse_dollar(last_trans.iloc[index]['Salary'])
+                            team_id = last_trans.iloc[index]['Team ID']
                             player = player_services.get_player_by_ottoneu_id(int(otto_id))
                             if player is None:
                                 logging.info(f'Otto id {otto_id} not in database')
-                                self.inflation = league_services.update_league_inflation_last_trans(self.league, value=0, salary=salary, inf_method=self.inflation_method)
-                                index -= 1
-                                continue
-                            else:
-                                self.add_trans_to_rosters(last_trans, index, player)
-                            if not player.index in self.values.index:
-                                logging.info(f'id {player.index} not in values')
-                                index -= 1
-                                continue
-                            pos = player_services.get_player_positions(player)
-                            for p in pos:
-                                if p in Position.get_pitching_pos():
-                                    #Because of how we treat pitching, update all pitcher tables if it's a pitcher
-                                    for p2 in Position.get_pitching_pos():
-                                        update_pos.add(p2)
+                                if 'CUT' in last_trans.iloc[index]['Type'].upper():
+                                    self.inflation = league_services.update_league_inflation_last_trans(self.league, value=0, salary=salary, inf_method=self.inflation_method, add_player=False)
                                 else:
-                                    update_pos.add(p)
+                                    self.inflation = league_services.update_league_inflation_last_trans(self.league, value=0, salary=salary, inf_method=self.inflation_method)
+                                index -= 1
+                                continue
+                            
                             if last_trans.iloc[index]['Type'].upper() == 'ADD':
-                                salary = int(last_trans.iloc[index]['Salary'].split('$')[1])
-                                self.values.at[player.index, 'Salary'] = salary
-                                for p in pos:  
-                                    if p in Position.get_pitching_pos():
-                                        #Because of how we treat pitching, update all pitcher tables if it's a pitcher
-                                        for p2 in Position.get_pitching_pos():              
-                                            self.pos_values[p2].at[player.index, 'Salary'] = salary          
-                                    else:          
-                                        self.pos_values[p].at[player.index, 'Salary'] = salary
+                                drafted.append(player)
+                                self.__add_trans_to_rosters(player, salary, team_id)
                             elif 'CUT' in last_trans.iloc[index]['Type'].upper():
-                                self.values.at[player.index, 'Salary'] = 0
-                                self.rosters.drop(player.index)
-                                for p in pos:
-                                    if p in Position.get_pitching_pos():
-                                        #Because of how we treat pitching, update all pitcher tables if it's a pitcher
-                                        for p2 in Position.get_pitching_pos():              
-                                            self.pos_values[p2].at[player.index, 'Salary'] = 0
-                                    else:
-                                        self.pos_values[p].at[player.index, 'Salary'] = 0
+                                cut.append(player.index)
+                                self.rostered_ids.remove(player.index)
+                                for team in self.league.teams:
+                                    if team.league_id == team_id:
+                                        found = False
+                                        for rs in team.roster_spots:
+                                            if rs.player.index == player.index:
+                                                found = True
+                                                break
+                                        if found:
+                                            salary = rs.salary
+                                            pv = self.value_calculation.get_player_value(player.index, Position.OVERALL)
+                                            self.inflation = league_services.update_league_inflation_last_trans(self.league, value=pv.value, salary=salary, inf_method=self.inflation_method, add_player=False)
+                                            team.roster_spots.remove(rs)
+                                        break
                         index -= 1
                     last_time = most_recent
-                    self.queue.put(('pos', list(update_pos)))
+                    self.queue.put(('data', (drafted, cut)))
                     league_services.calculate_league_table(self.league, self.value_calculation, self.standings.standings_type.get() == 1, self.inflation)
             except Exception as Argument:
                 logging.exception('Exception processing transaction.')
@@ -703,105 +683,231 @@ class DraftTool(tk.Frame):
                 self.run_event.wait(delay)
         logging.info('Exiting Draft Refresh Loop')
 
-    def refresh_views(self, pos_keys=None):
-        self.inflation_str_var.set(f'Inflation: {"{:.1f}".format((self.inflation - 1.0)*100)}%')
-        self.overall_view.table.refresh()
-        if pos_keys == None:
-            for pos in (Position.get_offensive_pos() + Position.get_pitching_pos()):
-                self.pos_view[pos].table.refresh()
+    def __toggle_show_drafted(self) -> None:
+        self.__show_hide_toggle(self.rostered_ids, self.rostered_detached_id_map, self.show_drafted_players.get())
+    
+    def __toggle_show_removed(self) -> None:
+        self.__show_hide_toggle(self.removed_players, self.removed_detached_id_map, self.show_removed_players.get())
+    
+    def __show_hide_toggle(self, id_list:List[int], detached_map:Dict[ScrollableTreeFrame, List[str]], show:bool) -> None:
+        if show:
+            for view, row_list in detached_map.items():
+                for row_id in row_list:
+                    view.table.reattach(row_id, '', tk.END)
+                row_list.clear()
+                view.table.resort()
+            self.__update_table_inflations()
         else:
-            for pos in pos_keys:
-                logging.debug(f'updating {pos.value}')
-                self.pos_view[pos].table.refresh()
+            for p_id in id_list:
+                str_pid = str(p_id)
+                if str_pid in self.overall_view.table.get_children():
+                    if self.overall_view in detached_map:
+                        row_list = detached_map.get(self.overall_view)
+                    else:
+                        row_list = []
+                        detached_map[self.overall_view] = row_list
+                    row_list.append(str_pid)
+                    self.overall_view.table.detach(str_pid)
+                for _, view in self.pos_view.items():
+                    if str_pid in view.table.get_children():
+                        if view in detached_map:
+                            row_list = detached_map.get(view)
+                        else:
+                            row_list = []
+                            detached_map[view] = row_list
+                        row_list.append(str_pid)
+                        view.table.detach(str_pid)
+
+    def __refresh_views(self, drafted:List[Player]=None, cut:List[Player]=None):
+        self.inflation_str_var.set(f'Inflation: {"{:.1f}".format((self.inflation - 1.0)*100)}%')
+
+        if drafted is not None:
+            for dp in drafted:
+                dp_ind = str(dp.index)
+                tags = self.__get_row_tags(dp.index)
+                if dp_ind in self.overall_view.table.get_children():
+                    self.overall_view.table.item(dp_ind, tags=tags)
+                    if not self.show_drafted_players.get():
+                        self.overall_view.table.detach(dp_ind)
+                        self.rostered_detached_id_map.get(self.overall_view).append(dp_ind)
+                
+                for _, view in self.pos_view.items():
+                    if dp_ind in view.table.get_children():
+                        view.table.item(dp_ind, tags=tags)
+                        if not self.show_drafted_players.get():
+                            view.table.detach(dp_ind)
+                            self.rostered_detached_id_map.get(view).append(dp_ind)
+        
+        if cut is not None:
+            for cp in cut:
+                cp_ind = str(cp.index)
+                tags = self.__get_row_tags(cp.index)
+                if cp_ind in self.overall_view.table.get_children():
+                    self.overall_view.table.item(cp_ind, tags=tags)
+                    if not self.show_drafted_players.get():
+                        self.overall_view.table.reattach(cp_ind, '', tk.END)
+                        if cp_ind in self.rostered_detached_id_map.get(self.overall_view):
+                            self.rostered_detached_id_map.get(self.overall_view).remove(cp_ind)
+                
+                for _, view in self.pos_view.items():
+                    if cp_ind in view.table.get_children():
+                        view.table.item(cp_ind, tags=tags)
+                        if not self.show_drafted_players.get():
+                            view.table.reattach(cp_ind, '', tk.END)
+                            if cp_ind in self.rostered_detached_id_map.get(view):
+                                self.rostered_detached_id_map.get(view).remove(cp_ind)
+
+        if drafted is not None or len(drafted) > 0 or cut is not None or len(cut) > 0:
+            self.__update_table_inflations()
         
         self.search_view.table.refresh()
-        self.refresh_planning_frame()
+        self.__refresh_planning_frame()
         self.standings.refresh_standings()
     
-    def refresh_overall_view(self):
-        if self.show_drafted_players.get() == 1:
-            pos_df = self.values
-        else:
-            pos_df = self.values.loc[self.values['Salary'] == 0]
-        for i in range(len(pos_df)):
-            id = pos_df.index[i]
-            if id in self.removed_players and not self.show_removed_players.get():
-                continue
-            name = pos_df.iat[i, 2]
-            val = pos_df.iat[i, 1]
-            value = '$' + "{:.0f}".format(val)
-            if val < 1:
-                inf_cost = f'${val}'
-            elif self.inflation_method == InflationMethod.CONVENTIONAL:
-                inf_cost = '$' + "{:.0f}".format(val * self.inflation)
-            else:
-                inf_cost = '$' + "{:.0f}".format((val-1) * self.inflation + 1)
-            position = pos_df.iat[i, 4]
-            team = pos_df.iat[i, 3]
-            pts = "{:.1f}".format(pos_df.iat[i, 5])
-            sabr_pts = "{:.1f}".format(pos_df.iat[i, 6])
-            ppg = "{:.2f}".format(pos_df.iat[i, 8])
-            hppg = "{:.2f}".format(pos_df.iat[i, 9])
-            pppa = "{:.2f}".format(pos_df.iat[i, 10])
-            pip = "{:.2f}".format(pos_df.iat[i, 11])
-            spip = "{:.2f}".format(pos_df.iat[i, 12])
-            pppg = "{:.2f}".format(pos_df.iat[i, 13])
-            spppg = "{:.2f}".format(pos_df.iat[i, 14])
-            sal_tup = self.get_salary_tuple(int(id))
-            tags = self.get_row_tags(id)
-            self.overall_view.table.insert('', tk.END, text=id, values=(name, value, inf_cost, position, team, pts, sabr_pts, ppg, hppg, pppa, pip, spip, pppg, spppg, sal_tup[0], sal_tup[1], sal_tup[2]), tags=tags)
-
-    def refresh_pos_table(self, pos):
-        if self.show_drafted_players.get() == 1:
-            pos_df = self.pos_values[pos]
-        else:
-            pos_df = self.pos_values[pos].loc[self.pos_values[pos]['Salary'] == 0]
-        for i in range(len(pos_df)):
-            id = pos_df.index[i]
-            if id in self.removed_players and self.show_removed_players.get() != 1:
-                continue
-            name = pos_df.iat[i, 2]
-            val = pos_df.iat[i, 1]
-            value = '$' + "{:.0f}".format(val)
-            if val < 1:
-                inf_cost = f'${val}'
-            elif self.inflation_method == InflationMethod.CONVENTIONAL:
-                inf_cost = '$' + "{:.0f}".format(val * self.inflation)
-            else:
-                inf_cost = '$' + "{:.0f}".format((val-1) * self.inflation + 1)
-            position = pos_df.iat[i, 4]
-            team = pos_df.iat[i, 3]
-            pts = "{:.1f}".format(pos_df.iat[i, 5])
-            sal_tup = self.get_salary_tuple(int(id))
-            tags = self.get_row_tags(id)
-            if pos in Position.get_offensive_pos():
-                rate1 = "{:.2f}".format(pos_df.iat[i, 7])
-                rate2 = "{:.2f}".format(pos_df.iat[i, 8])
-                runs = "{:.0f}".format(pos_df.iat[i, 9])
-                hr = "{:.0f}".format(pos_df.iat[i, 10])
-                rbi = "{:.0f}".format(pos_df.iat[i, 11])
-                avg = "{:.3f}".format(pos_df.iat[i, 12])
-                sb = "{:.0f}".format(pos_df.iat[i, 13])
-                obp = "{:.3f}".format(pos_df.iat[i, 14])
-                slg = "{:.3f}".format(pos_df.iat[i, 15])
-                self.pos_view[pos].table.insert('', tk.END, text=id, values=(name, value, inf_cost, position, team, pts, rate1, rate2, sal_tup[0], sal_tup[1], sal_tup[2], runs, hr, rbi, avg, sb, obp, slg), tags=tags)
-            else:
-                sabr_pts = "{:.1f}".format(pos_df.iat[i, 6])
-                rate1 = "{:.2f}".format(pos_df.iat[i, 8])
-                rate2 = "{:.2f}".format(pos_df.iat[i, 9])
-                rate3 = "{:.2f}".format(pos_df.iat[i, 10])
-                rate4 = "{:.2f}".format(pos_df.iat[i, 11])
-                k = "{:.0f}".format(pos_df.iat[i, 12])
-                era = "{:.3f}".format(pos_df.iat[i, 13])
-                whip = "{:.3f}".format(pos_df.iat[i, 14])
-                w = "{:.0f}".format(pos_df.iat[i, 15])
-                sv = "{:.0f}".format(pos_df.iat[i, 16])
-                hr_per_9 = "{:.2f}".format(pos_df.iat[i, 17])
-                self.pos_view[pos].table.insert('', tk.END, text=id, values=(name, value, inf_cost, position, team, pts,sabr_pts, rate1, rate2, rate3, rate4, sal_tup[0], sal_tup[1], sal_tup[2], k, era, whip, w, sv, hr_per_9), tags=tags)
+    def __update_table_inflations(self):
+        for child in self.overall_view.table.get_children():
+            pv = self.value_calculation.get_player_value(int(child), Position.OVERALL)
+            self.overall_view.table.set(child, 2, self.__get_inflated_cost(pv))
+        self.overall_view.table.resort()
+        for pos, view in self.pos_view.items():
+            for child in view.table.get_children():
+                pv = self.value_calculation.get_player_value(int(child), pos)
+                view.table.set(child, 2, self.__get_inflated_cost(pv))
+            view.table.resort()
     
-    def get_salary_tuple(self, playerid):
+    def __get_inflated_cost(self, pv:PlayerValue) -> str:
+        if pv is None:
+            val = 0
+        else:
+            val = pv.value
+        if val < 1:
+            inf_cost = f'${val}'
+        elif self.inflation_method == InflationMethod.CONVENTIONAL:
+            inf_cost = '$' + "{:.0f}".format(val * self.inflation)
+        else:
+            inf_cost = '$' + "{:.0f}".format((val-1) * self.inflation + 1)
+        return inf_cost
+
+    def __get_stock_player_row(self, pv:PlayerValue) -> tuple:
+        name = pv.player.name
+        value = '$' + "{:.0f}".format(pv.value)
+        inf_cost = self.__get_inflated_cost(pv)
+        position = pv.player.position
+        team = pv.player.team
+        return (name, value, inf_cost, position, team)
+
+    def __refresh_overall_view(self):
+        self.rostered_detached_id_map[self.overall_view] = []
+        self.removed_detached_id_map[self.overall_view] = []
+        if self.value_calculation.format == ScoringFormat.CUSTOM:
+            custom_scoring = custom_scoring_services.get_scoring_format(int(self.value_calculation.get_input(CalculationDataType.CUSTOM_SCORING_FORMAT)))
+        else:
+            custom_scoring = None
+        for pv in self.value_calculation.get_position_values(Position.OVERALL):
+            stock_player = self.__get_stock_player_row(pv)
+            if self.value_calculation.projection is None:
+                #TODO: update this
+                ...
+            else:
+                pp = self.value_calculation.projection.get_player_projection(pv.player.index)
+                h_points = calculation_services.get_points(pp, Position.OFFENSE, sabr=False, custom_format=custom_scoring)
+                p_points = calculation_services.get_points(pp, Position.PITCHER, sabr=False, custom_format=custom_scoring)
+                sp_points = calculation_services.get_points(pp, Position.PITCHER, sabr=True, custom_format=custom_scoring)
+                pts = "{:.1f}".format(h_points + p_points)
+                sabr_pts = "{:.1f}".format(h_points + sp_points)
+                h_g = pp.get_stat(StatType.G_HIT)
+                pa = pp.get_stat(StatType.PA)
+                try:
+                    ppg = "{:.2f}".format(h_points/h_g)
+                    hppg = "{:.2f}".format(h_points/h_g)
+                    pppa = "{:.2f}".format(h_points/pa)
+                except (ZeroDivisionError, TypeError):
+                    ppg = hppg = pppa = "0.00"
+                ip = pp.get_stat(StatType.IP)
+                p_g = pp.get_stat(StatType.G_PIT)
+                try:
+                    pip = "{:.2f}".format(p_points/ip)
+                    spip = "{:.2f}".format(sp_points/ip)
+                    pppg = "{:.2f}".format(p_points/p_g)
+                    spppg = "{:.2f}".format(sp_points/p_g)
+                except (ZeroDivisionError, TypeError):
+                    pip = spip = pppg = spppg = "0.00"
+            sal_tup = self.__get_salary_tuple(pv.player)
+            tags = self.__get_row_tags(pv.player.index)
+            self.overall_view.table.insert('', tk.END, iid=pv.player.index, values=stock_player + (pts, sabr_pts, ppg, hppg, pppa, pip, spip, pppg, spppg) + sal_tup, tags=tags)
+
+    def __refresh_pos_table(self, pos:Position):
+        self.rostered_detached_id_map[self.pos_view[pos]] = []
+        self.removed_detached_id_map[self.pos_view[pos]] = []
+        if self.value_calculation.format == ScoringFormat.CUSTOM:
+            custom_scoring = custom_scoring_services.get_scoring_format(int(self.value_calculation.get_input(CalculationDataType.CUSTOM_SCORING_FORMAT)))
+        else:
+            custom_scoring = None
+        for pv in self.value_calculation.get_position_values(pos):
+            stock_player = self.__get_stock_player_row(pv)
+            sal_tup = self.__get_salary_tuple(pv.player)
+            tags = self.__get_row_tags(pv.player.index)
+            point_cols = []
+            if self.value_calculation.projection is None:
+                ...
+            elif self.value_calculation.projection.type == ProjectionType.VALUE_DERIVED:
+                ...
+            else:
+                pp = self.value_calculation.projection.get_player_projection(pv.player.index)
+                points = calculation_services.get_points(pp, pos, sabr=False, custom_format=custom_scoring)
+                point_cols.append("{:.1f}".format(points))
+                
+                if pos in Position.get_offensive_pos():
+                    games = pp.get_stat(StatType.G_HIT)
+                    pa = pp.get_stat(StatType.PA)
+                    try:
+                        point_cols.append("{:.2f}".format(points/games))
+                        point_cols.append("{:.2f}".format(points/pa))
+                    except (ZeroDivisionError, TypeError):
+                        point_cols.append("0.00")
+                        point_cols.append("0.00")
+                    stats = []
+                    for col in all_hitting_stats:
+                        stat_type = StatType.get_hit_stattype(col)
+                        if stat_type is not None:
+                            stat = pp.get_stat(stat_type)
+                            if stat is None:
+                                stats.append(stat_type.format.format(0))
+                            else:
+                                stats.append(stat_type.format.format(stat))
+                    
+                else:
+                    s_points = calculation_services.get_points(pp, pos, sabr=True, custom_format=custom_scoring)
+                    point_cols.append("{:.1f}".format(s_points))
+                    games = pp.get_stat(StatType.G_PIT)
+                    ip = pp.get_stat(StatType.IP)
+                    try:
+                        point_cols.append("{:.2f}".format(points/ip))
+                        point_cols.append("{:.2f}".format(s_points/ip))
+                    except (ZeroDivisionError, TypeError):
+                        point_cols.append("0.00")
+                        point_cols.append("0.00")
+                    try:
+                        point_cols.append("{:.2f}".format(points/games))
+                        point_cols.append("{:.2f}".format(s_points/games))
+                    except (ZeroDivisionError, TypeError):
+                        point_cols.append("0.00")
+                        point_cols.append("0.00")
+                    stats = []
+                    for col in all_pitching_stats:
+                        stat_type = StatType.get_pitch_stattype(col)
+                        if stat_type is not None:
+                            stat = pp.get_stat(stat_type)
+                            if stat is None:
+                                stats.append(stat_type.format.format(0))
+                            else:
+                                stats.append(stat_type.format.format(stat))
+                    
+            self.pos_view[pos].table.insert('', tk.END, iid=pv.player.index, values=stock_player + tuple(point_cols) + sal_tup + tuple(stats), tags=tags)
+    
+    def __get_salary_tuple(self, player:Player):
         if self.league.is_ottoneu():
-            si = self.value_calculation.get_player_value(playerid, pos=Position.OVERALL).player.get_salary_info_for_format(self.league.format)
+            si = player.get_salary_info_for_format(self.league.format)
             if si is None:
                 avg = '$0.0'
                 l10 = '$0.0'
@@ -816,8 +922,8 @@ class DraftTool(tk.Frame):
             return (avg, l10, roster)
         return ('$0', '$0', '0%')
 
-    def get_row_tags(self, playerid):
-        if playerid in self.rosters.index:
+    def __get_row_tags(self, playerid):
+        if self.league.is_rostered(player_id=playerid):
             return ('rostered',)
         if self.draft.get_target_by_player(player_id=playerid) is not None:
             return ('targeted',)
@@ -825,14 +931,14 @@ class DraftTool(tk.Frame):
             return ('removed',)
         return ''
     
-    def set_row_colors(self, table: Table, targets=True):
+    def __set_row_colors(self, table: Table, targets=True):
         table.tag_configure('rostered', background='#A6A6A6')
         table.tag_configure('rostered', foreground='#5A5A5A')
         table.tag_configure('removed', background='#FFCCCB')
         if targets:
             table.tag_configure('targeted', background='#FCE19D')
 
-    def update_player_search(self):
+    def __update_player_search(self):
         text = self.search_string.get().upper()
         if text == '' or len(text) == 1:
             players = [] 
@@ -853,22 +959,17 @@ class DraftTool(tk.Frame):
             name = player.name
             pos = player.position
             team = player.team
-            if id in self.values.index:
-                val = self.value_calculation.get_player_value(id, Position.OVERALL).value
-                value = '$' + "{:.0f}".format(val)
-                if val < 1:
-                    inf_cost = f'${val}'
-                elif self.inflation_method == InflationMethod.CONVENTIONAL:
-                    inf_cost = '$' + "{:.0f}".format(val * self.inflation)
-                else:
-                    inf_cost = '$' + "{:.0f}".format((val-1) * self.inflation + 1)
+
+            pv = self.value_calculation.get_player_value(id, Position.OVERALL)
+            if pv is None:
+                value = '$0.0'
+                inf_cost = '$0.0'
             else:
-                value = '$0'
-                inf_cost = '$0'
-            if id in self.rosters.index:
-                salary = f"${int(self.rosters.at[id, 'Salary'])}"
-            else:
-                salary = '$0'
+                value = '$' + "{:.0f}".format(pv.value)
+                inf_cost = self.__get_inflated_cost(pv)
+
+            salary = f'${self.league.get_player_salary(player.index)}'
+
             if self.value_calculation.projection is not None:
                 pp = self.value_calculation.projection.get_player_projection(id)
                 if pp is not None and self.value_calculation.projection.valid_points:
@@ -936,13 +1037,13 @@ class DraftTool(tk.Frame):
             else:
                 roster_percent = "{:.1f}".format(si.roster_percentage) + "%"
 
-            tags = self.get_row_tags(id)
-            self.search_view.table.insert('', tk.END, text=str(id), tags=tags, values=(name, value, salary, inf_cost,pos, team, pts, spts, ppg, hppg, pppa, pip, spip, pppg, spppg, roster_percent))
+            tags = self.__get_row_tags(id)
+            self.search_view.table.insert('', tk.END, iid=str(id), tags=tags, values=(name, value, salary, inf_cost,pos, team, pts, spts, ppg, hppg, pppa, pip, spip, pppg, spppg, roster_percent))
    
-    def refresh_planning_frame(self):
+    def __refresh_planning_frame(self):
         self.target_table.table.refresh()
 
-    def refresh_targets(self):
+    def __refresh_targets(self):
         for target in self.draft.targets:
             id = target.player_id
             name = target.player.name
@@ -953,37 +1054,24 @@ class DraftTool(tk.Frame):
             else:
                 value = '$' + "{:.0f}".format(pv.value)
             pos = target.player.position
-            tags = self.get_row_tags(id)
-            self.target_table.table.insert('', tk.END, text=id, tags=tags, values=(name, t_price, value, pos))
+            tags = self.__get_row_tags(id)
+            self.target_table.table.insert('', tk.END, iid=id, tags=tags, values=(name, t_price, value, pos))
     
-    def initialize_draft(self, same_values=False): 
+    def __initialize_draft(self, same_values=False): 
         restart = False
         if not self.run_event.is_set():
-            self.stop_draft_monitor()
+            self.__stop_draft_monitor()
         pd = progress.ProgressDialog(self.parent, 'Initializing Draft Session')
-        pd.set_task_title('Loading Rosters...')
-        pd.set_completion_percent(5)
-        self.create_roster_df()    
-        pd.set_task_title('Loading Values...')
-        pd.increment_completion_percent(10)  
-        if not same_values:
-            self.create_overall_df_from_vc()
-            pd.increment_completion_percent(10)
-            self.pos_values = {}
-            for pos in Position.get_offensive_pos():
-                self.pos_values[pos] = self.create_offensive_df(pos)
-                pd.increment_completion_percent(5)
-            for pos in Position.get_pitching_pos():
-                self.pos_values[pos] = self.create_pitching_df(pos)
-                pd.increment_completion_percent(5)
-        else:
-            self.values.drop('Salary', axis=1, inplace=True)
-            for pos in Position.get_offensive_pos():
-                self.pos_values[pos].drop('Salary', axis=1, inplace=True)
-                pd.increment_completion_percent(5)
-            for pos in Position.get_pitching_pos():
-                self.pos_values[pos].drop('Salary', axis=1, inplace=True)
-                pd.increment_completion_percent(5)
+
+        self.rostered_ids = []
+        rostered = []
+        self.rostered_detached_id_map = {}
+        self.removed_detached_id_map = {}
+
+        for team in self.league.teams:
+            for rs in team.roster_spots:
+                rostered.append(rs.player)
+                self.rostered_ids.append(rs.player.index)
 
         if self.draft.cm_draft is not None:
             self.monitor_status.set(f'Using CM Draft {self.draft.cm_draft.cm_draft_id}')
@@ -994,13 +1082,9 @@ class DraftTool(tk.Frame):
             self.stop_monitor['state'] = ACTIVE
             CreateToolTip(self.stop_monitor, 'Removes the connection to the CouchManagers draft for the league and reverts to the Ottoneu-only rosters.')
             if self.draft.cm_draft.setup:
-                self.resolve_cm_draft_with_rosters()
+                rostered.extend(self.__resolve_cm_draft_with_rosters())
             else:
-                self.check_new_cm_teams()
-                
-        pd.set_task_title('Updating available players...')
-        self.update_rostered_players()
-        pd.increment_completion_percent(5)
+                self.__check_new_cm_teams()
 
         if self.league.is_ottoneu():
             self.league.init_inflation_calc()
@@ -1014,26 +1098,34 @@ class DraftTool(tk.Frame):
             self.inflation_lbl.grid_forget()
 
         pd.set_task_title('Refreshing views...')
-        self.set_visible_columns()
+        self.__set_visible_columns()
 
         self.standings.league = self.controller.league
         self.standings.value_calc = self.controller.value_calculation
         league_services.calculate_league_table(self.league, self.value_calculation, self.standings.standings_type.get() == 1, self.inflation)
         self.standings.standings_table.table.refresh()
 
-        self.refresh_views()
+        self.__populate_views()
+
+        self.__refresh_views(drafted=rostered)
+
         pd.complete()
         if restart:
-            self.start_draft_monitor()
+            self.__start_draft_monitor()
     
-    def calc_format_matches_league(self) -> bool:
+    def __populate_views(self):
+        self.overall_view.table.refresh()
+        for _, view in self.pos_view.items():
+            view.table.refresh()
+
+    def __calc_format_matches_league(self) -> bool:
         if self.league.is_ottoneu():
             if ScoringFormat.is_points_type(self.league.format):
                 return ScoringFormat.is_points_type(self.value_calculation.format)
             return self.league.format == self.value_calculation.format
         return True
 
-    def set_visible_columns(self) -> None:
+    def __set_visible_columns(self) -> None:
         if self.league.is_ottoneu():
             salary_cols = ('Avg. Price', 'L10 Price', 'Roster %')
         else:
@@ -1044,10 +1136,10 @@ class DraftTool(tk.Frame):
             custom_scoring = custom_scoring_services.get_scoring_format(int(self.value_calculation.get_input(CalculationDataType.CUSTOM_SCORING_FORMAT)))
         else:
             custom_scoring = None
-        if self.value_calculation.projection is None or not self.calc_format_matches_league():
+        if self.value_calculation.projection is None or not self.__calc_format_matches_league():
             self.overall_view.table.set_display_columns(stock_overall)
-            for pos in self.pos_view:
-                self.pos_view[pos].table.set_display_columns(stock_overall)
+            for _, view in self.pos_view.items():
+                view.table.set_display_columns(stock_overall)
             if self.league.is_ottoneu():
                 self.search_view.table.set_display_columns(stock_search + ('Roster %',))
             else:
@@ -1089,33 +1181,33 @@ class DraftTool(tk.Frame):
             else:
                 raise Exception(f"Unhandled pitcher_basis {self.value_calculation.pitcher_basis}")
             self.overall_view.table.set_display_columns(player_cols + p_points + hit_rate + pitch_rate + salary_cols)
-            for pos in self.pos_view:
+            for pos, view in self.pos_view.items():
                 if pos in Position.get_offensive_pos():
-                    self.pos_view[pos].table.set_display_columns(player_cols + ('Points',) + pos_hit_rate + salary_cols)
+                    view.table.set_display_columns(player_cols + ('Points',) + pos_hit_rate + salary_cols)
                 else:
-                    self.pos_view[pos].table.set_display_columns(player_cols + p_points + pitch_rate + salary_cols)
+                    view.table.set_display_columns(player_cols + p_points + pitch_rate + salary_cols)
             if self.league.is_ottoneu():
                 self.search_view.table.set_display_columns(stock_search + p_points + hit_rate + pitch_rate + ('Roster %',))
             else:
                 self.search_view.table.set_display_columns(stock_search + p_points + hit_rate + pitch_rate)
         elif (not self.league.is_ottoneu and self.value_calculation.format == ScoringFormat.OLD_SCHOOL_5X5) or self.league.format == ScoringFormat.OLD_SCHOOL_5X5:
             self.overall_view.table.set_display_columns(stock_overall)
-            for pos in self.pos_view:
+            for pos, view in self.pos_view.items():
                 if pos in Position.get_offensive_pos():
-                    self.pos_view[pos].table.set_display_columns(player_cols + hit_5x5_cols + salary_cols)
+                    view.table.set_display_columns(player_cols + hit_5x5_cols + salary_cols)
                 else:
-                    self.pos_view[pos].table.set_display_columns(player_cols + pitch_5x5_cols + salary_cols)
+                    view.table.set_display_columns(player_cols + pitch_5x5_cols + salary_cols)
             if self.league.is_ottoneu():
                 self.search_view.table.set_display_columns(stock_search + ('Roster %',))
             else:
                 self.search_view.table.set_display_columns(stock_search)
         elif (not self.league.is_ottoneu and self.value_calculation.format == ScoringFormat.CLASSIC_4X4) or self.league.format == ScoringFormat.CLASSIC_4X4:
             self.overall_view.table.set_display_columns(stock_overall)
-            for pos in self.pos_view:
+            for pos, view in self.pos_view.items():
                 if pos in Position.get_offensive_pos():
-                    self.pos_view[pos].table.set_display_columns(player_cols + hit_4x4_cols + salary_cols)
+                    view.table.set_display_columns(player_cols + hit_4x4_cols + salary_cols)
                 else:
-                    self.pos_view[pos].table.set_display_columns(player_cols + pitch_4x4_cols + salary_cols)
+                    view.table.set_display_columns(player_cols + pitch_4x4_cols + salary_cols)
             if self.league.is_ottoneu():
                 self.search_view.table.set_display_columns(stock_search + ('Roster %',))
             else:
@@ -1130,357 +1222,17 @@ class DraftTool(tk.Frame):
                     hit.append(stat.display)
                 if not stat.hitter and stat.display not in player_cols:
                     pitch.append(stat.display)
-            for pos in self.pos_view:
+            for pos, view in self.pos_view.items():
                 if pos in Position.get_offensive_pos():
-                    self.pos_view[pos].table.set_display_columns(player_cols + hit)
+                    view.table.set_display_columns(player_cols + hit)
                 else:
-                    self.pos_view[pos].table.set_display_columns(player_cols + pitch)
+                    view.table.set_display_columns(player_cols + pitch)
             self.search_view.table.set_display_columns(stock_search)
         else:
             if self.league.is_ottoneu():
                 raise Exception(f"Unknown league type {self.league.format}")
             else:
                 raise Exception(f"Unhandled scoring format for non-Ottoneu Leauge {self.value_calculation.format}")
-    
-    def create_roster_df(self):
-        rows = self.get_roster_rows()
-        if len(rows) == 0:
-            self.rosters = pd.DataFrame(columns= ['index', 'TeamID', 'ottoneu ID', 'Salary'])
-        else:
-            self.rosters = pd.DataFrame(rows)
-            self.rosters.columns = ['index', 'TeamID', 'ottoneu ID', 'Salary']
-        self.rosters.set_index('index', inplace=True)
-    
-    def get_roster_rows(self):
-        rows = []
-        for team in self.league.teams:
-            for rs in team.roster_spots:
-                row = []
-                row.append(rs.player.index)
-                row.append(team.index)
-                row.append(rs.player.ottoneu_id)
-                row.append(rs.salary)
-                rows.append(row)
-        return rows
-    
-    def create_overall_df_from_vc(self):
-        rows = self.get_overall_value_rows()
-        self.values = pd.DataFrame(rows)
-        self.values.columns = ['Index', 'OttoneuID', 'Value', 'Name', 'Team', 'Position(s)', 'Points', 'SABR Pts','PAR', 'P/G', 'HP/G', 'P/PA', 'P/IP', 'SABR PIP', 'PP/G', 'SABR PPG', 'Search_Name']
-        self.values.set_index('Index', inplace=True)
-    
-    def create_offensive_df(self, pos):
-        rows = self.get_offensive_rows(pos)
-        pos_val = pd.DataFrame(rows)
-        pos_val.columns = ['Index', 'OttoneuID', 'Value', 'Name', 'Team', 'Position(s)', 'Points', 'PAR', 'P/G', 'P/PA', 'R', 'HR', 'RBI', 'AVG', 'SB', 'OBP', 'SLG']
-        pos_val.set_index('Index', inplace=True)
-        return pos_val
-    
-    def create_pitching_df(self, pos):
-        rows = self.get_pitching_rows(pos)
-        pos_val = pd.DataFrame(rows)
-        pos_val.columns = ['Index', 'OttoneuID', 'Value', 'Name', 'Team', 'Position(s)', 'Points', 'SABR Pts', 'PAR', 'P/IP', 'SABR PIP', 'PP/G', 'SABR PPG', 'K', 'ERA', 'WHIP', 'W', 'SV', 'HR/9']
-        pos_val.set_index('Index', inplace=True)
-        return pos_val
-    
-    def get_overall_value_rows(self):
-        rows = []
-        if self.value_calculation.format == ScoringFormat.CUSTOM:
-            custom_scoring = custom_scoring_services.get_scoring_format(int(self.value_calculation.get_input(CalculationDataType.CUSTOM_SCORING_FORMAT)))
-        else:
-            custom_scoring = None
-        for pv in self.value_calculation.get_position_values(Position.OVERALL):
-            row = []
-            row.append(pv.player.index)
-            row.append(pv.player.ottoneu_id)
-            row.append(pv.value)
-            row.append(pv.player.name)
-            row.append(pv.player.team)
-            row.append(pv.player.position)
-            if self.value_calculation.projection is not None:
-                pp = self.value_calculation.projection.get_player_projection(pv.player.index)
-                if pp is None or not self.value_calculation.projection.valid_points:
-                    row.append(0.00) #points
-                    row.append(0.00) #spoints
-                    row.append(0.00) #par
-                    row.append(0.00) #hit rate
-                    row.append(0.00) #hit rate hp/g
-                    row.append(0.00) #hit rate p/pa
-                    row.append(0.00) #pitch rate p/ip
-                    row.append(0.00) #pitch rate sabr p/ip
-                    row.append(0.00) #pitch rate p/g
-                    row.append(0.00) #pitch rate sabr p/g
-                else:
-                    if self.value_calculation.projection.type == ProjectionType.VALUE_DERIVED:
-                        row.append(pp.get_stat(StatType.POINTS))
-                        row.append(pp.get_stat(StatType.POINTS))
-                        row.append(0)
-                        row.append(pp.get_stat(StatType.PPG))
-                        row.append(pp.get_stat(StatType.PPG))
-                        row.append(0)
-                        row.append(pp.get_stat(StatType.PIP))
-                        row.append(pp.get_stat(StatType.PIP))
-                        row.append(0)
-                        row.append(0)
-                    else:
-                        o_points = calculation_services.get_points(pp, Position.OFFENSE, custom_format=custom_scoring)
-                        p_points = calculation_services.get_points(pp, Position.PITCHER,False, custom_format=custom_scoring)
-                        s_p_points = calculation_services.get_points(pp, Position.PITCHER,True, custom_format=custom_scoring)
-                        row.append(o_points + p_points)
-                        row.append(o_points + s_p_points)
-                        # Currently have a 'PAR' column that might be defunct
-                        row.append("0")
-                        games = pp.get_stat(StatType.G_HIT)
-                        pa = pp.get_stat(StatType.PA)
-                        if games is None or games == 0 or pa is None or pa == 0:
-                            row.append(0)
-                            row.append(0)
-                            row.append(0)
-                        else:
-                            row.append(o_points / games)
-                            row.append(o_points/games)
-                            row.append(o_points / pa)
-                        ip = pp.get_stat(StatType.IP)
-                        games = pp.get_stat(StatType.G_PIT)
-                        if ip is None or ip == 0 or games is None or games == 0:
-                            row.append(0)
-                            row.append(0)
-                            row.append(0)
-                            row.append(0)
-                        else:
-                            row.append(p_points/ip)
-                            row.append(s_p_points/ip)
-                            row.append(p_points/games)
-                            row.append(s_p_points/games)
-            else:
-                row.append(0.00) #points
-                row.append(0.00) #sabr points
-                row.append(0.00) #par
-                row.append(0.00) #hit rate p/g
-                row.append(0.00) #hit rate hp/g
-                row.append(0.00) #hit rate p/pa
-                row.append(0.00) #pitch rate p/ip
-                row.append(0.00) #pitch rate sabr p/ip
-                row.append(0.00) #pitch rate pp/g
-                row.append(0.00) #pitch rate sabr pp/g
-            row.append(util.string_util.normalize(pv.player.name))
-            rows.append(row)
-        return rows
-
-    def get_offensive_rows(self, pos):
-        if self.value_calculation.format == ScoringFormat.CUSTOM:
-            custom_scoring = custom_scoring_services.get_scoring_format(int(self.value_calculation.get_input(CalculationDataType.CUSTOM_SCORING_FORMAT)))
-        else:
-            custom_scoring = None
-        rows = []
-        for pv in self.value_calculation.get_position_values(pos):
-            row = []
-            row.append(pv.player.index)
-            row.append(pv.player.ottoneu_id)
-            row.append(pv.value)
-            row.append(pv.player.name)
-            row.append(pv.player.team)
-            row.append(pv.player.position)
-            if self.value_calculation.projection is not None:
-                pp = self.value_calculation.projection.get_player_projection(pv.player.index)
-                if pp is not None:
-                    if self.value_calculation.projection.valid_points:
-                        if self.value_calculation.projection.type == ProjectionType.VALUE_DERIVED:
-                            row.append(pp.get_stat(StatType.POINTS))
-                            row.append(0)
-                            row.append(pp.get_stat(StatType.PPG))
-                            row.append(0)
-                        else:
-                            o_points = calculation_services.get_points(pp, Position.OFFENSE,self.league.format == ScoringFormat.SABR_POINTS, custom_format=custom_scoring)
-                            row.append(o_points)
-                            # Currently have a 'PAR' column that might be defunct
-                            row.append("0")
-                            games = pp.get_stat(StatType.G_HIT)
-                            pa = pp.get_stat(StatType.PA)
-                            if games is None or games == 0 or pa is None or pa == 0:
-                                row.append(0)
-                                row.append(0)
-                            else:
-                                row.append(o_points / games)
-                                row.append(o_points / pa)
-                    else:
-                        row.append(0.00) # points
-                        row.append(0.00) # par
-                        row.append(0.00) # hit rate ppg
-                        row.append(0.00) # hit rate pppa
-                    r_and_hr = FALSE
-                    if self.value_calculation.projection.valid_5x5:
-                        r_and_hr = True
-                        row.append(pp.get_stat(StatType.R))
-                        row.append(pp.get_stat(StatType.HR))
-                        row.append(pp.get_stat(StatType.RBI))
-                        row.append(pp.get_stat(StatType.AVG))
-                        row.append(pp.get_stat(StatType.SB))
-
-                    if self.value_calculation.projection.valid_4x4:
-                        if not r_and_hr:
-                            r_and_hr = True
-                            row.append(pp.get_stat(StatType.R))
-                            row.append(pp.get_stat(StatType.HR))
-                            row.append(0)
-                            row.append(0)
-                            row.append(0)
-                        row.append(pp.get_stat(StatType.OBP))
-                        row.append(pp.get_stat(StatType.SLG))
-                    elif r_and_hr:
-                        row.append(0) # OBP
-                        row.append(0) # SLG
-                    else:
-                        row.append(0)
-                        row.append(0)
-                        row.append(0)
-                        row.append(0)
-                        row.append(0)
-                        row.append(0)
-                        row.append(0)
-                    
-                else:
-                    row.append(0.00) # points
-                    row.append(0.00) # par
-                    row.append(0.00) # hit rate ppg
-                    row.append(0.00) # hit rate pppa
-
-                    row.append(0) # Runs
-                    row.append(0) # HR
-                    row.append(0) # RBI
-                    row.append(0) # AVG
-                    row.append(0) # SB
-                    row.append(0) # OBP
-                    row.append(0) # SLG
-            else:
-                row.append(0.00) # points
-                row.append(0.00) # par
-                row.append(0.00) # hit rate ppg
-                row.append(0.00) # hit rate pppa
-
-                row.append(0) # Runs
-                row.append(0) # HR
-                row.append(0) # RBI
-                row.append(0) # AVG
-                row.append(0) # SB
-                row.append(0) # OBP
-                row.append(0) # SLG
-            rows.append(row)
-        return rows
-    
-    def get_pitching_rows(self, pos):
-        if self.value_calculation.format == ScoringFormat.CUSTOM:
-            custom_scoring = custom_scoring_services.get_scoring_format(int(self.value_calculation.get_input(CalculationDataType.CUSTOM_SCORING_FORMAT)))
-        else:
-            custom_scoring = None
-        rows = []
-        for pv in self.value_calculation.get_position_values(pos):
-            row = []
-            row.append(pv.player.index)
-            row.append(pv.player.ottoneu_id)
-            row.append(pv.value)
-            row.append(pv.player.name)
-            row.append(pv.player.team)
-            row.append(pv.player.position)
-            if self.value_calculation.projection is not None:
-                pp = self.value_calculation.projection.get_player_projection(pv.player.index)
-                if pp is not None:
-                    if self.value_calculation.projection.valid_points:
-                        if self.value_calculation.projection.type == ProjectionType.VALUE_DERIVED:
-                            row.append(pp.get_stat(StatType.POINTS))
-                            row.append(pp.get_stat(StatType.POINTS))
-                            row.append(0)
-                            row.append(pp.get_stat(StatType.PIP))
-                            row.append(pp.get_stat(StatType.PIP))
-                            row.append(0)
-                            row.append(0)
-                        else:
-                            p_points = calculation_services.get_points(pp, Position.PITCHER,True, custom_format=custom_scoring)
-                            s_p_points = calculation_services.get_points(pp, Position.PITCHER,False, custom_format=custom_scoring)
-                            row.append(p_points)
-                            row.append(s_p_points)
-                            # Currently have a 'PAR' column that might be defunct
-                            row.append("0")
-                            ip = pp.get_stat(StatType.IP)
-                            games = pp.get_stat(StatType.G_PIT)
-                            if ip is None or ip == 0 or games is None or games == 0:
-                                row.append(0)
-                                row.append(0)
-                                row.append(0)
-                                row.append(0)
-                            else:
-                                row.append(p_points/ip)
-                                row.append(s_p_points/ip)
-                                row.append(p_points/games)
-                                row.append(s_p_points/games)
-                    else:
-                        row.append(0.00) # points
-                        row.append(0.00) # points
-                        row.append(0.00) # par
-                        row.append(0.00) # pitch rate pip
-                        row.append(0.00) # pitch rate sabr pip
-                        row.append(0.00) # pitch rate ppg
-                        row.append(0.00) # pitch rate sabr ppg
-                    k_era_whip = False
-                    if self.value_calculation.projection.valid_5x5:
-                        k_era_whip = True
-                        row.append(pp.get_stat(StatType.SO))
-                        row.append(pp.get_stat(StatType.ERA))
-                        row.append(pp.get_stat(StatType.WHIP))
-                        row.append(pp.get_stat(StatType.W))
-                        row.append(pp.get_stat(StatType.SV))
-                    if self.value_calculation.projection.valid_4x4:
-                        if not k_era_whip:
-                            row.append(pp.get_stat(StatType.SO))
-                            row.append(pp.get_stat(StatType.ERA))
-                            row.append(pp.get_stat(StatType.WHIP))
-                            row.append(0)
-                            row.append(0)
-                        row.append(pp.get_stat(StatType.HR_PER_9))
-                    elif k_era_whip:
-                        row.append(0)
-                    else:
-                        row.append(0)
-                        row.append(0)
-                        row.append(0)
-                        row.append(0)
-                        row.append(0)
-                        row.append(0)
-                else:
-                    row.append(0.00) # points
-                    row.append(0) # sabr points
-                    row.append(0.00) # par
-                    row.append(0.00) # pitch rate pip
-                    row.append(0.00) # pitch rate sabr pip
-                    row.append(0.00) # pitch rate ppg
-                    row.append(0.00) # pitch rate sabr ppg
-                    row.append(0)
-                    row.append(0)
-                    row.append(0)
-                    row.append(0)
-                    row.append(0)
-                    row.append(0)
-            else:
-                row.append(0.00) # points
-                row.append(0.00) # sabr points
-                row.append(0.00) # par
-                row.append(0.00) # pitch rate pip
-                row.append(0.00) # pitch rate sabr pip
-                row.append(0.00) # pitch rate ppg
-                row.append(0.00) # pitch rate sabr ppg
-                row.append(0)
-                row.append(0)
-                row.append(0)
-                row.append(0)
-                row.append(0)
-                row.append(0)
-            rows.append(row)
-        return rows
-
-    def update_rostered_players(self):
-        self.values = self.values.merge(self.rosters[['Salary']], how='left', left_index=True, right_index=True, sort=False).fillna(0)
-        for pos in self.pos_values:
-            self.pos_values[pos] = self.pos_values[pos].merge(self.rosters[['Salary']], how='left', left_index=True, right_index=True, sort=False).fillna(0)
 
     def league_change(self):
         while self.controller.league is None:
@@ -1491,13 +1243,13 @@ class DraftTool(tk.Frame):
             if self.league.is_ottoneu():
                 self.draft = draft_services.get_draft_by_league(self.controller.league.index)
                 self.salary_information_refresh()
-            self.initialize_draft(same_values=True)
+            self.__initialize_draft(same_values=True)
     
     def value_change(self):
         if self.controller.value_calculation is not None and self.value_calculation != self.controller.value_calculation:
             self.value_calculation = self.controller.value_calculation
             self.values_name.set(f'Selected Values: {self.value_calculation.name}')
-            self.initialize_draft()
+            self.__initialize_draft()
 
 def main():
     try:

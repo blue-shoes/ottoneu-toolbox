@@ -151,6 +151,21 @@ class League:
                     return True
         return False
     
+    def get_player_salary(self, player_id:int) -> int:
+        for team in self.teams:
+            for rs in team.roster_spots:
+                if rs.player_id == player_id:
+                    return rs.salary
+        return 0
+    
+    def is_rostered_by_ottoneu_id(self, ottoneu_id:int) -> bool:
+        '''Determines if player is rostered based on ottoneu id'''
+        for team in self.teams:
+            for rs in team.roster_spots:
+                if rs.player.ottoneu_id == ottoneu_id:
+                    return True
+        return False
+    
     def init_inflation_calc(self):
         '''Initialized the required fields to begin an inflation calculation for the league'''
         self.total_salary = 0

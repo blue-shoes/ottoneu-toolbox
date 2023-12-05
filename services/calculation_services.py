@@ -93,6 +93,8 @@ def get_values_for_year(year:int=None) -> List[ValueCalculation]:
 def get_points(player_proj: PlayerProjection, pos: Position, sabr:bool=False, no_svh:bool=False, custom_format:CustomScoring=None) -> float:
     '''Returns the point value for a player projection. Pitcher point values FanGraphs Points by default, but can be changed with sabr flag.'''
     try:
+        if player_proj.get_stat(StatType.POINTS) is not None:
+            return player_proj.get_stat(StatType.POINTS)
         if pos in Position.get_offensive_pos():
             if custom_format is None or not custom_format.points_format:
                 return -1.0*player_proj.get_stat(StatType.AB) + 5.6*player_proj.get_stat(StatType.H) + 2.9*player_proj.get_stat(StatType.DOUBLE) \
