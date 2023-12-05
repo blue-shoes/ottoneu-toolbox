@@ -8,6 +8,7 @@ import logging
 
 from ui.dialog import progress
 from services import league_services
+from domain.domain import League
 from domain.enum import ScoringFormat
 
 class Dialog(tk.Toplevel):
@@ -27,7 +28,7 @@ class Dialog(tk.Toplevel):
         width['Name'] = 175
 
         self.league_table = lt = Table(frm, cols, align, width, cols)
-        lt.grid(row=0, columnspan=3)
+        lt.grid(row=0, columnspan=4)
         lt.set_row_select_method(self.on_select)
         lt.set_refresh_method(self.populate_table)
         lt.set_double_click_method(self.double_click)
@@ -38,6 +39,7 @@ class Dialog(tk.Toplevel):
         ttk.Button(frm, text="OK", command=self.set_league).grid(row=1, column=0)
         ttk.Button(frm, text="Cancel", command=self.cancel).grid(row=1, column=1)
         ttk.Button(frm, text="Import New...", command=self.import_league).grid(row=1,column=2)
+        ttk.Button(frm, text="Non-Ottoneu", command=self.non_ottoneu).grid(row=1,column=3)
 
         frm.pack()
 
@@ -109,4 +111,10 @@ class Dialog(tk.Toplevel):
         self.destroy()
     
     def set_league(self):
+        self.destroy()
+    
+    def non_ottoneu(self):
+        self.league = League()
+        self.league.name = 'Non-Ottoneu League'
+        self.league.ottoneu_id = -1
         self.destroy()

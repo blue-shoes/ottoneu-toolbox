@@ -258,11 +258,14 @@ class Main(tk.Tk):
     
     def select_league(self):
         dialog = league_select.Dialog(self)
-        if dialog.league is not None:
-            pd = progress.ProgressDialog(self, title='Updating League')
-            self.league = league_services.refresh_league(dialog.league.index, pd=pd)
-            pd.set_completion_percent(100)
-            pd.destroy()
+        if dialog.league is not None :
+            if dialog.league.is_ottoneu():
+                pd = progress.ProgressDialog(self, title='Updating League')
+                self.league = league_services.refresh_league(dialog.league.index, pd=pd)
+                pd.set_completion_percent(100)
+                pd.destroy()
+            else:
+                self.league = dialog.league
             if hasattr(self.frames[self.current_page], 'league_change') and callable(self.frames[self.current_page].league_change):
                 self.frames[self.current_page].league_change()
     
