@@ -173,9 +173,9 @@ class DraftTool(tk.Frame):
             pos_frame = ttk.Frame(self.tab_control)
             self.tab_control.add(pos_frame, text=pos.value) 
             if pos in Position.get_offensive_pos():
-                cols = ('Name','Value','Inf. Cost','Pos','Team','Points','P/G', 'P/PA','Avg. Price', 'L10 Price', 'Roster %', 'R', 'HR', 'RBI', 'AVG', 'SB', 'OBP', 'SLG')
+                cols = ('Name','Value','Inf. Cost','Pos','Team','Points','P/G', 'P/PA','Avg. Price', 'L10 Price', 'Roster %') + tuple([st.display for st in StatType.get_all_hit_stattype()])
             else:
-                cols = ('Name','Value','Inf. Cost','Pos','Team','Points','SABR Pts','P/IP','SABR PIP','PP/G','SABR PPG', 'Avg. Price', 'L10 Price', 'Roster %', 'K', 'ERA', 'WHIP', 'W', 'SV', 'HR/9')
+                cols = ('Name','Value','Inf. Cost','Pos','Team','Points','SABR Pts','P/IP','SABR PIP','PP/G','SABR PPG', 'Avg. Price', 'L10 Price', 'Roster %') + tuple([st.display for st in StatType.get_all_pitch_stattype()])
             custom_sort = {}
             custom_sort['Value'] = partial(self.__default_value_sort, pos)
             self.pos_view[pos] = pv = ScrollableTreeFrame(pos_frame, cols,sortable_columns=cols, column_widths=widths, column_alignments=align, init_sort_col='Value', custom_sort=custom_sort, pack=False)
@@ -408,8 +408,8 @@ class DraftTool(tk.Frame):
         else:
             pos_table = self.pos_view.get(pos).table
         if self.league.format is None:
-            l = [(self.set(k, 'Values'), k) for k in self.get_children('')]
-            sorted(l, reverse=self.table.reverse_sort['Values'], key=lambda x: sort_cmp(x)) 
+            l = [(pos_table.set(k, 'Value'), k) for k in pos_table.get_children('')]
+            l = sorted(l, reverse=pos_table.reverse_sort['Value'], key=lambda x: sort_cmp(x)) 
         if not self.league.is_ottoneu():
             return l
         if self.value_calculation.projection is None:
@@ -474,7 +474,7 @@ class DraftTool(tk.Frame):
                 self.__check_new_cm_teams()
     
     def update(self):
-        league_services.calculate_league_table(self.league, self.value_calculation, fill_pt=(self.standings.standings_type.get() == 1), inflation=self.inflation)
+        league_services.calculate_league_table(self.league, self.value_calculation, fill_pt=False, inflation=self.inflation)
         self.standings.refresh_standings()
 
     def __update_ui(self):
@@ -676,7 +676,7 @@ class DraftTool(tk.Frame):
                         index -= 1
                     last_time = most_recent
                     self.queue.put(('data', (drafted, cut)))
-                    league_services.calculate_league_table(self.league, self.value_calculation, self.standings.standings_type.get() == 1, self.inflation)
+                    league_services.calculate_league_table(self.league, self.value_calculation, False, self.inflation)
             except Exception as Argument:
                 logging.exception('Exception processing transaction.')
             finally:
@@ -1102,7 +1102,7 @@ class DraftTool(tk.Frame):
 
         self.standings.league = self.controller.league
         self.standings.value_calc = self.controller.value_calculation
-        league_services.calculate_league_table(self.league, self.value_calculation, self.standings.standings_type.get() == 1, self.inflation)
+        league_services.calculate_league_table(self.league, self.value_calculation, fill_pt=False, inflation=self.inflation)
         self.standings.standings_table.table.refresh()
 
         self.__populate_views()
@@ -1213,7 +1213,7 @@ class DraftTool(tk.Frame):
             else:
                 self.search_view.table.set_display_columns(stock_search)
         elif self.value_calculation.format == ScoringFormat.CUSTOM:
-            #TODO: Figure out these cat columns
+            self.overall_view.table.set_display_columns(stock_overall)
             hit = []
             pitch = []
             for cat in custom_scoring.stats:
@@ -1224,9 +1224,9 @@ class DraftTool(tk.Frame):
                     pitch.append(stat.display)
             for pos, view in self.pos_view.items():
                 if pos in Position.get_offensive_pos():
-                    view.table.set_display_columns(player_cols + hit)
+                    view.table.set_display_columns(player_cols + tuple(hit))
                 else:
-                    view.table.set_display_columns(player_cols + pitch)
+                    view.table.set_display_columns(player_cols + tuple(pitch))
             self.search_view.table.set_display_columns(stock_search)
         else:
             if self.league.is_ottoneu():
