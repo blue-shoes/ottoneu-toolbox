@@ -127,18 +127,7 @@ def save_projection(projection:Projection, projs:List[DataFrame], id_type:IdType
                         id = player_services.get_fg_id_by_mlb_id(idx)
                         if id is None or id <= 0:
                             name = f"{row['First'].strip()} {row['Last'].strip()}".upper()
-                            players = player_services.search_by_name(name)
-                            players.sort(reverse=True, key=lambda p: p.get_salary_info_for_format().roster_percentage)
-                            if players is not None and len(players) > 0:
-                                for possible_player in players:
-                                    if match_team(possible_player, row['Team']):
-                                        player = possible_player
-                                        break
-                                if player is None:
-                                    player = players[0]
-                            else:
-                                player = None
-                            
+                            player = player_services.get_player_by_name_and_team(name, row['Team'])
                         else:
                             player = player_services.get_player_by_fg_id(str(id), force_major=True)
 
@@ -204,19 +193,6 @@ def save_projection(projection:Projection, projs:List[DataFrame], id_type:IdType
 
         new_proj = get_projection(projection.index, player_data=False) 
     return new_proj
-
-def match_team(player:Player, team_name:str) -> bool:
-    if player.team is None:
-        return False
-    db_team = player.team.split(" ")[0]
-    if db_team == team_name:
-        return True
-    map = {'TBY': 'TBR',
-           'CWS': 'CHW',
-           'WAS': 'WSN'}
-    if team_name in map:
-        return db_team == map.get(team_name)
-    return False
 
 def create_projection_from_upload(projection: Projection, pos_file:str, pitch_file:str, name:str, desc:str='', ros:bool=False, year:int=None, progress=None):
     '''Creates a new projection from user inputs, saves it to the database, and returns the populated projection.'''

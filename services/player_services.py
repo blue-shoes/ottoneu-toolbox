@@ -134,7 +134,57 @@ def get_player_from_ottoneu_player_page(player_id: int, league_id: int, session:
             return player
     else:
         return update_from_player_page(player_tuple, session)
+
+def get_player_by_name_and_team(name:str, team:str) -> Player:
+    '''Returns player by matching name and team. Full name match is attempted. If no matches found with full name, partial
+    matches beginning with just last name are attempted, followed by adding one letter at a time from the start of the first
+    name. If the final search by name returns multiple players, they are ordered by roster percentage highest to lowest, and the
+    first player with a matching team is returned. If no players match the input team when multiple match the name criteria, None 
+    is returned.'''
+    name = name.upper()
+    players = search_by_name(name)
+    if len(players) == 0:
+        name_array = name.split()
+        i = 0
+
+        while True: 
+            if i >= len(name_array[0]):
+                break
+            if i == 0:
+                name = name_array[-1]
+            else:
+                name = f'{name_array[0][:i]}% {name_array[-1]}'
+            tmp_players = search_by_name(name_array[-1])
+            if len(tmp_players < 1):
+                break
+            players = tmp_players
+            if len(players) == 1:
+                break
+            i += 1
         
+    players.sort(reverse=True, key=lambda p: p.get_salary_info_for_format().roster_percentage)
+    if players is not None and len(players) > 0:
+        for possible_player in players:
+            if match_team(possible_player, team):
+                player = possible_player
+                break
+        if player is None:
+            player = players[0]
+    else:
+        player = None    
+
+def match_team(player:Player, team_name:str) -> bool:
+    if player.team is None:
+        return False
+    db_team = player.team.split(" ")[0]
+    if db_team == team_name:
+        return True
+    map = {'TBY': 'TBR',
+           'CWS': 'CHW',
+           'WAS': 'WSN'}
+    if team_name in map:
+        return db_team == map.get(team_name)
+    return False
 
 def update_from_player_page(player_tuple:Tuple[int, str, str, str, str], session:Session) -> Player:
     fg_id = player_tuple[4]
