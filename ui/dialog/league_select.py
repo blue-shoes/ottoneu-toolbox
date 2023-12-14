@@ -65,7 +65,7 @@ class Dialog(tk.Toplevel):
     def populate_table(self):
         for lg in self.league_list:
             lgfmt = lg.format.short_name
-            self.league_table.insert('', tk.END, text=str(lg.index), values=(lg.ottoneu_id, lg.name, lgfmt, lg.num_teams))
+            self.league_table.insert('', tk.END, text=str(lg.index), values=(lg.site_id, lg.name, lgfmt, lg.num_teams))
 
     def double_click(self, event):
         self.on_select(event)
@@ -116,5 +116,5 @@ class Dialog(tk.Toplevel):
     def non_ottoneu(self):
         self.league = League()
         self.league.name = 'Non-Ottoneu League'
-        self.league.ottoneu_id = -1
+        self.league.site_id = -1
         self.destroy()

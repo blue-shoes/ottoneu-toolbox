@@ -72,7 +72,8 @@ class Step1(tk.Frame):
     def validate(self):
         pd = progress.ProgressDialog(self.master, title='Getting League')
         try:
-            self.parent.league = league_services.create_league(self.league_num_entry.get(), pd)
+            if self.platform.get() == Platform.OTTONEU:
+                self.parent.league = league_services.create_ottoneu_league(self.league_num_entry.get(), pd)
         except Exception as Argument:
             logging.exception(f'Error creating league #{self.league_num_entry.get()}')
             self.parent.validate_msg = f"There was an error downloading league number {self.league_num_entry.get()}. Please confirm this is the correct league."

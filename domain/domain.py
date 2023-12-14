@@ -95,7 +95,7 @@ class Player:
 class League:
     __tablename__ = "league"
     index:Mapped[int] = mapped_column(init=False, primary_key=True)
-    ottoneu_id:Mapped[int] = mapped_column(default=None, nullable=False)
+    site_id:Mapped[int] = mapped_column(default=None, nullable=False)
     name:Mapped[str] = mapped_column(default=None)
   
     format:Mapped[ScoringFormat] = mapped_column(default=None, nullable=False)
@@ -184,7 +184,7 @@ class League:
         self.max_npp = 0
     
     def is_ottoneu(self):
-        return self.ottoneu_id != -1
+        return self.site_id != -1
 
 @reg.mapped_as_dataclass
 class Team:

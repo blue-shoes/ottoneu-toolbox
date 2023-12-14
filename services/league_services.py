@@ -1,6 +1,6 @@
 from pandas import DataFrame
 from domain.domain import League, Team, Roster_Spot, Player, Draft, ValueCalculation, Projected_Keeper, PlayerValue
-from domain.enum import ScoringFormat, Position, CalculationDataType, StatType, RankingBasis, InflationMethod
+from domain.enum import ScoringFormat, Position, CalculationDataType, StatType, RankingBasis, InflationMethod, Platform
 from domain.exception import InputException
 from dao.session import Session
 from scrape.scrape_ottoneu import Scrape_Ottoneu
@@ -84,14 +84,14 @@ def get_leagues(active: bool=True) -> List[League]:
     '''Returns Leagues from the database. If active is True, only Leagues marked as active are listed.'''
     with Session() as session:
         if active:
-            return session.query(League).filter(active).order_by(League.ottoneu_id).all()
+            return session.query(League).filter(active).order_by(League.site_id).all()
         else:
-            return session.query(League).order_by(League.ottoneu_id).all()
+            return session.query(League).order_by(League.site_id).all()
 
 def get_league_ottoneu_id(league_idx:int) -> int:
     '''Gets the Ottoneu id for the input league index'''
     with Session() as session:
-        return session.query(League).filter_by(index = league_idx).first().ottoneu_id
+        return session.query(League).filter_by(index = league_idx).first().site_id
 
 def get_league(league_idx:int, rosters:bool=True) -> League:
     '''Retrieves the league from the database for the given index. If rosters is True, the league's teams and roster_spots are populated. Otherwise a shallow load is returned.'''
@@ -123,12 +123,14 @@ def create_league(league_ottoneu_id:int, pd=None) -> League:
     #rosters = scraper.scrape_roster_export(league_ottoneu_id)
     league_data = scraper.scrape_league_info_page(league_ottoneu_id)
     lg = League()
-    lg.ottoneu_id = league_ottoneu_id
+    lg.site_id = league_ottoneu_id
     lg.name = league_data['Name']
     lg.num_teams = league_data['Num Teams']
     lg.format = ScoringFormat.get_format_by_full_name(league_data['Format'])
     lg.last_refresh = datetime.min
     lg.active = True
+    lg.platform = Platform.OTTONEU
+    lg.team_salary_cap = 400
 
     if pd is not None:
         pd.increment_completion_percent(15)

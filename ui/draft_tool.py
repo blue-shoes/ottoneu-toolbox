@@ -629,7 +629,7 @@ class DraftTool(tk.Frame):
         while(not self.run_event.is_set()):
             try:
                 if not self.demo_source:
-                    last_trans = Scrape_Ottoneu().scrape_recent_trans_api(self.league.ottoneu_id)
+                    last_trans = Scrape_Ottoneu().scrape_recent_trans_api(self.league.site_id)
                 else:
                     logging.debug("demo_source")
                     if not os.path.exists(draft_demo.demo_trans):
