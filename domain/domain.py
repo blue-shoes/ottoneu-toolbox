@@ -4,7 +4,7 @@ from dataclasses import field
 from sqlalchemy import ForeignKey, Index
 from sqlalchemy.orm import relationship, registry, Mapped, mapped_column, reconstructor
 import re
-from domain.enum import CalculationDataType, ProjectionType, RankingBasis, ScoringFormat, StatType, Position, IdType
+from domain.enum import CalculationDataType, ProjectionType, RankingBasis, ScoringFormat, StatType, Position, IdType, Platform
 from typing import List, Dict
 
 reg = registry()
@@ -26,6 +26,7 @@ class Player:
     search_name:Mapped[str] = mapped_column(default=None, repr=False)
     team:Mapped[str] = mapped_column("Org", default=None)
     position:Mapped[str] = mapped_column("Position(s)", default=None)
+    yahoo_id:Mapped[int] = mapped_column(default=None, repr=False)
 
     roster_spots:Mapped[List["Roster_Spot"]] = relationship(default_factory=list, back_populates="player", cascade="all, delete", repr=False)
     salary_info:Mapped[List["Salary_Info"]] = relationship(default_factory=list, back_populates="player", cascade="all, delete", lazy="joined", repr=False)
@@ -102,6 +103,9 @@ class League:
     last_refresh:Mapped[datetime] = mapped_column(default=None, nullable=False)
     active:Mapped[bool] = mapped_column(default=True, nullable = False)
 
+    platform:Mapped[Platform] = mapped_column(default=Platform.OTTONEU, nullable=False)
+    team_salary_cap:Mapped[float] = mapped_column(default=400, nullable=False)
+
     teams:Mapped[List["Team"]] = relationship(default_factory=list, back_populates="league", cascade="all, delete", repr=False)
     projected_keepers:Mapped[List["Projected_Keeper"]] = relationship(default_factory=list, cascade="all, delete", repr=False)
 
@@ -114,6 +118,9 @@ class League:
     captured_marginal_value:float = field(default=0, repr=False)
     npp_spent:float = field(default=0, repr=False)
     max_npp:float = field(default=0, repr=False)
+
+    def is_salary_cap(self) -> bool:
+        return self.team_salary_cap != -1
 
     def get_user_team(self):
         '''Returns the user\'s team for the league. None if no team is specified'''

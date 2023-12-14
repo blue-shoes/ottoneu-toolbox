@@ -543,3 +543,8 @@ class InflationMethod(str, Enum):
     CONVENTIONAL = 'Conventional'
     ROSTER_SPOTS_ONLY = 'Roster Spots Only'
     MARGINAL_VALUE = 'Marginal Value'
+
+class Platform(str, Enum):
+    OTTONEU = 'Ottoneu'
+    YAHOO = 'Yahoo'
+    OTHER = 'Other'
