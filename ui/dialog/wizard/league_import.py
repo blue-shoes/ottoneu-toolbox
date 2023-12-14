@@ -1,13 +1,16 @@
 import tkinter as tk     
 from tkinter import *              
 from tkinter import ttk 
-from domain.enum import ScoringFormat
+from domain.domain import League
+from domain.enum import ScoringFormat, Platform
 from services import league_services
 from ui.dialog import progress
-from ui.dialog.wizard import wizard
+from ui.dialog.wizard import wizard, yahoo_setup
 from ui.tool.tooltip import CreateToolTip
 import logging
 from tkinter import messagebox as mb
+from tkinter.messagebox import CANCEL
+import os
 
 class Dialog(wizard.Dialog):
     def __init__(self, parent):
@@ -21,6 +24,9 @@ class Dialog(wizard.Dialog):
         return self.wizard
 
 class Wizard(wizard.Wizard):
+
+    league:League
+
     def __init__(self, parent):
         super().__init__(parent)
         self.parent = parent
@@ -46,6 +52,9 @@ class Wizard(wizard.Wizard):
                 team.users_team = True
             else:
                 team.users_team = False
+        if self.league.platform == Platform.YAHOO and self.league.is_salary_cap():
+            self.league.team_salary_cap = float(self.step2.yahoo_salary.get())
+
         prog = progress.ProgressDialog(self, 'Saving League')
         prog.set_task_title('Saving league')
         prog.set_completion_percent(20)
@@ -57,12 +66,18 @@ class Step1(tk.Frame):
     def __init__(self, parent):
         super().__init__(parent)
         self.parent = parent
-        ttk.Label(self, text = "Enter League #:").grid(column=0,row=0, pady=5, sticky=tk.E)
+        ttk.Label(self, text = 'League Platform').grid(column=0,row=0, pady=5, sticky=tk.E)
+        self.platform = StringVar()
+        self.platform.set(Platform.OTTONEU)
+        cb = ttk.Combobox(self, textvariable=self.platform)
+        cb['values'] = (Platform.OTTONEU.value, Platform.YAHOO.value)
+        cb.grid(column=1,row=0, sticky=tk.W, padx=5)
+        ttk.Label(self, text = "Enter League #:").grid(column=0,row=1, pady=5, sticky=tk.E)
         #width is in text units, not pixels
         self.league_num_entry = ttk.Entry(self, width = 10)
-        self.league_num_entry.grid(column=1,row=0, sticky=tk.W, padx=5)
+        self.league_num_entry.grid(column=1,row=1, sticky=tk.W, padx=5)
 
-        CreateToolTip(self.league_num_entry, 'The Ottoneu league id (find it in the league URL)')
+        CreateToolTip(self.league_num_entry, 'The league id (find it in the league URL)')
 
         self.pack()
 
@@ -74,6 +89,19 @@ class Step1(tk.Frame):
         try:
             if self.platform.get() == Platform.OTTONEU:
                 self.parent.league = league_services.create_ottoneu_league(self.league_num_entry.get(), pd)
+            elif self.platform.get() == Platform.YAHOO:
+                if not os.path.exists('conf/private.json'):
+                    dialog = yahoo_setup.Dialog(self)
+                    if dialog.status == CANCEL:
+                        self.parent.validate_msg = 'Please enter a FanGraphs username and password to proceed'
+                        mb.showerror('Download Error', 'Projections cannot be downloaded by the Toolbox without FanGraphs credentials')
+                        return False
+                self.parent.league = league_services.create_yahoo_league(self.league_num_entry.get(), pd)
+            else:
+                logging.exception(f'Error creating league for platform {self.platform.get()}')
+                self.parent.validate_msg = f"The platform {self.platform.get()} is not implemented."
+                return False
+
         except Exception as Argument:
             logging.exception(f'Error creating league #{self.league_num_entry.get()}')
             self.parent.validate_msg = f"There was an error downloading league number {self.league_num_entry.get()}. Please confirm this is the correct league."
@@ -112,11 +140,28 @@ class Step2(tk.Frame):
         self.format_sv.set('--')
         ttk.Label(self, textvariable=self.format_sv).grid(column=1, row=4, pady=5, sticky=tk.W)
 
+        self.yahoo_frame = ttk.Frame(self)
+        self.yahoo_frame.grid(row=5, column=0, columnspan=2)
+
+        self.yahoo_salary_frame = ysf = ttk.Frame(self.yahoo_frame)
+        ysf.grid(row=0, column=0)
+        ttk.Label(ysf, text='Team Salary Cap', font='bold').grid(row=0, column=0)
+        self.yahoo_salary = ys = StringVar()
+        ys.set('260')
+        ttk.Entry(ysf, textvariable=ys).grid(row=0, column = 1)
+
     def on_show(self):
         lg = self.parent.league
         self.lg_name_sv.set(lg.name)
         self.num_teams_sv.set(lg.num_teams)
         self.format_sv.set(lg.format.full_name)
+        if lg.platform == Platform.YAHOO:
+            if lg.is_salary_cap():
+                self.yahoo_salary_frame.grid(row=5, column=0, columnspan=2)
+            else:
+                self.yahoo_salary_frame.grid_forget()
+        else:
+            self.yahoo_salary_frame.grid_forget()
         teams = []
         for team in lg.teams:
             teams.append(team.name)

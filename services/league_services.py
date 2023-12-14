@@ -4,7 +4,7 @@ from domain.enum import ScoringFormat, Position, CalculationDataType, StatType, 
 from domain.exception import InputException
 from dao.session import Session
 from scrape.scrape_ottoneu import Scrape_Ottoneu
-from services import player_services, roster_services, calculation_services
+from services import player_services, roster_services, calculation_services, yahoo_services
 from sqlalchemy.orm import joinedload
 from typing import List
 from util import date_util, list_util
@@ -16,68 +16,70 @@ def refresh_league(league_idx:int, pd=None) -> League:
     '''Refreshes the given league id in the database. Checks if the most recent transaction is more recent than the last league refresh. If so, retrieves league rosters
     and updates Roster_Spots for the league.'''
     lg = get_league(league_idx, rosters=False)
-    scraper = Scrape_Ottoneu()
-    if pd is not None:
-        pd.set_task_title("Checking last transaction date...")
-        pd.increment_completion_percent(5)
-    rec_tr = scraper.scrape_recent_trans_api(lg.ottoneu_id)
-    if len(rec_tr) == 0:
-        most_recent = datetime.now()
-    else:
-        most_recent = rec_tr.iloc[0]['Date']
-    if most_recent > lg.last_refresh:
+
+    if lg.platform == Platform.OTTONEU:
+        scraper = Scrape_Ottoneu()
         if pd is not None:
-            pd.set_task_title("Updating rosters...")
+            pd.set_task_title("Checking last transaction date...")
             pd.increment_completion_percent(5)
-        upd_rost = scraper.scrape_roster_export(lg.ottoneu_id)
-        finances = scraper.scrape_finances_page(lg.ottoneu_id)
-        if pd is not None:
-            pd.increment_completion_percent(30)
-        with Session() as session:
-            lg = (session.query(League)
-                    .options(
-                        joinedload(League.teams)
-                        .joinedload(Team.roster_spots)
-                        .joinedload(Roster_Spot.player)
-                    )
-                    .filter_by(index = league_idx).first())
-            team_map = {}
-            for team in lg.teams:
-                #Clear roster
-                for rs in team.roster_spots:
-                    session.delete(rs)
-                team_map[team.site_id] = team
-            for idx, row in upd_rost.iterrows():
-                team = row['TeamID']
-                if team not in team_map:
-                    # team not present, possibly on the restricted list
-                    continue
-                rs = Roster_Spot()
-                player = session.query(Player).filter_by(ottoneu_id = idx).first()
-                if player is None:
-                    player = player_services.get_player_from_ottoneu_player_page(idx, lg.ottoneu_id, session=session, pd=pd)
-                rs.player = player
-                rs.salary = row['Salary'].split('$')[1]
-                team_map[team].roster_spots.append(rs)
-                if team_map[team].name != row['Team Name']:
-                    team_map[team].name = row['Team Name']
-            for idx, row in finances.iterrows():
-                team = team_map[idx]
-                team.num_players = row['Players']
-                team.spots = row['Spots'] 
-                team.salaries = row['Base Salaries']
-                team.penalties = row['Cap Penalties']
-                team.loans_in = row['Loans In']
-                team.loans_out = row['Loans Out']
-                team.free_cap = row['Cap Space']
-            
-            lg.last_refresh = datetime.now()
-            session.commit()
+        rec_tr = scraper.scrape_recent_trans_api(lg.site_id)
+        if len(rec_tr) == 0:
+            most_recent = datetime.now()
+        else:
+            most_recent = rec_tr.iloc[0]['Date']
+        if most_recent > lg.last_refresh:
+            if pd is not None:
+                pd.set_task_title("Updating rosters...")
+                pd.increment_completion_percent(5)
+            upd_rost = scraper.scrape_roster_export(lg.site_id)
+            finances = scraper.scrape_finances_page(lg.site_id)
+            if pd is not None:
+                pd.increment_completion_percent(30)
+            with Session() as session:
+                lg = (session.query(League)
+                        .options(
+                            joinedload(League.teams)
+                            .joinedload(Team.roster_spots)
+                            .joinedload(Roster_Spot.player)
+                        )
+                        .filter_by(index = league_idx).first())
+                team_map = {}
+                for team in lg.teams:
+                    #Clear roster
+                    for rs in team.roster_spots:
+                        session.delete(rs)
+                    team_map[team.site_id] = team
+                for idx, row in upd_rost.iterrows():
+                    team = row['TeamID']
+                    if team not in team_map:
+                        # team not present, possibly on the restricted list
+                        continue
+                    rs = Roster_Spot()
+                    player = session.query(Player).filter_by(ottoneu_id = idx).first()
+                    if player is None:
+                        player = player_services.get_player_from_ottoneu_player_page(idx, lg.site_id, session=session, pd=pd)
+                    rs.player = player
+                    rs.salary = row['Salary'].split('$')[1]
+                    team_map[team].roster_spots.append(rs)
+                    if team_map[team].name != row['Team Name']:
+                        team_map[team].name = row['Team Name']
+                for idx, row in finances.iterrows():
+                    team = team_map[idx]
+                    team.num_players = row['Players']
+                    team.spots = row['Spots'] 
+                    team.salaries = row['Base Salaries']
+                    team.penalties = row['Cap Penalties']
+                    team.loans_in = row['Loans In']
+                    team.loans_out = row['Loans Out']
+                    team.free_cap = row['Cap Space']
+                
+                lg.last_refresh = datetime.now()
+                session.commit()
+                lg = get_league(league_idx)
+        else:
             lg = get_league(league_idx)
-    else:
-        lg = get_league(league_idx)
-    if pd is not None:
-        pd.set_completion_percent(100)
+        if pd is not None:
+            pd.set_completion_percent(100)
     return lg
 
 def get_leagues(active: bool=True) -> List[League]:
@@ -114,7 +116,41 @@ def get_league_in_session(session:Session, league_idx:int, rosters:bool=True) ->
         league = (session.query(League).filter_by(index = league_idx).first())
     return league
 
-def create_league(league_ottoneu_id:int, pd=None) -> League:
+def create_yahoo_league(league_yahoo_id:int, pd=None) -> League:
+    '''Creates a league in the Toolbox for a given Yahoo league number.'''
+
+    if pd is not None:
+        pd.set_task_title("Getting league info...")
+        pd.increment_completion_percent(10)
+
+    yleague = yahoo_services.get_league_metadata(league_yahoo_id)
+    pd.increment_completion_percent(30)
+    teams = yahoo_services.get_teams(league_yahoo_id)
+    pd.increment_completion_percent(30)
+    settings = yahoo_services.get_league_settings(league_yahoo_id)
+
+    lg = League()
+    lg.site_id = league_yahoo_id
+    lg.name = yleague.name.decode("utf-8")
+    lg.num_teams = yleague.num_teams
+    lg.format = ScoringFormat.CUSTOM
+    lg.last_refresh = datetime.min
+    lg.active = True
+    lg.platform = Platform.YAHOO
+    if settings.is_auction_draft or settings.uses_faab:
+        lg.team_salary_cap = 0
+    else:
+        lg.team_salary_cap = -1
+
+    for yteam in teams:
+        team = Team()
+        team.site_id = yteam.team_id
+        team.name = yteam.name.decode("utf-8")
+        lg.teams.append(team)
+    
+    return lg
+
+def create_ottoneu_league(league_ottoneu_id:int, pd=None) -> League:
     '''Creates a league in the Toolbox for a given Ottoneu league number. Scrapes the league info and league finances pages to get required information.'''
     if pd is not None:
         pd.set_task_title("Getting league info...")
