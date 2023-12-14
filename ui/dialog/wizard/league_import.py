@@ -11,6 +11,7 @@ import logging
 from tkinter import messagebox as mb
 from tkinter.messagebox import CANCEL
 import os
+import json
 
 class Dialog(wizard.Dialog):
     def __init__(self, parent):
@@ -90,11 +91,13 @@ class Step1(tk.Frame):
             if self.platform.get() == Platform.OTTONEU:
                 self.parent.league = league_services.create_ottoneu_league(self.league_num_entry.get(), pd)
             elif self.platform.get() == Platform.YAHOO:
-                if not os.path.exists('conf/private.json'):
+                if not os.path.exists('conf/token.json') or 'access_token' not in json.load(open('conf/token.json', 'r')):
+                    if os.path.exists('conf/token.json'):
+                        os.remove('conf/token.json')
                     dialog = yahoo_setup.Dialog(self)
                     if dialog.status == CANCEL:
-                        self.parent.validate_msg = 'Please enter a FanGraphs username and password to proceed'
-                        mb.showerror('Download Error', 'Projections cannot be downloaded by the Toolbox without FanGraphs credentials')
+                        self.parent.validate_msg = 'Yahoo Import cannot continue without authenticated service.'
+                        mb.showerror('Import Error', 'Yahoo Import cannot continue without authenticated service.')
                         return False
                 self.parent.league = league_services.create_yahoo_league(self.league_num_entry.get(), pd)
             else:
