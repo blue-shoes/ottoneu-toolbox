@@ -183,7 +183,7 @@ class League:
         self.npp_spent = 0
         self.max_npp = 0
     
-    def is_ottoneu(self):
+    def is_linked(self):
         return self.site_id != -1
 
 @reg.mapped_as_dataclass

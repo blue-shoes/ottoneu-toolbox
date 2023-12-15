@@ -142,6 +142,7 @@ class Main(tk.Tk):
             mb.showinfo('No Internet Connection', 'There appears to be no internet connection. Connectivity functions will be unavailable.')
 
         progress_dialog.complete()
+        
         return False
     
     def get_resource_path(self, resource):
@@ -259,7 +260,7 @@ class Main(tk.Tk):
     def select_league(self):
         dialog = league_select.Dialog(self)
         if dialog.league is not None :
-            if dialog.league.is_ottoneu():
+            if dialog.league.is_linked():
                 pd = progress.ProgressDialog(self, title='Updating League')
                 self.league = league_services.refresh_league(dialog.league.index, pd=pd)
                 pd.set_completion_percent(100)
