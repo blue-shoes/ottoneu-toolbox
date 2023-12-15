@@ -1,5 +1,5 @@
 from yfpy.query import YahooFantasySportsQuery as yfs_query
-from yfpy import Team as YTeam, League as YLeague, Settings as YSettings, Player as YPlayer
+from yfpy import Team as YTeam, League as YLeague, Settings as YSettings, Player as YPlayer, YahooFantasySportsException
 from pathlib import Path
 from oauth.custom_yahoo_oauth import Custom_OAuth2
 
@@ -9,6 +9,8 @@ from services import player_services
 import json
 from typing import List
 import datetime
+
+game_id:str = ''
 
 def get_league_metadata(league_id:int) -> YLeague:
     '''Gets the league metadata as a yfpy.League object'''
@@ -55,11 +57,30 @@ def update_league_rosters(league:League) -> None:
         team.roster_spots.append(rs)
 
 def get_league_settings(league_id:int) -> YSettings:
+    '''Returns the Yahoo Settings object for the given league id'''
     q = __create_query(league_id)
     return q.get_league_settings()
 
-def __create_query(league_id:int=1) -> yfs_query:
-    return yfs_query(Path('conf'), league_id=league_id, game_code='mlb')
+def __create_query(league_id:int=1, year:int=None) -> yfs_query:
+    '''Creates a yfs_query object for the given league and year in mlb. If no year provided, the current
+    calendar year is found.'''
+    global game_id
+    if year is not None:
+        q = yfs_query(Path('conf'), league_id=league_id, game_code='mlb')
+        game_keys = q.get_all_yahoo_fantasy_game_keys()
+        for gk in game_keys:
+            if gk.code == 'mlb' and int(gk.season) == year:
+                return yfs_query(Path('conf'), league_id=league_id, game_code='mlb', game_id=gk.game_id)
+        raise YahooFantasySportsException(f'Could not find game_key for year {year}')
+    elif game_id == '':
+        q = yfs_query(Path('conf'), league_id=league_id, game_code='mlb')
+        game_keys = q.get_all_yahoo_fantasy_game_keys()
+        for gk in game_keys:
+            if gk.code == 'mlb' and int(gk.season) == datetime.datetime.now().year:
+                game_id = gk.game_id
+        if game_id == '':
+             raise YahooFantasySportsException(f'Could not find game_key for current year')
+    return yfs_query(Path('conf'), league_id=league_id, game_code='mlb', game_id=game_id)
 
 def init_oauth() -> Custom_OAuth2:
     private_json_path = "conf/private.json"
@@ -74,11 +95,3 @@ def init_oauth() -> Custom_OAuth2:
     
 def set_credentials(oauth:Custom_OAuth2, verifier:str):
       oauth.store_token(verifier)
-
-def main():
-    oauth = init_oauth()
-    verifier = input("Adam, input the verifier: ")
-    set_credentials(oauth, verifier=verifier)
-
-if __name__ == '__main__':
-    main()
