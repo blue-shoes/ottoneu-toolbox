@@ -144,7 +144,7 @@ def resolve_draft_results_against_rosters(league:League, value_calc:ValueCalcula
                             if pv is None:
                                 val = 0
                             else:
-                                vale = pv.value
+                                val = pv.value
                             league_services.update_league_inflation_last_trans(league, value=val, salary=salary, inf_method=inf_method, add_player=False)
                     break
     return (new_drafted, cut)
