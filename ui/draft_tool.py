@@ -16,13 +16,13 @@ from functools import partial
 
 from scrape.scrape_ottoneu import Scrape_Ottoneu 
 from domain.domain import League, Player, ValueCalculation, PlayerValue, Roster_Spot
-from domain.enum import Position, ScoringFormat, StatType, Preference as Pref, AvgSalaryFom, RankingBasis, ProjectionType, InflationMethod, CalculationDataType
+from domain.enum import Position, ScoringFormat, StatType, Preference as Pref, AvgSalaryFom, RankingBasis, ProjectionType, InflationMethod, CalculationDataType, Platform
 from ui.table.table import Table, sort_cmp, ScrollableTreeFrame
 from ui.dialog import progress, draft_target, cm_team_assignment
 from ui.dialog.wizard import couchmanagers_import
 from ui.tool.tooltip import CreateToolTip
 from ui.view.standings import Standings
-from services import salary_services, league_services, calculation_services, player_services, draft_services, custom_scoring_services
+from services import salary_services, league_services, calculation_services, player_services, draft_services, custom_scoring_services, yahoo_services, ottoneu_services
 from demo import draft_demo
 from util import string_util
 
@@ -615,7 +615,7 @@ class DraftTool(tk.Frame):
         else:
             val = 0
         if self.league.is_linked():
-            self.inflation = league_services.update_league_inflation_last_trans(self.league, val, salary=0, inf_method=self.inflation_method, add_player=add_player)
+            self.inflation = league_services.update_league_inflation_last_trans(self.league, val, salary=salary, inf_method=self.inflation_method, add_player=add_player)
 
     def __refresh_thread(self):
         last_time = datetime.now() - timedelta(minutes=30)
@@ -627,64 +627,28 @@ class DraftTool(tk.Frame):
         logging.info('Entering Draft Refresh Loop')
         self.run_event.clear()
         while(not self.run_event.is_set()):
+            drafted = []
+            cut = []
             try:
-                if not self.demo_source:
-                    last_trans = Scrape_Ottoneu().scrape_recent_trans_api(self.league.site_id)
+                if self.league.platform == Platform.OTTONEU:
+                    drafted, cut, last_time = ottoneu_services.resolve_draft_results_against_rosters(self.league, self.value_calculation, last_time, self.inflation_method, self.demo_source)
+                        
+                elif self.league.platform == Platform.YAHOO:
+                    drafted, cut = yahoo_services.resolve_draft_results_against_rosters(self.league, self.value_calculation, self.inf_method)
                 else:
-                    logging.debug("demo_source")
-                    if not os.path.exists(draft_demo.demo_trans):
-                        sleep(11)
-                        continue
-                    last_trans = pd.read_csv(draft_demo.demo_trans)
-                    last_trans['Date'] = last_trans['Date'].apply(lambda x: datetime.strptime(x, '%Y-%m-%d %H:%M:%S.%f'))
-                most_recent = last_trans.iloc[0]['Date']
-                if most_recent > last_time:
-                    index = len(last_trans)-1
-                    drafted = []
-                    cut = []
-                    while index >= 0:
-                        if last_trans.iloc[index]['Date'] > last_time:
-                            otto_id = last_trans.iloc[index]['Ottoneu ID']
-                            salary = string_util.parse_dollar(last_trans.iloc[index]['Salary'])
-                            team_id = last_trans.iloc[index]['Team ID']
-                            player = player_services.get_player_by_ottoneu_id(int(otto_id))
-                            if player is None:
-                                logging.info(f'Otto id {otto_id} not in database')
-                                if self.league.is_linked():
-                                    if 'CUT' in last_trans.iloc[index]['Type'].upper():
-                                        self.inflation = league_services.update_league_inflation_last_trans(self.league, value=0, salary=salary, inf_method=self.inflation_method, add_player=False)
-                                    else:
-                                        self.inflation = league_services.update_league_inflation_last_trans(self.league, value=0, salary=salary, inf_method=self.inflation_method)
-                                index -= 1
-                                continue
-                            
-                            if last_trans.iloc[index]['Type'].upper() == 'ADD':
-                                drafted.append(player)
-                                self.__add_trans_to_rosters(player, salary, team_id)
-                            elif 'CUT' in last_trans.iloc[index]['Type'].upper():
-                                cut.append(player.index)
-                                self.rostered_ids.remove(player.index)
-                                for team in self.league.teams:
-                                    if team.league_id == team_id:
-                                        found = False
-                                        for rs in team.roster_spots:
-                                            if rs.player.index == player.index:
-                                                found = True
-                                                break
-                                        if found:
-                                            salary = rs.salary
-                                            pv = self.value_calculation.get_player_value(player.index, Position.OVERALL)
-                                            if self.league.is_linked():
-                                                self.inflation = league_services.update_league_inflation_last_trans(self.league, value=pv.value, salary=salary, inf_method=self.inflation_method, add_player=False)
-                                            team.roster_spots.remove(rs)
-                                        break
-                        index -= 1
-                    last_time = most_recent
-                    self.queue.put(('data', (drafted, cut)))
-                    league_services.calculate_league_table(self.league, self.value_calculation, False, self.inflation)
+                    #do nothing
+                    continue
             except Exception as Argument:
                 logging.exception('Exception processing transaction.')
             finally:
+                if drafted or cut:
+                    for player in drafted:
+                        self.rostered_ids.append(player.index)
+                    for player in cut:
+                        self.rostered_ids.remove(player.index)
+                    self.queue.put(('data', (drafted, cut)))
+                    self.inflation = self.league.inflation
+                    league_services.calculate_league_table(self.league, self.value_calculation, False, self.inflation)
                 self.run_event.wait(delay)
         logging.info('Exiting Draft Refresh Loop')
 

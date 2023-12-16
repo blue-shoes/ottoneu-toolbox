@@ -5,7 +5,7 @@ from sqlalchemy import ForeignKey, Index
 from sqlalchemy.orm import relationship, registry, Mapped, mapped_column, reconstructor
 import re
 from domain.enum import CalculationDataType, ProjectionType, RankingBasis, ScoringFormat, StatType, Position, IdType, Platform
-from typing import List, Dict
+from typing import List, Dict, Tuple
 
 reg = registry()
 
@@ -118,6 +118,9 @@ class League:
     captured_marginal_value:float = field(default=0, repr=False)
     npp_spent:float = field(default=0, repr=False)
     max_npp:float = field(default=0, repr=False)
+
+    # Transient draft information
+    draft_results:Dict[Tuple, int] = field(default_factory=dict, repr=False)
 
     def is_salary_cap(self) -> bool:
         return self.team_salary_cap != -1

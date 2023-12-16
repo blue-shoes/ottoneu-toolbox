@@ -101,6 +101,54 @@ def get_league_settings(league_id:int) -> YSettings:
     q = __create_query(league_id)
     return q.get_league_settings()
 
+def get_draft_results(league_id:int) -> List[YDR]:
+    '''Gets the draft results from the Yahoo league for the given id.'''
+    q = __create_query(league_id)
+    return q.get_league_draft_results()
+
+def resolve_draft_results_against_rosters(league:League, value_calc:ValueCalculation, inf_method:InflationMethod) -> Tuple[List[Player], List[Player]]:
+    ''''''
+    draft_results = get_draft_results(league.site_id)
+    new_drafted = []
+    cut = []
+    for dr in draft_results:
+        pick = (dr.round, dr.pick)
+        if pick in league.draft_results:
+            continue
+        player = player_services.get_player_by_yahoo_id(int(dr.player_key.split('.')[-1]))
+        if player is None:
+            if league.is_salary_cap():
+                league_services.update_league_inflation_last_trans(league, value=0, salary=dr.cost, inf_method=inf_method)
+            continue
+        new_drafted.append(player)
+        team_id = int(dr.team_key.split('.')[-1])
+        pv = value_calc.get_player_value(player.index, Position.OVERALL)
+        league_services.add_player_to_draft_rosters(league, team_id, player, pv, dr.cost, inf_method)
+    pick_list = [(dr.round, dr.pick) for dr in draft_results]
+    for pick, player_id in league.draft_results.items():
+        if pick not in pick_list:
+            player = player_services.get_player(player_id)
+            cut.append(player)
+            for team in league.teams:
+                if team.league_id == team_id:
+                    found = False
+                    for rs in team.roster_spots:
+                        if rs.player.index == player.index:
+                            found = True
+                            break
+                    if found:
+                        team.roster_spots.remove(rs)
+                        if league.is_salary_cap():
+                            salary = rs.salary
+                            pv = value_calc.get_player_value(player_id, Position.OVERALL)
+                            if pv is None:
+                                val = 0
+                            else:
+                                vale = pv.value
+                            league_services.update_league_inflation_last_trans(league, value=val, salary=salary, inf_method=inf_method, add_player=False)
+                    break
+    return (new_drafted, cut)
+
 def __create_query(league_id:int=1, year:int=None) -> yfs_query:
     '''Creates a yfs_query object for the given league and year in mlb. If no year provided, the current
     calendar year is found.'''

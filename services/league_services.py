@@ -280,6 +280,25 @@ def calculate_league_inflation(league:League, value_calc:ValueCalculation, inf_m
     league.npp_spent = min(league.npp_spent, league.max_npp)
     return get_league_inflation(league, inf_method)
 
+def add_player_to_draft_rosters(league:League, team_id:int, player:Player, pv:PlayerValue, salary:int, inf_method:InflationMethod):
+    for team in league.teams:
+        if team.site_id == team_id:
+            rs = Roster_Spot()
+            rs.player = player
+            rs.player_id = player.index
+            if league.is_salary_cap():
+                rs.salary = salary
+            else:
+                rs.salary = 0
+            team.roster_spots.append(rs)
+            break
+    if league.is_salary_cap():
+        if pv is not None and pv.value > 0:
+            val = pv.value
+        else:
+            val = 0
+        update_league_inflation_last_trans(league, val, salary=salary, inf_method=inf_method, add_player=True)
+
 def update_league_inflation_last_trans(league:League, value:float, salary:float, inf_method:InflationMethod, add_player:bool=True) -> float:
     '''Updates the league's inflation rate based on the change of one player and their projected value and salary. If add_player is True, the player is newly rostered. If
     it is False, the player is removed from rosters.'''
