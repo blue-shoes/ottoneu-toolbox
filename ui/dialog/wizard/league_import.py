@@ -2,8 +2,8 @@ import tkinter as tk
 from tkinter import *              
 from tkinter import ttk 
 from domain.domain import League
-from domain.enum import ScoringFormat, Platform
-from services import league_services
+from domain.enum import Platform
+from services import league_services, ottoneu_services, yahoo_services
 from ui.dialog import progress
 from ui.dialog.wizard import wizard, yahoo_setup
 from ui.tool.tooltip import CreateToolTip
@@ -59,7 +59,13 @@ class Wizard(wizard.Wizard):
         prog = progress.ProgressDialog(self, 'Saving League')
         prog.set_task_title('Saving league')
         prog.set_completion_percent(20)
-        self.parent.league = league_services.save_league(self.league, pd=prog)
+        lg = league_services.save_league(self.league, pd=prog)
+        if self.league.platform == Platform.OTTONEU:
+            self.parent.league = ottoneu_services.refresh_league(lg.index, pd=prog)
+        elif self.league.platform == Platform.YAHOO:
+            self.parent.league = yahoo_services.refresh_league(lg.index, pd=prog)
+        else:
+            self.parent.league = lg
         prog.complete()
         super().finish()
 
@@ -89,7 +95,7 @@ class Step1(tk.Frame):
         pd = progress.ProgressDialog(self.master, title='Getting League')
         try:
             if self.platform.get() == Platform.OTTONEU:
-                self.parent.league = league_services.create_ottoneu_league(self.league_num_entry.get(), pd)
+                self.parent.league = ottoneu_services.create_league(self.league_num_entry.get(), pd)
             elif self.platform.get() == Platform.YAHOO:
                 if not os.path.exists('conf/token.json') or 'access_token' not in json.load(open('conf/token.json', 'r')):
                     if os.path.exists('conf/token.json'):
@@ -99,7 +105,7 @@ class Step1(tk.Frame):
                         self.parent.validate_msg = 'Yahoo Import cannot continue without authenticated service.'
                         mb.showerror('Import Error', 'Yahoo Import cannot continue without authenticated service.')
                         return False
-                self.parent.league = league_services.create_yahoo_league(self.league_num_entry.get(), pd)
+                self.parent.league = yahoo_services.create_league(self.league_num_entry.get(), pd)
             else:
                 logging.exception(f'Error creating league for platform {self.platform.get()}')
                 self.parent.validate_msg = f"The platform {self.platform.get()} is not implemented."

@@ -1,16 +1,56 @@
 from yfpy.query import YahooFantasySportsQuery as yfs_query
-from yfpy import Team as YTeam, League as YLeague, Settings as YSettings, Player as YPlayer, YahooFantasySportsException
+from yfpy import Team as YTeam, League as YLeague, Settings as YSettings, Player as YPlayer, YahooFantasySportsException, DraftResult as YDR
 from pathlib import Path
 from oauth.custom_yahoo_oauth import Custom_OAuth2
 
-from domain.domain import League, Roster_Spot
-from services import player_services
+from domain.domain import League, Roster_Spot, Player, ValueCalculation, Team
+from domain.enum import InflationMethod, Position, ScoringFormat, Platform
+from services import player_services, league_services
 
 import json
-from typing import List
+from typing import List, Tuple
 import datetime
 
 game_id:str = ''
+
+def create_league(league_yahoo_id:int, pd=None) -> League:
+    '''Creates a league in the Toolbox for a given Yahoo league number.'''
+
+    if pd is not None:
+        pd.set_task_title("Getting league info...")
+        pd.increment_completion_percent(10)
+
+    yleague = get_league_metadata(league_yahoo_id)
+    pd.increment_completion_percent(30)
+    teams = get_teams(league_yahoo_id)
+    pd.increment_completion_percent(30)
+    settings = get_league_settings(league_yahoo_id)
+
+    lg = League()
+    lg.site_id = league_yahoo_id
+    lg.name = yleague.name.decode("utf-8")
+    lg.num_teams = yleague.num_teams
+    lg.format = ScoringFormat.CUSTOM
+    lg.last_refresh = datetime.min
+    lg.active = True
+    lg.platform = Platform.YAHOO
+    if settings.is_auction_draft or settings.uses_faab:
+        lg.team_salary_cap = 0
+    else:
+        lg.team_salary_cap = -1
+
+    for yteam in teams:
+        team = Team()
+        team.site_id = yteam.team_id
+        team.name = yteam.name.decode("utf-8")
+        lg.teams.append(team)
+    
+    return lg
+
+def refresh_league(league_idx:int, pd=None) -> League:
+    #TODO: Implement this
+    lg = league_services.get_league(league_idx, rosters=False)
+    return lg
 
 def get_league_metadata(league_id:int) -> YLeague:
     '''Gets the league metadata as a yfpy.League object'''

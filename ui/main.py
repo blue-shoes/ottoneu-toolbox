@@ -16,9 +16,9 @@ from ui.start import Start
 from ui.draft_tool import DraftTool
 from ui.values import ValuesCalculation
 from ui.league import League_Analysis
-from services import player_services, salary_services, league_services, property_service
+from services import player_services, salary_services, property_service, ottoneu_services, yahoo_services
 from domain.domain import Property
-from domain.enum import Preference as Pref, PropertyType
+from domain.enum import Preference as Pref, PropertyType, Platform
 from dao import db_update
    
 __version__ = '1.3.0'
@@ -262,7 +262,12 @@ class Main(tk.Tk):
         if dialog.league is not None :
             if dialog.league.is_linked():
                 pd = progress.ProgressDialog(self, title='Updating League')
-                self.league = league_services.refresh_league(dialog.league.index, pd=pd)
+                if dialog.league.platform == Platform.OTTONEU:
+                    self.league = ottoneu_services.refresh_league(dialog.league.index, pd=pd)
+                elif dialog.league.platform == Platform.YAHOO:
+                    self.league = yahoo_services.refresh_league(dialog.league.index, pd=pd)
+                else:
+                    self.league = dialog.league
                 pd.set_completion_percent(100)
                 pd.destroy()
             else:
