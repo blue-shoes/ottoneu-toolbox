@@ -47,3 +47,17 @@ class Custom_OAuth2(OAuth2):
 
         with open('conf/token.json', 'w') as fp:
             json.dump(data, fp, indent=4, sort_keys=True, ensure_ascii=False)
+
+def init_oauth() -> Custom_OAuth2:
+    private_json_path = "conf/private.json"
+    # load credentials
+    with open(private_json_path) as yahoo_app_credentials:
+        auth_info = json.load(yahoo_app_credentials)
+
+    token_file_path = 'conf/token.json'
+    with open(token_file_path, "w") as yahoo_oauth_token:
+                json.dump(auth_info, yahoo_oauth_token)
+    return Custom_OAuth2(None, None, from_file=token_file_path)
+    
+def set_credentials(oauth:Custom_OAuth2, verifier:str):
+      oauth.store_token(verifier)

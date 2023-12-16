@@ -9,7 +9,8 @@ import os
 import webbrowser
 import json
 
-from services import yahoo_services
+from oauth import custom_yahoo_oauth
+from oauth.custom_yahoo_oauth import Custom_OAuth2
 
 class Dialog(wizard.Dialog):
     def __init__(self, parent):
@@ -23,7 +24,7 @@ class Dialog(wizard.Dialog):
 
 class Wizard(wizard.Wizard):
 
-    oauth:yahoo_services.Custom_OAuth2
+    oauth:Custom_OAuth2
 
     def __init__(self, parent):
         super().__init__(parent)
@@ -46,7 +47,7 @@ class Wizard(wizard.Wizard):
     
     def finish(self):
         self.parent.validate_msg = None
-        yahoo_services.set_credentials(self.oauth, self.step3.verifier_sv.get())
+        custom_yahoo_oauth.set_credentials(self.oauth, self.step3.verifier_sv.get())
         if os.path.exists('conf/token.json'):
             self.parent.status = OK
             return super().finish()
@@ -119,7 +120,7 @@ class Step2(tk.Frame):
         with open('conf/private.json', 'w') as private:
             json.dump(client_dict, private)
         try:
-            self.parent.oauth = yahoo_services.init_oauth()
+            self.parent.oauth = custom_yahoo_oauth.init_oauth()
         except Exception as Argument:
             logging.exception('Error creating OAuth2')
             mb.showerror('Error Authenticating', 'There was an error creating an authentication token for the service. Confirm the Client ID and Secret were entered correctly.')

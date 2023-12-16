@@ -169,17 +169,3 @@ def __create_query(league_id:int=1, year:int=None) -> yfs_query:
         if game_id == '':
              raise YahooFantasySportsException(f'Could not find game_key for current year')
     return yfs_query(Path('conf'), league_id=league_id, game_code='mlb', game_id=game_id)
-
-def init_oauth() -> Custom_OAuth2:
-    private_json_path = "conf/private.json"
-    # load credentials
-    with open(private_json_path) as yahoo_app_credentials:
-        auth_info = json.load(yahoo_app_credentials)
-
-    token_file_path = 'conf/token.json'
-    with open(token_file_path, "w") as yahoo_oauth_token:
-                json.dump(auth_info, yahoo_oauth_token)
-    return Custom_OAuth2(None, None, from_file=token_file_path)
-    
-def set_credentials(oauth:Custom_OAuth2, verifier:str):
-      oauth.store_token(verifier)
