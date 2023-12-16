@@ -59,7 +59,7 @@ class Wizard(wizard.Wizard):
         prog = progress.ProgressDialog(self, 'Saving League')
         prog.set_task_title('Saving league')
         prog.set_completion_percent(20)
-        lg = league_services.save_league(self.league, pd=prog)
+        lg = league_services.save_league(self.league)
         if self.league.platform == Platform.OTTONEU:
             self.parent.league = ottoneu_services.refresh_league(lg.index, pd=prog)
         elif self.league.platform == Platform.YAHOO:
