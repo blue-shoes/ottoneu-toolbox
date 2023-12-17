@@ -19,14 +19,14 @@ class Property:
 class Player:
     __tablename__ = "player"
     index:Mapped[int] = mapped_column(init=False, primary_key=True)
-    ottoneu_id:Mapped[int] = mapped_column("Ottoneu ID", default=None, index=True)
-    fg_major_id:Mapped[str] = mapped_column("FG MajorLeagueID", default=None, repr=False)
-    fg_minor_id:Mapped[str] = mapped_column("FG MinorLeagueID", default=None, repr=False)
+    ottoneu_id:Mapped[int] = mapped_column("Ottoneu ID", default=None, index=True, nullable=True)
+    fg_major_id:Mapped[str] = mapped_column("FG MajorLeagueID", default=None, repr=False, nullable=True)
+    fg_minor_id:Mapped[str] = mapped_column("FG MinorLeagueID", default=None, repr=False, nullable=True)
     name:Mapped[str] = mapped_column("Name", default=None)
     search_name:Mapped[str] = mapped_column(default=None, repr=False)
-    team:Mapped[str] = mapped_column("Org", default=None)
+    team:Mapped[str] = mapped_column("Org", default=None, nullable=True)
     position:Mapped[str] = mapped_column("Position(s)", default=None)
-    yahoo_id:Mapped[int] = mapped_column(default=None, repr=False)
+    yahoo_id:Mapped[int] = mapped_column(default=None, repr=False, nullable=True)
 
     roster_spots:Mapped[List["Roster_Spot"]] = relationship(default_factory=list, back_populates="player", cascade="all, delete", repr=False)
     salary_info:Mapped[List["Salary_Info"]] = relationship(default_factory=list, back_populates="player", cascade="all, delete", lazy="joined", repr=False)
@@ -203,14 +203,15 @@ class Team:
     
     roster_spots:Mapped[List["Roster_Spot"]] = relationship(default_factory=list, back_populates="team", cascade="all, delete", repr=False)
 
-    num_players:Mapped[int] = mapped_column(default=None, repr=False)
-    spots:Mapped[int] = mapped_column(default=None, repr=False)
-    salaries:Mapped[int] = mapped_column(default=None, repr=False)
-    penalties:Mapped[int] = mapped_column(default=None, repr=False)
-    loans_in:Mapped[int] = mapped_column(default=None, repr=False)
-    loans_out:Mapped[int] = mapped_column(default=None, repr=False)
-    free_cap:Mapped[int] = mapped_column(default=None, repr=False)
+    num_players:Mapped[int] = mapped_column(default=None, repr=False, nullable=True)
+    spots:Mapped[int] = mapped_column(default=None, repr=False, nullable=True)
+    salaries:Mapped[int] = mapped_column(default=None, repr=False, nullable=True)
+    penalties:Mapped[int] = mapped_column(default=None, repr=False, nullable=True)
+    loans_in:Mapped[int] = mapped_column(default=None, repr=False, nullable=True)
+    loans_out:Mapped[int] = mapped_column(default=None, repr=False, nullable=True)
+    free_cap:Mapped[int] = mapped_column(default=None, repr=False, nullable=True)
 
+    # Transient values
     rs_map:Dict[Player,Roster_Spot] = field(default_factory=dict, repr=False)
     points:float=field(default=0, repr=False)
     lg_rank:int=field(default=0, repr=False)
@@ -256,7 +257,7 @@ class Roster_Spot:
     player_id:Mapped[int] = mapped_column(ForeignKey("player.index"), default=None)
     player:Mapped["Player"] = relationship(default=None, back_populates="roster_spots", lazy="joined")
 
-    salary:Mapped[int] = mapped_column(default=None)
+    salary:Mapped[int] = mapped_column(default=None, nullable=True)
 
     g_h:int = 0
     ip:int = 0
@@ -312,15 +313,15 @@ class ValueCalculation:
     __tablename__ = "value_calculation"
     index:Mapped[int] = mapped_column(init=False, primary_key=True)
     name:Mapped[str] = mapped_column(default=None)
-    description:Mapped[str] = mapped_column(default=None)
+    description:Mapped[str] = mapped_column(default=None, nullable=True)
     timestamp:Mapped[datetime] = mapped_column(default=datetime.now(), nullable=False)
 
-    projection_id:Mapped[int] = mapped_column(ForeignKey("projection.index"), default=None)
+    projection_id:Mapped[int] = mapped_column(ForeignKey("projection.index"), default=None, nullable=True)
     projection:Mapped["Projection"] = relationship(default=None, back_populates="calculations", repr=False)
     # Corresponds to ScoringFormat enum
     format:Mapped["ScoringFormat"] = mapped_column(default=None)
-    hitter_basis:Mapped["RankingBasis"] = mapped_column(default=None)
-    pitcher_basis:Mapped["RankingBasis"] = mapped_column(default=None)
+    hitter_basis:Mapped["RankingBasis"] = mapped_column(default=None, nullable=True)
+    pitcher_basis:Mapped["RankingBasis"] = mapped_column(default=None, nullable=True)
 
     inputs:Mapped[List["CalculationInput"]] = relationship(default_factory=list, back_populates="calculation", cascade="all, delete", lazy='joined', repr=False)
     values:Mapped[List["PlayerValue"]] = relationship(default_factory=list, back_populates="calculation", cascade="all, delete", repr=False)
@@ -488,7 +489,7 @@ class Projection:
     #type = ProjectionType.STEAMER
     timestamp:Mapped[datetime] = mapped_column(default=datetime.now(), nullable=False)
     name:Mapped[str] = mapped_column(default=None, nullable=False)
-    detail:Mapped[str] = mapped_column(default=None)
+    detail:Mapped[str] = mapped_column(default=None, nullable=True)
     season:Mapped[int] = mapped_column(default=None, nullable=False)
 
     ros:Mapped[bool] = mapped_column(default=False, nullable=False)
@@ -647,7 +648,7 @@ class CouchManagers_Team:
     cm_draft:Mapped["CouchManagers_Draft"] = relationship(default=None, back_populates='teams', repr=False)
 
     cm_team_id:Mapped[int] = mapped_column(nullable=False, default=None)
-    cm_team_name:Mapped[str] = mapped_column(default=None)
+    cm_team_name:Mapped[str] = mapped_column(default=None, nullable=True)
     ottoneu_team_id:Mapped[int] = mapped_column(nullable=False, default=None)
 
     def __hash__(self) -> int:
