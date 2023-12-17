@@ -28,10 +28,9 @@ class Player:
     position:Mapped[str] = mapped_column("Position(s)", default=None)
     yahoo_id:Mapped[int] = mapped_column(default=None, repr=False, nullable=True)
 
-    roster_spots:Mapped[List["Roster_Spot"]] = relationship(default_factory=list, back_populates="player", cascade="all, delete", repr=False)
     salary_info:Mapped[List["Salary_Info"]] = relationship(default_factory=list, back_populates="player", cascade="all, delete", lazy="joined", repr=False)
-    values:Mapped[List["PlayerValue"]] = relationship(default_factory=list, back_populates="player", cascade="all, delete", repr=False)
-    projections:Mapped[List["PlayerProjection"]] = relationship(default_factory=list, back_populates="player", cascade="all, delete", repr=False)
+    #values:Mapped[List["PlayerValue"]] = relationship(default_factory=list, back_populates="player", cascade="all, delete", repr=False)
+    #projections:Mapped[List["PlayerProjection"]] = relationship(default_factory=list, back_populates="player", cascade="all, delete", repr=False)
 
     __table_args__ = (Index('idx_fg_id','FG MajorLeagueID','FG MinorLeagueID'),)
 
@@ -255,7 +254,7 @@ class Roster_Spot:
     team:Mapped["Team"] = relationship(default=None, back_populates="roster_spots", repr=False)
 
     player_id:Mapped[int] = mapped_column(ForeignKey("player.index"), default=None)
-    player:Mapped["Player"] = relationship(default=None, back_populates="roster_spots", lazy="joined")
+    player:Mapped["Player"] = relationship(default=None, lazy="joined")
 
     salary:Mapped[int] = mapped_column(default=None, nullable=True)
 
@@ -299,7 +298,7 @@ class PlayerValue:
     index:Mapped[int] = mapped_column(primary_key=True, init=False)
 
     player_id:Mapped[int] = mapped_column(ForeignKey("player.index"), nullable=False)
-    player:Mapped["Player"] = relationship(default=None, back_populates="values", lazy="joined")
+    player:Mapped["Player"] = relationship(default=None, lazy="joined")
 
     position:Mapped["Position"] = mapped_column(default=None)
 
@@ -533,7 +532,7 @@ class PlayerProjection:
     index:Mapped[int] = mapped_column(init=False, primary_key=True)
 
     player_id:Mapped[int] = mapped_column(ForeignKey("player.index"), default=None, nullable=False)
-    player:Mapped["Player"] = relationship(default=None, back_populates="projections", lazy="joined")
+    player:Mapped["Player"] = relationship(default=None, lazy="joined")
 
     projection_id:Mapped[int] = mapped_column(ForeignKey("projection.index"), default=None)
     projection:Mapped["Projection"] = relationship(default=None, back_populates="player_projections", repr=False)
