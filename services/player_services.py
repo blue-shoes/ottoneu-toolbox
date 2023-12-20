@@ -1,4 +1,5 @@
 from datetime import datetime
+from sqlalchemy import and_
 from sqlalchemy.orm import joinedload
 from pybaseball import playerid_reverse_lookup
 import logging
@@ -135,13 +136,50 @@ def get_player_from_ottoneu_player_page(player_id: int, league_id: int, session:
     else:
         return update_from_player_page(player_tuple, session)
 
+def get_player_by_name_and_team_with_no_yahoo_id(name:str, team:str, session) -> Player:
+    if '(Batter)' in name.split() or '(Pitcher)' in name.split():
+        # Handle two-way players
+        name = ' '.join(name.split()[:-1])
+    name = string_util.normalize(name)
+    players = session.query(Player).options(joinedload(Player.salary_info)).filter(and_(Player.search_name.contains(name), Player.yahoo_id.is_(None))).all()
+    if len(players) == 0:
+        name_array = name.split()
+        last_idx = -1
+        players = session.query(Player).options(joinedload(Player.salary_info)).filter(and_(Player.search_name.contains(name_array[-1]), Player.yahoo_id.is_(None))).all()
+        if len(players) == 0 and len(name_array) > 2:
+            last_idx = -2
+        i = 1
+        if len(players) != 1:
+            while True: 
+                if i >= len(name_array[0]):
+                    break
+                name = f'{name_array[0][:i]}% {name_array[last_idx]}'
+                tmp_players = session.query(Player).options(joinedload(Player.salary_info)).filter(and_(Player.search_name.contains(name), Player.yahoo_id.is_(None))).all()
+                if len(tmp_players) < 1:
+                    break
+                players = tmp_players
+                if len(players) == 1:
+                    break
+                i += 1
+        
+    players.sort(reverse=True, key=lambda p: p.get_salary_info_for_format().roster_percentage)
+    if players is not None and len(players) > 0:
+        player = players[0]
+        for possible_player in players:
+            if match_team(possible_player, team):
+                player = possible_player
+                break
+    else:
+        player = None    
+    return player
+
 def get_player_by_name_and_team(name:str, team:str) -> Player:
     '''Returns player by matching name and team. Full name match is attempted. If no matches found with full name, partial
     matches beginning with just last name are attempted, followed by adding one letter at a time from the start of the first
     name. If the final search by name returns multiple players, they are ordered by roster percentage highest to lowest, and the
     first player with a matching team is returned. If no players match the input team when multiple match the name criteria, None 
     is returned.'''
-    name = name.upper()
+    name = string_util.normalize(name)
     players = search_by_name(name)
     if len(players) == 0:
         name_array = name.split()
@@ -155,7 +193,7 @@ def get_player_by_name_and_team(name:str, team:str) -> Player:
             else:
                 name = f'{name_array[0][:i]}% {name_array[-1]}'
             tmp_players = search_by_name(name_array[-1])
-            if len(tmp_players < 1):
+            if len(tmp_players) < 1:
                 break
             players = tmp_players
             if len(players) == 1:
@@ -164,14 +202,14 @@ def get_player_by_name_and_team(name:str, team:str) -> Player:
         
     players.sort(reverse=True, key=lambda p: p.get_salary_info_for_format().roster_percentage)
     if players is not None and len(players) > 0:
+        player = players[0]
         for possible_player in players:
             if match_team(possible_player, team):
                 player = possible_player
                 break
-        if player is None:
-            player = players[0]
     else:
         player = None    
+    return player
 
 def match_team(player:Player, team_name:str) -> bool:
     if player.team is None:
@@ -181,7 +219,13 @@ def match_team(player:Player, team_name:str) -> bool:
         return True
     map = {'TBY': 'TBR',
            'CWS': 'CHW',
-           'WAS': 'WSN'}
+           'WAS': 'WSN',
+           'AZ' : 'ARI',
+           'KC' : 'KCR',
+           'SD' : 'SDP',
+           'SF' : 'SFG',
+           'TB' : 'TBR',
+           'WSH': 'WSN'}
     if team_name in map:
         return db_team == map.get(team_name)
     return False
@@ -229,3 +273,19 @@ def get_fg_id_by_mlb_id(player_id:int) -> str:
         return p_df.loc[0,'key_fangraphs']
     else:
         return -1
+    
+def get_player_by_yahoo_id(yahoo_id:int) -> Player:
+    '''Gets the Player by their Yahoo id'''
+    with Session() as session:
+        return get_player_by_yahoo_id_with_session(yahoo_id, session)
+
+def get_player_by_yahoo_id_with_session(yahoo_id:int, session) -> Player:
+    '''Gets the Player by their Yahoo id with the given session'''
+    return session.query(Player).filter(Player.yahoo_id == yahoo_id).first()  
+
+def set_player_yahoo_id_with_session(player_id:int, yahoo_id:int, session) -> Player:
+    '''Sets the Yahoo id for the given player id'''
+    player = session.query(Player).filter(Player.index == player_id).first()
+    player.yahoo_id = yahoo_id
+    session.commit()
+    return session.query(Player).filter(Player.index == player_id).first()
