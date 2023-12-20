@@ -265,7 +265,10 @@ class Main(tk.Tk):
                 if dialog.league.platform == Platform.OTTONEU:
                     self.league = ottoneu_services.refresh_league(dialog.league.index, pd=pd)
                 elif dialog.league.platform == Platform.YAHOO:
-                    self.league = yahoo_services.refresh_league(dialog.league.index, pd=pd)
+                    try:
+                        self.league = yahoo_services.refresh_league(dialog.league.index, pd=pd)
+                    except requests.exceptions.HTTPError:
+                        mb.showerror('Rate Limited', 'Yahoo data retrieval has hit a rate limit. League will not be refreshed. Try again later')
                 else:
                     self.league = dialog.league
                 pd.set_completion_percent(100)

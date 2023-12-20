@@ -12,6 +12,7 @@ from tkinter import messagebox as mb
 from tkinter.messagebox import CANCEL
 import os
 import json
+import requests
 
 class Dialog(wizard.Dialog):
     def __init__(self, parent):
@@ -105,7 +106,11 @@ class Step1(tk.Frame):
                         self.parent.validate_msg = 'Yahoo Import cannot continue without authenticated service.'
                         mb.showerror('Import Error', 'Yahoo Import cannot continue without authenticated service.')
                         return False
-                self.parent.league = yahoo_services.create_league(self.league_num_entry.get(), pd)
+                try:
+                    self.parent.league = yahoo_services.create_league(self.league_num_entry.get(), pd)
+                except requests.exceptions.HTTPError:
+                    self.parent.validate_msg = 'Yahoo data retrieval hit rate limits. Try again later.'
+                    return False
             else:
                 logging.exception(f'Error creating league for platform {self.platform.get()}')
                 self.parent.validate_msg = f"The platform {self.platform.get()} is not implemented."

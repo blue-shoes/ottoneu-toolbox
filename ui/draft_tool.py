@@ -11,6 +11,7 @@ import threading
 from time import sleep
 from datetime import datetime, timedelta
 from typing import Dict, List
+from requests.exceptions import HTTPError
 
 from functools import partial
 
@@ -634,7 +635,10 @@ class DraftTool(tk.Frame):
                     drafted, cut, last_time = ottoneu_services.resolve_draft_results_against_rosters(self.league, self.value_calculation, last_time, self.inflation_method, self.demo_source)
                         
                 elif self.league.platform == Platform.YAHOO:
-                    drafted, cut = yahoo_services.resolve_draft_results_against_rosters(self.league, self.value_calculation, self.inf_method)
+                    try:
+                        drafted, cut = yahoo_services.resolve_draft_results_against_rosters(self.league, self.value_calculation, self.inf_method)
+                    except HTTPError:
+                        logging.error('Rate limited by Yahoo')
                 else:
                     #do nothing
                     continue
