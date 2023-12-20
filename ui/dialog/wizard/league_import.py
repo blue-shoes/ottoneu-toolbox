@@ -60,11 +60,16 @@ class Wizard(wizard.Wizard):
         prog = progress.ProgressDialog(self, 'Saving League')
         prog.set_task_title('Saving league')
         prog.set_completion_percent(20)
-        lg = league_services.save_league(self.league)
         if self.league.platform == Platform.OTTONEU:
+            lg = league_services.save_league(self.league)
             self.parent.league = ottoneu_services.refresh_league(lg.index, pd=prog)
         elif self.league.platform == Platform.YAHOO:
-            self.parent.league = yahoo_services.refresh_league(lg.index, pd=prog)
+            try:
+                lg = yahoo_services.set_player_positions_for_league(self.league, pd=prog)
+                self.parent.league = yahoo_services.refresh_league(lg.index, pd=prog)
+            except requests.exceptions.HTTPError:
+                mb.showerror('Rate limited', 'Yahoo data retrieval hit rate limits. Try again later.')
+                return False
         else:
             self.parent.league = lg
         prog.complete()
