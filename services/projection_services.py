@@ -656,12 +656,15 @@ def convert_to_df(proj:Projection) -> List[DataFrame]:
 
     return [pos_proj, pitch_proj]
 
-def db_rows_to_df(player_proj, columns):
+def db_rows_to_df(player_proj:PlayerProjection, columns):
     row = []
     row.append(player_proj.player.index)
     row.append(player_proj.player.name)
     row.append(player_proj.player.team)
-    row.append(player_proj.player.position)
+    if player_proj.player.custom_positions:
+        row.append(player_proj.player.custom_positions)
+    else:
+        row.append(player_proj.player.position)
     for col in columns:
         row.append(player_proj.get_stat(col))
     return row

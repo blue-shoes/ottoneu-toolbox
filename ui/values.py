@@ -11,10 +11,10 @@ import pandas as pd
 from typing import Dict, List
 
 from ui.table.table import Table
-from domain.domain import ValueCalculation, PlayerProjection
+from domain.domain import ValueCalculation, PlayerProjection, CustomScoring, PositionSet, PlayerValue
 from domain.enum import CalculationDataType as CDT, RankingBasis, RepLevelScheme, StatType, Position, ProjectionType, ScoringFormat
-from services import projection_services, calculation_services, adv_calc_services, custom_scoring_services
-from ui.dialog import projection_select, progress, name_desc, advanced_calc, format_select
+from services import projection_services, calculation_services, adv_calc_services, custom_scoring_services, position_set_services
+from ui.dialog import projection_select, progress, name_desc, advanced_calc, format_select, position_set_select
 from ui.dialog.wizard import projection_import, custom_scoring
 from ui.tool.tooltip import CreateToolTip
 from util import string_util
@@ -39,6 +39,8 @@ rev_cols = ('Name', 'Team', 'Pos', 'ERA', 'WHIP', 'HR/9')
 class ValuesCalculation(tk.Frame):
 
     value_calc:ValueCalculation
+    custom_scoring:CustomScoring
+    position_set:PositionSet
 
     def __init__(self, parent, controller):
         tk.Frame.__init__(self, parent)
@@ -62,6 +64,9 @@ class ValuesCalculation(tk.Frame):
         if self.controller.value_calculation is None:
             self.controller.value_calculation = ValueCalculation()
             self.value_calc = self.controller.value_calculation
+            self.position_set = None
+        else:
+            self.position_set = self.value_calc.position_set
         if self.value_calc.format == ScoringFormat.CUSTOM:
             self.custom_scoring = custom_scoring_services.get_scoring_format(int(self.value_calc.get_input(CDT.CUSTOM_SCORING_FORMAT)))
             self.custom_scoring_button.grid(column=2, row=2)
@@ -80,8 +85,7 @@ class ValuesCalculation(tk.Frame):
             else:
                 self.controller.value_calculation = None
         return True
-
-
+    
     def refresh_ui(self):
         pd = progress.ProgressDialog(self.parent, 'Updating Value Calculator Window...')
         pd.set_completion_percent(10)
@@ -91,6 +95,8 @@ class ValuesCalculation(tk.Frame):
             self.projection = None
             self.custom_scoring = None
             self.custom_scoring_lbl.set("")
+            self.position_set = None
+            self.position_set_lbl.set("Ottoneu")
             self.num_teams_str.set("12")
             self.manual_split.set(False)
             self.hitter_allocation.set("60")
@@ -131,6 +137,12 @@ class ValuesCalculation(tk.Frame):
             else:
                 self.custom_scoring = None
                 self.custom_scoring_lbl.set('')
+            if v.position_set is None:
+                self.position_set = None
+                self.position_set_lbl.set("Ottoneu")
+            else:
+                self.position_set = v.position_set
+                self.position_set_lbl.set(self.position_set.name)
             self.num_teams_str.set(int(v.get_input(CDT.NUM_TEAMS)))
             if v.get_input(CDT.HITTER_SPLIT) is None:
                 self.manual_split.set(False)
@@ -178,7 +190,6 @@ class ValuesCalculation(tk.Frame):
     def safe_set_output_value(self, data_type, string_var, integer=False, default='--', format='{:.3f}'):
         val = self.value_calc.get_output(data_type)
         self.safe_set_value(val, string_var, integer, default, format)
-        
     
     def safe_set_value(self, val, string_var, integer=False, default='--', format='{:.3f}'):
         if val is None or val == -999:
@@ -221,96 +232,102 @@ class ValuesCalculation(tk.Frame):
         self.custom_scoring_button = csb = ttk.Button(inpf, textvariable=self.custom_scoring_lbl, command=self.set_custom_scoring_format)
         csb.grid(column=2, row=2)
 
-        ttk.Label(inpf, text="Number of Teams:").grid(column=0, row=3,pady=5)
+        ttk.Label(inpf, text='Position Elig.').grid(column=0, row=3, pady=5)
+        self.position_set_lbl = StringVar()
+        self.position_set_lbl.set("")
+        self.position_set = None
+        ttk.Button(inpf, textvariable=self.position_set_lbl, command=self.set_position_set).grid(column=1, row=3, pady=5)
+
+        ttk.Label(inpf, text="Number of Teams:").grid(column=0, row=4,pady=5)
         self.num_teams_str = StringVar()
         self.num_teams_str.set("12")
         team_entry = ttk.Entry(inpf, textvariable=self.num_teams_str)
-        team_entry.grid(column=1,row=3,pady=5)
+        team_entry.grid(column=1,row=4,pady=5)
         team_entry.config(validate="key", validatecommand=(validation, '%P'))
         self.input_svs.append(self.num_teams_str)
 
         lbl = ttk.Label(inpf, text="Manual hitter/pitcher split?")
-        lbl.grid(column=0, row=4,pady=5)
+        lbl.grid(column=0, row=5,pady=5)
         CreateToolTip(lbl, 'Indicate if value calculations should calculate hitter/pitcher value\nabove replacement intrinsically or by user percentage.')
         self.manual_split = BooleanVar()
         self.manual_split.set(False)
         self.manual_split_cb = cb = ttk.Checkbutton(inpf, variable=self.manual_split, command=self.toggle_manual_split)
-        cb.grid(column=1, row=4, pady=5)
+        cb.grid(column=1, row=5, pady=5)
         CreateToolTip(cb, 'Indicate if value calculations should calculate hitter/pitcher value\nabove replacement intrinsically or by user percentage.')
 
         self.hitter_aloc_lbl = ttk.Label(inpf, text="Hitter allocation (%):")
-        self.hitter_aloc_lbl.grid(column=0, row=5,pady=5)
+        self.hitter_aloc_lbl.grid(column=0, row=6,pady=5)
         self.hitter_aloc_lbl.configure(state='disable')
         self.hitter_allocation = StringVar()
         self.hitter_allocation.set("60")
         self.hitter_aloc_entry = ttk.Entry(inpf, textvariable=self.hitter_allocation)
-        self.hitter_aloc_entry.grid(column=1,row=5,pady=5)
+        self.hitter_aloc_entry.grid(column=1,row=6,pady=5)
         self.hitter_aloc_entry.configure(state='disable')
         self.input_svs.append(self.hitter_allocation)
 
         lbl = ttk.Label(inpf, text="Excess salaries:")
-        lbl.grid(column=0, row=6,pady=5)
+        lbl.grid(column=0, row=7,pady=5)
         CreateToolTip(lbl, text='Cap space set aside for below replacement level player salaries, such as prospects, or unspent cap space.')
         self.non_prod_dollars_str = StringVar()
         self.non_prod_dollars_str.set("300")
         non_prod = ttk.Entry(inpf, textvariable=self.non_prod_dollars_str)
-        non_prod.grid(column=1,row=6,pady=5)
+        non_prod.grid(column=1,row=7,pady=5)
         non_prod.config(validate="key", validatecommand=(validation, '%P'))
         CreateToolTip(non_prod, text='Cap space set aside for below replacement level player salaries, such as prospects, or unspent cap space.')
         self.input_svs.append(self.non_prod_dollars_str)
 
-        ttk.Label(inpf, text="Hitter Value Basis:").grid(column=0,row=7,pady=5)
+        ttk.Label(inpf, text="Hitter Value Basis:").grid(column=0,row=8,pady=5)
         self.hitter_basis = StringVar()
         self.hitter_basis.set('P/G')
         self.hitter_basis_cb = hbcb = ttk.Combobox(inpf, textvariable=self.hitter_basis)
         hbcb['values'] = ('P/G','P/PA')
-        hbcb.grid(column=1,row=7,pady=5)
+        hbcb.grid(column=1,row=8,pady=5)
         hbcb.bind("<<ComboboxSelected>>", self.update_ranking_basis)
 
-        ttk.Label(inpf, text="Min PA to Rank:").grid(column=0, row= 8, pady=5)
+        ttk.Label(inpf, text="Min PA to Rank:").grid(column=0, row=9, pady=5)
         self.min_pa = StringVar()
         self.min_pa.set("150")
         pa_entry = ttk.Entry(inpf, textvariable=self.min_pa)
-        pa_entry.grid(column=1,row=8, pady=5)
+        pa_entry.grid(column=1, row=9, pady=5)
         pa_entry.config(validate="key", validatecommand=(validation, '%P'))
         CreateToolTip(pa_entry, 'The minimum number of plate appearances required to be considered for valuation.')
         self.input_svs.append(self.min_pa)
         
-        ttk.Label(inpf, text="Pitcher Value Basis:").grid(column=0,row=9,pady=5)
+        ttk.Label(inpf, text="Pitcher Value Basis:").grid(column=0, row=10, pady=5)
         self.pitcher_basis = StringVar()
         self.pitcher_basis.set('P/IP')
         self.pitcher_basis_cb = pbcb = ttk.Combobox(inpf, textvariable=self.pitcher_basis)
         pbcb['values'] = ('P/IP','P/G')
-        pbcb.grid(column=1,row=9,pady=5)
+        pbcb.grid(column=1, row=10, pady=5)
         pbcb.bind("<<ComboboxSelected>>", self.update_ranking_basis)
 
-        ttk.Label(inpf, text="Min SP IP to Rank:").grid(column=0, row= 10, pady=5)
+        ttk.Label(inpf, text="Min SP IP to Rank:").grid(column=0, row= 11, pady=5)
         self.min_sp_ip = StringVar()
         self.min_sp_ip.set("70")
         entry = ttk.Entry(inpf, textvariable=self.min_sp_ip)
-        entry.grid(column=1,row=10, pady=5)
+        entry.grid(column=1, row=11, pady=5)
         CreateToolTip(entry, 'The minimum number of innings required by a full-time starter to be considered for valuation.')
         self.input_svs.append(self.min_sp_ip)
 
-        ttk.Label(inpf, text="Min RP IP to Rank:").grid(column=0, row= 11, pady=5)
+        ttk.Label(inpf, text="Min RP IP to Rank:").grid(column=0, row= 12, pady=5)
         self.min_rp_ip = StringVar()
         self.min_rp_ip.set("30")
         entry = ttk.Entry(inpf, textvariable=self.min_rp_ip)
-        entry.grid(column=1,row=11, pady=5)
+        entry.grid(column=1, row=12, pady=5)
         CreateToolTip(entry, 'The minimum number of innings required by a full-time reliever to be considered for valuation.')
         self.input_svs.append(self.min_rp_ip)
 
         self.sv_hld_lbl = ttk.Label(inpf, text="Include SV/HLD?")
-        self.sv_hld_lbl.grid(column=0, row=12, pady=5)
+        self.sv_hld_lbl.grid(column=0, row=13, pady=5)
         CreateToolTip(self.sv_hld_lbl, 'Calculate reliever values with or without projected save and hold values.')
         self.sv_hld_bv = BooleanVar()
         self.sv_hld_bv.set(True)
         self.sv_hld_entry = ttk.Checkbutton(inpf, variable=self.sv_hld_bv, command=self.set_display_columns)
-        self.sv_hld_entry.grid(column=1, row=12, pady=5)
+        self.sv_hld_entry.grid(column=1, row=13, pady=5)
         CreateToolTip(self.sv_hld_entry, 'Calculate reliever values with or without projected save and hold values.')
         
         # This is its own method to make the __init__ more readable
-        row = self.set_replacement_level_ui(inpf, start_row=13)
+        row = self.set_replacement_level_ui(inpf, start_row=14)
 
         ttk.Button(inpf, text="Calculate", command=self.calculate_values).grid(row=row, column=0)
         self.advanced_btn = ttk.Button(inpf, text='Advanced', command=self.advanced_options)
@@ -394,6 +411,40 @@ class ValuesCalculation(tk.Frame):
             self.manual_split_cb.configure(state='active')
         self.set_display_columns()
         self.set_advanced_button_status()
+
+    def set_position_set(self) -> None:
+        count = position_set_services.get_position_set_count()
+        if count == 0:
+            mb.showinfo('No available position sets', 'No non-standard position sets available.')
+            return
+        else:
+            dialog = position_set_select.Dialog(self)
+        reload = (dialog.pos_set != self.position_set)
+        if dialog.pos_set is None:
+            self.position_set = None
+            self.position_set_lbl.set('Ottoneu')
+        else:
+            self.position_set = dialog.pos_set
+            self.position_set_lbl.set(dialog.pos_set.name)
+        if reload:
+            self.reload_player_positions()
+
+    def reload_player_positions(self):
+        if self.projection is None:
+            return
+        pd = progress.ProgressDialog(self, title='Reloading Player Positions')
+        pd.increment_completion_percent(15)
+        for pp in self.projection.player_projections:
+            if self.position_set is None:
+                pp.player.custom_positions = None
+            else:
+                pp.player.custom_positions = self.position_set.get_player_positions(pp.player_id)
+        pd.increment_completion_percent(20)
+        if len(self.tables) > 0:
+            for table in self.tables.values():
+                table.refresh()
+                pd.increment_completion_percent(5)
+        pd.complete()
 
     def set_custom_scoring_format(self) -> None:
         count = custom_scoring_services.get_format_count()
@@ -479,7 +530,7 @@ class ValuesCalculation(tk.Frame):
             pd.set_completion_percent(100)
             pd.destroy()
     
-    def append_player_column_data(self, val, pp, pos):
+    def append_player_column_data(self, val:PlayerValue, pp:PlayerProjection, pos:Position):
         if len(self.value_calc.values) > 0:
             pv = self.value_calc.get_player_value(pp.player.index, pos)
             if pv is None:
@@ -491,7 +542,10 @@ class ValuesCalculation(tk.Frame):
             val.append('-')
         val.append(pp.player.name)
         val.append(pp.player.team)
-        val.append(pp.player.position)
+        if pp.player.custom_positions:
+            val.append(pp.player.custom_positions)
+        else:
+            val.append(pp.player.position)
 
     def get_overall_row(self, pp, derived):
         val = []
@@ -562,7 +616,10 @@ class ValuesCalculation(tk.Frame):
             val.append("${:.1f}".format(pv.value))
         val.append(pv.player.name)
         val.append(pv.player.team)
-        val.append(pv.player.position)
+        if pv.player.custom_positions:
+            val.append(pv.player.custom_positions)
+        else:
+            val.append(pv.player.position)
         return val
 
     def get_player_row(self, pp:PlayerProjection, hitter:bool, cols, pos):
@@ -577,7 +634,10 @@ class ValuesCalculation(tk.Frame):
             val.append('-')
         val.append(pp.player.name)
         val.append(pp.player.team)
-        val.append(pp.player.position)
+        if pp.player.custom_positions:
+            val.append(pp.player.custom_positions)
+        else:
+            val.append(pp.player.position)
         
         if pos in Position.get_offensive_pos():
             if self.projection.type == ProjectionType.VALUE_DERIVED:
@@ -683,7 +743,10 @@ class ValuesCalculation(tk.Frame):
             val.append("${:.1f}".format(pv.value))
         val.append(pv.player.name)
         val.append(pv.player.team)
-        val.append(pv.player.position)
+        if pv.player.custom_positions:
+            val.append(pv.player.custom_positions)
+        else:
+            val.append(pv.player.position)
         val.append('0.00') # rate
         val.append('0.0') # points
         for col in cols:
@@ -1053,6 +1116,7 @@ class ValuesCalculation(tk.Frame):
             return
         self.value_calc = ValueCalculation()
         self.value_calc.projection = self.projection
+        self.value_calc.position_set = self.position_set
         self.value_calc.format = ScoringFormat.get_format_by_full_name(self.game_type.get())
         self.value_calc.inputs = []
         if self.value_calc.format == ScoringFormat.CUSTOM:

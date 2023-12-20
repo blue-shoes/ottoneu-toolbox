@@ -69,12 +69,13 @@ def load_calculation(calc_index: int) -> ValueCalculation:
     with Session() as session:
         value_calc = (session.query(ValueCalculation)
                 .filter_by(index = calc_index)
-                #.options(joinedload(ValueCalculation.values))
                 .first()
         )
-        #This is hacky, but it loads these fields so much faster than trying to do the .options(joinedload()) operations. Makes no sense
+
         for pv in value_calc.values:
-            break
+            if value_calc.position_set:
+                pv.player.custom_positions = value_calc.position_set.get_player_positions(pv.player_id)
+        #This is hacky, but it loads these fields so much faster than trying to do the .options(joinedload()) operations. Makes no sense
         if value_calc.projection is not None:
             for pp in value_calc.projection.player_projections:
                 break
@@ -179,7 +180,10 @@ def get_dataframe_with_values(value_calc : ValueCalculation, pos: Position, text
             row.append(pv.player.ottoneu_id)
             row.append(pv.player.name)
             row.append(pv.player.team)
-            row.append(pv.player.position)
+            if pv.player.custom_positions:
+                row.append(pv.player.custom_positions)
+            else:
+                row.append(pv.player.position)
             if text_values:
                 row.append("${:.1f}".format(pv.value))
             else:
@@ -491,6 +495,7 @@ def get_values_from_fg_auction_files(vc: ValueCalculation, hit_df : DataFrame, p
             total_hitters = total_hitters + 1
         vc.set_player_value(player.index, Position.OVERALL, row['Dollars'])
         vc.set_player_value(player.index, Position.OFFENSE, row['Dollars'])
+        player.custom_positions = row['POS']
         for pos in Position.get_offensive_pos():
             if pos == Position.OFFENSE:
                 continue
@@ -503,23 +508,24 @@ def get_values_from_fg_auction_files(vc: ValueCalculation, hit_df : DataFrame, p
     pitch_df.set_index("PlayerId", inplace=True)
     total_pitchers = 0
     for idx, row in pitch_df.iterrows():
+        player = player_services.get_player_by_fg_id(idx)
         if player is None:
             continue
-        player = player_services.get_player_by_fg_id(idx)
-        if player.position == 'SP':
+        if row['POS'] == 'SP':
             rep_lvls[Position.POS_SP] = row['aPOS']
             break
     for idx, row in pitch_df.iterrows():
         player = player_services.get_player_by_fg_id(idx)
         if player is None:
             continue
-        if player.position == 'RP':
+        if row['POS'] == 'RP':
             rep_lvls[Position.POS_RP] = row['aPOS']
             break
     for idx, row in pitch_df.iterrows():
         player = player_services.get_player_by_fg_id(idx)
         if player is None:
             continue
+        player.custom_positions = row['POS']
         if player.index in vc.value_dict:
             vc.set_player_value(player.index, Position.OVERALL, row['Dollars'] + vc.get_player_value(player.index, Position.OVERALL).value)
         else:

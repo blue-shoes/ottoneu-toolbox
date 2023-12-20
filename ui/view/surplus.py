@@ -173,7 +173,10 @@ class Surplus(tk.Frame):
         vals=[]
         vals.append(pv.player.name)
         vals.append(pv.player.team)
-        vals.append(pv.player.position)
+        if pv.player.custom_positions:
+            vals.append(pv.player.custom_positions)
+        else:
+            vals.append(pv.player.position)
         vals.append('') # Ottoneu Team
         vals.append('') # Salary
         vals.append('$' + "{:.1f}".format(pv.value))
@@ -189,7 +192,10 @@ class Surplus(tk.Frame):
         vals = []
         vals.append(rs.player.name)
         vals.append(rs.player.team)
-        vals.append(rs.player.position)
+        if rs.player.custom_positions:
+            vals.append(rs.player.custom_positions)
+        else:
+            vals.append(rs.player.position)
         vals.append(team.name)
         vals.append(f'${rs.salary}')
         vc = self.value_calc.get_player_value(rs.player_id, Position.OVERALL)

@@ -765,7 +765,10 @@ class DraftTool(tk.Frame):
         name = pv.player.name
         value = '$' + "{:.0f}".format(pv.value)
         inf_cost = self.__get_inflated_cost(pv)
-        position = pv.player.position
+        if pv.player.custom_positions:
+            position = pv.player.custom_positions
+        else:
+            position = pv.player.position
         team = pv.player.team
         return (name, value, inf_cost, position, team)
 
@@ -930,7 +933,10 @@ class DraftTool(tk.Frame):
                 si = None
             id = player.index
             name = player.name
-            pos = player.position
+            if player.custom_positions:
+                pos = player.custom_positions
+            else:
+                pos = player.position
             team = player.team
 
             pv = self.value_calculation.get_player_value(id, Position.OVERALL)
@@ -1026,7 +1032,10 @@ class DraftTool(tk.Frame):
                 value = '$0'
             else:
                 value = '$' + "{:.0f}".format(pv.value)
-            pos = target.player.position
+            if target.player.custom_positions:
+                pos = target.player.custom_positions
+            else:
+                pos = target.player.position
             tags = self.__get_row_tags(id)
             self.target_table.table.insert('', tk.END, iid=id, tags=tags, values=(name, t_price, value, pos))
     

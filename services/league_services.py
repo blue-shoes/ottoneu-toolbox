@@ -41,6 +41,10 @@ def get_league_in_session(session:Session, league_idx:int, rosters:bool=True) ->
                 .filter_by(index = league_idx).first())
         for keeper in league.projected_keepers:
             pass
+        if league.position_set:
+            for team in league.teams:
+                for rs in team.roster_spots:
+                    rs.player.custom_positions = league.position_set.get_player_positions(rs.player.index)
     else:
         league = (session.query(League).filter_by(index = league_idx).first())
     return league
