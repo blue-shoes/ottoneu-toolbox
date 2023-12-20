@@ -100,6 +100,9 @@ class League:
     teams:Mapped[List["Team"]] = relationship(default_factory=list, back_populates="league", cascade="all, delete", repr=False)
     projected_keepers:Mapped[List["Projected_Keeper"]] = relationship(default_factory=list, cascade="all, delete", repr=False)
 
+    position_set_id:Mapped[int] = mapped_column(ForeignKey("position_set.id"), default=None, nullable=True)
+    position_set:Mapped["PositionSet"] = relationship(default=None, lazy='joined')
+
     # Transient inflation values
     inflation:float = field(default=0, repr=False)    
     total_salary:float = field(default=0, repr=False)
@@ -317,6 +320,9 @@ class ValueCalculation:
     inputs:Mapped[List["CalculationInput"]] = relationship(default_factory=list, back_populates="calculation", cascade="all, delete", lazy='joined', repr=False)
     values:Mapped[List["PlayerValue"]] = relationship(default_factory=list, back_populates="calculation", cascade="all, delete", repr=False)
     data:Mapped[List["ValueData"]] = relationship(default_factory=list, back_populates="calculation", cascade="all, delete", lazy='joined', repr=False)
+
+    position_set_id:Mapped[int] = mapped_column(ForeignKey("position_set.id"), default=None, nullable=True)
+    position_set:Mapped["PositionSet"] = relationship(default=None, lazy='joined')
 
     value_dict = {}
 
@@ -651,3 +657,32 @@ class Adv_Calc_Option:
     __tablename__ = 'adv_calc_option'
     index:Mapped["CalculationDataType"] = mapped_column(default=None, primary_key=True)
     value:Mapped[float] = mapped_column(default=None)
+
+@reg.mapped_as_dataclass
+class PositionSet:
+    '''Class to hold non-Ottoneu or custom positional information for players'''
+    __tablename__ = 'position_set'
+    id:Mapped[int] = mapped_column(init=False, primary_key=True)
+    name:Mapped[str] = mapped_column(default='')
+    detail:Mapped[str] = mapped_column(default='', nullable=True)
+
+    positions:Mapped[List["PlayerPositions"]] = relationship(default_factory=list, back_populates='position_set', repr=False, lazy='joined')
+
+    def get_player_positions(self, player_id:int) -> str:
+        '''Gets the position string for the player'''
+        for pp in self.positions:
+            if pp.player_id == player_id:
+                return pp.position
+        return None
+
+@reg.mapped_as_dataclass
+class PlayerPositions:
+    __tablename__ = 'player_positions'
+    id:Mapped[int] = mapped_column(init=False, primary_key=True)
+    
+    player_id:Mapped[int] = mapped_column(ForeignKey("player.index"), default=None)
+
+    position_set_id:Mapped[int] = mapped_column(ForeignKey("position_set.id"), default=None)
+    position_set:Mapped["PositionSet"] = relationship(default=None)
+
+    position:Mapped[str] = mapped_column(default='')
