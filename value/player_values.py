@@ -130,13 +130,7 @@ class PlayerValues():
         for pos in Position.get_offensive_pos():
             if pos == Position.OFFENSE:
                 continue
-            elif pos == Position.POS_MI:
-                pos_value = pd.DataFrame(pos_min_pa.loc[pos_min_pa['Position(s)'].str.contains("2B|SS", case=False, regex=True)])
-            elif pos == Position.POS_UTIL:
-                pos_value = pd.DataFrame(pos_min_pa)
-            else:
-                pos_value = pd.DataFrame(pos_min_pa.loc[pos_min_pa['Position(s)'].str.contains(pos.value)])
-
+            pos_value = pd.DataFrame(pos_min_pa.loc[pos_min_pa['Position(s)'].apply(lambda test_pos, _pos=pos: Position.eligible(test_pos, _pos))])
             if self.bat_dol_per_fom > 0:
                 pos_value['Value'] = pos_value[f'{pos.value}_FOM'].apply(lambda x: x*self.bat_dol_per_fom + 1.0 if x >= 0 else 0)
             else:

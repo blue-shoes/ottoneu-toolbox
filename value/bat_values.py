@@ -81,11 +81,11 @@ class BatValues():
                 df[col] = df[rank_col].rank(ascending=False)
                 self.max_rost_num['Util'] = len(df)
             else:
-                df[col] = df.loc[df['Position(s)'].str.contains(pos.value)][rank_col].rank(ascending=False)
+                df[col] = df.loc[df['Position(s)'].apply(lambda test_pos, _pos=pos: Position.eligible(test_pos, _pos))][rank_col].rank(ascending=False)
                 df[col].fillna(-999, inplace=True)
-                self.max_rost_num[pos.value] = len(df.loc[df['Position(s)'].str.contains(pos.value)])
+                self.max_rost_num[pos.value] = len(df.loc[df['Position(s)'].apply(lambda test_pos, _pos=pos: Position.eligible(test_pos, _pos))])
         col = "Rank MI Rate"
-        df[col] = df.loc[df['Position(s)'].str.contains("2B|SS", case=False, regex=True)][rank_col].rank(ascending=False)
+        df[col] = df.loc[df['Position(s)'].apply(Position.eligible, args=(Position.POS_MI,))][rank_col].rank(ascending=False)
         df[col].fillna(-999, inplace=True)
         df['MI Games'] = 0
     
@@ -110,19 +110,18 @@ class BatValues():
             if row['Util_FOM'] < 0:
                 return 0
         else:
-            if not pos.value in row['Position(s)']:
+            if not Position.eligible(row['Position(s)'], pos):
                 return 0
             if row[f'{pos.value}_FOM'] < 0:
                 return 0
         if self.max_pos_value:
-            positions = row['Position(s)'].split("/")
             min_rep_pos = ''
             min_rep = 999
-            for player_pos in positions:
-                if player_pos == 'SP' or player_pos == 'RP': continue
-                if self.replacement_levels[player_pos] < min_rep:
-                    min_rep = self.replacement_levels[player_pos]
-                    min_rep_pos = player_pos
+            for pos2 in Position.get_offensive_pos():
+                if not Position.eligible(row['Position(s)'], pos2): continue
+                if self.replacement_levels[pos2.value] < min_rep:
+                    min_rep = self.replacement_levels[pos2.value]
+                    min_rep_pos = pos2.value
             if min_rep_pos == pos.value:
                 return row['G']
             else:
@@ -322,7 +321,7 @@ class BatValues():
     def calc_bat_fom(self, row, rep_level:float, pos:Position) -> float:
         '''Calculates FOM for the given player at the input position with the provided replacement level. If the player is
         not eligible at the position, FOM set to -999.9'''
-        if pos.value in row['Position(s)'] or pos == Position.POS_UTIL or (pos.value == 'MI' and ('SS' in row['Position(s)'] or '2B' in row['Position(s)'])):
+        if Position.eligible(row['Position(s)'], pos):
             #Filter to the current position
             par_rate = row[self.rank_basis] - rep_level
             #Are we doing P/PA values, or P/G values
@@ -346,7 +345,7 @@ class BatValues():
         '''Determines the number of players rostered above replacement level at the given position.'''
         #Filter DataFrame to just the position of interest
         if pos != Position.POS_UTIL:
-            pos_df = df.loc[df['Position(s)'].str.contains(pos.value)]
+            pos_df = df.loc[df['Position(s)'].apply(Position.eligible, args=(pos,))]
         else:
             pos_df = df
         pos_df = pos_df.sort_values(self.rank_basis, ascending=False)
@@ -373,7 +372,7 @@ class BatValues():
         required for it to be true.'''
         if pos != Position.POS_UTIL:
             #Filter DataFrame to just the position of interest
-            pos_df = df.loc[df['Position(s)'].str.contains(pos.value)]
+            pos_df = df.loc[df['Position(s)'].apply(Position.eligible, args=(pos,))]
             pos_df = pos_df.sort_values(self.rank_basis, ascending=False)
             #Get the nth value (here the # of players rostered at the position) from the sorted data - 1 for the zero index
             return pos_df.iloc[self.replacement_positions[pos.value]-1][self.rank_basis]
