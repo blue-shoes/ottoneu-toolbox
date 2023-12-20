@@ -3,7 +3,6 @@ from datetime import datetime
 from dataclasses import field
 from sqlalchemy import ForeignKey, Index
 from sqlalchemy.orm import relationship, registry, Mapped, mapped_column, reconstructor
-import re
 from domain.enum import CalculationDataType, ProjectionType, RankingBasis, ScoringFormat, StatType, Position, IdType, Platform
 from typing import List, Dict, Tuple
 
@@ -32,6 +31,9 @@ class Player:
     #values:Mapped[List["PlayerValue"]] = relationship(default_factory=list, back_populates="player", cascade="all, delete", repr=False)
     #projections:Mapped[List["PlayerProjection"]] = relationship(default_factory=list, back_populates="player", cascade="all, delete", repr=False)
 
+    # Transient fields
+    custom_positions:str = field(default=None,)
+
     __table_args__ = (Index('idx_fg_id','FG MajorLeagueID','FG MinorLeagueID'),)
 
     def __hash__(self) -> int:
@@ -46,21 +48,11 @@ class Player:
     
     def pos_eligible(self, pos: Position) -> bool:
         '''Returns if the Player is eligible at the input Position.'''
-        if pos == Position.OVERALL:
-            return True
-        elif pos == Position.OFFENSE or pos == Position.POS_UTIL:
-            for p in Position.get_discrete_offensive_pos():
-                if p.value in self.position:
-                    return True
-            return False
-        elif pos == Position.POS_MI:
-            return bool(re.search('2B|SS', self.position))
-        elif pos == Position.PITCHER:
-            for p in Position.get_discrete_pitching_pos():
-                if p.value in self.position:
-                    return True
-            return False
-        return pos.value in self.position
+        if self.custom_positions:
+            test_pos = self.custom_positions
+        else:
+            test_pos = self.position
+        return Position.eligible(test_pos, pos)
     
     def is_two_way(self) -> bool:
         '''Returns if the player is eligible at both hitting and pitching positions.'''

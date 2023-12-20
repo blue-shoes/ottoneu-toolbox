@@ -1,6 +1,7 @@
 from __future__ import annotations
 from enum import Enum
 from typing import List, Dict
+import re
 
 class ProjectionType(int,Enum):
     '''Enumeration of the available types of projections for the system, including name and url information.'''
@@ -425,11 +426,17 @@ class Position(Enum):
     POS_2B = '2B'
     POS_3B = '3B'
     POS_SS = 'SS'
+    POS_CI = 'CI'
     POS_MI = 'MI'
+    POS_INF = 'INF'
     POS_OF = 'OF'
+    POS_LF = 'LF'
+    POS_CF = 'CF'
+    POS_RF = 'RF'
     POS_UTIL = 'Util'
     POS_SP = 'SP'
     POS_RP = 'RP'    
+    POS_P = 'P'
     POS_TWO_WAY = 'Two-Way'
     OFFENSE = "Offense"
     PITCHER = "Pitcher"
@@ -476,6 +483,24 @@ class Position(Enum):
             self.POS_UTIL]
     
     @classmethod
+    def __get_all_offensive_pos(self) -> List[Position]:
+        return [
+            self.POS_C,
+            self.POS_1B,
+            self.POS_2B,
+            self.POS_SS,
+            self.POS_3B,
+            self.POS_CI,
+            self.POS_MI,
+            self.POS_INF,
+            self.POS_LF,
+            self.POS_CF,
+            self.POS_RF,
+            self.POS_OF,
+            self.POS_UTIL
+        ]
+    
+    @classmethod
     def get_pitching_pos(self) -> List[Position]:
         '''Returns list of all pitching positions, including all pitchers'''
         return [self.PITCHER,
@@ -486,6 +511,33 @@ class Position(Enum):
     def get_discrete_pitching_pos(self) -> List[Position]:
         '''Returns list of pitching positions, not including general pitchers'''
         return [self.POS_SP, self.POS_RP]
+    
+    def eligible(test_pos:str, pos:Position) -> bool:
+        '''Returns if the position string is eligible for the given position'''
+        if pos == Position.OVERALL:
+            return True
+        elif pos == Position.OFFENSE or pos == Position.POS_UTIL:
+            for p in Position.__get_all_offensive_pos():
+                if p.value in test_pos:
+                    return True
+            return False
+        elif pos == Position.POS_C:
+            #Need to change C eligibility search because of potential CI or CF positions
+            return 'C/' in test_pos or 'C' == test_pos
+        elif pos == Position.POS_MI:
+            return bool(re.search('2B|SS|MI', test_pos))
+        elif pos == Position.POS_CI:
+            return bool(re.search('1B|3B|CI', test_pos))
+        elif pos == Position.POS_INF:
+            return bool(re.search('1B|2B|SS|3B|CI|MI|INF', test_pos))
+        elif pos == Position.POS_OF:
+            return bool(re.search('OF|LF|CF|RF', test_pos))
+        elif pos == Position.PITCHER:
+            for p in Position.get_discrete_pitching_pos():
+                if p.value in test_pos:
+                    return True
+            return False
+        return pos.value in test_pos
 
 class IdType(Enum):
     '''Enumeration of player id types'''
