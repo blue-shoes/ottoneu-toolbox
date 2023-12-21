@@ -103,6 +103,9 @@ class League:
     position_set_id:Mapped[int] = mapped_column(ForeignKey("position_set.id"), default=None, nullable=True)
     position_set:Mapped["PositionSet"] = relationship(default=None, lazy='joined')
 
+    starting_set_id:Mapped[int] = mapped_column(ForeignKey("starting_position_set.id"), default=None, nullable=True)
+    starting_set:Mapped["StartingPositionSet"] = relationship(default=None, lazy='joined')
+
     # Transient inflation values
     inflation:float = field(default=0, repr=False)    
     total_salary:float = field(default=0, repr=False)
@@ -323,6 +326,9 @@ class ValueCalculation:
 
     position_set_id:Mapped[int] = mapped_column(ForeignKey("position_set.id"), default=None, nullable=True)
     position_set:Mapped["PositionSet"] = relationship(default=None, lazy='joined')
+
+    starting_set_id:Mapped[int] = mapped_column(ForeignKey("starting_position_set.id"), default=None, nullable=True)
+    starting_set:Mapped["StartingPositionSet"] = relationship(default=None, lazy='joined')
 
     value_dict = {}
 
@@ -687,3 +693,24 @@ class PlayerPositions:
     position_set:Mapped["PositionSet"] = relationship(default=None)
 
     position:Mapped[str] = mapped_column(default='')
+
+@reg.mapped_as_dataclass
+class StartingPositionSet:
+    __tablename__ = 'starting_position_set'
+    id:Mapped[int] = mapped_column(init=False, primary_key=True)
+
+    name:Mapped[str] = mapped_column(default='')
+    detail:Mapped[str] = mapped_column(default='', nullable=True)
+
+    positions:Mapped[List["StartingPosition"]] = relationship(default_factory=list, back_populates='starting_position_set', repr=False, lazy='joined')
+
+@reg.mapped_as_dataclass
+class StartingPosition:
+    __tablename__ = 'starting_position'
+    id:Mapped[int] = mapped_column(init=False, primary_key=True)
+    
+    position:Mapped[Position] = mapped_column(default=None)
+    count:Mapped[int] = mapped_column(default=1)
+
+    starting_position_set_id:Mapped[int] = mapped_column(ForeignKey("starting_position_set.id"), default=None)
+    starting_position_set:Mapped["StartingPositionSet"] = relationship(default=None)

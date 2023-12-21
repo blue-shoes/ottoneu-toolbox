@@ -11,3 +11,5 @@ ALTER TABLE league RENAME COLUMN ottoneu_id to site_id;
 ALTER TABLE player ADD COLUMN 'yahoo_id' INTEGER;
 ALTER TABLE league ADD COLUMN 'position_set_id' INTEGER;
 ALTER TABLE value_calculation ADD COLUMN 'position_set_id' INTEGER;
+ALTER TABLE league ADD COLUMN 'starting_set_id' INTEGER;
+ALTER TABLE value_calculation ADD COLUMN 'starting_set_id' INTEGER;
