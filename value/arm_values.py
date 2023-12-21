@@ -680,18 +680,18 @@ class ArmValues():
                 if self.format == ScoringFormat.OLD_SCHOOL_5X5:
                     proj['SV/G'] = proj.apply(self.per_game_rate, axis=1, args=(StatType.SV,))
                     proj['W/G'] = proj.apply(self.per_game_rate, axis=1, args=(StatType.W,))
-                    cat_to_col = {StatType.K : 'SO/IP', StatType.W : 'W/G', StatType.SV : 'SV/G', StatType.WHIP : 'WHIP_Delta', StatType.ERA : "ERA_Delta"}
+                    cat_to_col = {StatType.SO : 'SO/IP', StatType.W : 'W/G', StatType.SV : 'SV/G', StatType.WHIP : 'WHIP_Delta', StatType.ERA : "ERA_Delta"}
                 else:
                     self.stat_avg[StatType.HR_PER_9] = dataframe_util.weighted_avg(above_rep_lvl, 'HR/9', 'IP')
                     proj['HR/9_Delta'] = proj.apply(self.calc_rate_delta, axis=1, args=(StatType.HR_PER_9,))
-                    cat_to_col = {StatType.K : 'SO/IP', StatType.ERA : 'ERA_Delta', StatType.WHIP : 'WHIP_Delta', StatType.HR_PER_9 : 'HR/9_Delta'}
+                    cat_to_col = {StatType.SO : 'SO/IP', StatType.ERA : 'ERA_Delta', StatType.WHIP : 'WHIP_Delta', StatType.HR_PER_9 : 'HR/9_Delta'}
             else:
                 if self.format == ScoringFormat.OLD_SCHOOL_5X5:
-                    cat_to_col = {StatType.K : 'SO', StatType.W : 'W', StatType.SV : 'SV', StatType.WHIP : 'WHIP_Delta', StatType.ERA : "ERA_Delta"}
+                    cat_to_col = {StatType.SO : 'SO', StatType.W : 'W', StatType.SV : 'SV', StatType.WHIP : 'WHIP_Delta', StatType.ERA : "ERA_Delta"}
                 else:
                     self.stat_avg[StatType.HR_PER_9] = dataframe_util.weighted_avg(above_rep_lvl, 'HR/9', 'IP')
                     proj['HR/9_Delta'] = proj.apply(self.calc_rate_delta, axis=1, args=(StatType.HR_PER_9,))
-                    cat_to_col = {StatType.K : 'SO', StatType.ERA : 'ERA_Delta', StatType.WHIP : 'WHIP_Delta', StatType.HR_PER_9 : 'HR/9_Delta'}
+                    cat_to_col = {StatType.SO : 'SO', StatType.ERA : 'ERA_Delta', StatType.WHIP : 'WHIP_Delta', StatType.HR_PER_9 : 'HR/9_Delta'}
         above_rep_lvl = proj.loc[alr]
         means = above_rep_lvl[list(cat_to_col.values())].mean()
         stds = above_rep_lvl[list(cat_to_col.values())].std()
@@ -726,7 +726,7 @@ class ArmValues():
                 else:
                     zScore += row[f'{cat.category.display}_Delta'] / self.stat_std.get(cat.category)
         else:
-            zScore += (row[f'SO{ip_suffix}'] - self.stat_avg.get(StatType.K)) / self.stat_std.get(StatType.K) * ip_rat
+            zScore += (row[f'SO{ip_suffix}'] - self.stat_avg.get(StatType.SO)) / self.stat_std.get(StatType.SO) * ip_rat
             zScore += row['ERA_Delta'] / self.stat_std.get(StatType.ERA)
             zScore += row['WHIP_Delta'] / self.stat_std.get(StatType.WHIP)
             if self.format == ScoringFormat.OLD_SCHOOL_5X5:
