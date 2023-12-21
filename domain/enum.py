@@ -426,28 +426,42 @@ class ScoringFormat(int, Enum):
                 self.H2H_SABR_POINTS,
                 self.CUSTOM] 
 
-class Position(Enum):
+class Position(str, Enum):
+
+    order:int
+    offense:bool
+
+    def __new__(
+        cls, id: str, order: int, offense: bool = True
+    ) -> Position:
+        obj = str.__new__(cls, id)
+        obj._value_ = id
+
+        obj.order = order
+        obj.offense = offense
+        return obj
+
     '''Enumeration of Ottoneu positions'''
-    POS_C = 'C'
-    POS_1B = '1B'
-    POS_2B = '2B'
-    POS_3B = '3B'
-    POS_SS = 'SS'
-    POS_CI = 'CI'
-    POS_MI = 'MI'
-    POS_INF = 'INF'
-    POS_OF = 'OF'
-    POS_LF = 'LF'
-    POS_CF = 'CF'
-    POS_RF = 'RF'
-    POS_UTIL = 'Util'
-    POS_SP = 'SP'
-    POS_RP = 'RP'    
-    POS_P = 'P'
-    POS_TWO_WAY = 'Two-Way'
-    OFFENSE = "Offense"
-    PITCHER = "Pitcher"
-    OVERALL = 'Overall'
+    POS_C = ('C', 4)
+    POS_1B = ('1B', 5)
+    POS_2B = ('2B', 6)
+    POS_3B = ('3B', 7)
+    POS_SS = ('SS', 8)
+    POS_CI = ('CI', 9)
+    POS_MI = ('MI', 10)
+    POS_INF = ('INF', 11)
+    POS_OF = ('OF', 15)
+    POS_LF = ('LF', 12)
+    POS_CF = ('CF', 13)
+    POS_RF = ('RF', 14)
+    POS_UTIL = ('Util', 16)
+    POS_SP = ('SP', 17, False)
+    POS_RP = ('RP', 18, False)   
+    POS_P = ('P', 19, False)
+    POS_TWO_WAY = ('Two-Way', -1)
+    OFFENSE = ("Offense", 2)
+    PITCHER = ("Pitcher", 3, False)
+    OVERALL = ('Overall', 1)
 
     @classmethod
     def get_display_order(self) -> List[Position]:
@@ -477,6 +491,10 @@ class Position(Enum):
             self.POS_OF,
             self.POS_3B,
             self.POS_UTIL]
+    
+    def get_ordered_list(positions:List[Position]) -> List[Position]:
+        '''Orders the given Position List'''
+        return sorted(positions, key=lambda pos: pos.order)
     
     @classmethod
     def get_discrete_offensive_pos(self) -> List[Position]:
