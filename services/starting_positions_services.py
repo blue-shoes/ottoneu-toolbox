@@ -48,3 +48,17 @@ def get_starting_set_count() -> int:
     with Session() as session:
         count = session.query(StartingPositionSet).count()
     return count
+
+def get_starting_set(id:int) -> StartingPositionSet:
+    '''Gets the StartingPositionSet object by id'''
+    with Session() as session:
+        sps = session.query(StartingPositionSet).filter_by(id = id).first()
+    return sps
+
+def save_starting_position_set(starting_set:StartingPositionSet) -> StartingPositionSet:
+    '''Saves the StartingPositionSet object to the db'''
+    with Session() as session:
+        session.add(starting_set)
+        session.commit()
+        starting_set = get_starting_set(starting_set.id)
+    return starting_set
