@@ -292,6 +292,12 @@ def normalize_batter_projections(proj: Projection, df: DataFrame) -> List[str]:
         df['SLG'] = df.apply(calc_slg, axis=1)
     if __must_derive_stat(StatType.NET_SB, [StatType.SB, StatType.CS], df.columns):
         df[StatType.NET_SB.display] = df.apply(__calc_nsb, axis=1)
+    if __must_derive_stat(StatType.SINGLE, [StatType.H, StatType.DOUBLE, StatType.TRIPLE, StatType.HR], df.columns):
+        df[StatType.SINGLE.display] = df.apply(__calc_singles, axis=1)
+    if __must_derive_stat(StatType.TB, [StatType.H, StatType.DOUBLE, StatType.TRIPLE, StatType.HR], df.columns):
+        df[StatType.TB.display] = df.apply(__calc_tb, axis=1)
+    if __must_derive_stat(StatType.XBH, [StatType.DOUBLE, StatType.TRIPLE, StatType.HR], df.columns):
+        df[StatType.XBH.display] = df.apply(__calc_xbh, axis=1)
     
     min_col_set = ['G', 'PA', 'AB']
     if not set(min_col_set).issubset(df.columns):
@@ -462,6 +468,18 @@ def __estimate_bs(row) -> int:
         return 0
     reg_bs = int(-0.8425 + 0.0314*g_rp + 0.112 * row['SV'] + 0.0848 * row['HLD'] + 0.1323 * row['ERA'])
     return min(max(0, reg_bs), g_rp - row['SV'] - row['HLD'])
+
+def __calc_singles(row) -> float:
+    '''Calculates singles'''
+    return row[StatType.H.display] - row[StatType.DOUBLE.display] - row[StatType.TRIPLE.display] - row[StatType.HR.display]
+
+def __calc_tb(row) -> float:
+    '''Calculates total bases'''
+    return row[StatType.H.display] + row[StatType.DOUBLE.display] + 2*row[StatType.TRIPLE.display] + 3*row[StatType.HR.display]
+
+def __calc_xbh(row) -> float:
+    '''Calculates total extra base hits'''
+    return row[StatType.DOUBLE.display] + row[StatType.TRIPLE.display] + row[StatType.HR.display]
 
 def __calc_nsb(row) -> float:
     '''Calculates net stolen bases'''
