@@ -151,28 +151,31 @@ class Hitter_Points(tk.Frame):
         self.parent = parent
         tk.Label(self, text="Select Hitter Categories").grid(row=0, column=0, columnspan=2)
         self.stat_vars = {}
+        self.point_entries = {}
         self.stat_points = {}
         
         for idx, stat in enumerate(StatType.get_all_hit_stattype()):
             self.stat_vars[stat] = BooleanVar()
             tk.Checkbutton(self, text = stat.display, variable=self.stat_vars[stat], command=lambda _stat=stat: self.toggle_stat(_stat), justify=LEFT, anchor=W).grid(sticky=W, row = (int)(idx/2)+1, column=2*(idx % 2))
-            self.stat_points[stat] = sp = tk.Entry(self)
+            points = StringVar()
+            self.stat_points[stat] = points
+            self.point_entries[stat] = sp = tk.Entry(self, textvariable=points)
             sp.grid(row = (int)(idx/2)+1, column=2*(idx % 2)+1)
 
     def toggle_stat(self, stat:StatType):
         if self.stat_vars[stat].get():
-            self.stat_points[stat].configure(state='active')
+            self.point_entries[stat].configure(state='active')
         else:
-            self.stat_points[stat].configure(state='disable')
+            self.point_entries[stat].configure(state='disable')
 
     def on_show(self):
         for stat, bv in self.stat_vars.items():
             if stat in [s.category for s in self.parent.parent.scoring.stats]:
                 bv.set(True)
-                self.stat_points[stat].configure(state='active')
+                self.point_entries[stat].configure(state='active')
             else:
                 bv.set(False)
-                self.stat_points[stat].configure(state='disable')
+                self.point_entries[stat].configure(state='disable')
         return True
     
     def validate(self):
@@ -189,7 +192,7 @@ class Hitter_Points(tk.Frame):
                 csc = CustomScoringCategory()
                 csc.category = stat
                 try:
-                    csc.points = float(self.stat_points[stat])
+                    csc.points = float(self.stat_points[stat].get())
                 except ValueError:
                     self.parent.validate_msg = 'Point entries must be numbers'
                     return False
@@ -245,28 +248,31 @@ class Pitcher_Points(tk.Frame):
         self.parent = parent
         tk.Label(self, text="Select Pitcher Categories").grid(row=0, column=0, columnspan=2)
         self.stat_vars = {}
+        self.point_entries = {}
         self.stat_points = {}
         
         for idx, stat in enumerate(StatType.get_all_pitch_stattype(no_rates=True)):
             self.stat_vars[stat] = BooleanVar()
             tk.Checkbutton(self, text = stat.display, variable=self.stat_vars[stat], command=lambda _stat=stat: self.toggle_stat(_stat), justify=LEFT, anchor=W).grid(sticky=W, row = (int)(idx/2)+1, column=2*(idx % 2))
-            self.stat_points[stat] = sp = tk.Entry(self)
+            points = StringVar()
+            self.stat_points[stat] = points
+            self.point_entries[stat] = sp = tk.Entry(self)
             sp.grid(row = (int)(idx/2)+1, column=2*(idx % 2)+1)
     
     def toggle_stat(self, stat:StatType):
         if self.stat_vars[stat].get():
-            self.stat_points[stat].configure(state='active')
+            self.point_entries[stat].configure(state='active')
         else:
-            self.stat_points[stat].configure(state='disable')
+            self.point_entries[stat].configure(state='disable')
 
     def on_show(self):
         for stat, bv in self.stat_vars.items():
             if stat in [s.category for s in self.parent.parent.scoring.stats]:
                 bv.set(True)
-                self.stat_points[stat].configure(state='active')
+                self.point_entries[stat].configure(state='active')
             else:
                 bv.set(False)
-                self.stat_points[stat].configure(state='disable')
+                self.point_entries[stat].configure(state='disable')
         return True
     
     def validate(self):
@@ -283,7 +289,7 @@ class Pitcher_Points(tk.Frame):
                 csc = CustomScoringCategory()
                 csc.category = stat
                 try:
-                    csc.points = float(self.stat_points[stat])
+                    csc.points = float(self.stat_points[stat].get())
                 except ValueError:
                     self.parent.validate_msg = 'Point entries must be numbers'
                     return False
