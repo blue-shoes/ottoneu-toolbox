@@ -86,6 +86,10 @@ class Step0(tk.Frame):
         tk.Radiobutton(self, text='Categories', variable=self.scoring_basis_iv, value=0).grid(row=3, column=0)
         tk.Radiobutton(self, text='Points', variable=self.scoring_basis_iv, value=1).grid(row=3, column=1)
 
+        self.h2h_bv = BooleanVar()
+        self.h2h_bv.set(False)
+        tk.Checkbutton(self, text='Head-to-Head?', variable=self.h2h_bv).grid(row=4, column=0)
+
     def on_show(self):
         return True
     
@@ -98,6 +102,7 @@ class Step0(tk.Frame):
         self.parent.parent.scoring.name = self.name_tv.get()
         self.parent.parent.scoring.description = self.desc_tv.get()
         self.parent.parent.scoring.points_format = (self.scoring_basis_iv.get() == 1)
+        self.parent.parent.scoring.head_to_head = self.h2h_bv.get()
         self.parent.points_format = self.parent.parent.scoring.points_format
         return True
 

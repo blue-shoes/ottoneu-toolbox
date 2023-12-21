@@ -436,6 +436,7 @@ class CustomScoring:
     name:Mapped[str] = mapped_column(default=None)
     description:Mapped[str] = mapped_column(default=None)
     points_format:Mapped[bool] = mapped_column(default=False)
+    head_to_head:Mapped[bool] = mapped_column(default=False)
 
     stats:Mapped[List["CustomScoringCategory"]] = relationship(default_factory=list, cascade="all, delete", repr=False, lazy="joined")
 
