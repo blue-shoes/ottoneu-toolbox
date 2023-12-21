@@ -173,7 +173,7 @@ class DraftTool(tk.Frame):
         for pos in (Position.get_offensive_pos() + Position.get_pitching_pos()):
             pos_frame = ttk.Frame(self.tab_control)
             self.tab_control.add(pos_frame, text=pos.value) 
-            if pos in Position.get_offensive_pos():
+            if pos.offense:
                 cols = ('Name','Value','Inf. Cost','Pos','Team','Points','P/G', 'P/PA','Avg. Price', 'L10 Price', 'Roster %') + tuple([st.display for st in StatType.get_all_hit_stattype()])
             else:
                 cols = ('Name','Value','Inf. Cost','Pos','Team','Points','SABR Pts','P/IP','SABR PIP','PP/G','SABR PPG', 'Avg. Price', 'L10 Price', 'Roster %') + tuple([st.display for st in StatType.get_all_pitch_stattype()])
@@ -425,7 +425,7 @@ class DraftTool(tk.Frame):
             else:
                 if pos == Position.OVERALL:
                     col2 = 'Roster %'
-                elif pos in Position.get_offensive_pos():
+                elif pos.offense:
                     col2 = 'R'
                 else:
                     #TODO: I'd like this to be WHIP, but need to make it not reverse sort then
@@ -833,7 +833,7 @@ class DraftTool(tk.Frame):
                 points = calculation_services.get_points(pp, pos, sabr=False, custom_format=custom_scoring)
                 point_cols.append("{:.1f}".format(points))
                 
-                if pos in Position.get_offensive_pos():
+                if pos.offense:
                     games = pp.get_stat(StatType.G_HIT)
                     pa = pp.get_stat(StatType.PA)
                     try:
@@ -1169,7 +1169,7 @@ class DraftTool(tk.Frame):
                 raise Exception(f"Unhandled pitcher_basis {self.value_calculation.pitcher_basis}")
             self.overall_view.table.set_display_columns(player_cols + p_points + hit_rate + pitch_rate + salary_cols)
             for pos, view in self.pos_view.items():
-                if pos in Position.get_offensive_pos():
+                if pos.offense:
                     view.table.set_display_columns(player_cols + ('Points',) + pos_hit_rate + salary_cols)
                 else:
                     view.table.set_display_columns(player_cols + p_points + pitch_rate + salary_cols)
@@ -1180,7 +1180,7 @@ class DraftTool(tk.Frame):
         elif (not self.league.is_linked() and self.value_calculation.format == ScoringFormat.OLD_SCHOOL_5X5) or self.league.format == ScoringFormat.OLD_SCHOOL_5X5:
             self.overall_view.table.set_display_columns(stock_overall)
             for pos, view in self.pos_view.items():
-                if pos in Position.get_offensive_pos():
+                if pos.offense:
                     view.table.set_display_columns(player_cols + hit_5x5_cols + salary_cols)
                 else:
                     view.table.set_display_columns(player_cols + pitch_5x5_cols + salary_cols)
@@ -1191,7 +1191,7 @@ class DraftTool(tk.Frame):
         elif (not self.league.is_linked() and self.value_calculation.format == ScoringFormat.CLASSIC_4X4) or self.league.format == ScoringFormat.CLASSIC_4X4:
             self.overall_view.table.set_display_columns(stock_overall)
             for pos, view in self.pos_view.items():
-                if pos in Position.get_offensive_pos():
+                if pos.offense:
                     view.table.set_display_columns(player_cols + hit_4x4_cols + salary_cols)
                 else:
                     view.table.set_display_columns(player_cols + pitch_4x4_cols + salary_cols)
@@ -1210,7 +1210,7 @@ class DraftTool(tk.Frame):
                 if not stat.hitter and stat.display not in player_cols:
                     pitch.append(stat.display)
             for pos, view in self.pos_view.items():
-                if pos in Position.get_offensive_pos():
+                if pos.offense:
                     view.table.set_display_columns(player_cols + tuple(hit))
                 else:
                     view.table.set_display_columns(player_cols + tuple(pitch))

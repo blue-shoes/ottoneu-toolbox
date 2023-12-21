@@ -639,7 +639,7 @@ class ValuesCalculation(tk.Frame):
         else:
             val.append(pp.player.position)
         
-        if pos in Position.get_offensive_pos():
+        if pos.offense:
             if self.projection.type == ProjectionType.VALUE_DERIVED:
                 val.append(pp.get_stat(StatType.PPG)) # p/g
                 val.append(pp.get_stat(StatType.PPG)) # hp/g
@@ -1052,9 +1052,10 @@ class ValuesCalculation(tk.Frame):
                         pitch.append(stat.display)
         self.overall_table.set_display_columns(tuple(overall))
         for pos in self.tables:
-            if pos in Position.get_offensive_pos():
+            if pos == Position.OVERALL: continue
+            if pos.offense:
                 self.tables[pos].set_display_columns(tuple(hit))
-            elif pos in Position.get_pitching_pos():
+            else:
                 self.tables[pos].set_display_columns(tuple(pitch))
     
     def set_replacement_level_ui(self, inpf, start_row:int):

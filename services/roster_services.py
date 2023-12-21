@@ -101,10 +101,10 @@ def optimize_team_pt(team:Team,
         elig_pos = player_services.get_player_positions(player, discrete=True)
         for i in range(0, len(possibilities)):
             for pos in elig_pos:
-                if pos in Position.get_offensive_pos():
+                if pos.offenes:
                     last_pos = pos
             for pos in elig_pos:
-                if pos in Position.get_offensive_pos():
+                if pos.offense:
                     last = (pos == last_pos)
                     __add_pt(possibilities, pt, opt_sum, val, pos, i, last=last, rep_lvl=rep_lvl, g_limit=off_g_limit)
                     first = False      
@@ -191,7 +191,7 @@ def __add_pt(possibilities:List[Dict[int, int]],
             for pos in player_services.get_player_positions(val[1][0], discrete=True):
                 if pos in used_pos:
                     continue
-                if pos in Position.get_offensive_pos():
+                if pos.offense:
                     __add_pt(possibilities, pt, opt_sum, val, pos, index=len(possibilities)-1, used_pos = used_pos, used_pt=used_pt)
 
     if (g_h + used_pt) < val[1][1]:

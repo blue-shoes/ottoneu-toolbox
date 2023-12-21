@@ -146,7 +146,7 @@ def project_team_results(team:Team, value_calc:ValueCalculation, format:ScoringF
                 rl = rep_lvl.get(pos)
                 if pos == Position.POS_OF:
                     cap = 5*value_calc.get_input(CalculationDataType.BATTER_G_TARGET, 162)
-                elif pos in Position.get_offensive_pos():
+                elif pos.offense:
                     cap = value_calc.get_input(CalculationDataType.BATTER_G_TARGET, 162)
                 elif pos == Position.POS_SP:
                     if value_calc.pitcher_basis == RankingBasis.PIP:

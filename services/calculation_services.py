@@ -96,7 +96,7 @@ def get_points(player_proj: PlayerProjection, pos: Position, sabr:bool=False, no
     try:
         if player_proj.get_stat(StatType.POINTS) is not None:
             return player_proj.get_stat(StatType.POINTS)
-        if pos in Position.get_offensive_pos():
+        if pos.offense:
             if custom_format is None or not custom_format.points_format:
                 return -1.0*player_proj.get_stat(StatType.AB) + 5.6*player_proj.get_stat(StatType.H) + 2.9*player_proj.get_stat(StatType.DOUBLE) \
                     + 5.7*player_proj.get_stat(StatType.TRIPLE) + 9.4*player_proj.get_stat(StatType.HR) +3.0*player_proj.get_stat(StatType.BB) \
@@ -107,7 +107,7 @@ def get_points(player_proj: PlayerProjection, pos: Position, sabr:bool=False, no
                     points += cat.points * player_proj.get_stat(cat.category)
             return points
 
-        if pos in Position.get_pitching_pos():
+        if not pos.offense:
             if custom_format is None or not custom_format.points_format:
                 if no_svh:
                     svh = 0
@@ -196,7 +196,7 @@ def get_dataframe_with_values(value_calc : ValueCalculation, pos: Position, text
         return df
     else:
         proj_dfs = projection_services.convert_to_df(value_calc.projection)
-        if pos in Position.get_offensive_pos():
+        if pos.offense:
             proj = proj_dfs[0]
         else:
             proj = proj_dfs[1]
@@ -592,7 +592,7 @@ def init_outputs_from_upload(vc: ValueCalculation, df : DataFrame, game_type:Sco
             if len(positions) == 1 and pp is not None:
                 pos = positions[0]
                 pitch_role_good = True
-                if pos in Position.get_pitching_pos():
+                if not pos.offense:
                     #This mitigates potential issues where a pitcher's Ottoneu position doens't reflect their projection
                     #and protects against swingman roles being used to determine replacement level
                     pp = vc.projection.get_player_projection(player.index)
@@ -696,7 +696,7 @@ def init_outputs_from_upload(vc: ValueCalculation, df : DataFrame, game_type:Sco
         else:
             if ScoringFormat.is_points_type(game_type):
                 fom = [sample_list[0][1], sample_list[-1][1], sample_list[1][1], sample_list[-2][1]]
-                if pos in Position.get_offensive_pos():
+                if pos.offense:
                     pt = [sample_list[0][2], sample_list[-1][2], sample_list[1][2], sample_list[-2][2]]
                 else:
                     pt = [sample_list[0][3], sample_list[-1][3], sample_list[1][3], sample_list[-2][3]]
@@ -707,9 +707,9 @@ def init_outputs_from_upload(vc: ValueCalculation, df : DataFrame, game_type:Sco
         rl, d = calc_rep_levels_from_values(prices, game_type, fom, pt, rep_level_cost)
         vc.set_output(CDT.pos_to_rep_level().get(pos), rl)
 
-        if pos in Position.get_offensive_pos() and hit_dol_per_fom < 0:
+        if pos.offense and hit_dol_per_fom < 0:
             hit_dol_per_fom = d
-        elif pos in Position.get_pitching_pos() and pitch_dol_per_fom < 0:
+        elif not pos.offense and pitch_dol_per_fom < 0:
             pitch_dol_per_fom = d
 
     #Util rep level is either the highest offensive position level, or the Util value, whichever is lower
@@ -834,7 +834,7 @@ def save_calculation_from_file(vc : ValueCalculation, df : DataFrame, pd=None, r
             else:
                 mi_rl = min(vc.get_output(CDT.REP_LEVEL_2B), vc.get_output(CDT.REP_LEVEL_SS))
                 for pos in player_services.get_player_positions(player, discrete=True):
-                    if pos in Position.get_offensive_pos():
+                    if pos.offense:
                         if not hit:
                             vc.set_player_value(idx, Position.OFFENSE, row['Values'])
                             u_val = (h_points - vc.get_output(CDT.REP_LEVEL_UTIL) * h_pt) * vc.get_output(CDT.HITTER_DOLLAR_PER_FOM)
@@ -849,7 +849,7 @@ def save_calculation_from_file(vc : ValueCalculation, df : DataFrame, pd=None, r
                         val = (h_points - rl * h_pt) * vc.get_output(CDT.HITTER_DOLLAR_PER_FOM)
                         vc.set_player_value(idx, pos, val)
 
-                    if pos in Position.get_pitching_pos():
+                    if not pos.offense:
                         if not pitch:
                             vc.set_player_value(idx, Position.PITCHER, row['Values'])
                             pitch = True
@@ -880,7 +880,7 @@ def save_calculation_from_file(vc : ValueCalculation, df : DataFrame, pd=None, r
                 h_points = row['FOM']
                 mi_rl = min(vc.get_output(CDT.REP_LEVEL_2B), vc.get_output(CDT.REP_LEVEL_SS))
                 for pos in player_services.get_player_positions(player, discrete=True):
-                    if pos in Position.get_offensive_pos():
+                    if pos.offense:
                         if not hit:
                             vc.set_player_value(idx, Position.OFFENSE, row['Values'])
                             if vc.hitter_basis == RankingBasis.ZSCORE_PER_G:
@@ -904,7 +904,7 @@ def save_calculation_from_file(vc : ValueCalculation, df : DataFrame, pd=None, r
                             val = (h_points - rl) * vc.get_output(CDT.HITTER_DOLLAR_PER_FOM) + rep_val
                         vc.set_player_value(idx, pos, val)
 
-                    if pos in Position.get_pitching_pos():
+                    if not pos.offense:
                         if not pitch:
                             vc.set_player_value(idx, Position.PITCHER, row['Values'])
                             pitch = True
