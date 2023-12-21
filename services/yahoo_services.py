@@ -3,15 +3,16 @@ from yfpy import Team as YTeam, League as YLeague, Settings as YSettings, Player
 from pathlib import Path
 
 from dao.session import Session
-from domain.domain import League, Roster_Spot, Player, ValueCalculation, Team, PositionSet, PlayerPositions
-from domain.enum import InflationMethod, Position, ScoringFormat, Platform
-from services import player_services, league_services
+from domain.domain import League, Roster_Spot, Player, ValueCalculation, Team, PositionSet, PlayerPositions, CustomScoringCategory, StartingPosition
+from domain.enum import InflationMethod, Position, ScoringFormat, Platform, StatType
+from services import player_services, league_services, custom_scoring_services, starting_positions_services
 
 import json
 from typing import List, Tuple
 import datetime
 import threading
 from time import sleep
+import logging
 
 game_id:str = ''
 
@@ -40,6 +41,34 @@ def create_league(league_yahoo_id:int, pd=None) -> League:
         lg.team_salary_cap = 0
     else:
         lg.team_salary_cap = -1
+    
+    stat_cats = []
+    for stat in settings.stat_categories.stats:
+        if not stat.is_only_display_stat:
+            if stat.position_type == 'B':
+                stat_type = StatType.get_hit_stattype(stat.display_name)
+            else:
+                stat_type = StatType.get_pitch_stattype(stat.display_name)
+            if stat_type is None:
+                logging.info(f'Could not find stat type {stat.display_name}')
+                stat_cats = None
+                break
+            stat_cats.append(CustomScoringCategory(category=stat_type))
+    
+    if stat_cats:
+        custom_scoring_services.get_or_make_custom_scoring(stat_cats, lg.name)
+    
+    starting_pos = []
+    for rp in settings.roster_positions:
+        if rp.is_starting_position:
+            pos = Position._value2member_map_.get(rp.position, None)
+            if pos is None:
+                starting_pos = None
+                break
+            starting_pos.append(StartingPosition(position=pos, count = rp.count))
+
+    if starting_pos:
+        lg.starting_set = starting_positions_services.get_or_make_starting_position_set(starting_pos, lg.name)
 
     for yteam in teams:
         team = Team()
@@ -146,7 +175,6 @@ def resolve_draft_results_against_rosters(league:League, value_calc:ValueCalcula
 
 def set_player_positions_for_league(league:League, pd = None) -> League:
     '''Gets Yahoo league player position eligibilities and creates a new PositionSet, if necessary. Also populates player.yahoo_id if necessary.'''
-    ic()
     if not league.position_set:
         timestamp = datetime.datetime.now()
         position_set = PositionSet(name=f'{timestamp.year}-{league.name}')
@@ -166,9 +194,6 @@ def set_player_positions_for_league(league:League, pd = None) -> League:
     while (thread.is_alive()):
         pd.increment_completion_percent(1)
         sleep(10)
-    ic((datetime.datetime.now() - start))
-    #yplayers = get_league_players(league.site_id)
-    ic(len(yplayers))
     start = datetime.datetime.now()
     seen_ids = []
     with Session() as session:
@@ -188,7 +213,6 @@ def set_player_positions_for_league(league:League, pd = None) -> League:
                 #ic(yplayer, player_position)
                 position_set.positions.append(player_position)
                 seen_ids.append(player.index)
-    ic((datetime.datetime.now() - start))
     return league_services.save_league(league)
 
 def get_or_set_player_by_yahoo_id(yplayer:YPlayer, session) -> Player:

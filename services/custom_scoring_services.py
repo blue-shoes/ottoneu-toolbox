@@ -1,7 +1,9 @@
 from typing import List
+import logging
+import datetime
 
 from dao.session import Session
-from domain.domain import CustomScoring
+from domain.domain import CustomScoring, CustomScoringCategory
 
 def get_scoring_format(id:int) -> CustomScoring:
     '''Gets the CustomScoring object by id'''
@@ -35,3 +37,31 @@ def get_format_count() -> int:
     with Session() as session:
         count = session.query(CustomScoring).count()
     return count
+
+def get_or_make_custom_scoring(custom_stats:List[CustomScoringCategory], name:str, description:str=None) -> CustomScoring:
+    '''Gets the custom scoring set if one matches the list of CustomScoringCategory and makes and returns one if it does not
+    already exist'''
+    with Session() as session:
+        css = session.query(CustomScoring).all()
+        for cs_set in css:
+            if len(cs_set.stats) != len(custom_stats):
+                continue
+            found = False
+            for cs in cs_set.stats:
+                for test_cs in custom_stats:
+                    if test_cs.category == cs.category and test_cs.points == cs.points:
+                        found = True
+                        break
+                if not found:
+                    break
+            if not found:
+                return cs_set
+        logging.info(f'Creating new CustomScoring {name}')
+        if description is None:
+            time = datetime.datetime.now()
+            description = f'Automatically created on {time.year}/{time.month}/{time.day}'
+        cs_set = CustomScoring(name=name, description=description)
+        cs_set.stats.extend(custom_stats)
+        session.add(cs_set)
+        session.commit()
+        return cs_set
