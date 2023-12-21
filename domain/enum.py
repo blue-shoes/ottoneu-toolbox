@@ -508,7 +508,7 @@ class Position(str, Enum):
             self.POS_UTIL]
     
     @classmethod
-    def __get_all_offensive_pos(self) -> List[Position]:
+    def get_all_offensive_pos(self) -> List[Position]:
         return [
             self.POS_C,
             self.POS_1B,
@@ -542,7 +542,7 @@ class Position(str, Enum):
         if pos == Position.OVERALL:
             return True
         elif pos == Position.OFFENSE or pos == Position.POS_UTIL:
-            for p in Position.__get_all_offensive_pos():
+            for p in Position.get_all_offensive_pos():
                 if p.value in test_pos:
                     return True
             return False
