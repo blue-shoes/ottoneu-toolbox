@@ -11,12 +11,12 @@ import logging
 import datetime
 from typing import List, Tuple, Dict
 
-def perform_point_calculation(value_calc : ValueCalculation, pd = None) -> None:
+def perform_point_calculation(value_calc : ValueCalculation, pd = None, debug:bool = False) -> None:
     '''Creates a PointValues object from the ValueCalculation, calculates player values, and stores them in the ValueCalculation'''
     if pd is not None:
         pd.set_task_title("Initializing Value Calculation...")
         pd.increment_completion_percent(5)
-    value_calculation = PlayerValues(value_calc=value_calc)
+    value_calculation = PlayerValues(value_calc=value_calc, debug=debug)
     value_calculation.calculate_values(progress=pd)
 
 def get_num_rostered_rep_levels(value_calc: ValueCalculation) -> Dict[str,float]:

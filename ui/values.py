@@ -1206,7 +1206,7 @@ class ValuesCalculation(tk.Frame):
         logging.debug("About to perform point_calc")
         pd = progress.ProgressDialog(self, title='Performing Calculation')
         try:
-            calculation_services.perform_point_calculation(self.value_calc, pd)
+            calculation_services.perform_point_calculation(self.value_calc, pd, self.controller.debug)
             logging.debug("Performed calc")
             self.update_values()
             #self.populate_projections()
