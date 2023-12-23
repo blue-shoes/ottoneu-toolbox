@@ -704,6 +704,13 @@ class StartingPositionSet:
 
     positions:Mapped[List["StartingPosition"]] = relationship(default_factory=list, back_populates='starting_position_set', repr=False, lazy='joined')
 
+    def get_count_for_position(self, pos:Position) -> int:
+        '''Gets the number of starting spots for the position'''
+        for sp in self.positions:
+            if sp.position == pos:
+                return sp.count
+        return 0
+
 @reg.mapped_as_dataclass
 class StartingPosition:
     __tablename__ = 'starting_position'
