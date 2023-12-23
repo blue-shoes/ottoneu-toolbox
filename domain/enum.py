@@ -506,6 +506,18 @@ class Position(str, Enum):
             self.POS_3B,
             self.POS_OF,
             self.POS_UTIL]
+
+    @classmethod
+    def get_ottoneu_offensive_pos(self) -> List[Position]:
+        '''Returns list of offensive positions that does not include overall offense (Ottoneu starting positions)'''
+        return [self.POS_C, 
+            self.POS_1B,
+            self.POS_2B,
+            self.POS_SS,
+            self.POS_MI,
+            self.POS_3B,
+            self.POS_OF,
+            self.POS_UTIL]
     
     @classmethod
     def get_all_offensive_pos(self) -> List[Position]:
