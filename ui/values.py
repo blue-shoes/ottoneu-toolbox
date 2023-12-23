@@ -184,8 +184,9 @@ class ValuesCalculation(tk.Frame):
         pd.set_completion_percent(33)
         if len(self.tables) > 0:
             for table in self.tables.values():
-                table.refresh()
-                pd.increment_completion_percent(5)
+                if table:
+                    table.refresh()
+                    pd.increment_completion_percent(5)
         self.set_display_columns()
         pd.set_completion_percent(100)
         pd.destroy()
@@ -460,15 +461,24 @@ class ValuesCalculation(tk.Frame):
         else:
             self.starting_set_lbl.set('Ottoneu')
         if reload:
-            for pos in self.tables:
+            for pos, table in self.tables.items():
                 if pos == Position.OVERALL or pos == Position.OFFENSE or pos == Position.PITCHER: continue
+                if not table: continue
                 for tab_id in self.tab_control.tabs():
                     item = self.tab_control.tab(tab_id)
                     if item['text']==pos.value:
                         self.tab_control.hide(tab_id)
                     self.tables[pos] = None 
             self.create_position_tables()
-
+            pd = progress.ProgressDialog(self, title='Reloading Player Tables')
+            pd.increment_completion_percent(15)
+            for pos, table in self.tables.items():
+                if pos == Position.OVERALL or pos == Position.OFFENSE or pos == Position.PITCHER: continue
+                if table:
+                    table.refresh()
+                    pd.increment_completion_percent(5)
+            self.set_display_columns()
+            pd.complete()
 
     def set_position_set(self) -> None:
         count = position_set_services.get_position_set_count()
@@ -500,8 +510,9 @@ class ValuesCalculation(tk.Frame):
         pd.increment_completion_percent(20)
         if len(self.tables) > 0:
             for table in self.tables.values():
-                table.refresh()
-                pd.increment_completion_percent(5)
+                if table:
+                    table.refresh()
+                    pd.increment_completion_percent(5)
         pd.complete()
 
     def set_custom_scoring_format(self) -> None:
@@ -1112,12 +1123,13 @@ class ValuesCalculation(tk.Frame):
                     if not stat.hitter and stat.display not in pt_pitcher_columns:
                         pitch.append(stat.display)
         self.overall_table.set_display_columns(tuple(overall))
-        for pos in self.tables:
+        for pos, table in self.tables.items():
             if pos == Position.OVERALL: continue
-            if pos.offense:
-                self.tables[pos].set_display_columns(tuple(hit))
-            else:
-                self.tables[pos].set_display_columns(tuple(pitch))
+            if table:
+                if pos.offense:
+                    table.set_display_columns(tuple(hit))
+                else:
+                    table.set_display_columns(tuple(pitch))
     
     def set_replacement_level_ui(self, inpf, start_row:int):
         row = start_row
@@ -1263,13 +1275,14 @@ class ValuesCalculation(tk.Frame):
 
     def update_values(self):
         for pos, table in self.tables.items():
-            for index in table.get_children():
-                pv = self.value_calc.get_player_value(int(table.item(index)['text']), pos)
-                if pv is None:
-                    table.set(index, 0, "$0.0")
-                else:
-                    table.set(index, 0, "${:.1f}".format(pv.value))
-            table.resort()
+            if table:
+                for index in table.get_children():
+                    pv = self.value_calc.get_player_value(int(table.item(index)['text']), pos)
+                    if pv is None:
+                        table.set(index, 0, "$0.0")
+                    else:
+                        table.set(index, 0, "${:.1f}".format(pv.value))
+                table.resort()
     
     def set_advanced_button_status(self):
         if self.rep_level_scheme.get() == RepLevelScheme.FILL_GAMES.value:
