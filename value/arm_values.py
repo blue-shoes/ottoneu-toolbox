@@ -4,6 +4,7 @@ import os
 from os import path
 from copy import deepcopy
 from typing import List
+import logging
 
 from domain.domain import ValueCalculation, CustomScoring
 from domain.enum import RepLevelScheme, RankingBasis, CalculationDataType as CDT, ScoringFormat, Position, StatType
@@ -282,7 +283,6 @@ class ArmValues():
                     sigma = self.iterate_roto(df)
             else:
                 raise Exception("Unusable Replacement Level Scheme")
-        
         if(self.intermediate_calculations):
             filepath = os.path.join(self.intermed_subdirpath, f"pit_rost.csv")
             rosterable.to_csv(filepath, encoding='utf-8-sig')
@@ -588,13 +588,18 @@ class ArmValues():
         df['Max FOM'] = df.apply(self.calc_max_fom, axis=1)
         sigma = 999
         orig = df['Max FOM'].sum()
+        two_prior = 999
         while abs(sigma) > 2:
             self.calculate_roto_bases(df)
             self.get_pitcher_fom_calc(df, split=False)
             df['Max FOM'] = df.apply(self.calc_max_fom, axis=1)
             updated = df['Max FOM'].sum()
             sigma = orig - updated
+            if two_prior == updated:
+                break
+            two_prior = orig
             orig = updated
+            logging.debug(f'new arm sigma = {sigma}')
         return sigma
 
     def rank_roto_pitchers(self, df:DataFrame, rank_col:str=None, ascending=False) -> None:
