@@ -55,7 +55,8 @@ class PlayerValues():
 
         pos_values = value.bat_values.BatValues(
             self.value_calc,
-            intermediate_calc=self.intermediate_calculations
+            intermediate_calc=self.intermediate_calculations,
+            prog=progress
         )
         if rep_nums is not None:
             pos_values.replacement_positions = rep_nums
@@ -66,7 +67,7 @@ class PlayerValues():
         pos_min_pa = pos_values.calc_fom(self.pos_proj, self.value_calc.get_input(CalculationDataType.PA_TO_RANK))
 
         progress.set_task_title('Calculating pitchers')
-        progress.increment_completion_percent(40)
+        progress.set_completion_percent(70)
         
         pitch_values = value.arm_values.ArmValues(
             self.value_calc,
@@ -127,9 +128,12 @@ class PlayerValues():
 
         self.value_calc.values = [] 
 
-        for pos in Position.get_offensive_pos():
-            if pos == Position.OFFENSE:
-                continue
+        if self.value_calc.starting_set:
+            position_keys = [p.position for p in self.value_calc.starting_set.positions if p.position.offense]
+        else:
+            position_keys = Position.get_ottoneu_offensive_pos()
+
+        for pos in position_keys:
             pos_value = pd.DataFrame(pos_min_pa.loc[pos_min_pa['Position(s)'].apply(lambda test_pos, _pos=pos: Position.eligible(test_pos, _pos))])
             if self.bat_dol_per_fom > 0:
                 pos_value['Value'] = pos_value[f'{pos.value}_FOM'].apply(lambda x: x*self.bat_dol_per_fom + 1.0 if x >= 0 else 0)
