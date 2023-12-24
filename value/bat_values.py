@@ -146,29 +146,7 @@ class BatValues():
             return 0
 
     def position_is_base(self, pos:Position) -> bool:
-        if pos == Position.POS_UTIL:
-            return len(self.position_keys) == 1
-        if pos in [Position.POS_C, Position.POS_1B, Position.POS_2B, Position.POS_3B, Position.POS_SS, Position.POS_LF, Position.POS_CF, Position.POS_RF]:
-            return True
-        if pos == Position.POS_OF: 
-            if set([Position.POS_LF, Position.POS_CF, Position.POS_RF]).issubset(self.position_keys):
-                return False
-            return True
-        if pos == Position.POS_MI:
-            if set([Position.POS_2B, Position.POS_SS]).issubset(self.position_keys):
-                return False
-            return True
-        if pos == Position.POS_CI:
-            if set([Position.POS_1B, Position.POS_3B]).issubset(self.position_keys):
-                return False
-            return True
-
-        if pos == Position.POS_INF:
-            if set([Position.POS_2B, Position.POS_SS, Position.POS_1B, Position.POS_3B]).issubset(self.position_keys):
-                return False
-            return True
-        
-        raise InputException(f'Unexpected position {pos} sent to position_is_base method')
+        return Position.position_is_base(pos, self.position_keys)
 
     def are_games_filled(self) -> bool:
         num_teams = self.num_teams

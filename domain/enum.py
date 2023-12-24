@@ -575,6 +575,31 @@ class Position(str, Enum):
                     return True
             return False
         return pos.value in test_pos
+    
+    def position_is_base(pos:Position, position_keys:List[Position]) -> bool:
+        if pos == Position.POS_UTIL:
+            return len(position_keys) == 1
+        if pos in [Position.POS_C, Position.POS_1B, Position.POS_2B, Position.POS_3B, Position.POS_SS, Position.POS_LF, Position.POS_CF, Position.POS_RF]:
+            return True
+        if pos == Position.POS_OF: 
+            if set([Position.POS_LF, Position.POS_CF, Position.POS_RF]).issubset(position_keys):
+                return False
+            return True
+        if pos == Position.POS_MI:
+            if set([Position.POS_2B, Position.POS_SS]).issubset(position_keys):
+                return False
+            return True
+        if pos == Position.POS_CI:
+            if set([Position.POS_1B, Position.POS_3B]).issubset(position_keys):
+                return False
+            return True
+
+        if pos == Position.POS_INF:
+            if set([Position.POS_2B, Position.POS_SS, Position.POS_1B, Position.POS_3B]).issubset(position_keys):
+                return False
+            return True
+        
+        raise InputException(f'Unexpected position {pos} sent to position_is_base method')
 
 class IdType(Enum):
     '''Enumeration of player id types'''
