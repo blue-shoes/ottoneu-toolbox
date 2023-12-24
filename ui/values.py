@@ -426,7 +426,7 @@ class ValuesCalculation(tk.Frame):
             pos_list.extend(Position.get_discrete_pitching_pos())
 
         for pos in pos_list:
-            if pos in Position.get_all_offensive_pos():
+            if pos.offense:
                 frame = ttk.Frame(self.tab_control)
                 self.tab_control.add(frame, text=pos.value)
                 pt = Table(frame, hit_cols, column_widths=col_width, column_alignments=col_align, sortable_columns=hit_cols, reverse_col_sort=rev_cols)
@@ -608,8 +608,9 @@ class ValuesCalculation(tk.Frame):
             pd.set_completion_percent(25)
         delta = 75 / len(self.tables)
         for table in self.tables.values():
-            table.refresh()
-            pd.increment_completion_percent(delta)
+            if table:
+                table.refresh()
+                pd.increment_completion_percent(delta)
         self.set_display_columns()
         if fresh_pd:
             pd.set_completion_percent(100)
@@ -979,6 +980,7 @@ class ValuesCalculation(tk.Frame):
     def set_offensive_par_outputs(self) -> None:
         if self.starting_set:
             positions = [p.position for p in self.starting_set.positions if p.position.offense]
+            positions = Position.get_ordered_list([p for p in positions if Position.position_is_base(p, positions) or p == Position.POS_UTIL])
         else:
             positions = Position.get_discrete_offensive_pos()
 
@@ -1079,7 +1081,16 @@ class ValuesCalculation(tk.Frame):
             #Output full value set to Excel sheet
             with pd.ExcelWriter(file, engine='xlsxwriter') as writer:
                 dol_fmt = writer.book.add_format({'num_format': '$##0.0'})
-                for pos in Position.get_display_order():
+                positions = []
+                positions.append(Position.OVERALL)
+                positions.append(Position.OFFENSE)
+                positions.append(Position.PITCHER)
+                if self.starting_set:
+                    positions.extend(Position.get_ordered_list([p.position for p in self.starting_set.positions]))
+                else:
+                    positions.extend(Position.get_ottoneu_offensive_pos())
+                    positions.extend(Position.get_discrete_pitching_pos())
+                for pos in positions:
                     df = calculation_services.get_dataframe_with_values(self.value_calc, pos, text_values=False)
                     df.to_excel(writer, sheet_name=pos.value)
                     if pos == Position.OVERALL:
@@ -1400,7 +1411,7 @@ class ValuesCalculation(tk.Frame):
 
         if self.rep_level_scheme.get() == RepLevelScheme.NUM_ROSTERED.value:
             for key, value in self.rep_level_dict.items():
-                if not value.get().isnumeric():
+                if not value.get().isnumer):
                     bad_rep_level.append(key)
         elif self.rep_level_scheme.get() == RepLevelScheme.FILL_GAMES.value:
             for key, value in self.rep_level_dict.items():
