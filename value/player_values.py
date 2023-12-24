@@ -82,15 +82,21 @@ class PlayerValues():
             
         real_pitchers = pitch_values.calc_fom(self.pitch_proj)
 
-        for pos in Position.get_discrete_offensive_pos():
-            self.value_calc.set_output(CalculationDataType.pos_to_rep_level().get(pos), pos_values.replacement_levels[pos.value])
-            self.value_calc.set_output(CalculationDataType.pos_to_num_rostered().get(pos), pos_values.replacement_positions[pos.value])
-        for pos in Position.get_discrete_pitching_pos():
-            self.value_calc.set_output(CalculationDataType.pos_to_rep_level().get(pos), pitch_values.replacement_levels[pos.value])
-            self.value_calc.set_output(CalculationDataType.pos_to_num_rostered().get(pos), pitch_values.replacement_positions[pos.value])
+        if self.value_calc.starting_set:
+            positions = [p.position for p in self.value_calc.starting_set.positions]
+        else:
+            positions = Position.get_ottoneu_offensive_pos() + Position.get_discrete_pitching_pos()
+
+        for pos in positions:
+            if pos.offense:
+                self.value_calc.set_output(CalculationDataType.pos_to_rep_level().get(pos), pos_values.replacement_levels[pos.value])
+                self.value_calc.set_output(CalculationDataType.pos_to_num_rostered().get(pos), pos_values.replacement_positions[pos.value])
+            else:
+                self.value_calc.set_output(CalculationDataType.pos_to_rep_level().get(pos), pitch_values.replacement_levels[pos.value])
+                self.value_calc.set_output(CalculationDataType.pos_to_num_rostered().get(pos), pitch_values.replacement_positions[pos.value])
 
         progress.set_task_title('Calculating $/FOM and applying')
-        progress.increment_completion_percent(30)
+        progress.increment_completion_percent(25)
         rosterable_pos = pos_min_pa.loc[pos_min_pa['Max FOM'] >= 0]
         rosterable_pitch = real_pitchers.loc[real_pitchers['FOM'] >= 0]
 
