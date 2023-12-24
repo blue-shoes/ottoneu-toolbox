@@ -111,6 +111,7 @@ class Dialog(tk.Toplevel):
         self.destroy()
     
     def set_league(self):
+        self.league = league_services.get_league(self.league.index, rosters=True)
         self.destroy()
     
     def non_ottoneu(self):
