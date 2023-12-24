@@ -171,11 +171,16 @@ class ValuesCalculation(tk.Frame):
             self.safe_set_input_value(CDT.RP_IP_TO_RANK, self.min_rp_ip, True)
             self.safe_set_input_value(CDT.REP_LEVEL_SCHEME, self.rep_level_scheme, True, RepLevelScheme.STATIC_REP_LEVEL.value)
             self.update_rep_level_scheme()
+            if self.starting_set:
+                off_pos = [p.position for p in self.starting_set.positions if p.position.offense]
+                off_pos = [p for p in off_pos if Position.position_is_base(p, off_pos) or p == Position.POS_UTIL]
+            else:
+                off_pos = Position.get_discrete_offensive_pos()
             if self.rep_level_scheme.get() == RepLevelScheme.STATIC_REP_LEVEL.value:
-                for pos in Position.get_discrete_offensive_pos() + Position.get_discrete_pitching_pos():
+                for pos in off_pos + Position.get_discrete_pitching_pos():
                     self.safe_set_input_value(CDT.pos_to_rep_level().get(pos), self.rep_level_dict[pos.value])
             else:
-                for pos in Position.get_discrete_offensive_pos() + Position.get_discrete_pitching_pos():
+                for pos in off_pos + Position.get_discrete_pitching_pos():
                     self.safe_set_input_value(CDT.pos_to_num_rostered().get(pos), self.rep_level_dict[pos.value], True)
             for adv_inp in CDT.get_adv_inputs():
                 inp = self.value_calc.get_input(adv_inp)
@@ -484,6 +489,9 @@ class ValuesCalculation(tk.Frame):
                 widget.destroy()
             self.create_replacement_level_rows()
             self.set_default_rep_level(RepLevelScheme._value2member_map_.get(self.rep_level_scheme.get()), update_only=True)
+            for widget in self.offensive_par_frm.winfo_children():
+                widget.destroy()
+            self.set_offensive_par_outputs()
 
     def set_position_set(self) -> None:
         count = position_set_services.get_position_set_count()
@@ -899,26 +907,15 @@ class ValuesCalculation(tk.Frame):
         self.total_fom_sv.set("--")
         ttk.Label(outf, textvariable=self.total_fom_sv).grid(row=2, column=1)
 
-        ttk.Label(outf, text="Position", font='bold').grid(row=3, column=0)
-        ttk.Label(outf, text="# Rostered", font='bold').grid(row=3, column=1)
-        self.bat_rep_level_lbl = StringVar()
-        self.bat_rep_level_lbl.set("Rep. Level")
-        ttk.Label(outf, textvariable=self.bat_rep_level_lbl, font='bold').grid(row=3, column=2)
-
-        row = 4
+        row = 3
         self.pos_rostered_sv = {}
         self.pos_rep_lvl_sv = {}
-        for pos in Position.get_discrete_offensive_pos():
-            ttk.Label(outf, text=pos.value).grid(row=row, column=0)
-            pos_rep = StringVar()
-            pos_rep.set("--")
-            self.pos_rostered_sv[pos] = pos_rep
-            ttk.Label(outf, textvariable=pos_rep).grid(row=row, column=1)
-            rep_lvl = StringVar()
-            rep_lvl.set("--")
-            self.pos_rep_lvl_sv[pos] = rep_lvl
-            ttk.Label(outf, textvariable=rep_lvl).grid(row=row, column=2)
-            row += 1
+
+        self.offensive_par_frm = ttk.Frame(outf)
+        self.offensive_par_frm.grid(row=row, column=0, columnspan=3)
+
+        self.set_offensive_par_outputs()
+        row += 1
         
         ttk.Label(outf, text="Total Batters Rostered:").grid(row=row, column=0)
         self.total_bat_rostered_sv = StringVar()
@@ -932,23 +929,28 @@ class ValuesCalculation(tk.Frame):
         ttk.Label(outf, textvariable=self.total_games_rostered_sv).grid(row=row, column=1)
         row += 1
         
-        ttk.Label(outf, text="Position", font='bold').grid(row=row, column=0)
-        ttk.Label(outf, text="# Rostered", font='bold').grid(row=row, column=1)
+        pitching_par_frm = ttk.Frame(outf)
+        pitching_par_frm.grid(row=row, column=0, columnspan=3)
+
+        ttk.Label(pitching_par_frm, text="Position", font='bold').grid(row=0, column=0, padx=6)
+        ttk.Label(pitching_par_frm, text="# Rostered", font='bold').grid(row=0, column=1, padx=6)
         self.pitch_rep_level_lbl = StringVar()
         self.pitch_rep_level_lbl.set("Rep. Level")
-        ttk.Label(outf, textvariable=self.pitch_rep_level_lbl, font='bold').grid(row=row, column=2)
+        ttk.Label(pitching_par_frm, textvariable=self.pitch_rep_level_lbl, font='bold').grid(row=0, column=2, padx=6)
+
+        row2 = 0
 
         for pos in Position.get_discrete_pitching_pos():
-            row += 1
-            ttk.Label(outf, text=pos.value).grid(row=row, column=0)
+            row2 += 1
+            ttk.Label(pitching_par_frm, text=pos.value).grid(row=row2, column=0)
             pos_rep = StringVar()
             pos_rep.set("--")
             self.pos_rostered_sv[pos] = pos_rep
-            ttk.Label(outf, textvariable=pos_rep).grid(row=row, column=1)
+            ttk.Label(pitching_par_frm, textvariable=pos_rep).grid(row=row2, column=1)
             rep_lvl = StringVar()
             rep_lvl.set("--")
             self.pos_rep_lvl_sv[pos] = rep_lvl
-            ttk.Label(outf, textvariable=rep_lvl).grid(row=row, column=2)
+            ttk.Label(pitching_par_frm, textvariable=rep_lvl).grid(row=row2, column=2)
             
         row += 1
         
@@ -972,7 +974,42 @@ class ValuesCalculation(tk.Frame):
         self.export_btn = eb = ttk.Button(outf, text="Export Values", command=self.export_values)
         eb.grid(row=row, column=1)
         eb['state'] = DISABLED
-        CreateToolTip(eb, 'Export the last set of calculated values to a csv ro xlsx file.')
+        CreateToolTip(eb, 'Export the last set of calculated values to a csv or xlsx file.')
+
+    def set_offensive_par_outputs(self) -> None:
+        if self.starting_set:
+            positions = [p.position for p in self.starting_set.positions if p.position.offense]
+        else:
+            positions = Position.get_discrete_offensive_pos()
+
+        row = 0
+
+        ttk.Label(self.offensive_par_frm, text="Position", font='bold').grid(row=row, column=0, padx=6)
+        ttk.Label(self.offensive_par_frm, text="# Rostered", font='bold').grid(row=row, column=1, padx=6)
+        self.bat_rep_level_lbl = StringVar()
+        self.bat_rep_level_lbl.set("Rep. Level")
+        ttk.Label(self.offensive_par_frm, textvariable=self.bat_rep_level_lbl, font='bold').grid(row=row, column=2, padx=6)
+        row += 1
+
+        for pos in positions:
+            if Position.position_is_base(pos, positions) or pos == Position.POS_UTIL:
+                ttk.Label(self.offensive_par_frm, text=pos.value).grid(row=row, column=0)
+                pos_rep = self.pos_rostered_sv.get(pos, None)
+                if not pos_rep:
+                    pos_rep = StringVar()
+                    pos_rep.set('--')
+                    self.pos_rostered_sv[pos] = pos_rep
+                pos_rep = StringVar()
+                pos_rep.set("--")
+                self.pos_rostered_sv[pos] = pos_rep
+                ttk.Label(self.offensive_par_frm, textvariable=pos_rep).grid(row=row, column=1)
+                rep_lvl = self.pos_rep_lvl_sv.get(pos, None)
+                if not rep_lvl:
+                    rep_lvl = StringVar()
+                    rep_lvl.set("--")
+                    self.pos_rep_lvl_sv[pos] = rep_lvl
+                ttk.Label(self.offensive_par_frm, textvariable=rep_lvl).grid(row=row, column=2)
+                row += 1
 
     def update_calc_output_frame(self):
         self.output_title.set("Value Calculation Results")
@@ -995,7 +1032,13 @@ class ValuesCalculation(tk.Frame):
         pitcher_rb = self.value_calc.pitcher_basis.display
         self.pitch_rep_level_lbl.set(f"Rep. Level ({pitcher_rb})")
 
-        for pos in Position.get_discrete_offensive_pos() + Position.get_discrete_pitching_pos():
+        if self.starting_set:
+            off_pos = [p.position for p in self.starting_set.positions if p.position.offense]
+            off_pos = [p for p in off_pos if Position.position_is_base(p, off_pos) or p == Position.POS_UTIL]
+        else:
+            off_pos = Position.get_discrete_offensive_pos()
+
+        for pos in off_pos + Position.get_discrete_pitching_pos():
             self.safe_set_output_value(CDT.pos_to_num_rostered()[pos], self.pos_rostered_sv[pos], integer=True, default='--')
             self.safe_set_output_value(CDT.pos_to_rep_level()[pos], self.pos_rep_lvl_sv[pos], format="{:.2f}")
         
@@ -1231,11 +1274,16 @@ class ValuesCalculation(tk.Frame):
         self.value_calc.set_input(CDT.RP_IP_TO_RANK, float(self.min_rp_ip.get()))
         self.value_calc.set_input(CDT.INCLUDE_SVH, float(self.sv_hld_bv.get()))
         self.value_calc.set_input(CDT.REP_LEVEL_SCHEME, float(self.rep_level_scheme.get()))
+        if self.starting_set:
+            off_pos = [p.position for p in self.starting_set.positions if p.position.offense]
+            off_pos = [p for p in off_pos if Position.position_is_base(p, off_pos) or p == Position.POS_UTIL]
+        else:
+            off_pos = Position.get_discrete_offensive_pos()
         if self.rep_level_scheme.get() == RepLevelScheme.STATIC_REP_LEVEL.value:
-            for pos in Position.get_discrete_offensive_pos() + Position.get_discrete_pitching_pos():
+            for pos in off_pos + Position.get_discrete_pitching_pos():
                 self.value_calc.set_input(CDT.pos_to_rep_level().get(pos), float(self.rep_level_dict[pos.value].get()))
         else:
-            for pos in Position.get_discrete_offensive_pos() + Position.get_discrete_pitching_pos():
+            for pos in off_pos + Position.get_discrete_pitching_pos():
                 self.value_calc.set_input(CDT.pos_to_num_rostered().get(pos), int(self.rep_level_dict[pos.value].get()))
         self.get_advanced_inputs()
         
