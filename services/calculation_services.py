@@ -22,14 +22,24 @@ def perform_point_calculation(value_calc : ValueCalculation, pd = None, debug:bo
 def get_num_rostered_rep_levels(value_calc: ValueCalculation) -> Dict[str,float]:
     '''Returns a dictionary of the number of players rostered above replacement level at each discrete position from a ValueCalculation'''
     rl_dict = {}
-    for pos in Position.get_discrete_offensive_pos() + Position.get_discrete_pitching_pos():
+    if value_calc.starting_set:
+        positions = [p.position for p in value_calc.starting_set.positions if p.position.offense]
+    else:
+        positions = Position.get_discrete_offensive_pos()
+    positions.extend(Position.get_discrete_pitching_pos())
+    for pos in positions:
         rl_dict[pos.value] = value_calc.get_input(CDT.pos_to_num_rostered().get(pos))
     return rl_dict
 
 def get_rep_levels(value_calc: ValueCalculation) -> Dict[str,float]:
     '''Returns a dictionary of the replacement level at each discrete position from a ValueCalculation'''
     rl_dict = {}
-    for pos in Position.get_discrete_offensive_pos() + Position.get_discrete_pitching_pos():
+    if value_calc.starting_set:
+        positions = [p.position for p in value_calc.starting_set.positions if p.position.offense]
+    else:
+        positions = Position.get_discrete_offensive_pos()
+    positions.extend(Position.get_discrete_pitching_pos())
+    for pos in positions:
         rl_dict[pos.value] = value_calc.get_input(CDT.pos_to_rep_level().get(pos))
     return rl_dict
 
