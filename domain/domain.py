@@ -58,7 +58,7 @@ class Player:
         '''Returns if the player is eligible at both hitting and pitching positions.'''
         hit = False
         pitch = False
-        for pos in Position.get_discrete_offensive_pos():
+        for pos in Position.get_offensive_pos():
             if pos.value in self.position:
                 hit = True
                 continue
@@ -101,10 +101,10 @@ class League:
     projected_keepers:Mapped[List["Projected_Keeper"]] = relationship(default_factory=list, cascade="all, delete", repr=False)
 
     position_set_id:Mapped[int] = mapped_column(ForeignKey("position_set.id"), default=None, nullable=True)
-    position_set:Mapped["PositionSet"] = relationship(default=None, lazy='joined')
+    position_set:Mapped["PositionSet"] = relationship(default=None)
 
     starting_set_id:Mapped[int] = mapped_column(ForeignKey("starting_position_set.id"), default=None, nullable=True)
-    starting_set:Mapped["StartingPositionSet"] = relationship(default=None, lazy='joined')
+    starting_set:Mapped["StartingPositionSet"] = relationship(default=None)
 
     # Transient inflation values
     inflation:float = field(default=0, repr=False)    
@@ -325,10 +325,10 @@ class ValueCalculation:
     data:Mapped[List["ValueData"]] = relationship(default_factory=list, back_populates="calculation", cascade="all, delete", lazy='joined', repr=False)
 
     position_set_id:Mapped[int] = mapped_column(ForeignKey("position_set.id"), default=None, nullable=True)
-    position_set:Mapped["PositionSet"] = relationship(default=None, lazy='joined')
+    position_set:Mapped["PositionSet"] = relationship(default=None)
 
     starting_set_id:Mapped[int] = mapped_column(ForeignKey("starting_position_set.id"), default=None, nullable=True)
-    starting_set:Mapped["StartingPositionSet"] = relationship(default=None, lazy='joined')
+    starting_set:Mapped["StartingPositionSet"] = relationship(default=None)
 
     value_dict = {}
 
@@ -690,7 +690,7 @@ class PlayerPositions:
     player_id:Mapped[int] = mapped_column(ForeignKey("player.index"), default=None)
 
     position_set_id:Mapped[int] = mapped_column(ForeignKey("position_set.id"), default=None)
-    position_set:Mapped["PositionSet"] = relationship(default=None)
+    position_set:Mapped["PositionSet"] = relationship(default=None, cascade="all, delete")
 
     position:Mapped[str] = mapped_column(default='')
 
@@ -720,4 +720,4 @@ class StartingPosition:
     count:Mapped[int] = mapped_column(default=1)
 
     starting_position_set_id:Mapped[int] = mapped_column(ForeignKey("starting_position_set.id"), default=None)
-    starting_position_set:Mapped["StartingPositionSet"] = relationship(default=None)
+    starting_position_set:Mapped["StartingPositionSet"] = relationship(default=None, cascade="all, delete")

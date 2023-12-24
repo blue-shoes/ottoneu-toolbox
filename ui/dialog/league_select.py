@@ -76,7 +76,7 @@ class Dialog(tk.Toplevel):
             selection = event.widget.item(event.widget.selection()[0])["text"]
             for lg in self.league_list:
                 if lg.index == int(selection):
-                    self.league = league_services.get_league(lg.index)
+                    self.league = league_services.get_league(lg.index, rosters=False)
                     break
         else:
             selection = None

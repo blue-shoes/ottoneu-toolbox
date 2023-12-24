@@ -71,15 +71,18 @@ def load_calculation(calc_index: int) -> ValueCalculation:
                 .filter_by(index = calc_index)
                 .first()
         )
-
-        for pv in value_calc.values:
-            if value_calc.position_set:
-                pv.player.custom_positions = value_calc.position_set.get_player_positions(pv.player_id)
+        value_calc.values
         #This is hacky, but it loads these fields so much faster than trying to do the .options(joinedload()) operations. Makes no sense
         if value_calc.projection is not None:
             for pp in value_calc.projection.player_projections:
                 break
+        value_calc.position_set
+        value_calc.starting_set
     value_calc.init_value_dict()
+    for player_id, pvs in value_calc.value_dict.items():
+        positions = value_calc.position_set.get_player_positions(player_id)
+        for pv in pvs.values():
+            pv.player.custom_positions = positions
     return value_calc
 
 def get_values_for_year(year:int=None) -> List[ValueCalculation]:
