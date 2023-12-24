@@ -616,7 +616,7 @@ class ArmValues():
             df[g_col] = 0
             df[col] = df.loc[df[f'IP {pos.value}'] > min_ip][rank_col].rank(ascending=ascending)
             df[col].fillna(-999, inplace=True)
-            self.max_rost_num[pos.value] = len(df.loc[df['Position(s)'].str.contains(pos.value)])
+            self.max_rost_num[pos.value] = len(df.loc[df[f'IP {pos.value}'] >= min_ip])
     
     def roto_above_rl(self, proj:DataFrame) -> List[bool]:
         above_rl = []
@@ -771,7 +771,7 @@ class ArmValues():
 
         real_pitchers = self.get_pitcher_fom(real_pitchers)
 
-        if not ScoringFormat.is_points_type(self.format):
+        if self.intermediate_calculations:
             self.dirname = os.path.abspath(os.path.join(os.path.dirname( __file__ ), '..'))
             self.intermed_subdirpath = os.path.join(self.dirname, 'data_dirs', 'intermediate')
             if not path.exists(self.intermed_subdirpath):
