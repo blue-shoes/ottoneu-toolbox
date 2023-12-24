@@ -101,7 +101,7 @@ def optimize_team_pt(team:Team,
         elig_pos = player_services.get_player_positions(player, discrete=True)
         for i in range(0, len(possibilities)):
             for pos in elig_pos:
-                if pos.offenes:
+                if pos.offense:
                     last_pos = pos
             for pos in elig_pos:
                 if pos.offense:
