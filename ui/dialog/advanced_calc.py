@@ -28,7 +28,7 @@ class Dialog(tk.Toplevel):
         if not ScoringFormat.is_points_type(format):
             if RankingBasis.is_roto_fractional(hit_basis):
                 row = self.add_row('Target games filled by hitter:', CDT.BATTER_G_TARGET, row)
-            if RankingBasis.is_roto_per_game(pitch_basis):
+            if RankingBasis.is_roto_fractional(pitch_basis):
                 row = self.add_row('Target IP filled:', CDT.IP_TARGET, row)
             #TODO: SGP info
 
