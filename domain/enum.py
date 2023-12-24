@@ -2,6 +2,7 @@ from __future__ import annotations
 from enum import Enum
 from typing import List, Dict
 import re
+from domain.exception import InputException
 
 class ProjectionType(int,Enum):
     '''Enumeration of the available types of projections for the system, including name and url information.'''
