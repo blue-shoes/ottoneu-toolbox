@@ -78,7 +78,8 @@ class Positions(tk.Frame):
         self.count_entry = {}
         self.counts = {}
         
-        for idx, pos in enumerate(Position.get_all_offensive_pos() + Position.get_discrete_pitching_pos() + [Position.POS_P]):
+        for idx, pos in enumerate(Position.get_offensive_pos() + Position.get_discrete_pitching_pos() + [Position.POS_P]):
+            if pos == Position.OFFENSE: continue
             self.positions[pos] = BooleanVar()
             tk.Checkbutton(self, text = pos.value, variable=self.positions[pos], command=lambda _pos=pos: self.toggle_pos(_pos), justify=LEFT, anchor=W).grid(sticky=W, row = (int)(idx/2)+1, column=2*(idx % 2))
             count = StringVar()
