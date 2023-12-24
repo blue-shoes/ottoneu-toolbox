@@ -60,6 +60,13 @@ class CalculationDataType(Enum):
     REP_LEVEL_UTIL = 7
     REP_LEVEL_SP = 8
     REP_LEVEL_RP = 9
+    REP_LEVEL_CI = 55
+    REP_LEVEL_MI = 56
+    REP_LEVEL_INF = 57
+    REP_LEVEL_LF = 58
+    REP_LEVEL_CF = 59
+    REP_LEVEL_RF = 60
+    REP_LEVEL_P = 61
     ROSTERED_C = 10
     ROSTERED_1B = 11
     ROSTERED_2B = 12
@@ -69,6 +76,13 @@ class CalculationDataType(Enum):
     ROSTERED_UTIL = 16
     ROSTERED_SP = 17
     ROSTERED_RP = 18
+    ROSTERED_CI = 48
+    ROSTERED_MI = 49
+    ROSTERED_INF = 50
+    ROSTERED_LF = 51
+    ROSTERED_CF = 52
+    ROSTERED_RF = 53
+    ROSTERED_P = 54
     REP_LEVEL_SCHEME = 19
     NUM_TEAMS = 20
     HITTER_SPLIT = 21
@@ -108,10 +122,17 @@ class CalculationDataType(Enum):
             Position.POS_2B : self.ROSTERED_2B,
             Position.POS_3B : self.ROSTERED_3B,
             Position.POS_SS : self.ROSTERED_SS,
+            Position.POS_CI : self.ROSTERED_CI,
+            Position.POS_MI : self.ROSTERED_MI,
+            Position.POS_INF: self.ROSTERED_INF,
+            Position.POS_LF : self.ROSTERED_LF,
+            Position.POS_CF : self.ROSTERED_CF,
+            Position.POS_RF : self.ROSTERED_RF,
             Position.POS_OF : self.ROSTERED_OF,
             Position.POS_UTIL : self.ROSTERED_UTIL,
             Position.POS_SP : self.ROSTERED_SP,
-            Position.POS_RP : self.ROSTERED_RP
+            Position.POS_RP : self.ROSTERED_RP,
+            Position.POS_P  : self.ROSTERED_P
         }
     
     @classmethod
@@ -123,10 +144,17 @@ class CalculationDataType(Enum):
             Position.POS_2B : self.REP_LEVEL_2B,
             Position.POS_3B : self.REP_LEVEL_3B,
             Position.POS_SS : self.REP_LEVEL_SS,
+            Position.POS_CI : self.REP_LEVEL_CI,
+            Position.POS_MI : self.REP_LEVEL_MI,
+            Position.POS_INF: self.REP_LEVEL_INF,
+            Position.POS_LF : self.REP_LEVEL_LF,
+            Position.POS_CF : self.REP_LEVEL_CF,
+            Position.POS_RF : self.REP_LEVEL_RF,
             Position.POS_OF : self.REP_LEVEL_OF,
             Position.POS_UTIL : self.REP_LEVEL_UTIL,
             Position.POS_SP : self.REP_LEVEL_SP,
-            Position.POS_RP : self.REP_LEVEL_RP
+            Position.POS_RP : self.REP_LEVEL_RP,
+            Position.POS_P  : self.REP_LEVEL_P
         }
     
     @classmethod
