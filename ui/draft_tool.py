@@ -243,7 +243,7 @@ class DraftTool(tk.Frame):
             ttk.Label(entry_frame, text='Search:').pack(side=LEFT)
 
             self.search_string = ss = tk.StringVar()
-            ss.trace("w", lambda name, index, mode, sv=ss: self.search_view.table.refresh())
+            ss.trace_add("write", lambda name, index, mode, sv=ss: self.search_view.table.refresh())
             ttk.Entry(entry_frame, textvariable=ss).pack(side=LEFT, fill='x', expand=True)
 
             f = ttk.Frame(search_frame, border=4)
@@ -262,7 +262,7 @@ class DraftTool(tk.Frame):
             ttk.Label(search_frame, text = 'Player Search: ', font='bold').grid(column=0,row=1,pady=5)
 
             self.search_string = ss = tk.StringVar()
-            ss.trace("w", lambda name, index, mode, sv=ss: self.search_view.table.refresh())
+            ss.trace_add("write", lambda name, index, mode, sv=ss: self.search_view.table.refresh())
             ttk.Entry(search_frame, textvariable=ss).grid(column=1,row=1)
 
             self.start_monitor = ttk.Button(search_frame, textvariable=self.start_draft_sv, command=self.__start_draft_monitor)
