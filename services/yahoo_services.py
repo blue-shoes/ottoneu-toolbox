@@ -80,7 +80,7 @@ def create_league(league_yahoo_id:int, pd=None) -> League:
 
 def refresh_league(league_idx:int, pd=None) -> League:
     #TODO: Implement this
-    lg = league_services.get_league(league_idx, rosters=False)
+    lg = league_services.get_league(league_idx, rosters=True)
     return lg
 
 def get_league_metadata(league_id:int) -> YLeague:
@@ -210,7 +210,6 @@ def set_player_positions_for_league(league:League, pd = None) -> League:
                 player_position = PlayerPositions()
                 player_position.player_id = player.index
                 player_position.position = yplayer.display_position.replace(',','/')
-                #ic(yplayer, player_position)
                 position_set.positions.append(player_position)
                 seen_ids.append(player.index)
     return league_services.save_league(league)
