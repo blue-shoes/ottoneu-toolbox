@@ -459,15 +459,17 @@ class Position(str, Enum):
 
     order:int
     offense:bool
+    __exclude:bool
 
     def __new__(
-        cls, id: str, order: int, offense: bool = True
+        cls, id: str, order: int, offense: bool = True, exclude:bool = False
     ) -> Position:
         obj = str.__new__(cls, id)
         obj._value_ = id
 
         obj.order = order
         obj.offense = offense
+        obj.__exclude = exclude 
         return obj
 
     '''Enumeration of Ottoneu positions'''
@@ -487,39 +489,20 @@ class Position(str, Enum):
     POS_SP = ('SP', 17, False)
     POS_RP = ('RP', 18, False)   
     POS_P = ('P', 19, False)
-    POS_TWO_WAY = ('Two-Way', -1)
+    POS_TWO_WAY = ('Two-Way', -1, True, True)
     OFFENSE = ("Offense", 2)
     PITCHER = ("Pitcher", 3, False)
-    OVERALL = ('Overall', 1)
-
-    @classmethod
-    def get_display_order(self) -> List[Position]:
-        '''Returns the ordered list of Positions for display in tables'''
-        return [self.OVERALL,
-            self.OFFENSE,
-            self.PITCHER,
-            self.POS_C,
-            self.POS_1B,
-            self.POS_2B,
-            self.POS_SS,
-            self.POS_3B,
-            self.POS_OF,
-            self.POS_UTIL,
-            self.POS_SP,
-            self.POS_RP]
+    OVERALL = ('Overall', 1, True, True)
 
     @classmethod
     def get_offensive_pos(self) -> List[Position]:
         '''Returns list of all offensive positions, including general offense'''
-        return [self.OFFENSE,
-            self.POS_C, 
-            self.POS_1B,
-            self.POS_2B,
-            self.POS_SS,
-            self.POS_MI,
-            self.POS_OF,
-            self.POS_3B,
-            self.POS_UTIL]
+        return self.get_ordered_list([p for p in self if p.offense and not p.__exclude])
+    
+    @classmethod
+    def get_pitching_pos(self) -> List[Position]:
+        '''Returns list of all pitching positions, including general pitching'''
+        return self.get_ordered_list([p for p in self if not p.offense and not p.__exclude])
     
     def get_ordered_list(positions:List[Position]) -> List[Position]:
         '''Orders the given Position List'''
@@ -547,31 +530,6 @@ class Position(str, Enum):
             self.POS_3B,
             self.POS_OF,
             self.POS_UTIL]
-    
-    @classmethod
-    def get_all_offensive_pos(self) -> List[Position]:
-        return [
-            self.POS_C,
-            self.POS_1B,
-            self.POS_2B,
-            self.POS_SS,
-            self.POS_3B,
-            self.POS_CI,
-            self.POS_MI,
-            self.POS_INF,
-            self.POS_LF,
-            self.POS_CF,
-            self.POS_RF,
-            self.POS_OF,
-            self.POS_UTIL
-        ]
-    
-    @classmethod
-    def get_pitching_pos(self) -> List[Position]:
-        '''Returns list of all pitching positions, including all pitchers'''
-        return [self.PITCHER,
-            self.POS_SP,
-            self.POS_RP]
 
     @classmethod
     def get_discrete_pitching_pos(self) -> List[Position]:
@@ -583,7 +541,7 @@ class Position(str, Enum):
         if pos == Position.OVERALL:
             return True
         elif pos == Position.OFFENSE or pos == Position.POS_UTIL:
-            for p in Position.get_all_offensive_pos():
+            for p in Position.get_offensive_pos():
                 if p.value in test_pos:
                     return True
             return False
@@ -598,7 +556,7 @@ class Position(str, Enum):
             return bool(re.search('1B|2B|SS|3B|CI|MI|INF', test_pos))
         elif pos == Position.POS_OF:
             return bool(re.search('OF|LF|CF|RF', test_pos))
-        elif pos == Position.PITCHER:
+        elif pos == Position.PITCHER or pos == Position.POS_P:
             for p in Position.get_discrete_pitching_pos():
                 if p.value in test_pos:
                     return True
