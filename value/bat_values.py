@@ -46,7 +46,7 @@ class BatValues():
         self.target_games = value_calc.get_input(CDT.BATTER_G_TARGET)
         self.starting_pos = value_calc.starting_set
         if self.starting_pos:
-            self.position_keys = [p.position for p in self.starting_pos.positions if p.P.offense]
+            self.position_keys = [p.position for p in self.starting_pos.positions if p.position.offense]
             self.start_count = dict([(p.position, p.count) for p in self.starting_pos.positions])
         else:
             self.position_keys = P.get_ottoneu_offensive_pos()
@@ -205,42 +205,6 @@ class BatValues():
                     self.games_filled['Util'] = False
                     filled_games = False
 
-        if self.total_games['C'] < num_teams * self.target_games * self.start_count[P.POS_C] and self.max_rost_num['C'] > self.replacement_positions['C']:
-            self.games_filled['C'] = False
-            filled_games = False
-        else:
-            self.games_filled['C'] = True
-        if self.total_games['1B'] < num_teams * self.target_games and self.max_rost_num['1B'] > self.replacement_positions['1B']:
-            self.games_filled['1B'] = False
-            filled_games = False
-        else:
-            self.games_filled['1B'] = True
-        if self.total_games['3B'] < num_teams * self.target_games and self.max_rost_num['3B'] > self.replacement_positions['3B']:
-            self.games_filled['3B'] = False
-            filled_games = False
-        else:
-            self.games_filled['3B'] = True
-        if self.total_games['SS'] + self.total_games['2B'] < 3*num_teams * self.target_games:
-            if self.max_rost_num['SS'] > self.replacement_positions['SS']:
-                self.games_filled['SS'] = False
-            if self.max_rost_num['2B'] > self.replacement_positions['2B']:
-                self.games_filled['2B'] = False
-            if not self.games_filled['SS'] or not self.games_filled['2B']:
-                filled_games = False
-        else:
-            self.games_filled['SS'] = True
-            self.games_filled['2B'] = True
-        if self.total_games['OF'] < num_teams * self.target_games * 5 and self.max_rost_num['OF'] > self.replacement_positions['OF']:
-            self.games_filled['OF'] = False
-            filled_games = False
-        else:
-            self.games_filled['OF'] = True
-        
-        if self.are_util_games_filled(num_teams):
-            self.games_filled['Util'] = True
-        else:
-            self.games_filled['Util'] = False
-            filled_games = False
         return filled_games
     
     def are_util_games_filled(self, num_teams:int=12) -> bool:
@@ -286,7 +250,7 @@ class BatValues():
                 last_inc = 0
                 while not self.are_games_filled():
                     last_inc += 1
-                    if last_inc % 3 == 0 and self.prog_dialog.progress < 70:
+                    if last_inc % int(self.num_teams / 3) == 0 and self.prog_dialog.progress < 70:
                         self.prog_dialog.increment_completion_percent(1)
                         last_inc = 1
                     max_rep_lvl = -999
