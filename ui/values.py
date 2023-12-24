@@ -35,6 +35,7 @@ all_pitching_stats = tuple([st.display for st in StatType.get_all_pitch_stattype
 pt_hitter_columns = ('G', 'PA', 'AB')
 pt_pitcher_columns = ('G', 'GS', 'IP')
 rev_cols = ('Name', 'Team', 'Pos', 'ERA', 'WHIP', 'HR/9')
+num_rost_rl_default = {'C':'24', '1B':'40', '2B':'38', 'SS':'42', '3B':'24', 'MI':'60', 'CI':'55', 'INF':'100', 'LF':'24', 'CF':'24', 'RF':'24', 'OF':'95', 'Util':'200', 'SP':'85', 'RP':'70'}
 
 class ValuesCalculation(tk.Frame):
 
@@ -348,11 +349,11 @@ class ValuesCalculation(tk.Frame):
         # This is its own method to make the __init__ more readable
         row = self.set_replacement_level_ui(inpf, start_row=15)
 
-        ttk.Button(inpf, text="Calculate", command=self.calculate_values).grid(row=row, column=0)
+        ttk.Button(inpf, text="Calculate", command=self.calculate_values).grid(row=row, column=0, pady=3)
         self.advanced_btn = ttk.Button(inpf, text='Advanced', command=self.advanced_options)
         CreateToolTip(self.advanced_btn, 'Set advanced input options for the Value Calculation.')
         self.advanced_btn['state'] = DISABLED
-        self.advanced_btn.grid(row=row, column=1)
+        self.advanced_btn.grid(row=row, column=1, pady=3)
 
         inpf.update()
         csb.grid_forget()
@@ -479,6 +480,10 @@ class ValuesCalculation(tk.Frame):
                     pd.increment_completion_percent(5)
             self.set_display_columns()
             pd.complete()
+            for widget in self.rep_level_frm.winfo_children():
+                widget.destroy()
+            self.create_replacement_level_rows()
+            self.set_default_rep_level(RepLevelScheme._value2member_map_.get(self.rep_level_scheme.get()), update_only=True)
 
     def set_position_set(self) -> None:
         count = position_set_services.get_position_set_count()
@@ -1155,14 +1160,33 @@ class ValuesCalculation(tk.Frame):
         
         row = row+1
 
-        for pos in Position.get_discrete_offensive_pos() + Position.get_discrete_pitching_pos():
-            ttk.Label(inpf, text=pos.value).grid(row=row, column=0)
-            self.rep_level_dict[pos.value] = StringVar()
-            ttk.Entry(inpf, textvariable=self.rep_level_dict[pos.value]).grid(row=row,column=1)
-            row = row+1
+        self.rep_level_frm = rlf = ttk.Frame(inpf)
+        rlf.grid(row=row, column = 0, columnspan=3)
+
+        self.create_replacement_level_rows()
+
+        row += 1
 
         return row
     
+    def create_replacement_level_rows(self) -> None:
+        count = 0
+        if self.starting_set:
+            positions = [p.position for p in self.starting_set.positions if p.position.offense]
+        else:
+            positions = Position.get_discrete_offensive_pos()
+        positions = Position.get_ordered_list(positions)
+        for pos in positions + Position.get_discrete_pitching_pos():
+            if Position.position_is_base(pos, positions) or pos == Position.POS_UTIL:
+                ttk.Label(self.rep_level_frm, text=pos.value).grid(row=int(count/2), column=count%2*2, pady=2, padx=5)
+                rl = self.rep_level_dict.get(pos.value, None)
+                if not rl:
+                    rl = StringVar()
+                    self.rep_level_dict[pos.value] = rl
+
+                ttk.Entry(self.rep_level_frm, textvariable=rl).grid(row=int(count/2),column=count%2*2+1, pady=2, padx=5)
+                count += 1
+
     def update_rep_level_scheme(self):
         if self.rep_level_scheme.get() == RepLevelScheme.NUM_ROSTERED.value:
             self.rep_level_txt.set("Set number of rostered players for each position:")
@@ -1245,27 +1269,31 @@ class ValuesCalculation(tk.Frame):
                 self.value_calc.set_input(CDT.IP_TARGET, adv_calc_services.get_advanced_option(CDT.IP_TARGET, default=1500).value)
                 self.value_calc.set_input(CDT.RP_IP_TARGET, adv_calc_services.get_advanced_option(CDT.RP_IP_TARGET, default=300).value)
     
-    def set_default_rep_level(self, scheme):
+    def set_default_rep_level(self, scheme, update_only:bool=False):
         if scheme == RepLevelScheme.NUM_ROSTERED:
-            self.rep_level_dict["C"].set("24")
-            self.rep_level_dict["1B"].set("40")
-            self.rep_level_dict["2B"].set("38")
-            self.rep_level_dict["SS"].set("42")
-            self.rep_level_dict["3B"].set("24")
-            self.rep_level_dict["OF"].set("95")
-            self.rep_level_dict["Util"].set("200")
-            self.rep_level_dict["SP"].set("85")
-            self.rep_level_dict["RP"].set("70")
+            for pos, sv in self.rep_level_dict.items():
+                if update_only and sv.get() != '': continue
+                sv.set(num_rost_rl_default[pos])
         elif scheme == RepLevelScheme.FILL_GAMES:
             for sv in self.rep_level_dict.values():
+                if update_only and sv.get() != '': continue
                 sv.set('0')
         elif scheme == RepLevelScheme.STATIC_REP_LEVEL:
+            if self.starting_set:
+                off_pos = [p.position for p in self.starting_set.positions if p.position.offense]
+                off_pos = [p for p in off_pos if Position.position_is_base(p, off_pos) or p == Position.POS_UTIL]
+            else:
+                off_pos = Position.get_discrete_offensive_pos()
             if RankingBasis.get_enum_by_display(self.hitter_basis.get()) == RankingBasis.PPG:
-                for pos in Position.get_discrete_offensive_pos():
-                    self.rep_level_dict[pos.value].set("4.5")
+                for pos in off_pos:
+                    sv = self.rep_level_dict[pos.value]
+                    if update_only and sv.get() != '': continue
+                    sv.set("4.5")
             elif RankingBasis.get_enum_by_display(self.hitter_basis.get()) == RankingBasis.PPPA:
-                for pos in Position.get_discrete_offensive_pos():
-                    self.rep_level_dict[pos.value].set("1.0")
+                for pos in off_pos:
+                    sv = self.rep_level_dict[pos.value]
+                    if update_only and sv.get() != '': continue
+                    sv.set("1.0")
             if RankingBasis.get_enum_by_display(self.pitcher_basis.get()) == RankingBasis.PIP:
                 self.rep_level_dict["SP"].set("3.5")
                 self.rep_level_dict["RP"].set("6.0")
@@ -1330,7 +1358,7 @@ class ValuesCalculation(tk.Frame):
             for key, value in self.rep_level_dict.items():
                 try:
                     val = int(value.get())
-                except:
+                except ValueError:
                     bad_rep_level.append(key)
         else:
             for key, value in self.rep_level_dict.items():
