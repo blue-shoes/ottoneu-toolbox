@@ -65,6 +65,7 @@ class DraftTool(tk.Frame):
         self.rostered_ids = []
         self.league = None
         self.value_calculation = None
+        self.starting_set = None
         self.cm_text = StringVar()
         self.cm_text.set('Link CouchManagers')
         self.start_draft_sv = StringVar()
@@ -89,10 +90,13 @@ class DraftTool(tk.Frame):
 
         self.league = self.controller.league
         self.value_calculation = self.controller.value_calculation
+
+        self.starting_set = self.value_calculation.starting_set
+
         self.league_text_var.set(f'{self.controller.league.name} Draft')
         self.values_name.set(f'Selected Values: {self.value_calculation.name}')
 
-        if self.league.is_linked():
+        if self.league.platform == Platform.OTTONEU:
             self.salary_information_refresh()
 
         self.draft = draft_services.get_draft_by_league(self.controller.league.index)
@@ -170,21 +174,7 @@ class DraftTool(tk.Frame):
         ov.pack(fill='both', expand=True)
         ov.table.set_refresh_method(self.__refresh_overall_view)
 
-        for pos in (Position.get_offensive_pos() + Position.get_pitching_pos()):
-            pos_frame = ttk.Frame(self.tab_control)
-            self.tab_control.add(pos_frame, text=pos.value) 
-            if pos.offense:
-                cols = ('Name','Value','Inf. Cost','Pos','Team','Points','P/G', 'P/PA','Avg. Price', 'L10 Price', 'Roster %') + tuple([st.display for st in StatType.get_all_hit_stattype()])
-            else:
-                cols = ('Name','Value','Inf. Cost','Pos','Team','Points','SABR Pts','P/IP','SABR PIP','PP/G','SABR PPG', 'Avg. Price', 'L10 Price', 'Roster %') + tuple([st.display for st in StatType.get_all_pitch_stattype()])
-            custom_sort = {}
-            custom_sort['Value'] = partial(self.__default_value_sort, pos)
-            self.pos_view[pos] = pv = ScrollableTreeFrame(pos_frame, cols,sortable_columns=cols, column_widths=widths, column_alignments=align, init_sort_col='Value', custom_sort=custom_sort, pack=False)
-            pv.pack(fill='both', expand=True)
-            pv.table.set_row_select_method(self.__on_select)
-            pv.table.set_right_click_method(self.__player_rclick)
-            self.__set_row_colors(pv.table)
-            pv.table.set_refresh_method(lambda _pos = pos: self.__refresh_pos_table(_pos))
+        self.__create_position_tables(init=True)
         
         if self.controller.preferences.getboolean('Draft', Pref.DOCK_DRAFT_TARGETS, fallback=False):
             target_frame = ttk.Frame(self.tab_control)
@@ -210,6 +200,41 @@ class DraftTool(tk.Frame):
         self.__set_row_colors(tt.table, targets=False)
         tt.table.set_refresh_method(self.__refresh_targets)
     
+    def __create_position_tables(self, init:bool=False) -> None:
+
+        widths = {}
+        widths['Name'] = 125
+        widths['Pos'] = 75
+        align = {}
+        align['Name'] = W
+
+        positions:List[Position] = []
+        if init:
+            positions.append(Position.OFFENSE)
+            positions.append(Position.PITCHER)
+        
+        if self.starting_set:
+            positions.extend(Position.get_ordered_list([p.position for p in self.starting_set.positions]))
+        else:
+            positions.extend(Position.get_ottoneu_offensive_pos())
+            positions.extend(Position.get_discrete_pitching_pos())
+
+        for pos in positions:
+            pos_frame = ttk.Frame(self.tab_control)
+            self.tab_control.add(pos_frame, text=pos.value) 
+            if pos.offense:
+                cols = ('Name','Value','Inf. Cost','Pos','Team','Points','P/G', 'P/PA','Avg. Price', 'L10 Price', 'Roster %') + tuple([st.display for st in StatType.get_all_hit_stattype()])
+            else:
+                cols = ('Name','Value','Inf. Cost','Pos','Team','Points','SABR Pts','P/IP','SABR PIP','PP/G','SABR PPG', 'Avg. Price', 'L10 Price', 'Roster %') + tuple([st.display for st in StatType.get_all_pitch_stattype()])
+            custom_sort = {}
+            custom_sort['Value'] = partial(self.__default_value_sort, pos)
+            self.pos_view[pos] = pv = ScrollableTreeFrame(pos_frame, cols,sortable_columns=cols, column_widths=widths, column_alignments=align, init_sort_col='Value', custom_sort=custom_sort, pack=False)
+            pv.pack(fill='both', expand=True)
+            pv.table.set_row_select_method(self.__on_select)
+            pv.table.set_right_click_method(self.__player_rclick)
+            self.__set_row_colors(pv.table)
+            pv.table.set_refresh_method(lambda _pos = pos: self.__refresh_pos_table(_pos))
+
     def __create_search(self):
         self.values_name = StringVar()
         if self.controller.preferences.getboolean('Draft', Pref.DOCK_DRAFT_PLAYER_SEARCH, fallback=False):
@@ -408,10 +433,9 @@ class DraftTool(tk.Frame):
             pos_table = self.overall_view.table
         else:
             pos_table = self.pos_view.get(pos).table
-        if self.league.format is None:
+        if self.league.format is None or not self.league.platform == Platform.OTTONEU:
             l = [(pos_table.set(k, 'Value'), k) for k in pos_table.get_children('')]
             l = sorted(l, reverse=pos_table.reverse_sort['Value'], key=lambda x: sort_cmp(x)) 
-        if not self.league.is_linked():
             return l
         if self.value_calculation.projection is None:
             col2 = 'Roster %'
@@ -882,7 +906,7 @@ class DraftTool(tk.Frame):
             self.pos_view[pos].table.insert('', tk.END, iid=pv.player.index, values=stock_player + tuple(point_cols) + sal_tup + tuple(stats), tags=tags)
     
     def __get_salary_tuple(self, player:Player):
-        if self.league.is_linked():
+        if self.league.platform == Platform.OTTONEU:
             si = player.get_salary_info_for_format(self.league.format)
             if si is None:
                 avg = '$0.0'
@@ -925,7 +949,7 @@ class DraftTool(tk.Frame):
         else:
             custom_scoring = None
         for player in players:
-            if self.league.is_linked():
+            if self.league.platform == Platform.OTTONEU:
                 si = player.get_salary_info_for_format(self.league.format)
                 if (si is None or si.roster_percentage == 0) and not self.search_unrostered_bv.get():
                     continue
@@ -1043,7 +1067,7 @@ class DraftTool(tk.Frame):
         restart = False
         if not self.run_event.is_set():
             self.__stop_draft_monitor()
-        pd = progress.ProgressDialog(self.parent, 'Initializing Draft Session')
+        prog = progress.ProgressDialog(self.parent, 'Initializing Draft Session')
 
         if self.rostered_detached_id_map is not None and len(self.rostered_detached_id_map) > 0:
             self.__show_hide_toggle(self.rostered_ids, self.rostered_detached_id_map, True)
@@ -1084,7 +1108,27 @@ class DraftTool(tk.Frame):
             self.inflation = 1
             self.inflation_lbl.grid_forget()
 
-        pd.set_task_title('Refreshing views...')
+        prog.set_task_title('Refreshing views...')
+        prog.increment_completion_percent(25)
+        to_remove = []
+        for pos, table in self.pos_view.items():
+            if pos == Position.OVERALL or pos == Position.OFFENSE or pos == Position.PITCHER: continue
+            if not table: continue
+            for tab_id in self.tab_control.tabs():
+                item = self.tab_control.tab(tab_id)
+                if item['text']==pos.value:
+                    for child in self.tab_control.winfo_children():
+                        if str(child) == tab_id:
+                            child.destroy()
+                            break
+                    to_remove.append(pos)
+                    break
+        
+        for pos in to_remove:
+            del self.pos_view[pos]
+        
+        self.__create_position_tables()
+        prog.increment_completion_percent(25)
         self.__set_visible_columns()
 
         self.standings.league = self.controller.league
@@ -1093,10 +1137,10 @@ class DraftTool(tk.Frame):
         self.standings.standings_table.table.refresh()
 
         self.__populate_views()
-
+        prog.increment_completion_percent(25)
         self.__refresh_views(drafted=rostered)
 
-        pd.complete()
+        prog.complete()
         if restart:
             self.__start_draft_monitor()
     
@@ -1106,14 +1150,14 @@ class DraftTool(tk.Frame):
             view.table.refresh()
 
     def __calc_format_matches_league(self) -> bool:
-        if self.league.is_linked():
+        if self.league.platform == Platform.OTTONEU:
             if ScoringFormat.is_points_type(self.league.format):
                 return ScoringFormat.is_points_type(self.value_calculation.format)
             return self.league.format == self.value_calculation.format
         return True
 
     def __set_visible_columns(self) -> None:
-        if self.league.is_linked():
+        if self.league.platform == Platform.OTTONEU:
             salary_cols = ('Avg. Price', 'L10 Price', 'Roster %')
         else:
             salary_cols = tuple()
@@ -1127,12 +1171,12 @@ class DraftTool(tk.Frame):
             self.overall_view.table.set_display_columns(stock_overall)
             for _, view in self.pos_view.items():
                 view.table.set_display_columns(stock_overall)
-            if self.league.is_linked():
+            if self.league.platform == Platform.OTTONEU:
                 self.search_view.table.set_display_columns(stock_search + ('Roster %',))
             else:
                 self.search_view.table.set_display_columns(stock_search)
-        elif (not self.league.is_linked() and ScoringFormat.is_points_type(self.value_calculation.format)) or (custom_scoring is not None and custom_scoring.points_format) or ScoringFormat.is_points_type(self.league.format):
-            if self.league.is_linked():
+        elif (not self.league.platform == Platform.OTTONEU and ScoringFormat.is_points_type(self.value_calculation.format)) or (custom_scoring is not None and custom_scoring.points_format) or ScoringFormat.is_points_type(self.league.format):
+            if self.league.platform == Platform.OTTONEU:
                 sabr = ScoringFormat.is_sabr(self.league.format)
             else:
                 sabr = ScoringFormat.is_sabr(self.value_calculation.format)
@@ -1173,29 +1217,29 @@ class DraftTool(tk.Frame):
                     view.table.set_display_columns(player_cols + ('Points',) + pos_hit_rate + salary_cols)
                 else:
                     view.table.set_display_columns(player_cols + p_points + pitch_rate + salary_cols)
-            if self.league.is_linked():
+            if self.league.platform == Platform.OTTONEU:
                 self.search_view.table.set_display_columns(stock_search + p_points + hit_rate + pitch_rate + ('Roster %',))
             else:
                 self.search_view.table.set_display_columns(stock_search + p_points + hit_rate + pitch_rate)
-        elif (not self.league.is_linked() and self.value_calculation.format == ScoringFormat.OLD_SCHOOL_5X5) or self.league.format == ScoringFormat.OLD_SCHOOL_5X5:
+        elif (not self.league.platform == Platform.OTTONEU and self.value_calculation.format == ScoringFormat.OLD_SCHOOL_5X5) or self.league.format == ScoringFormat.OLD_SCHOOL_5X5:
             self.overall_view.table.set_display_columns(stock_overall)
             for pos, view in self.pos_view.items():
                 if pos.offense:
                     view.table.set_display_columns(player_cols + hit_5x5_cols + salary_cols)
                 else:
                     view.table.set_display_columns(player_cols + pitch_5x5_cols + salary_cols)
-            if self.league.is_linked():
+            if self.league.platform == Platform.OTTONEU:
                 self.search_view.table.set_display_columns(stock_search + ('Roster %',))
             else:
                 self.search_view.table.set_display_columns(stock_search)
-        elif (not self.league.is_linked() and self.value_calculation.format == ScoringFormat.CLASSIC_4X4) or self.league.format == ScoringFormat.CLASSIC_4X4:
+        elif (not self.league.platform == Platform.OTTONEU and self.value_calculation.format == ScoringFormat.CLASSIC_4X4) or self.league.format == ScoringFormat.CLASSIC_4X4:
             self.overall_view.table.set_display_columns(stock_overall)
             for pos, view in self.pos_view.items():
                 if pos.offense:
                     view.table.set_display_columns(player_cols + hit_4x4_cols + salary_cols)
                 else:
                     view.table.set_display_columns(player_cols + pitch_4x4_cols + salary_cols)
-            if self.league.is_linked():
+            if self.league.platform == Platform.OTTONEU:
                 self.search_view.table.set_display_columns(stock_search + ('Roster %',))
             else:
                 self.search_view.table.set_display_columns(stock_search)
@@ -1216,7 +1260,7 @@ class DraftTool(tk.Frame):
                     view.table.set_display_columns(player_cols + tuple(pitch))
             self.search_view.table.set_display_columns(stock_search)
         else:
-            if self.league.is_linked():
+            if self.league.platform == Platform.OTTONEU:
                 raise Exception(f"Unknown league type {self.league.format}")
             else:
                 raise Exception(f"Unhandled scoring format for non-Ottoneu League {self.value_calculation.format.short_name}")
@@ -1224,17 +1268,19 @@ class DraftTool(tk.Frame):
     def league_change(self):
         while self.controller.league is None:
             self.controller.select_league()
-        if self.controller.league is not None and self.league != self.controller.league:
+        if self.controller.league is not None and self.league.site_id != self.controller.league.site_id:
             self.league = self.controller.league
             self.league_text_var.set(f'League {self.controller.league.name} Draft')
             if self.league.is_linked():
                 self.draft = draft_services.get_draft_by_league(self.controller.league.index)
-                self.salary_information_refresh()
+                if self.league.platform == Platform.OTTONEU:
+                    self.salary_information_refresh()
             self.__initialize_draft(same_values=True)
     
     def value_change(self):
         if self.controller.value_calculation is not None and self.value_calculation != self.controller.value_calculation:
             self.value_calculation = self.controller.value_calculation
+            self.starting_set = self.value_calculation.starting_set
             self.values_name.set(f'Selected Values: {self.value_calculation.name}')
             self.__initialize_draft()
 
