@@ -1411,7 +1411,7 @@ class ValuesCalculation(tk.Frame):
 
         if self.rep_level_scheme.get() == RepLevelScheme.NUM_ROSTERED.value:
             for key, value in self.rep_level_dict.items():
-                if not value.get().isnumer):
+                if not value.get().isnumeric():
                     bad_rep_level.append(key)
         elif self.rep_level_scheme.get() == RepLevelScheme.FILL_GAMES.value:
             for key, value in self.rep_level_dict.items():
