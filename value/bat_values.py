@@ -7,7 +7,7 @@ import logging
 from typing import List, Dict
 
 from domain.domain import ValueCalculation, CustomScoring, StartingPositionSet
-from domain.enum import RankingBasis, RepLevelScheme, CalculationDataType as CDT, Position, ScoringFormat, StatType
+from domain.enum import RankingBasis, RepLevelScheme, CalculationDataType as CDT, Position as P, ScoringFormat, StatType
 from domain.exception import InputException
 from services import custom_scoring_services
 from util import dataframe_util
@@ -19,12 +19,12 @@ class BatValues():
     default_replacement_positions = {"C":12,"1B":12,"2B":18,"3B":12,"SS":18,"LF":12,"CF":12,"RF":12,"OF":60,"Util":150}
     default_surplus_pos = {"C":0,"1B":0,"2B":0,"3B":0,"SS":0,"LF":0,"CF":0,"RF":0,"OF":0,"Util":0}
     default_replacement_levels = {}
-    ottoneu_counts = {Position.POS_C:1, Position.POS_1B:1, Position.POS_2B:1, Position.POS_SS:1, Position.POS_MI:1, Position.POS_3B:1, Position.POS_OF:5, Position.POS_UTIL:1}
+    ottoneu_counts = {P.POS_C:1, P.POS_1B:1, P.POS_2B:1, P.POS_SS:1, P.POS_MI:1, P.POS_3B:1, P.POS_OF:5, P.POS_UTIL:1}
     max_rost_num = {}
     scoring:CustomScoring = None
     starting_pos:StartingPositionSet
-    position_keys:List[Position]
-    start_count:Dict[Position, int]
+    position_keys:List[P]
+    start_count:Dict[P, int]
 
     def __init__(self, value_calc:ValueCalculation, intermediate_calc=False, target_bat=244, max_pos_value=True, prog = None):
         self.format = value_calc.format
@@ -46,10 +46,10 @@ class BatValues():
         self.target_games = value_calc.get_input(CDT.BATTER_G_TARGET)
         self.starting_pos = value_calc.starting_set
         if self.starting_pos:
-            self.position_keys = [p.position for p in self.starting_pos.positions if p.position.offense]
+            self.position_keys = [p.position for p in self.starting_pos.positions if p.P.offense]
             self.start_count = dict([(p.position, p.count) for p in self.starting_pos.positions])
         else:
-            self.position_keys = Position.get_ottoneu_offensive_pos()
+            self.position_keys = P.get_ottoneu_offensive_pos()
             self.start_count = deepcopy(self.ottoneu_counts)
         if intermediate_calc:
             self.dirname = os.path.abspath(os.path.join(os.path.dirname( __file__ ), '..'))
@@ -89,17 +89,13 @@ class BatValues():
             col = f"Rank {pos.value} Rate"
             g_col = f"{pos.value} Games"
             df[g_col] = 0
-            if pos == Position.POS_UTIL:
+            if pos == P.POS_UTIL:
                 df[col] = df[rank_col].rank(ascending=False)
                 self.max_rost_num['Util'] = len(df)
             else:
-                df[col] = df.loc[df['Position(s)'].apply(lambda test_pos, _pos=pos: Position.eligible(test_pos, _pos))][rank_col].rank(ascending=False)
+                df[col] = df.loc[df['Position(s)'].apply(lambda test_pos, _pos=pos: P.eligible(test_pos, _pos))][rank_col].rank(ascending=False)
                 df[col].fillna(-999, inplace=True)
-                self.max_rost_num[pos.value] = len(df.loc[df['Position(s)'].apply(lambda test_pos, _pos=pos: Position.eligible(test_pos, _pos))])
-        #col = "Rank MI Rate"
-        #df[col] = df.loc[df['Position(s)'].apply(Position.eligible, args=(Position.POS_MI,))][rank_col].rank(ascending=False)
-        #df[col].fillna(-999, inplace=True)
-        #df['MI Games'] = 0
+                self.max_rost_num[pos.value] = len(df.loc[df['Position(s)'].apply(lambda test_pos, _pos=pos: P.eligible(test_pos, _pos))])
     
     def calc_total_games(self, df:DataFrame) -> None:
         '''Calculates the total games above replacement level at each discrete offensive position per the DataFrame columns'''
@@ -108,23 +104,23 @@ class BatValues():
             df[col] = df.apply(self.calc_pos_games, args=(pos,), axis=1)
             self.total_games[pos.value] = df[col].sum()
 
-    def calc_pos_games(self, row, pos:Position) -> int:
+    def calc_pos_games(self, row, pos:P) -> int:
         '''Calculates all games at the input position filled above replacement level for the given replacement level values.
         Eligible position with lowest replacement level gets all games for a given player.'''
-        if not Position.eligible(row['Position(s)'], pos):
+        if not P.eligible(row['Position(s)'], pos):
             return 0
-        if (self.position_is_base(pos) or pos == Position.POS_UTIL)and row[f'{pos.value}_FOM'] < 0:
+        if (self.__position_is_base(pos) or pos == P.POS_UTIL)and row[f'{pos.value}_FOM'] < 0:
             return 0
-        if pos == Position.POS_MI:
+        if pos == P.POS_MI:
             if row['SS_FOM'] < 0 and row['2B_FOM'] < 0:
                 return 0
-        if pos == Position.POS_CI:
+        if pos == P.POS_CI:
             if row['1B_FOM'] < 0 and row['3B_FOM'] < 0:
                 return 0
-        if pos == Position.POS_INF:
+        if pos == P.POS_INF:
             if row['1B_FOM'] < 0 and row['3B_FOM'] < 0 and row['SS_FOM'] < 0 and row['2B_FOM'] < 0:
                 return 0
-        if pos == Position.POS_OF and all(x in [Position.POS_LF, Position.POS_CF, Position.POS_RF] for x in self.position_keys):
+        if pos == P.POS_OF and all(x in [P.POS_LF, P.POS_CF, P.POS_RF] for x in self.position_keys):
             if row['LF_FOM'] < 0 and row['CF_FOM'] < 0 and row['RF_FOM'] < 0:
                 return 0
 
@@ -132,8 +128,8 @@ class BatValues():
             min_rep_pos = ''
             min_rep = 999
             for pos2 in self.position_keys:
-                if not (self.position_is_base(pos2) or pos2 == Position.POS_UTIL): continue
-                if not Position.eligible(row['Position(s)'], pos2): continue
+                if not (self.__position_is_base(pos2) or pos2 == P.POS_UTIL): continue
+                if not P.eligible(row['Position(s)'], pos2): continue
                 if self.replacement_levels[pos2.value] < min_rep:
                     min_rep = self.replacement_levels[pos2.value]
                     min_rep_pos = pos2.value
@@ -145,22 +141,22 @@ class BatValues():
             #TODO: Finish this. this is tricky and involves splitting multi-position guys up
             return 0
 
-    def position_is_base(self, pos:Position) -> bool:
-        return Position.position_is_base(pos, self.position_keys)
+    def __position_is_base(self, pos:P) -> bool:
+        return P.position_is_base(pos, self.position_keys)
 
     def are_games_filled(self) -> bool:
         num_teams = self.num_teams
         '''Returns true if all positions have at least the minimum required games filled above replacement level for the league.'''
         filled_games = True
         for pos in self.position_keys:
-            if self.position_is_base(pos):
+            if self.__position_is_base(pos):
                 if self.total_games[pos.value] < num_teams * self.target_games * self.start_count[pos] and self.max_rost_num[pos.value] > self.replacement_positions[pos.value]:
                     self.games_filled[pos.value] = False
                     filled_games = False
                 else:
                     self.games_filled[pos.value] = True
-            elif pos == Position.POS_MI:
-                position_count = self.start_count[Position.POS_2B] + self.start_count[Position.POS_SS] + self.start_count[Position.POS_MI]
+            elif pos == P.POS_MI:
+                position_count = self.start_count[P.POS_2B] + self.start_count[P.POS_SS] + self.start_count[P.POS_MI]
                 if self.total_games['SS'] + self.total_games['2B'] < num_teams * self.target_games * position_count:
                     if self.max_rost_num['SS'] > self.replacement_positions['SS']:
                         self.games_filled['SS'] = False
@@ -168,8 +164,8 @@ class BatValues():
                         self.games_filled['2B'] = False
                     if not self.games_filled['SS'] or not self.games_filled['2B']:
                         filled_games = False
-            elif pos == Position.POS_CI:
-                position_count = self.start_count[Position.POS_1B] + self.start_count[Position.POS_3B] + self.start_count[Position.POS_CI]
+            elif pos == P.POS_CI:
+                position_count = self.start_count[P.POS_1B] + self.start_count[P.POS_3B] + self.start_count[P.POS_CI]
                 if self.total_games['1B'] + self.total_games['3B'] < num_teams * self.target_games * position_count:
                     if self.max_rost_num['1B'] > self.replacement_positions['1B']:
                         self.games_filled['1B'] = False
@@ -177,9 +173,9 @@ class BatValues():
                         self.games_filled['3B'] = False
                     if not self.games_filled['1B'] or not self.games_filled['3B']:
                         filled_games = False
-            elif pos == Position.POS_INF:
-                position_count = self.start_count[Position.POS_1B] + self.start_count[Position.POS_3B] + self.start_count.get(Position.POS_CI, 0) \
-                    + self.start_count[Position.POS_2B] + self.start_count[Position.POS_SS] + self.start_count.get(Position.POS_MI, 0) + self.start_count[Position.POS_INF]
+            elif pos == P.POS_INF:
+                position_count = self.start_count[P.POS_1B] + self.start_count[P.POS_3B] + self.start_count.get(P.POS_CI, 0) \
+                    + self.start_count[P.POS_2B] + self.start_count[P.POS_SS] + self.start_count.get(P.POS_MI, 0) + self.start_count[P.POS_INF]
                 if self.total_games['1B'] + self.total_games['3B'] + self.total_games['2B'] + self.total_games['SS'] < num_teams * self.target_games * position_count:
                     if self.max_rost_num['1B'] > self.replacement_positions['1B']:
                         self.games_filled['1B'] = False
@@ -191,8 +187,8 @@ class BatValues():
                         self.games_filled['2B'] = False
                     if not self.games_filled['1B'] or not self.games_filled['3B'] or not self.games_filled['SS'] or not self.games_filled['2B']:
                         filled_games = False
-            elif pos == Position.POS_OF:
-                position_count = self.start_count[Position.POS_LF] + self.start_count[Position.CF] + self.start_count[Position.POS_RF] + self.start_count[Position.POS_OF]
+            elif pos == P.POS_OF:
+                position_count = self.start_count[P.POS_LF] + self.start_count[P.CF] + self.start_count[P.POS_RF] + self.start_count[P.POS_OF]
                 if self.total_games['LF'] + self.total_games['CF'] + self.total_games['RF'] < num_teams * self.target_games * position_count:
                     if self.max_rost_num['LF'] > self.replacement_positions['LF']:
                         self.games_filled['LF'] = False
@@ -202,14 +198,14 @@ class BatValues():
                         self.games_filled['RF'] = False
                     if not self.games_filled['LF'] or not self.games_filled['CF'] or not self.games_filled['RF']:
                         filled_games = False
-            elif pos == Position.POS_UTIL:
+            elif pos == P.POS_UTIL:
                 if self.are_util_games_filled(num_teams):
                     self.games_filled['Util'] = True
                 else:
                     self.games_filled['Util'] = False
                     filled_games = False
 
-        if self.total_games['C'] < num_teams * self.target_games * self.start_count[Position.POS_C] and self.max_rost_num['C'] > self.replacement_positions['C']:
+        if self.total_games['C'] < num_teams * self.target_games * self.start_count[P.POS_C] and self.max_rost_num['C'] > self.replacement_positions['C']:
             self.games_filled['C'] = False
             filled_games = False
         else:
@@ -252,7 +248,7 @@ class BatValues():
         #judgement call that you aren't using C to fill Util
         total_games = 0
         for pos in self.position_keys:
-            if self.position_is_base(pos) or pos == Position.POS_UTIL:
+            if self.__position_is_base(pos) or pos == P.POS_UTIL:
                 total_games += self.total_games[pos.value] - self.target_games * num_teams * self.start_count[pos]
             else:
                 total_games -= self.target_games * self.start_count[pos] * num_teams
@@ -272,13 +268,13 @@ class BatValues():
         #Initial calculation of replacement levels and FOM
         if self.rep_level_scheme == RepLevelScheme.STATIC_REP_LEVEL:
             for pos in self.position_keys:
-                if self.position_is_base(pos) or pos == Position.POS_UTIL:
+                if self.__position_is_base(pos) or pos == P.POS_UTIL:
                     self.set_num_rostered_from_rep_level(df, pos)
                     self.get_fom_from_rep_level(df, pos)
             df['Max FOM'] = df.apply(self.calc_max_fom, axis=1)
         else:
             for pos in self.position_keys:
-                if self.position_is_base(pos) or pos == Position.POS_UTIL:
+                if self.__position_is_base(pos) or pos == P.POS_UTIL:
                     if self.replacement_positions[pos.value] > self.max_rost_num[pos.value]:
                         self.replacement_positions[pos.value] = self.max_rost_num[pos.value]
                     self.get_position_fom_calc(df, pos)
@@ -295,8 +291,8 @@ class BatValues():
                         last_inc = 1
                     max_rep_lvl = -999
                     for pos in self.position_keys:
-                        if pos == Position.POS_UTIL: continue
-                        if not self.position_is_base(pos): continue
+                        if pos == P.POS_UTIL: continue
+                        if not self.__position_is_base(pos): continue
                         rep_lvl = self.replacement_levels[pos.value]
                         if not self.games_filled[pos.value] and rep_lvl > max_rep_lvl:
                             max_rep_lvl = rep_lvl
@@ -304,7 +300,7 @@ class BatValues():
                     if max_rep_lvl == -999:
                         #Need to fill Util games with highest replacement
                         for pos in self.position_keys:
-                            if not self.position_is_base(pos) or pos == Position.POS_UTIL: continue
+                            if not self.__position_is_base(pos) or pos == P.POS_UTIL: continue
                             rep_lvl = self.replacement_levels[pos.value]
                             if rep_lvl > max_rep_lvl:
                                 max_rep_lvl = rep_lvl
@@ -315,10 +311,10 @@ class BatValues():
                     #Recalculate FOM for the position given the new replacement level
                     if ScoringFormat.is_points_type(self.format):
                         self.get_position_fom_calc(df, max_pos)
-                        self.get_position_fom_calc(df, Position.POS_UTIL)
+                        self.get_position_fom_calc(df, P.POS_UTIL)
                     else:
                         for pos in self.position_keys:
-                            if self.position_is_base(pos)  or pos == Position.POS_UTIL:
+                            if self.__position_is_base(pos)  or pos == P.POS_UTIL:
                                 if self.replacement_positions[pos.value] > self.max_rost_num[pos.value]:
                                     self.replacement_positions[pos.value] = self.max_rost_num[pos.value]
                                 self.get_position_fom_calc(df, pos)
@@ -330,7 +326,7 @@ class BatValues():
                         self.calc_total_games(df)
                 #Augment the replacement levels by the input surpluses to get the final numbers
                 for pos in self.position_keys:
-                    if self.position_is_base(pos):
+                    if self.__position_is_base(pos):
                         self.replacement_positions[pos.value] = min(self.replacement_positions[pos.value] + self.surplus_pos[pos.value], self.max_rost_num[pos.value])
                         self.get_position_fom_calc(df, pos)
                 df['Max FOM'] = df.apply(self.calc_max_fom, axis=1)
@@ -341,8 +337,8 @@ class BatValues():
                         #Too many players, find the current minimum replacement level and bump that replacement_position down by 1
                         min_rep_lvl = 999.9
                         for pos in self.position_keys:
-                            if pos == Position.POS_UTIL or pos == Position.POS_C: continue
-                            if not self.position_is_base(pos): continue
+                            if pos == P.POS_UTIL or pos == P.POS_C: continue
+                            if not self.__position_is_base(pos): continue
                             rep_lvl = self.replacement_levels[pos.value]
                             if rep_lvl < min_rep_lvl:
                                 min_rep_lvl = rep_lvl
@@ -356,15 +352,15 @@ class BatValues():
                         #Too few players, find the current maximum replacement level and bump that replacement_position up by 1
                         max_rep_lvl = 0.0
                         for pos in self.position_keys:
-                            if pos == Position.POS_UTIL or pos == Position.POS_C: continue
-                            if not self.position_is_base(pos): continue
+                            if pos == P.POS_UTIL or pos == P.POS_C: continue
+                            if not self.__position_is_base(pos): continue
                             rep_lvl = self.replacement_levels[pos.value]
                             if rep_lvl > max_rep_lvl:
                                 if self.replacement_positions[pos.value] == self.max_rost_num[pos.value]: continue
                                 #These two conditionals are arbitrarily determined by me at the time, but they seem to do a good job reigning in 1B and OF
                                 #to reasonable levels. No one is going to roster a 1B that hits like a replacement level SS, for example
-                                if pos == Position.POS_1B and self.replacement_positions['1B'] > 1.5*self.replacement_positions['SS']: continue
-                                if pos == Position.POS_OF and self.replacement_positions['OF'] > 3*self.replacement_positions['SS']: continue
+                                if pos == P.POS_1B and self.replacement_positions['1B'] > 1.5*self.replacement_positions['SS']: continue
+                                if pos == P.POS_OF and self.replacement_positions['OF'] > 3*self.replacement_positions['SS']: continue
                                 max_rep_lvl = rep_lvl
                                 max_pos = pos
                         if max_rep_lvl == 0.0:
@@ -375,7 +371,7 @@ class BatValues():
                                 self.calculate_roto_bases(df)
                             #Recalcluate FOM for the position given the new replacement level
                             self.get_position_fom_calc(df, max_pos)
-                            self.get_position_fom_calc(df, Position.POS_UTIL)
+                            self.get_position_fom_calc(df, P.POS_UTIL)
                     #Set maximum FOM value for each player to determine how many are rosterable
                     df['Max FOM'] = df.apply(self.calc_max_fom, axis=1)
                     #FOM is how many bats with a non-negative max FOM
@@ -398,7 +394,7 @@ class BatValues():
         while abs(sigma) > 2:
             self.calculate_roto_bases(df)
             for pos in self.position_keys:
-                if self.position_is_base(pos) or pos == Position.POS_UTIL:
+                if self.__position_is_base(pos) or pos == P.POS_UTIL:
                     if self.replacement_positions[pos.value] > self.max_rost_num[pos.value]:
                         self.replacement_positions[pos.value] = self.max_rost_num[pos.value]
                     self.get_position_fom_calc(df, pos)
@@ -412,16 +408,16 @@ class BatValues():
             logging.debug(f'new sigma = {sigma}')
         return sigma
 
-    def get_position_fom_calc(self, df:DataFrame, pos:Position) -> None:
+    def get_position_fom_calc(self, df:DataFrame, pos:P) -> None:
         '''Calculate the FOM for each player eligible at a position based on the current replacement level.'''
         rep_level = self.get_position_rep_level(df, pos)
         self.replacement_levels[pos.value] = rep_level
         self.get_fom_from_rep_level(df, pos)
 
-    def calc_bat_fom(self, row, rep_level:float, pos:Position) -> float:
+    def calc_bat_fom(self, row, rep_level:float, pos:P) -> float:
         '''Calculates FOM for the given player at the input position with the provided replacement level. If the player is
         not eligible at the position, FOM set to -999.9'''
-        if Position.eligible(row['Position(s)'], pos):
+        if P.eligible(row['Position(s)'], pos):
             #Filter to the current position
             par_rate = row[self.rank_basis] - rep_level
             #Are we doing P/PA values, or P/G values
@@ -439,15 +435,15 @@ class BatValues():
         '''Returns the max FOM value for the player'''
         foms = []
         for pos in self.position_keys:
-            if self.position_is_base(pos) or pos == Position.POS_UTIL:
+            if self.__position_is_base(pos) or pos == P.POS_UTIL:
                 foms.append(row[f'{pos.value}_FOM'])
         return max(foms)
 
-    def set_num_rostered_from_rep_level(self, df:DataFrame, pos:Position) -> None:
-        '''Determines the number of players rostered above replacement level at the given position.'''
+    def set_num_rostered_from_rep_level(self, df:DataFrame, pos:P) -> None:
+        '''Determines the number of players rostered above replacement level at the given P.'''
         #Filter DataFrame to just the position of interest
-        if pos != Position.POS_UTIL:
-            pos_df = df.loc[df['Position(s)'].apply(Position.eligible, args=(pos,))]
+        if pos != P.POS_UTIL:
+            pos_df = df.loc[df['Position(s)'].apply(P.eligible, args=(pos,))]
         else:
             pos_df = df
         pos_df = pos_df.sort_values(self.rank_basis, ascending=False)
@@ -461,33 +457,33 @@ class BatValues():
         #Set number rostered at position to index + 1 (for zero index)
         self.replacement_positions[pos.value] = index + 1
 
-    def get_fom_from_rep_level(self, df:DataFrame, pos:Position) -> None:
-        '''Calculates the current FOM for all players for the given position.'''
+    def get_fom_from_rep_level(self, df:DataFrame, pos:P) -> None:
+        '''Calculates the current FOM for all players for the given P.'''
         col = pos.value + "_FOM"
         df[col] = df.apply(self.calc_bat_fom, args=(self.replacement_levels[pos.value], pos), axis=1)
         if pos.value in ["SS", "2B"]:
-            rep_level = min(self.get_position_rep_level(df, Position.POS_SS), self.get_position_rep_level(df, Position.POS_2B))
-            df['MI_FOM'] = df.apply(self.calc_bat_fom, args=(rep_level, Position.POS_MI), axis=1)
+            rep_level = min(self.get_position_rep_level(df, P.POS_SS), self.get_position_rep_level(df, P.POS_2B))
+            df['MI_FOM'] = df.apply(self.calc_bat_fom, args=(rep_level, P.POS_MI), axis=1)
         if pos.value in ['1B', '3B']:
-            rep_level = min(self.get_position_rep_level(df, Position.POS_1B), self.get_position_rep_level(df, Position.POS_3B))
-            df['CI_FOM'] = df.apply(self.calc_bat_fom, args=(rep_level, Position.POS_CI), axis=1)
+            rep_level = min(self.get_position_rep_level(df, P.POS_1B), self.get_position_rep_level(df, P.POS_3B))
+            df['CI_FOM'] = df.apply(self.calc_bat_fom, args=(rep_level, P.POS_CI), axis=1)
         if pos.value in ['1B', '2B', 'SS', '3B']:
-            rep_level = min(self.get_position_rep_level(df, Position.POS_1B), self.get_position_rep_level(df, Position.POS_3B), \
-                            self.get_position_rep_level(df, Position.POS_SS), self.get_position_rep_level(df, Position.POS_2B))
-            df['INF_FOM'] = df.apply(self.calc_bat_fom, args=(rep_level, Position.POS_INF), axis=1)
-        if pos.value in ['LF', 'CF', 'RF'] and not self.position_is_base(Position.POS_OF):
-            rep_level = min(self.get_position_rep_level(df, Position.POS_LF), self.get_position_rep_level(df, Position.POS_RF), \
-                            self.get_position_rep_level(df, Position.POS_CF))
-            df['OF_FOM'] = df.apply(self.calc_bat_fom, args=(rep_level, Position.POS_INF), axis=1)
+            rep_level = min(self.get_position_rep_level(df, P.POS_1B), self.get_position_rep_level(df, P.POS_3B), \
+                            self.get_position_rep_level(df, P.POS_SS), self.get_position_rep_level(df, P.POS_2B))
+            df['INF_FOM'] = df.apply(self.calc_bat_fom, args=(rep_level, P.POS_INF), axis=1)
+        if pos.value in ['LF', 'CF', 'RF'] and not self.__position_is_base(P.POS_OF):
+            rep_level = min(self.get_position_rep_level(df, P.POS_LF), self.get_position_rep_level(df, P.POS_RF), \
+                            self.get_position_rep_level(df, P.POS_CF))
+            df['OF_FOM'] = df.apply(self.calc_bat_fom, args=(rep_level, P.POS_INF), axis=1)
     
-    def get_position_rep_level(self, df:DataFrame, pos:Position) -> float:
+    def get_position_rep_level(self, df:DataFrame, pos:P) -> float:
         '''Based on the number of players to roster above replacement level, return the corresponding replacment level
         required for it to be true.'''
         if not pos in self.position_keys:
             return 999
-        if pos != Position.POS_UTIL:
+        if pos != P.POS_UTIL:
             #Filter DataFrame to just the position of interest
-            pos_df = df.loc[df['Position(s)'].apply(Position.eligible, args=(pos,))]
+            pos_df = df.loc[df['Position(s)'].apply(P.eligible, args=(pos,))]
             pos_df = pos_df.sort_values(self.rank_basis, ascending=False)
             #Get the nth value (here the # of players rostered at the position) from the sorted data - 1 for the zero index
             return pos_df.iloc[self.replacement_positions[pos.value]-1][self.rank_basis]
@@ -496,7 +492,7 @@ class BatValues():
             pos_df = df
             max_rep_lvl = -100.0
             for pos in self.position_keys:
-                if not self.position_is_base(pos): continue
+                if not self.__position_is_base(pos): continue
                 rep_level = self.replacement_levels[pos.value]
                 if rep_level > max_rep_lvl:
                     max_rep_lvl = rep_level
@@ -607,7 +603,7 @@ class BatValues():
         for _, row in proj.iterrows():
             arl = False
             for pos in self.position_keys:
-                if self.position_is_base(pos):
+                if self.__position_is_base(pos):
                     col = f"Rank {pos.value} Rate"
                     if row[col] > 0 and row[col] <= self.replacement_positions.get(pos.value):
                         arl = True
