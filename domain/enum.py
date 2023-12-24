@@ -578,6 +578,8 @@ class Position(str, Enum):
         return pos.value in test_pos
     
     def position_is_base(pos:Position, position_keys:List[Position]) -> bool:
+        if not pos.offense:
+            return True
         if pos == Position.POS_UTIL:
             return len(position_keys) == 1
         if pos in [Position.POS_C, Position.POS_1B, Position.POS_2B, Position.POS_3B, Position.POS_SS, Position.POS_LF, Position.POS_CF, Position.POS_RF]:
