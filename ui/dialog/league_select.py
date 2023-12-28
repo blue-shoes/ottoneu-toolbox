@@ -9,7 +9,7 @@ import logging
 from ui.dialog import progress
 from services import league_services
 from domain.domain import League
-from domain.enum import ScoringFormat
+from domain.enum import Platform
 
 class Dialog(tk.Toplevel):
     def __init__(self, parent, active=True):
@@ -21,13 +21,14 @@ class Dialog(tk.Toplevel):
 
         self.league_list = league_services.get_leagues(active)
 
-        cols = ('Lg Id', 'Name', 'Format', '# Teams')
+        cols = ('Lg Id', 'Name', 'Platform', 'Format', '# Teams')
         align = {}
         align['Name'] = W
         width = {}
         width['Name'] = 175
+        width['Platform'] = 85
 
-        self.league_table = lt = Table(frm, cols, align, width, cols)
+        self.league_table = lt = Table(frm, cols, align, width, cols, reverse_col_sort=['Lg Id'])
         lt.grid(row=0, columnspan=4)
         lt.set_row_select_method(self.on_select)
         lt.set_refresh_method(self.populate_table)
@@ -65,7 +66,7 @@ class Dialog(tk.Toplevel):
     def populate_table(self):
         for lg in self.league_list:
             lgfmt = lg.format.short_name
-            self.league_table.insert('', tk.END, text=str(lg.index), values=(lg.site_id, lg.name, lgfmt, lg.num_teams))
+            self.league_table.insert('', tk.END, text=str(lg.index), values=(lg.site_id, lg.name, lg.platform.value, lgfmt, lg.num_teams))
 
     def double_click(self, event):
         self.on_select(event)
@@ -102,7 +103,10 @@ class Dialog(tk.Toplevel):
             pd = progress.ProgressDialog(self.parent, 'Deleting League')
             pd.set_completion_percent(15)
             league_services.delete_league_by_id(lg_id)
-            self.league_list.remove(league)
+            for idx, lg in enumerate(self.league_list):
+                if lg.index == lg_id:
+                    self.league_list.pop(idx)
+                    break
             self.league_table.refresh()
             pd.complete()
 
