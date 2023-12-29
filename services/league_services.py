@@ -358,15 +358,14 @@ def update_league_inflation(league:League, pv:PlayerValue, rs:Roster_Spot, inf_m
     if val > 0:
         league.num_valued_rostered += mult
     else:
-        league.npp_spent += npp-1 * mult
+        league.npp_spent += (npp-1) * mult
     league.npp_spent = min(league.npp_spent, league.max_npp)
     return get_league_inflation(league, inf_method)
 
 def get_league_inflation(league:League, inf_method:InflationMethod) -> float:
     '''Calculates the inflation rate for the given league using the given inflation methodology.'''
-    salary_cap = 400*league.num_teams
+    salary_cap = league.team_salary_cap*league.num_teams
     if inf_method == InflationMethod.CONVENTIONAL:
-
         league.inflation = (salary_cap - league.total_salary) / (salary_cap - league.total_value) -1
     elif inf_method == InflationMethod.ROSTER_SPOTS_ONLY:
         league.inflation = (salary_cap - 40*league.num_teams - (league.total_salary - league.num_rostered)) / (salary_cap - 40*league.num_teams - (league.total_value - league.num_rostered)) -1
