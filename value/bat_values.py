@@ -155,55 +155,60 @@ class BatValues():
                     filled_games = False
                 else:
                     self.games_filled[pos.value] = True
-            elif pos == P.POS_MI:
-                position_count = self.start_count[P.POS_2B] + self.start_count[P.POS_SS] + self.start_count[P.POS_MI]
-                if self.total_games['SS'] + self.total_games['2B'] < num_teams * self.target_games * position_count:
-                    if self.max_rost_num['SS'] > self.replacement_positions['SS']:
-                        self.games_filled['SS'] = False
-                    if self.max_rost_num['2B'] > self.replacement_positions['2B']:
-                        self.games_filled['2B'] = False
-                    if not self.games_filled['SS'] or not self.games_filled['2B']:
+        if not filled_games:
+            return filled_games
+        
+        for pos in self.position_keys:
+            if not self.__position_is_base(pos):
+                if pos == P.POS_MI:
+                    position_count = self.start_count[P.POS_2B] + self.start_count[P.POS_SS] + self.start_count[P.POS_MI]
+                    if self.total_games['SS'] + self.total_games['2B'] < num_teams * self.target_games * position_count:
+                        if self.max_rost_num['SS'] > self.replacement_positions['SS']:
+                            self.games_filled['SS'] = False
+                        if self.max_rost_num['2B'] > self.replacement_positions['2B']:
+                            self.games_filled['2B'] = False
+                        if not self.games_filled['SS'] or not self.games_filled['2B']:
+                            filled_games = False
+                elif pos == P.POS_CI:
+                    position_count = self.start_count[P.POS_1B] + self.start_count[P.POS_3B] + self.start_count[P.POS_CI]
+                    if self.total_games['1B'] + self.total_games['3B'] < num_teams * self.target_games * position_count:
+                        if self.max_rost_num['1B'] > self.replacement_positions['1B']:
+                            self.games_filled['1B'] = False
+                        if self.max_rost_num['3B'] > self.replacement_positions['3B']:
+                            self.games_filled['3B'] = False
+                        if not self.games_filled['1B'] or not self.games_filled['3B']:
+                            filled_games = False
+                elif pos == P.POS_INF:
+                    position_count = self.start_count[P.POS_1B] + self.start_count[P.POS_3B] + self.start_count.get(P.POS_CI, 0) \
+                        + self.start_count[P.POS_2B] + self.start_count[P.POS_SS] + self.start_count.get(P.POS_MI, 0) + self.start_count[P.POS_INF]
+                    if self.total_games['1B'] + self.total_games['3B'] + self.total_games['2B'] + self.total_games['SS'] < num_teams * self.target_games * position_count:
+                        if self.max_rost_num['1B'] > self.replacement_positions['1B']:
+                            self.games_filled['1B'] = False
+                        if self.max_rost_num['3B'] > self.replacement_positions['3B']:
+                            self.games_filled['3B'] = False
+                        if self.max_rost_num['SS'] > self.replacement_positions['SS']:
+                            self.games_filled['SS'] = False
+                        if self.max_rost_num['2B'] > self.replacement_positions['2B']:
+                            self.games_filled['2B'] = False
+                        if not self.games_filled['1B'] or not self.games_filled['3B'] or not self.games_filled['SS'] or not self.games_filled['2B']:
+                            filled_games = False
+                elif pos == P.POS_OF:
+                    position_count = self.start_count[P.POS_LF] + self.start_count[P.CF] + self.start_count[P.POS_RF] + self.start_count[P.POS_OF]
+                    if self.total_games['LF'] + self.total_games['CF'] + self.total_games['RF'] < num_teams * self.target_games * position_count:
+                        if self.max_rost_num['LF'] > self.replacement_positions['LF']:
+                            self.games_filled['LF'] = False
+                        if self.max_rost_num['CF'] > self.replacement_positions['CF']:
+                            self.games_filled['CF'] = False
+                        if self.max_rost_num['RF'] > self.replacement_positions['RF']:
+                            self.games_filled['RF'] = False
+                        if not self.games_filled['LF'] or not self.games_filled['CF'] or not self.games_filled['RF']:
+                            filled_games = False
+                elif pos == P.POS_UTIL:
+                    if self.are_util_games_filled(num_teams):
+                        self.games_filled['Util'] = True
+                    else:
+                        self.games_filled['Util'] = False
                         filled_games = False
-            elif pos == P.POS_CI:
-                position_count = self.start_count[P.POS_1B] + self.start_count[P.POS_3B] + self.start_count[P.POS_CI]
-                if self.total_games['1B'] + self.total_games['3B'] < num_teams * self.target_games * position_count:
-                    if self.max_rost_num['1B'] > self.replacement_positions['1B']:
-                        self.games_filled['1B'] = False
-                    if self.max_rost_num['3B'] > self.replacement_positions['3B']:
-                        self.games_filled['3B'] = False
-                    if not self.games_filled['1B'] or not self.games_filled['3B']:
-                        filled_games = False
-            elif pos == P.POS_INF:
-                position_count = self.start_count[P.POS_1B] + self.start_count[P.POS_3B] + self.start_count.get(P.POS_CI, 0) \
-                    + self.start_count[P.POS_2B] + self.start_count[P.POS_SS] + self.start_count.get(P.POS_MI, 0) + self.start_count[P.POS_INF]
-                if self.total_games['1B'] + self.total_games['3B'] + self.total_games['2B'] + self.total_games['SS'] < num_teams * self.target_games * position_count:
-                    if self.max_rost_num['1B'] > self.replacement_positions['1B']:
-                        self.games_filled['1B'] = False
-                    if self.max_rost_num['3B'] > self.replacement_positions['3B']:
-                        self.games_filled['3B'] = False
-                    if self.max_rost_num['SS'] > self.replacement_positions['SS']:
-                        self.games_filled['SS'] = False
-                    if self.max_rost_num['2B'] > self.replacement_positions['2B']:
-                        self.games_filled['2B'] = False
-                    if not self.games_filled['1B'] or not self.games_filled['3B'] or not self.games_filled['SS'] or not self.games_filled['2B']:
-                        filled_games = False
-            elif pos == P.POS_OF:
-                position_count = self.start_count[P.POS_LF] + self.start_count[P.CF] + self.start_count[P.POS_RF] + self.start_count[P.POS_OF]
-                if self.total_games['LF'] + self.total_games['CF'] + self.total_games['RF'] < num_teams * self.target_games * position_count:
-                    if self.max_rost_num['LF'] > self.replacement_positions['LF']:
-                        self.games_filled['LF'] = False
-                    if self.max_rost_num['CF'] > self.replacement_positions['CF']:
-                        self.games_filled['CF'] = False
-                    if self.max_rost_num['RF'] > self.replacement_positions['RF']:
-                        self.games_filled['RF'] = False
-                    if not self.games_filled['LF'] or not self.games_filled['CF'] or not self.games_filled['RF']:
-                        filled_games = False
-            elif pos == P.POS_UTIL:
-                if self.are_util_games_filled(num_teams):
-                    self.games_filled['Util'] = True
-                else:
-                    self.games_filled['Util'] = False
-                    filled_games = False
 
         return filled_games
     
