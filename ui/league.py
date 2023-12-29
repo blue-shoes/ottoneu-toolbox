@@ -196,7 +196,7 @@ class League_Analysis(tk.Frame):
                                                 use_keepers=self.__is_use_keepers())
         pd.set_completion_percent(90)
         pd.set_task_title('Updating display')
-        self.standings.standings_table.table.refresh()
+        self.standings.refresh()
         self.surplus.update_league(self.league)
         self.surplus.update_value_calc(self.value_calculation)
         self.surplus.player_table.table.refresh()

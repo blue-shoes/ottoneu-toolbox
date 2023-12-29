@@ -499,7 +499,7 @@ class DraftTool(tk.Frame):
     
     def update(self):
         league_services.calculate_league_table(self.league, self.value_calculation, fill_pt=False, inflation=self.inflation)
-        self.standings.standings_table.table.refresh()
+        self.standings.refresh()
 
     def __update_ui(self):
         if self.run_event.is_set() and self.queue.empty():
@@ -758,7 +758,7 @@ class DraftTool(tk.Frame):
         
         self.search_view.table.refresh()
         self.__refresh_planning_frame()
-        self.standings.standings_table.table.refresh()
+        self.standings.refresh()
     
     def __update_table_inflations(self):
         for child in self.overall_view.table.get_children():
@@ -1133,7 +1133,7 @@ class DraftTool(tk.Frame):
         self.standings.value_calc = self.controller.value_calculation
         self.standings.update_league(self.controller.league)
         league_services.calculate_league_table(self.league, self.value_calculation, fill_pt=False, inflation=self.inflation)
-        self.standings.standings_table.table.refresh()
+        self.standings.refresh()
 
         self.__populate_views()
         prog.increment_completion_percent(25)

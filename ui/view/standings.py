@@ -2,21 +2,28 @@ import tkinter as tk
 from tkinter import *              
 from tkinter import ttk 
 
-from domain.domain import League, ValueCalculation, Team
-from domain.enum import Position, ScoringFormat, Platform
+from domain.domain import League, ValueCalculation, Team, CustomScoring
+from domain.enum import Position, ScoringFormat, Platform, StatType, CalculationDataType
+from services import custom_scoring_services
 from ui.table.table import ScrollableTreeFrame
 from ui.tool.tooltip import CreateToolTip
 from util import date_util
-
 
 class Standings(tk.Frame):
 
     _inflation:float = 0
     league:League
     value_calc:ValueCalculation
+    custom_scoring:CustomScoring = None
 
     non_salary_cap_cols = ('Rank','Team','Points','Players')
     cols = ('Rank','Team','Points', 'Salary', 'Value', 'Surplus', 'Players', '$ Free')
+
+    all_hitting_stats = tuple([st.display for st in StatType.get_all_hit_stattype()])
+    all_pitching_stats = tuple([st.display for st in StatType.get_all_pitch_stattype()])
+
+    roto_cols = ('Rank', 'Team') + all_hitting_stats + all_pitching_stats
+    rev_cols = ('Rank', 'Team') + tuple([st.display for st in StatType if not st.higher_better]) 
     
     def __init__(self, parent, view=None):
         '''Creates a new Standings View. If the controlling view is different from the view parent (i.e. the overall view is sub-framed), set the view= variable to the controlling view.'''
@@ -47,7 +54,7 @@ class Standings(tk.Frame):
 
         standings_frame = ttk.Frame(self.tab_control)
         self.tab_control.add(standings_frame, text='Standings')
-        standings_frame.pack(side='left', fill='both', expand=True)
+        #standings_frame.pack(side='left', fill='both', expand=True)
         
         cols = self.cols
         widths = {}
@@ -59,6 +66,21 @@ class Standings(tk.Frame):
         st.table.tag_configure('users', background='#FCE19D')
         st.table.set_refresh_method(self.__refresh_standings)
         st.pack(fill='both', expand=True)
+
+        roto_frame = ttk.Frame(self.tab_control)
+        self.tab_control.add(roto_frame, text='Categories')
+        #roto_frame.pack(side='left', fill='both', expand=True)
+        
+        cols = self.roto_cols
+        widths = {}
+        widths['Team'] = 125
+        align = {}
+        align['Team'] = W
+        rev_cols = ('Rank','Team')
+        self.roto_table = rt = ScrollableTreeFrame(roto_frame, cols,pack=False,sortable_columns=cols,reverse_col_sort=self.rev_cols, column_widths=widths, init_sort_col='Rank', column_alignments=align)
+        rt.table.tag_configure('users', background='#FCE19D')
+        rt.table.set_refresh_method(self.__refresh_roto)
+        rt.pack(fill='both', expand=True)
     
     def __set_click_action(self, click_action):
         self.standings_table.table.bind('<<TreeviewSelect>>', click_action)
@@ -73,20 +95,51 @@ class Standings(tk.Frame):
                 tags=('users',)
             self.standings_table.table.insert('', tk.END, text=team.site_id, tags=tags, values=self.__calc_values(team))
     
+    def __refresh_roto(self):
+        for team in self.league.teams:
+            tags = ''
+            if team.users_team:
+                tags=('users',)
+            self.roto_table.table.insert('', tk.END, text=team.site_id, tags=tags, values=self.__calc_roto_values(team))
+    
     def update_league(self, league:League) -> None:
         self.league = league
-        if not ScoringFormat.is_points_type(league.format):
-            self.standings_type.set(0)
-            self.proj_button.configure(state='disable')
+        show_cats = False
+        if self.value_calc.format == ScoringFormat.CUSTOM:
+            self.custom_scoring = custom_scoring_services.get_scoring_format(self.value_calc.get_input(CalculationDataType.CUSTOM_SCORING_FORMAT))
+            if not self.custom_scoring.points_format:
+                self.standings_type.set(0)
+                self.proj_button.configure(state='disable')
+                show_cats = True
+            else:
+                self.proj_button.configure(state='active')
         else:
-            self.proj_button.configure(state='active')
+            self.custom_scoring = None
+            if not ScoringFormat.is_points_type(self.value_calc.format):
+                self.standings_type.set(0)
+                self.proj_button.configure(state='disable')
+                show_cats = True
+            else:
+                self.proj_button.configure(state='active')
         self.__set_display_columns()
+        for tab_id in self.tab_control.tabs():
+            item = self.tab_control.tab(tab_id)
+            if item['text']=='Categories':
+                if show_cats:
+                    self.tab_control.add(tab_id)
+                else:
+                    self.tab_control.hide(tab_id)
 
     def __set_display_columns(self) -> None:
         if self.league.is_salary_cap():
             self.standings_table.table.set_display_columns(self.cols)
         else:
             self.standings_table.table.set_display_columns(self.non_salary_cap_cols)
+        if self.custom_scoring:
+            if not self.custom_scoring.points_format:
+                self.roto_table.table.set_display_columns(('Rank', 'Team') + tuple([cat.category.display for cat in self.custom_scoring.stats]))
+        elif not ScoringFormat.is_points_type(self.value_calc.format):
+            self.roto_table.table.set_display_columns(('Rank', 'Team') + tuple(ScoringFormat.get_format_stat_categories(self.value_calc.format)))
 
     def __calc_salary_info(self, team:Team) -> list:
         vals = []
@@ -140,7 +193,19 @@ class Standings(tk.Frame):
         else:
             vals.extend([0, 0, 0, len(team.roster_spots), 0])
         return vals
+    
+    def __calc_roto_values(self, team:Team) -> list:
+        vals = []
+        vals.append(team.lg_rank)
+        vals.append(team.name)
+        for st in StatType.get_all_hit_stattype() + StatType.get_all_pitch_stattype():
+            if st in team.cat_ranks:
+                vals.append(team.cat_ranks[st])
+            else:
+                vals.append(0)
+        return vals
 
     def refresh(self) -> None:
         '''Refreshes all tabs of Standings view'''
-        ...
+        self.standings_table.table.refresh()
+        self.roto_table.table.refresh()
