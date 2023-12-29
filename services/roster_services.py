@@ -1,7 +1,7 @@
 import copy
 from typing import Tuple, List, Dict
 
-from domain.domain import Team, Roster_Spot, Projection, Player, Projected_Keeper
+from domain.domain import Team, Projection, Player, Projected_Keeper, CustomScoring, StartingPositionSet
 from domain.enum import StatType, ScoringFormat, Position, RankingBasis
 from domain.exception import InputException
 from services import calculation_services, player_services, projection_services
@@ -29,7 +29,9 @@ def optimize_team_pt(team:Team,
                      pitch_basis:RankingBasis=RankingBasis.PIP,
                      rep_lvl:Dict[Position, float]=None,
                      current_pt:Dict[Position, Dict[int,int]]=None,
-                     use_keepers:bool=False) -> Dict[Position, Dict[int,int]]:
+                     use_keepers:bool=False,
+                     custom_scoring:CustomScoring=None,
+                     starting_set:StartingPositionSet=None) -> Dict[Position, Dict[int,int]]:
     '''Creates a season lineup that maximizes the off_opt_stat and pit_opt_stat for the roster. Providing a rep_lvl dictionary will prevent players below replacement
     level from accruing stats/playing time. Providing a current_pt dictionary will inform how much playing time has alraedy been accrued by the team and will solve
     for the remaining playing time.'''
@@ -56,7 +58,7 @@ def optimize_team_pt(team:Team,
                     if g is None or g == 0:
                         o_opt_pg[rs.player.index] = (rs.player, 0, 0)
                     else:
-                        o_opt_pg[rs.player.index] = (rs.player, g, calculation_services.get_batting_point_rate_from_player_projection(pp, RankingBasis.PPG))
+                        o_opt_pg[rs.player.index] = (rs.player, g, calculation_services.get_batting_point_rate_from_player_projection(pp, RankingBasis.PPG, custom_format=custom_scoring))
             if rs.player.pos_eligible(Position.PITCHER):
                 #Pitcher
                 pp = proj.get_player_projection(rs.player.index)
@@ -106,7 +108,7 @@ def optimize_team_pt(team:Team,
             for pos in elig_pos:
                 if pos.offense:
                     last = (pos == last_pos)
-                    __add_pt(possibilities, pt, opt_sum, val, pos, i, last=last, rep_lvl=rep_lvl, g_limit=off_g_limit)
+                    __add_pt(possibilities, pt, opt_sum, val, pos, i, last=last, rep_lvl=rep_lvl, g_limit=off_g_limit, starting_set=starting_set)
                     first = False      
     bat_idx = max(range(len(opt_sum)), key=opt_sum.__getitem__)
     for player_id, games in possibilities[bat_idx].items():
@@ -164,15 +166,12 @@ def __add_pt(possibilities:List[Dict[int, int]],
              used_pos:List[Position]=[], 
              used_pt:int=0, 
              rep_lvl:Dict[Position, float]=None,
-             g_limit:float=162) -> None:
-    if target_pos == Position.POS_OF:
-        cap = 5*g_limit
-    else:
-        cap = g_limit
+             g_limit:float=162,
+             starting_set:StartingPositionSet=None) -> None:
+    cap = starting_set.get_count_for_position(target_pos) * g_limit
     g_h = 0
     if sum(pt[index].get(target_pos, {0:0}).values()) < cap and (rep_lvl is None or rep_lvl.get(target_pos) < val[1][2]):
         if target_pos != Position.POS_UTIL and not last:
-
             possibilities.append(copy.copy(possibilities[index]))
             opt_sum.append(copy.copy(opt_sum[index]))
             pt.append(copy.deepcopy(pt[index]))
@@ -192,11 +191,10 @@ def __add_pt(possibilities:List[Dict[int, int]],
                 if pos in used_pos:
                     continue
                 if pos.offense:
-                    __add_pt(possibilities, pt, opt_sum, val, pos, index=len(possibilities)-1, used_pos = used_pos, used_pt=used_pt)
+                    __add_pt(possibilities, pt, opt_sum, val, pos, index=len(possibilities)-1, rep_lvl=rep_lvl, used_pos = used_pos, used_pt=used_pt, starting_set=starting_set)
 
     if (g_h + used_pt) < val[1][1]:
         used_pos.append(target_pos)
-        if val[1][0].pos_eligible(Position.POS_MI) and target_pos != Position.POS_MI and target_pos != Position.POS_UTIL:
-            __add_pt(possibilities, pt, opt_sum, val, Position.POS_MI, index=index, used_pos = used_pos, used_pt=used_pt)
-        elif target_pos != Position.POS_UTIL:
-            __add_pt(possibilities, pt, opt_sum, val, Position.POS_UTIL, index=index, used_pos = used_pos, used_pt=used_pt)
+        start_pos = [p.position for p in starting_set.positions if p.position.offense and p.position not in used_pos and val[1][0].pos_eligible(p.position)]
+        if start_pos:
+            __add_pt(possibilities, pt, opt_sum, val, start_pos[0], rep_lvl=rep_lvl, index=index, used_pos = used_pos, used_pt=used_pt, starting_set=starting_set)

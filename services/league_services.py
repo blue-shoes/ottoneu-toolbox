@@ -3,12 +3,12 @@ from sqlalchemy.orm import joinedload
 from typing import List
 from collections import defaultdict
 
-from domain.domain import League, Team, Roster_Spot, Player, Draft, ValueCalculation, Projected_Keeper, PlayerValue
-from domain.enum import ScoringFormat, Position, CalculationDataType, StatType, RankingBasis, InflationMethod, Platform
+from domain.domain import League, Team, Roster_Spot, Player, Draft, ValueCalculation, Projected_Keeper, PlayerValue, CustomScoring, StartingPositionSet
+from domain.enum import ScoringFormat, Position, CalculationDataType as CDT, StatType, RankingBasis, InflationMethod, Platform
 from domain.exception import InputException
 from dao.session import Session
 from scrape.scrape_ottoneu import Scrape_Ottoneu
-from services import roster_services, calculation_services
+from services import roster_services, calculation_services, custom_scoring_services
 from util import date_util, list_util
 
 def get_leagues(active: bool=True) -> List[League]:
@@ -97,17 +97,25 @@ def calculate_league_table(league:League, value_calc:ValueCalculation, fill_pt:b
         keepers = league.projected_keepers
     else:
         keepers = []
+    if value_calc.format == ScoringFormat.CUSTOM:
+        custom_scoring = custom_scoring_services.get_scoring_format(value_calc.get_input(CDT.CUSTOM_SCORING_FORMAT))
+    else:
+        custom_scoring = None
     if in_season:
         stats ,_, pt = Scrape_Ottoneu().scrape_standings_page(league.index, date_util.get_current_ottoneu_year())
     if updated_teams is None or inflation is not None:
+        if not league.is_salary_cap():
+            inflation = None
         for team in league.teams:
-            project_team_results(team, value_calc, league.format, fill_pt, inflation, stats=stats, accrued_pt=pt, keepers=keepers, use_keepers=use_keepers)   
+            __project_team_results(team, value_calc, league.format, fill_pt, inflation, stats=stats, accrued_pt=pt, keepers=keepers, use_keepers=use_keepers, custom_scoring=custom_scoring)   
     else:
         for team in league.teams:
             if __list_contains_team(team, updated_teams):
-                project_team_results(team, value_calc, league.format, fill_pt, inflation, stats=stats, accrued_pt=pt, keepers=keepers, use_keepers=use_keepers)   
-    if not ScoringFormat.is_points_type(league.format):
-        calculate_league_cat_ranks(league)
+                if not league.is_salary_cap():
+                    inflation = None
+                __project_team_results(team, value_calc, league.format, fill_pt, inflation, stats=stats, accrued_pt=pt, keepers=keepers, use_keepers=use_keepers, custom_scoring=custom_scoring)   
+    if not ScoringFormat.is_points_type(league.format) and (custom_scoring is None or not custom_scoring.points_format):
+        calculate_league_cat_ranks(league, custom_scoring)
     team_list = []
     for team in league.teams:
         team_list.append(team)
@@ -119,7 +127,9 @@ def __list_contains_team(team:Team, team_list:List[Team]) -> bool:
             return True
     return False
 
-def project_team_results(team:Team, value_calc:ValueCalculation, format:ScoringFormat, fill_pt:bool=False, inflation:float=None, stats:DataFrame=None, accrued_pt:DataFrame=None, keepers:List[Projected_Keeper]=[], use_keepers:bool=False) -> None:
+def __project_team_results(team:Team, value_calc:ValueCalculation, format:ScoringFormat, fill_pt:bool=False, 
+                           inflation:float=None, stats:DataFrame=None, accrued_pt:DataFrame=None, keepers:List[Projected_Keeper]=[], 
+                           use_keepers:bool=False, custom_scoring:CustomScoring=None) -> None:
     if accrued_pt is not None:
         #TODO: Need to adjust targets here
         ...
@@ -128,62 +138,79 @@ def project_team_results(team:Team, value_calc:ValueCalculation, format:ScoringF
     if fill_pt:
         rep_lvl = value_calc.get_rep_level_map()
         if ScoringFormat.is_h2h(format):
-            pt = roster_services.optimize_team_pt(team, keepers, value_calc.projection, format, rep_lvl=rep_lvl, rp_limit=value_calc.get_input(CalculationDataType.RP_G_TARGET, 10), sp_limit=value_calc.get_input(CalculationDataType.GS_LIMIT, 10), pitch_basis=value_calc.pitcher_basis, off_g_limit=value_calc.get_input(CalculationDataType.BATTER_G_TARGET, 162), use_keepers=use_keepers)
+            pt = roster_services.optimize_team_pt(team, keepers, value_calc.projection, format, 
+                                                  rep_lvl=rep_lvl, rp_limit=value_calc.get_input(CDT.RP_G_TARGET, 10), 
+                                                  sp_limit=value_calc.get_input(CDT.GS_LIMIT, 10), pitch_basis=value_calc.pitcher_basis, 
+                                                  off_g_limit=value_calc.get_input(CDT.BATTER_G_TARGET, 162), use_keepers=use_keepers, 
+                                                  custom_scoring=custom_scoring, starting_set=value_calc.starting_set)
         else:
-            pt = roster_services.optimize_team_pt(team, keepers, value_calc.projection, format, rep_lvl=rep_lvl, rp_limit=value_calc.get_input(CalculationDataType.RP_IP_TARGET, 350), off_g_limit=value_calc.get_input(CalculationDataType.BATTER_G_TARGET, 162), use_keepers=use_keepers)
+            pt = roster_services.optimize_team_pt(team, keepers, value_calc.projection, format, 
+                                                  rep_lvl=rep_lvl, rp_limit=value_calc.get_input(CDT.RP_IP_TARGET, 350), 
+                                                  off_g_limit=value_calc.get_input(CDT.BATTER_G_TARGET, 162), use_keepers=use_keepers,
+                                                  custom_scoring=custom_scoring, starting_set=value_calc.starting_set)
     else:
         if ScoringFormat.is_h2h(format):
-            pt = roster_services.optimize_team_pt(team, keepers, value_calc.projection, format, rp_limit=value_calc.get_input(CalculationDataType.RP_G_TARGET, 10), sp_limit=value_calc.get_input(CalculationDataType.GS_LIMIT, 10), pitch_basis=value_calc.pitcher_basis, off_g_limit=value_calc.get_input(CalculationDataType.BATTER_G_TARGET, 162), use_keepers=use_keepers)
+            pt = roster_services.optimize_team_pt(team, keepers, value_calc.projection, format, 
+                                                  rp_limit=value_calc.get_input(CDT.RP_G_TARGET, 10), 
+                                                  sp_limit=value_calc.get_input(CDT.GS_LIMIT, 10), pitch_basis=value_calc.pitcher_basis, 
+                                                  off_g_limit=value_calc.get_input(CDT.BATTER_G_TARGET, 162), use_keepers=use_keepers,
+                                                  custom_scoring=custom_scoring, starting_set=value_calc.starting_set)
         else:
-            pt = roster_services.optimize_team_pt(team, keepers, value_calc.projection, format, rp_limit=value_calc.get_input(CalculationDataType.RP_IP_TARGET, 350), off_g_limit=value_calc.get_input(CalculationDataType.BATTER_G_TARGET, 162), use_keepers=use_keepers)
+            pt = roster_services.optimize_team_pt(team, keepers, value_calc.projection, format, 
+                                                  rp_limit=value_calc.get_input(CDT.RP_IP_TARGET, 350), 
+                                                  off_g_limit=value_calc.get_input(CDT.BATTER_G_TARGET, 162), 
+                                                  use_keepers=use_keepers,
+                                                  custom_scoring=custom_scoring, starting_set=value_calc.starting_set)
 
     if ScoringFormat.is_points_type(format):
         if stats is not None:
             team.points = stats.loc[team.site_id, 'Points']
         else:
             team.points = 0
+        positions = [p.position for p in value_calc.starting_set.positions]
         if fill_pt:
-            for pos in Position.get_discrete_offensive_pos() + [Position.POS_MI] + Position.get_discrete_pitching_pos():
+            for pos in positions:
                 rl = rep_lvl.get(pos)
-                if pos == Position.POS_OF:
-                    cap = 5*value_calc.get_input(CalculationDataType.BATTER_G_TARGET, 162)
-                elif pos.offense:
-                    cap = value_calc.get_input(CalculationDataType.BATTER_G_TARGET, 162)
+                if pos.offense:
+                    cap = value_calc.starting_set.get_count_for_position(pos)*value_calc.get_input(CDT.BATTER_G_TARGET, 162)
                 elif pos == Position.POS_SP:
                     if value_calc.pitcher_basis == RankingBasis.PIP:
-                        cap = value_calc.get_input(CalculationDataType.IP_TARGET, 1500) - value_calc.get_input(CalculationDataType.RP_IP_TARGET, 350)
+                        cap = value_calc.get_input(CDT.IP_TARGET, 1500) - value_calc.get_input(CDT.RP_IP_TARGET, 350)
                     else:
-                        cap = value_calc.get_input(CalculationDataType.GS_LIMIT, 10) * value_calc.get_input(CalculationDataType.H2H_WEEKS, 26)
+                        cap = value_calc.get_input(CDT.GS_LIMIT, 10) * value_calc.get_input(CDT.H2H_WEEKS, 26)
                 else:
                     if value_calc.pitcher_basis == RankingBasis.PIP:
-                        cap = value_calc.get_input(CalculationDataType.RP_IP_TARGET, 350)
+                        cap = value_calc.get_input(CDT.RP_IP_TARGET, 350)
                     else:
-                        cap = value_calc.get_input(CalculationDataType.RP_G_TARGET, 10) * value_calc.get_input(CalculationDataType.H2H_WEEKS, 26)
+                        cap = value_calc.get_input(CDT.RP_G_TARGET, 10) * value_calc.get_input(CDT.H2H_WEEKS, 26)
                 used_pt = sum(pt.get(pos, {0:0}).values())
                 if used_pt < cap:
                     additional_pt = cap - used_pt
                     team.points = team.points + additional_pt * rl
             if inflation is not None:
-                if use_keepers:
+                if keepers:
                     keeper_player_ids = [pk.player_id for pk in keepers]
-                    salaries = 0
-                    count = 0
-                    non_productive = 0
-                    for rs in team.roster_spots:
+                salaries = 0
+                count = 0
+                non_productive = 0
+                for rs in team.roster_spots:
+                    if use_keepers:
                         if rs.player_id in keeper_player_ids:
                             if rs.g_h == 0 and rs.ip == 0:
-                                non_productive += rs.salary
-                            else:
-                                salaries += rs.salary
+                                non_productive += rs.salary-1
+                            salaries += rs.salary
                             count += 1
-                    non_productive_per_team = value_calc.get_input(CalculationDataType.NON_PRODUCTIVE_DOLLARS) / value_calc.get_input(CalculationDataType.NUM_TEAMS) 
-                    productive_dollars = 400 - non_productive_per_team
-                    if non_productive > non_productive_per_team:
-                        productive_dollars - (non_productive - non_productive_per_team)
-                    available_surplus_dol = (productive_dollars - salaries) - (40 - count)
-                else:
-                    available_surplus_dol = team.free_cap - (team.spots - team.num_players)
-                team.points = team.points + available_surplus_dol * (1/value_calc.get_output(CalculationDataType.DOLLARS_PER_FOM)) * (1 - inflation/100)
+                    else:
+                        if rs.g_h == 0 and rs.ip == 0:
+                            non_productive += rs.salary-1
+                        salaries += rs.salary
+                        count += 1
+                non_productive_per_team = value_calc.get_input(CDT.NON_PRODUCTIVE_DOLLARS) / value_calc.get_input(CDT.NUM_TEAMS) 
+                productive_dollars = 400 - non_productive_per_team
+                if non_productive > non_productive_per_team:
+                    productive_dollars -= (non_productive - non_productive_per_team)
+                available_surplus_dol = (productive_dollars - salaries + non_productive) - (40 - count)
+                team.points = team.points + available_surplus_dol * (1/value_calc.get_output(CDT.DOLLARS_PER_FOM)) * (1 - inflation/100)
 
         for rs in team.roster_spots:
             pp = value_calc.projection.get_player_projection(rs.player.index)
@@ -206,13 +233,18 @@ def project_team_results(team:Team, value_calc:ValueCalculation, format:ScoringF
                     rate_cats[cat].append((stats.loc[team.site_id, 'IP'], stats.loc[team.site_id, StatType.enum_to_display_dict().get(cat)]))
                 else:
                     team.cat_stats[cat] = stats.loc[team.site_id, StatType.enum_to_display_dict().get(cat)]
+        if custom_scoring:
+            categories = [cat.category for cat in custom_scoring.stats]
+        else:
+            categories = ScoringFormat.get_format_stat_categories(format)
         for rs in team.roster_spots:
             pp = value_calc.projection.get_player_projection(rs.player.index)
             if pp is None:
                 continue
             g = pp.get_stat(StatType.G_HIT)
             ip = pp.get_stat(StatType.IP)
-            for cat in ScoringFormat.get_format_stat_categories(format):
+            
+            for cat in categories:
                 if cat.hitter and rs.g_h > 0 and g > 0:
                     if cat in [StatType.AVG, StatType.SLG]:
                         ab = (pp.get_stat(StatType.AB) / g) * rs.g_h
@@ -232,8 +264,12 @@ def project_team_results(team:Team, value_calc:ValueCalculation, format:ScoringF
         for cat, val in rate_cats.items():
             team.cat_stats[cat] = list_util.weighted_average(val)
 
-def calculate_league_cat_ranks(league:League) -> None:    
-    for cat in ScoringFormat.get_format_stat_categories(league.format):
+def calculate_league_cat_ranks(league:League, custom_scoring:CustomScoring=None) -> None:  
+    if custom_scoring:
+        categories = [cat.category for cat in custom_scoring.stats]
+    else:
+        categories = ScoringFormat.get_format_stat_categories(league.format)
+    for cat in categories:
         cat_list = [team.cat_stats.get(cat) for team in league.teams]
         rank_map = list_util.rank_list_with_ties(cat_list,reverse=cat.higher_better, max_rank=league.num_teams)
         for team in league.teams:
