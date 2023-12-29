@@ -10,7 +10,7 @@ ALTER TABLE league ADD COLUMN 'team_salary_cap' FLOAT DEFAULT 400;
 ALTER TABLE league RENAME COLUMN ottoneu_id to site_id;
 ALTER TABLE player ADD COLUMN 'yahoo_id' INTEGER;
 insert into starting_position_set values (1, 'Ottoneu', 'Default Ottoneu Starting Positions');
-insert into position_set values (1, 'Ottoneu', 'Default Ottoneu Eligibilities');
+insert into position_set values (1, 'Ottoneu', 'Current Ottoneu Eligibilities');
 ALTER TABLE league ADD COLUMN 'position_set_id' INTEGER DEFAULT 1;
 ALTER TABLE value_calculation ADD COLUMN 'position_set_id' INTEGER DEFAULT 1;
 ALTER TABLE league ADD COLUMN 'starting_set_id' INTEGER DEFAULT 1;
