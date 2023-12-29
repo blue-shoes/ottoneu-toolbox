@@ -23,7 +23,7 @@ from ui.dialog import progress, draft_target, cm_team_assignment
 from ui.dialog.wizard import couchmanagers_import
 from ui.tool.tooltip import CreateToolTip
 from ui.view.standings import Standings
-from services import salary_services, league_services, calculation_services, player_services, draft_services, custom_scoring_services, yahoo_services, ottoneu_services
+from services import salary_services, league_services, calculation_services, player_services, draft_services, custom_scoring_services, yahoo_services, ottoneu_services, starting_positions_services
 from demo import draft_demo
 from util import string_util
 
@@ -65,7 +65,7 @@ class DraftTool(tk.Frame):
         self.rostered_ids = []
         self.league = None
         self.value_calculation = None
-        self.starting_set = None
+        self.starting_set = starting_positions_services.get_ottoneu_position_set()
         self.cm_text = StringVar()
         self.cm_text.set('Link CouchManagers')
         self.start_draft_sv = StringVar()
@@ -213,11 +213,7 @@ class DraftTool(tk.Frame):
             positions.append(Position.OFFENSE)
             positions.append(Position.PITCHER)
         
-        if self.starting_set:
-            positions.extend(Position.get_ordered_list([p.position for p in self.starting_set.positions]))
-        else:
-            positions.extend(Position.get_ottoneu_offensive_pos())
-            positions.extend(Position.get_discrete_pitching_pos())
+        positions.extend(Position.get_ordered_list([p.position for p in self.starting_set.positions]))
 
         for pos in positions:
             pos_frame = ttk.Frame(self.tab_control)

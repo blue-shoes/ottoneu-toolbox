@@ -82,14 +82,11 @@ class PlayerValues():
             
         real_pitchers = pitch_values.calc_fom(self.pitch_proj)
 
-        if self.value_calc.starting_set:
-            positions = [p.position for p in self.value_calc.starting_set.positions]
-        else:
-            positions = Position.get_ottoneu_offensive_pos() + Position.get_discrete_pitching_pos()
+        positions = [p.position for p in self.value_calc.starting_set.positions]
 
         for pos in positions:
             if pos.offense:
-                if Position.position_is_base(pos, positions) or pos == Postion.POS_UTIL:
+                if Position.position_is_base(pos, positions) or pos == Position.POS_UTIL:
                     self.value_calc.set_output(CalculationDataType.pos_to_rep_level().get(pos), pos_values.replacement_levels[pos.value])
                     self.value_calc.set_output(CalculationDataType.pos_to_num_rostered().get(pos), pos_values.replacement_positions[pos.value])
             else:
@@ -136,10 +133,7 @@ class PlayerValues():
 
         self.value_calc.values = [] 
 
-        if self.value_calc.starting_set:
-            position_keys = [p.position for p in self.value_calc.starting_set.positions if p.position.offense]
-        else:
-            position_keys = Position.get_ottoneu_offensive_pos()
+        position_keys = [p.position for p in self.value_calc.starting_set.positions if p.position.offense]
 
         for pos in position_keys:
             pos_value = pd.DataFrame(pos_min_pa.loc[pos_min_pa['Position(s)'].apply(lambda test_pos, _pos=pos: Position.eligible(test_pos, _pos))])

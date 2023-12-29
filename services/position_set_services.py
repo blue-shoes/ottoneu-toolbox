@@ -30,3 +30,8 @@ def get_position_set_count() -> int:
     with Session() as session:
         count = session.query(PositionSet).count()
     return count
+
+def get_ottoneu_position_set() -> PositionSet:
+    '''Gets the default Ottoneu position set'''
+    with Session() as session:
+        return session.query(PositionSet).filter(PositionSet.name == 'Ottoneu').first()

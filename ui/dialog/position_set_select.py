@@ -55,7 +55,6 @@ class Dialog(tk.Toplevel):
         self.wait_window()
     
     def populate_table(self):
-        self.position_set_table.insert('', tk.END, text=str(-1), values=('Ottoneu', 'Current Ottoneu Eligibility'))
         for position_set in self.position_set_list:
             self.position_set_table.insert('', tk.END, text=str(position_set.id), values=(position_set.name, position_set.detail))
 

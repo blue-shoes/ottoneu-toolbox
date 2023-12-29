@@ -11,7 +11,7 @@ import pandas as pd
 from typing import Dict, List
 
 from ui.table.table import Table
-from domain.domain import ValueCalculation, PlayerProjection, CustomScoring, PositionSet, PlayerValue
+from domain.domain import ValueCalculation, PlayerProjection, CustomScoring, PositionSet, PlayerValue, StartingPositionSet
 from domain.enum import CalculationDataType as CDT, RankingBasis, RepLevelScheme, StatType, Position, ProjectionType, ScoringFormat
 from services import projection_services, calculation_services, adv_calc_services, custom_scoring_services, position_set_services, starting_positions_services
 from ui.dialog import projection_select, progress, name_desc, advanced_calc, format_select, position_set_select, starting_select
@@ -42,6 +42,7 @@ class ValuesCalculation(tk.Frame):
     value_calc:ValueCalculation
     custom_scoring:CustomScoring
     position_set:PositionSet
+    starting_set:StartingPositionSet
 
     def __init__(self, parent, controller):
         tk.Frame.__init__(self, parent)
@@ -51,6 +52,8 @@ class ValuesCalculation(tk.Frame):
         self.rep_level_dict:Dict[Position, StringVar] = {}
         self.tables:Dict[Position, Table] = {}
         self.input_svs:List[StringVar] = []
+        self.position_set = position_set_services.get_ottoneu_position_set()
+        self.starting_set = starting_positions_services.get_ottoneu_position_set()
 
         self.create_input_frame()
         self.create_proj_val_frame()
@@ -65,9 +68,11 @@ class ValuesCalculation(tk.Frame):
         if self.controller.value_calculation is None:
             self.controller.value_calculation = ValueCalculation()
             self.value_calc = self.controller.value_calculation
-            self.position_set = None
+            self.position_set = position_set_services.get_ottoneu_position_set()
+            self.starting_set = starting_positions_services.get_ottoneu_position_set()
         else:
             self.position_set = self.value_calc.position_set
+            self.starting_set = self.value_calc.starting_set
         if self.value_calc.format == ScoringFormat.CUSTOM:
             self.custom_scoring = custom_scoring_services.get_scoring_format(int(self.value_calc.get_input(CDT.CUSTOM_SCORING_FORMAT)))
             self.custom_scoring_button.grid(column=2, row=2)
@@ -96,9 +101,10 @@ class ValuesCalculation(tk.Frame):
             self.projection = None
             self.custom_scoring = None
             self.custom_scoring_lbl.set("")
-            self.position_set = None
-            self.position_set_lbl.set("Ottoneu")
-            self.starting_set_lbl.set("Ottoneu")
+            self.position_set = position_set_services.get_ottoneu_position_set()
+            self.position_set_lbl.set(self.position_set.name)
+            self.starting_set = starting_positions_services.get_ottoneu_position_set()
+            self.starting_set_lbl.set(self.starting_set.name)
             self.num_teams_str.set("12")
             self.manual_split.set(False)
             self.hitter_allocation.set("60")
@@ -139,18 +145,10 @@ class ValuesCalculation(tk.Frame):
             else:
                 self.custom_scoring = None
                 self.custom_scoring_lbl.set('')
-            if v.position_set is None:
-                self.position_set = None
-                self.position_set_lbl.set("Ottoneu")
-            else:
-                self.position_set = v.position_set
-                self.position_set_lbl.set(self.position_set.name)
-            if v.starting_set:
-                self.starting_set = v.starting_set
-                self.starting_set_lbl.set(self.starting_set.name)
-            else:
-                self.starting_set = None
-                self.starting_set_lbl.set("Ottoneu")
+            self.position_set = v.position_set
+            self.position_set_lbl.set(self.position_set.name)
+            self.starting_set = v.starting_set
+            self.starting_set_lbl.set(self.starting_set.name)
             self.num_teams_str.set(int(v.get_input(CDT.NUM_TEAMS)))
             if v.get_input(CDT.HITTER_SPLIT) is None:
                 self.manual_split.set(False)
@@ -171,11 +169,9 @@ class ValuesCalculation(tk.Frame):
             self.safe_set_input_value(CDT.RP_IP_TO_RANK, self.min_rp_ip, True)
             self.safe_set_input_value(CDT.REP_LEVEL_SCHEME, self.rep_level_scheme, True, RepLevelScheme.STATIC_REP_LEVEL.value)
             self.update_rep_level_scheme()
-            if self.starting_set:
-                off_pos = [p.position for p in self.starting_set.positions if p.position.offense]
-                off_pos = [p for p in off_pos if Position.position_is_base(p, off_pos) or p == Position.POS_UTIL]
-            else:
-                off_pos = Position.get_discrete_offensive_pos()
+            off_pos = [p.position for p in self.starting_set.positions if p.position.offense]
+            off_pos = [p for p in off_pos if Position.position_is_base(p, off_pos) or p == Position.POS_UTIL]
+
             if self.rep_level_scheme.get() == RepLevelScheme.STATIC_REP_LEVEL.value:
                 for pos in off_pos + Position.get_discrete_pitching_pos():
                     self.safe_set_input_value(CDT.pos_to_rep_level().get(pos), self.rep_level_dict[pos.value])
@@ -250,7 +246,6 @@ class ValuesCalculation(tk.Frame):
         ttk.Label(inpf, text='Position Elig.').grid(column=0, row=3, pady=5)
         self.position_set_lbl = StringVar()
         self.position_set_lbl.set("")
-        self.position_set = None
         btn = ttk.Button(inpf, textvariable=self.position_set_lbl, command=self.set_position_set)
         btn.grid(column=1, row=3, pady=5)
         CreateToolTip(btn, 'Select a set of positional eligibilities for value creation')
@@ -258,7 +253,6 @@ class ValuesCalculation(tk.Frame):
         ttk.Label(inpf, text='Starting Positions').grid(column=0, row=4, pady=5)
         self.starting_set_lbl = StringVar()
         self.starting_set_lbl.set("")
-        self.starting_set = None
         btn = ttk.Button(inpf, textvariable=self.starting_set_lbl, command=self.set_starting_set)
         btn.grid(column=1, row=4, pady=5)
         CreateToolTip(btn, 'Select a Starting Position Player Set for value creation')
@@ -419,11 +413,7 @@ class ValuesCalculation(tk.Frame):
         col_width = {}
         col_width['Name'] = 125
 
-        if self.starting_set:
-            pos_list = Position.get_ordered_list([pos.position for pos in self.starting_set.positions])
-        else:
-            pos_list = Position.get_discrete_offensive_pos()
-            pos_list.extend(Position.get_discrete_pitching_pos())
+        pos_list = Position.get_ordered_list([pos.position for pos in self.starting_set.positions])
 
         for pos in pos_list:
             if pos.offense:
@@ -460,12 +450,13 @@ class ValuesCalculation(tk.Frame):
             dialog = starting_position.Dialog(self)
         else:
             dialog = starting_select.Dialog(self)
+        if not dialog.starting_set:
+            return
         reload = self.starting_set != dialog.starting_set
         self.starting_set = dialog.starting_set
-        if self.starting_set:
-            self.starting_set_lbl.set(dialog.starting_set.name)
-        else:
-            self.starting_set_lbl.set('Ottoneu')
+
+        self.starting_set_lbl.set(dialog.starting_set.name)
+
         if reload:
             for pos, table in self.tables.items():
                 if pos == Position.OVERALL or pos == Position.OFFENSE or pos == Position.PITCHER: continue
@@ -502,8 +493,7 @@ class ValuesCalculation(tk.Frame):
             dialog = position_set_select.Dialog(self)
         reload = (dialog.pos_set != self.position_set)
         if dialog.pos_set is None:
-            self.position_set = None
-            self.position_set_lbl.set('Ottoneu')
+            return
         else:
             self.position_set = dialog.pos_set
             self.position_set_lbl.set(dialog.pos_set.name)
@@ -516,10 +506,7 @@ class ValuesCalculation(tk.Frame):
         pd = progress.ProgressDialog(self, title='Reloading Player Positions')
         pd.increment_completion_percent(15)
         for pp in self.projection.player_projections:
-            if self.position_set is None:
-                pp.player.custom_positions = None
-            else:
-                pp.player.custom_positions = self.position_set.get_player_positions(pp.player_id)
+            pp.player.custom_positions = self.position_set.get_player_positions(pp.player_id)
         pd.increment_completion_percent(20)
         if len(self.tables) > 0:
             for table in self.tables.values():
@@ -978,11 +965,8 @@ class ValuesCalculation(tk.Frame):
         CreateToolTip(eb, 'Export the last set of calculated values to a csv or xlsx file.')
 
     def set_offensive_par_outputs(self) -> None:
-        if self.starting_set:
-            positions = [p.position for p in self.starting_set.positions if p.position.offense]
-            positions = Position.get_ordered_list([p for p in positions if Position.position_is_base(p, positions) or p == Position.POS_UTIL])
-        else:
-            positions = Position.get_discrete_offensive_pos()
+        positions = [p.position for p in self.starting_set.positions if p.position.offense]
+        positions = Position.get_ordered_list([p for p in positions if Position.position_is_base(p, positions) or p == Position.POS_UTIL])
 
         row = 0
 
@@ -1034,11 +1018,8 @@ class ValuesCalculation(tk.Frame):
         pitcher_rb = self.value_calc.pitcher_basis.display
         self.pitch_rep_level_lbl.set(f"Rep. Level ({pitcher_rb})")
 
-        if self.starting_set:
-            off_pos = [p.position for p in self.starting_set.positions if p.position.offense]
-            off_pos = [p for p in off_pos if Position.position_is_base(p, off_pos) or p == Position.POS_UTIL]
-        else:
-            off_pos = Position.get_discrete_offensive_pos()
+        off_pos = [p.position for p in self.starting_set.positions if p.position.offense]
+        off_pos = [p for p in off_pos if Position.position_is_base(p, off_pos) or p == Position.POS_UTIL]
 
         for pos in off_pos + Position.get_discrete_pitching_pos():
             self.safe_set_output_value(CDT.pos_to_num_rostered()[pos], self.pos_rostered_sv[pos], integer=True, default='--')
@@ -1085,11 +1066,8 @@ class ValuesCalculation(tk.Frame):
                 positions.append(Position.OVERALL)
                 positions.append(Position.OFFENSE)
                 positions.append(Position.PITCHER)
-                if self.starting_set:
-                    positions.extend(Position.get_ordered_list([p.position for p in self.starting_set.positions]))
-                else:
-                    positions.extend(Position.get_ottoneu_offensive_pos())
-                    positions.extend(Position.get_discrete_pitching_pos())
+                positions.extend(Position.get_ordered_list([p.position for p in self.starting_set.positions]))
+
                 for pos in positions:
                     df = calculation_services.get_dataframe_with_values(self.value_calc, pos, text_values=False)
                     df.to_excel(writer, sheet_name=pos.value)
@@ -1225,10 +1203,7 @@ class ValuesCalculation(tk.Frame):
     
     def create_replacement_level_rows(self) -> None:
         count = 0
-        if self.starting_set:
-            positions = [p.position for p in self.starting_set.positions if p.position.offense]
-        else:
-            positions = Position.get_discrete_offensive_pos()
+        positions = [p.position for p in self.starting_set.positions if p.position.offense]
         positions = Position.get_ordered_list(positions)
         for pos in positions + Position.get_discrete_pitching_pos():
             if Position.position_is_base(pos, positions) or pos == Position.POS_UTIL:
@@ -1285,11 +1260,11 @@ class ValuesCalculation(tk.Frame):
         self.value_calc.set_input(CDT.RP_IP_TO_RANK, float(self.min_rp_ip.get()))
         self.value_calc.set_input(CDT.INCLUDE_SVH, float(self.sv_hld_bv.get()))
         self.value_calc.set_input(CDT.REP_LEVEL_SCHEME, float(self.rep_level_scheme.get()))
-        if self.starting_set:
-            off_pos = [p.position for p in self.starting_set.positions if p.position.offense]
-            off_pos = [p for p in off_pos if Position.position_is_base(p, off_pos) or p == Position.POS_UTIL]
-        else:
-            off_pos = Position.get_discrete_offensive_pos()
+        if not self.starting_set:
+            #Safety
+            self.starting_set = starting_positions_services.get_ottoneu_position_set()
+        off_pos = [p.position for p in self.starting_set.positions if p.position.offense]
+        off_pos = [p for p in off_pos if Position.position_is_base(p, off_pos) or p == Position.POS_UTIL]
         if self.rep_level_scheme.get() == RepLevelScheme.STATIC_REP_LEVEL.value:
             for pos in off_pos + Position.get_discrete_pitching_pos():
                 self.value_calc.set_input(CDT.pos_to_rep_level().get(pos), float(self.rep_level_dict[pos.value].get()))
@@ -1338,11 +1313,9 @@ class ValuesCalculation(tk.Frame):
                 if update_only and sv.get() != '': continue
                 sv.set('0')
         elif scheme == RepLevelScheme.STATIC_REP_LEVEL:
-            if self.starting_set:
-                off_pos = [p.position for p in self.starting_set.positions if p.position.offense]
-                off_pos = [p for p in off_pos if Position.position_is_base(p, off_pos) or p == Position.POS_UTIL]
-            else:
-                off_pos = Position.get_discrete_offensive_pos()
+            off_pos = [p.position for p in self.starting_set.positions if p.position.offense]
+            off_pos = [p for p in off_pos if Position.position_is_base(p, off_pos) or p == Position.POS_UTIL]
+
             if RankingBasis.get_enum_by_display(self.hitter_basis.get()) == RankingBasis.PPG:
                 for pos in off_pos:
                     sv = self.rep_level_dict[pos.value]

@@ -119,6 +119,10 @@ class League:
     # Transient draft information
     draft_results:Dict[Tuple, int] = field(default_factory=dict, repr=False)
 
+    @reconstructor
+    def init_on_load(self):
+        self.draft_results = {}
+
     def is_salary_cap(self) -> bool:
         return self.team_salary_cap != -1
 
@@ -330,7 +334,11 @@ class ValueCalculation:
     starting_set_id:Mapped[int] = mapped_column(ForeignKey("starting_position_set.id"), default=None, nullable=True)
     starting_set:Mapped["StartingPositionSet"] = relationship(default=None)
 
-    value_dict = {}
+    value_dict:Dict[int, Dict[Position, PlayerValue]] = field(default_factory=dict, repr=False)
+
+    @reconstructor
+    def init_on_load(self):
+        self.value_dict = {}
 
     def init_value_dict(self) -> None:
         '''Initializes a dictionary that is keyed off of player_id, then off of Position with a value of the PlayerValue'''

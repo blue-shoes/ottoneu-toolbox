@@ -66,7 +66,6 @@ class Dialog(tk.Toplevel):
             self.focus_force()
     
     def populate_table(self):
-        self.starting_set_table.insert('', tk.END, text=str(-1), values=('Ottoneu', 'Ottoneu Defaults'))
         for starting_set in self.starting_set_list:
             self.starting_set_table.insert('', tk.END, text=str(starting_set.id), values=(starting_set.name, starting_set.detail))
 

@@ -62,3 +62,8 @@ def save_starting_position_set(starting_set:StartingPositionSet) -> StartingPosi
         session.commit()
         starting_set = get_starting_set(starting_set.id)
     return starting_set
+
+def get_ottoneu_position_set() -> StartingPositionSet:
+    '''Gets the default Ottoneu starting set'''
+    with Session() as session:
+        return session.query(StartingPositionSet).filter(StartingPositionSet.name == 'Ottoneu').first()
