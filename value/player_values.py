@@ -89,11 +89,13 @@ class PlayerValues():
 
         for pos in positions:
             if pos.offense:
-                self.value_calc.set_output(CalculationDataType.pos_to_rep_level().get(pos), pos_values.replacement_levels[pos.value])
-                self.value_calc.set_output(CalculationDataType.pos_to_num_rostered().get(pos), pos_values.replacement_positions[pos.value])
+                if Position.position_is_base(pos, positions) or pos == Postion.POS_UTIL:
+                    self.value_calc.set_output(CalculationDataType.pos_to_rep_level().get(pos), pos_values.replacement_levels[pos.value])
+                    self.value_calc.set_output(CalculationDataType.pos_to_num_rostered().get(pos), pos_values.replacement_positions[pos.value])
             else:
-                self.value_calc.set_output(CalculationDataType.pos_to_rep_level().get(pos), pitch_values.replacement_levels[pos.value])
-                self.value_calc.set_output(CalculationDataType.pos_to_num_rostered().get(pos), pitch_values.replacement_positions[pos.value])
+                if Position.position_is_base(pos, positions):
+                    self.value_calc.set_output(CalculationDataType.pos_to_rep_level().get(pos), pitch_values.replacement_levels[pos.value])
+                    self.value_calc.set_output(CalculationDataType.pos_to_num_rostered().get(pos), pitch_values.replacement_positions[pos.value])
 
         progress.set_task_title('Calculating $/FOM and applying')
         progress.increment_completion_percent(25)

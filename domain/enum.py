@@ -565,6 +565,8 @@ class Position(str, Enum):
     
     def position_is_base(pos:Position, position_keys:List[Position]) -> bool:
         if not pos.offense:
+            if pos == Position.POS_P:
+                return ic(not set([Position.POS_SP, Position.POS_RP]).issubset(position_keys))
             return True
         if pos == Position.POS_UTIL:
             return len(position_keys) == 1
