@@ -33,8 +33,8 @@ classic_pitching_columns = ('ERA', 'WHIP', 'HR/9', 'SO')
 all_hitting_stats = tuple([st.display for st in StatType.get_all_hit_stattype()])
 all_pitching_stats = tuple([st.display for st in StatType.get_all_pitch_stattype()])
 pt_hitter_columns = ('G', 'PA', 'AB')
-pt_pitcher_columns = ('G', 'GS', 'IP')
-rev_cols = ('Name', 'Team', 'Pos', 'ERA', 'WHIP', 'HR/9')
+pt_pitcher_columns = ('GP', 'GS', 'IP')
+rev_cols = ('Name', 'Team', 'Pos') + tuple([st.display for st in StatType if not st.higher_better]) 
 num_rost_rl_default = {'C':'24', '1B':'40', '2B':'38', 'SS':'42', '3B':'24', 'MI':'60', 'CI':'55', 'INF':'100', 'LF':'24', 'CF':'24', 'RF':'24', 'OF':'95', 'Util':'200', 'SP':'85', 'RP':'70'}
 
 class ValuesCalculation(tk.Frame):
@@ -1153,12 +1153,18 @@ class ValuesCalculation(tk.Frame):
             elif scoring_format == ScoringFormat.CUSTOM and self.custom_scoring is not None:
                 hit.extend(pt_hitter_columns)
                 pitch.extend(pt_pitcher_columns)
+                hit_cats = []
+                pitch_cats = []
                 for cat in self.custom_scoring.stats:
                     stat = cat.category
                     if stat.hitter and stat.display not in pt_hitter_columns:
-                        hit.append(stat.display)
+                        hit_cats.append(stat)
                     if not stat.hitter and stat.display not in pt_pitcher_columns:
-                        pitch.append(stat.display)
+                        pitch_cats.append(stat)
+                hit_cats = sorted(hit_cats, key=lambda s: s.rank)
+                hit.extend([s.display for s in hit_cats])
+                pitch_cats = sorted(pitch_cats, key=lambda s: s.rank)
+                pitch.extend([s.display for s in pitch_cats])
         self.overall_table.set_display_columns(tuple(overall))
         for pos, table in self.tables.items():
             if pos == Position.OVERALL: continue
