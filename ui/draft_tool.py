@@ -1130,8 +1130,8 @@ class DraftTool(tk.Frame):
         prog.increment_completion_percent(25)
         self.__set_visible_columns()
 
-        self.standings.league = self.controller.league
         self.standings.value_calc = self.controller.value_calculation
+        self.standings.update_league(self.controller.league)
         league_services.calculate_league_table(self.league, self.value_calculation, fill_pt=False, inflation=self.inflation)
         self.standings.standings_table.table.refresh()
 
