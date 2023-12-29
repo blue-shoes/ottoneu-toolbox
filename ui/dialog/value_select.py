@@ -127,7 +127,10 @@ class Dialog(tk.Toplevel):
             pd = progress.ProgressDialog(self.parent, 'Deleting Values')
             pd.set_completion_percent(15)
             calculation_services.delete_values_by_id(values_id)
-            self.value_list.remove(val)
+            for idx, vc in enumerate(self.value_list):
+                if vc.index == values_id:
+                    self.value_list.pop(idx)
+                    break
             self.value_table.refresh()
             pd.complete()
 
