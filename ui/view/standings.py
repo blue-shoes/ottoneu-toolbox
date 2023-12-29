@@ -33,14 +33,8 @@ class Standings(tk.Frame):
         self.__create_view()
     
     def __create_view(self):
-        self.tab_control = ttk.Notebook(self, height=800)
-        self.tab_control.pack(side=TOP, fill='both', expand=True)
 
-        standings_frame = ttk.Frame(self.tab_control)
-        self.tab_control.add(standings_frame, text='Standings')
-        standings_frame.pack(side='left', fill='both', expand=True)
-
-        button_frame = ttk.Frame(standings_frame)
+        button_frame = ttk.Frame(self)
         button_frame.pack(side=TOP, fill='x', expand=False)
 
         tk.Radiobutton(button_frame, variable=self.standings_type, value=0, text="Current", command=self.__refresh_radio).pack(side=LEFT)
@@ -48,6 +42,13 @@ class Standings(tk.Frame):
         self.proj_button.pack(side=LEFT)
         CreateToolTip(self.proj_button, 'Calculates projected point total based on known replacement levels, remaining salary cap, and league inflation.')
 
+        self.tab_control = ttk.Notebook(self, height=800)
+        self.tab_control.pack(side=TOP, fill='both', expand=True)
+
+        standings_frame = ttk.Frame(self.tab_control)
+        self.tab_control.add(standings_frame, text='Standings')
+        standings_frame.pack(side='left', fill='both', expand=True)
+        
         cols = self.cols
         widths = {}
         widths['Team'] = 125
