@@ -263,7 +263,7 @@ class StatType(int, Enum):
         return obj
 
     G_HIT = (0, ['G', 'G_C', 'G_FB', 'G_SB', 'G_3B', 'G_SS', 'G_LF', 'G_CF', 'G_RF', 'G_DH'], 1, True)
-    GS_HIT = (1, ['GS'], 2, True)
+    GS_HIT = (1, ['H GS', 'GS'], 2, True)
     PA = (2, ['PA'], 3, True)
     AB = (3, ['AB'], 4, True)
     R = (8, ['R'], 5, True)
@@ -275,7 +275,7 @@ class StatType(int, Enum):
     HR = (7, ['HR'], 11, True)
     TB = (52, ['TB', 'Total Bases'], 12, True)
     XBH = (53, ['XBH', 'Extra Base Hits'], 13, True)
-    K = (32, ['SO'], 14, True)
+    K = (32, ['SO'], 14, True, "{:.0f}", False)
     BB = (10, ['BB'], 15, True)
     HBP = (12, ['HBP'], 16, True)
     SB = (13, ['SB'], 17, True)
@@ -291,17 +291,17 @@ class StatType(int, Enum):
     
     
     
-    G_PIT = (21, ['G'], 1, False)
+    G_PIT = (21, ['GP', 'G'], 1, False)
     GS_PIT = (22, ['GS'], 2, False)
     IP = (23, ['IP'], 3, False, "{:.1f}")
     W = (24, ['W'], 4, False)
     L = (25, ['L'], 5, False, "{:.0f}", False)
     QS = (26, ['QS'], 6, False)
-    SO = (11, ['SO', 'K'], 7, False)
-    H_ALLOWED = (29, ['H'], 8, False, "{:.0f}", False)
-    BB_ALLOWED = (33, ['BB'], 9, False, "{:.0f}", False)
-    HBP_ALLOWED = (34, ['HBP'], 10, False, "{:.0f}", False)
-    HR_ALLOWED = (31, ['HR', 'HRA'], 11, False, "{:.0f}", False)
+    SO = (11, ['K', 'SO'], 7, False)
+    H_ALLOWED = (29, ['HA', 'H'], 8, False, "{:.0f}", False)
+    BB_ALLOWED = (33, ['BBA', 'BB'], 9, False, "{:.0f}", False)
+    HBP_ALLOWED = (34, ['HBPA', 'HBP'], 10, False, "{:.0f}", False)
+    HR_ALLOWED = (31, ['HRA', 'HR'], 11, False, "{:.0f}", False)
     SV = (27, ['SV'], 12, False)
     HLD = (28, ['HLD', 'Holds'], 13, False)
     BS = (49, ['BS'], 14, False)
