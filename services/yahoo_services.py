@@ -1,13 +1,14 @@
 from yfpy.query import YahooFantasySportsQuery as yfs_query
 from yfpy import Team as YTeam, League as YLeague, Settings as YSettings, Player as YPlayer, YahooFantasySportsException, DraftResult as YDR
 from pathlib import Path
+import pandas as pd
 
 from dao.session import Session
+from demo import draft_demo
 from domain.domain import League, Roster_Spot, Player, ValueCalculation, Team, PositionSet, PlayerPositions, CustomScoringCategory, StartingPosition
 from domain.enum import InflationMethod, Position, ScoringFormat, Platform, StatType
 from services import player_services, league_services, custom_scoring_services, starting_positions_services
 
-import json
 from typing import List, Tuple
 import datetime
 import threading
@@ -130,9 +131,17 @@ def get_draft_results(league_id:int) -> List[YDR]:
     q = __create_query(league_id)
     return q.get_league_draft_results()
 
-def resolve_draft_results_against_rosters(league:League, value_calc:ValueCalculation, inf_method:InflationMethod) -> Tuple[List[Player], List[Player]]:
+def resolve_draft_results_against_rosters(league:League, value_calc:ValueCalculation, inf_method:InflationMethod, demo_source:bool) -> Tuple[List[Player], List[Player]]:
     '''Gets the latest draft information and updates rosters to reflect newly rostered or cut players.'''
-    draft_results = get_draft_results(league.site_id)
+    if demo_source:
+        logging.debug("demo_source")
+        trans = pd.read_csv(draft_demo.yahoo_demo_trans)
+        draft_results = []
+        for _, row in trans.iterrows():
+            dr = YDR({'pick': row['pick'], 'round': row['round'], 'player_key': row['player_key'], 'team_key': row['team_key']})
+            draft_results.append(dr)
+    else:
+        draft_results = get_draft_results(league.site_id)
     new_drafted = []
     cut = []
     for dr in draft_results:
@@ -141,9 +150,11 @@ def resolve_draft_results_against_rosters(league:League, value_calc:ValueCalcula
             continue
         player = player_services.get_player_by_yahoo_id(int(dr.player_key.split('.')[-1]))
         if player is None:
+            league.draft_results[pick] = None
             if league.is_salary_cap():
                 league_services.update_league_inflation_last_trans(league, value=0, salary=dr.cost, inf_method=inf_method)
             continue
+        league.draft_results[pick] = player.index
         new_drafted.append(player)
         team_id = int(dr.team_key.split('.')[-1])
         pv = value_calc.get_player_value(player.index, Position.OVERALL)

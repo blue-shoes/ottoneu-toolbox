@@ -106,6 +106,8 @@ class DraftTool(tk.Frame):
         #Clean up previous demo run
         if os.path.exists(draft_demo.demo_trans):
             os.remove(draft_demo.demo_trans)
+        if os.path.exists(draft_demo.yahoo_demo_trans):
+            os.remove(draft_demo.yahoo_demo_trans)
 
         return True
 
@@ -213,6 +215,7 @@ class DraftTool(tk.Frame):
             positions.append(Position.OFFENSE)
             positions.append(Position.PITCHER)
         
+
         positions.extend(Position.get_ordered_list([p.position for p in self.starting_set.positions]))
 
         for pos in positions:
@@ -656,7 +659,7 @@ class DraftTool(tk.Frame):
                         
                 elif self.league.platform == Platform.YAHOO:
                     try:
-                        drafted, cut = yahoo_services.resolve_draft_results_against_rosters(self.league, self.value_calculation, self.inf_method)
+                        drafted, cut = yahoo_services.resolve_draft_results_against_rosters(self.league, self.value_calculation, self.inflation_method, self.demo_source)
                     except HTTPError:
                         logging.error('Rate limited by Yahoo')
                 else:
