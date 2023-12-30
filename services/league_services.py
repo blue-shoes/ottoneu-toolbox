@@ -306,7 +306,7 @@ def calculate_league_inflation(league:League, value_calc:ValueCalculation, inf_m
             if pv is None:
                 val = 0
             else:
-                val = pv.value
+                val = max(0, pv.value)
                 if val > 0:
                     league.num_valued_rostered += 1
             league.total_value += val
@@ -314,6 +314,8 @@ def calculate_league_inflation(league:League, value_calc:ValueCalculation, inf_m
             if val < 1:
                 if rs.salary > 7:
                     npp = 5
+                elif rs.salary < 3:
+                    npp = rs.salary
                 else:
                     npp = min(rs.salary, 3 + (rs.salary-3) - 0.125 * pow(rs.salary-3,2))
                 league.npp_spent += npp-1
@@ -356,7 +358,7 @@ def update_league_inflation_last_trans(league:League, value:float, salary:float,
     else:
         mult = -1
     league.total_salary += salary * mult
-    league.total_value += value * mult
+    league.total_value += max(0, value) * mult
     league.num_rostered += mult
     if value > 0:
         league.num_valued_rostered += mult
@@ -372,7 +374,7 @@ def update_league_inflation(league:League, pv:PlayerValue, rs:Roster_Spot, inf_m
     if pv is None:
         val = 0
     else:
-        val = pv.value
+        val = max(0, pv.value)
 
     npp = 0
     if val < 1:
@@ -409,6 +411,7 @@ def get_league_inflation(league:League, inf_method:InflationMethod) -> float:
         num = league.captured_marginal_value - (league.total_salary - league.npp_spent - league.num_rostered)
         denom = league.captured_marginal_value - (league.total_value - league.num_valued_rostered)
         league.inflation = num / denom - 1
+    league.inflation = max(-1, league.inflation)
     return league.inflation
 
 def calculate_total_league_salary(league:League, use_keepers:bool=False) -> float:
