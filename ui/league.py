@@ -187,8 +187,8 @@ class League_Analysis(tk.Frame):
         pd.set_completion_percent(5)
         pd.set_task_title('Calculating standings')
         self.initialize_inflation()
-        self.standings.update_league(self.league)
         self.standings.value_calc = self.value_calculation
+        self.standings.update_league(self.league)
         pd.increment_completion_percent(10)
         league_services.calculate_league_table(self.league, self.value_calculation, \
                                                 fill_pt=(self.standings.standings_type.get() == 1), \
