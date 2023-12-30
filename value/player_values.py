@@ -135,12 +135,20 @@ class PlayerValues():
 
         position_keys = [p.position for p in self.value_calc.starting_set.positions if p.position.offense]
 
+        neg_values = self.value_calc.get_input(CalculationDataType.NEGATIVE_VALUES)
+
         for pos in position_keys:
             pos_value = pd.DataFrame(pos_min_pa.loc[pos_min_pa['Position(s)'].apply(lambda test_pos, _pos=pos: Position.eligible(test_pos, _pos))])
             if self.bat_dol_per_fom > 0:
-                pos_value['Value'] = pos_value[f'{pos.value}_FOM'].apply(lambda x: x*self.bat_dol_per_fom + 1.0 if x >= 0 else 0)
+                if neg_values:
+                    pos_value['Value'] = pos_value[f'{pos.value}_FOM'].apply(lambda x: x*self.bat_dol_per_fom + 1.0 if x >= 0 else x*self.bat_dol_per_fom)
+                else:
+                    pos_value['Value'] = pos_value[f'{pos.value}_FOM'].apply(lambda x: x*self.bat_dol_per_fom + 1.0 if x >= 0 else 0)
             else:
-                pos_value['Value'] = pos_value[f'{pos.value}_FOM'].apply(lambda x: x*self.dol_per_fom + 1.0 if x >= 0 else 0)
+                if neg_values:
+                    pos_value['Value'] = pos_value[f'{pos.value}_FOM'].apply(lambda x: x*self.dol_per_fom + 1.0 if x >= 0 else x*self.dol_per_fom)
+                else:
+                    pos_value['Value'] = pos_value[f'{pos.value}_FOM'].apply(lambda x: x*self.dol_per_fom + 1.0 if x >= 0 else 0)
             pos_value.sort_values(by=['Value',self.value_calc.hitter_basis.display], inplace=True, ascending=[False,False])
             pos_value['Dol_Value'] = pos_value['Value'].apply(lambda x : "${:.0f}".format(x))
 
@@ -148,17 +156,29 @@ class PlayerValues():
                 self.value_calc.set_player_value(index, pos, row['Value'])
 
         if self.bat_dol_per_fom > 0:
-            pos_min_pa['Value'] = pos_min_pa['Max FOM'].apply(lambda x: x*self.bat_dol_per_fom + 1.0 if x >= 0 else 0)
+            if neg_values:
+                pos_min_pa['Value'] = pos_min_pa['Max FOM'].apply(lambda x: x*self.bat_dol_per_fom + 1.0 if x >= 0 else x*self.bat_dol_per_fom)
+            else:
+                pos_min_pa['Value'] = pos_min_pa['Max FOM'].apply(lambda x: x*self.bat_dol_per_fom + 1.0 if x >= 0 else 0)
         else:
-            pos_min_pa['Value'] = pos_min_pa['Max FOM'].apply(lambda x: x*self.dol_per_fom + 1.0 if x >= 0 else 0)
+            if neg_values:
+                pos_min_pa['Value'] = pos_min_pa['Max FOM'].apply(lambda x: x*self.dol_per_fom + 1.0 if x >= 0 else x*self.dol_per_fom)
+            else:
+                pos_min_pa['Value'] = pos_min_pa['Max FOM'].apply(lambda x: x*self.dol_per_fom + 1.0 if x >= 0 else 0)
         pos_min_pa.sort_values('Max FOM', inplace=True)
 
         for pos in Position.get_discrete_pitching_pos():
             pos_value = pd.DataFrame(real_pitchers.loc[real_pitchers[f'IP {pos.value}'] > 0])
             if self.arm_dol_per_fom > 0:
-                pos_value['Value'] = pos_value[f'FOM {pos.value}'].apply(lambda x: x*self.arm_dol_per_fom + 1.0 if x >= 0 else 0)
+                if neg_values:
+                    pos_value['Value'] = pos_value[f'FOM {pos.value}'].apply(lambda x: x*self.arm_dol_per_fom + 1.0 if x >= 0 else x*self.arm_dol_per_fom)
+                else:
+                    pos_value['Value'] = pos_value[f'FOM {pos.value}'].apply(lambda x: x*self.arm_dol_per_fom + 1.0 if x >= 0 else 0)
             else:
-                pos_value['Value'] = pos_value[f'FOM {pos.value}'].apply(lambda x: x*self.dol_per_fom + 1.0 if x >= 0 else 0)
+                if neg_values:
+                    pos_value['Value'] = pos_value[f'FOM {pos.value}'].apply(lambda x: x*self.dol_per_fom + 1.0 if x >= 0 else x*self.dol_per_fom)
+                else:
+                    pos_value['Value'] = pos_value[f'FOM {pos.value}'].apply(lambda x: x*self.dol_per_fom + 1.0 if x >= 0 else 0)
             pos_value.sort_values(by=['Value',self.value_calc.pitcher_basis.display], inplace=True, ascending=[False,False])
             pos_value['Dol_Value'] = pos_value['Value'].apply(lambda x : "${:.0f}".format(x))
 
@@ -166,9 +186,15 @@ class PlayerValues():
                 self.value_calc.set_player_value(index, pos, row['Value'])
 
         if self.arm_dol_per_fom > 0:
-            real_pitchers['Value'] = real_pitchers['FOM'].apply(lambda x: x*self.arm_dol_per_fom + 1.0 if x >= 0 else 0)
+            if neg_values:
+                real_pitchers['Value'] = real_pitchers['FOM'].apply(lambda x: x*self.arm_dol_per_fom + 1.0 if x >= 0 else x*self.arm_dol_per_fom)
+            else:
+                real_pitchers['Value'] = real_pitchers['FOM'].apply(lambda x: x*self.arm_dol_per_fom + 1.0 if x >= 0 else 0)
         else:
-            real_pitchers['Value'] = real_pitchers['FOM'].apply(lambda x: x*self.dol_per_fom + 1.0 if x >= 0 else 0)
+            if neg_values:
+                real_pitchers['Value'] = real_pitchers['FOM'].apply(lambda x: x*self.dol_per_fom + 1.0 if x >= 0 else x*self.dol_per_fom)
+            else:
+                real_pitchers['Value'] = real_pitchers['FOM'].apply(lambda x: x*self.dol_per_fom + 1.0 if x >= 0 else 0)
         real_pitchers.sort_values('FOM', inplace=True)
 
         if self.intermediate_calculations:

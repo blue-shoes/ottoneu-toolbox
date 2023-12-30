@@ -112,6 +112,7 @@ class CalculationDataType(Enum):
     BATTER_G_TARGET = 45
     H2H_WEEKS = 46
     CUSTOM_SCORING_FORMAT = 47
+    NEGATIVE_VALUES = 48
 
     @classmethod
     def pos_to_num_rostered(self) -> Dict[Position, CalculationDataType]:

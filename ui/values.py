@@ -167,6 +167,7 @@ class ValuesCalculation(tk.Frame):
             self.pitcher_basis.set(v.pitcher_basis.display)
             self.safe_set_input_value(CDT.SP_IP_TO_RANK, self.min_sp_ip, True)
             self.safe_set_input_value(CDT.RP_IP_TO_RANK, self.min_rp_ip, True)
+            self.safe_set_input_value(CDT.NEGATIVE_VALUES, self.neg_dollar_values, False)
             self.safe_set_input_value(CDT.REP_LEVEL_SCHEME, self.rep_level_scheme, True, RepLevelScheme.STATIC_REP_LEVEL.value)
             self.update_rep_level_scheme()
             off_pos = [p.position for p in self.starting_set.positions if p.position.offense]
@@ -344,9 +345,16 @@ class ValuesCalculation(tk.Frame):
         self.sv_hld_entry = ttk.Checkbutton(inpf, variable=self.sv_hld_bv, command=self.set_display_columns)
         self.sv_hld_entry.grid(column=1, row=14, pady=5)
         CreateToolTip(self.sv_hld_entry, 'Calculate reliever values with or without projected save and hold values.')
-        
+
+        ttk.Label(inpf, text='Negative Dollar Values?').grid(row=15, column=0, pady=5)
+        self.neg_dollar_values = BooleanVar()
+        self.neg_dollar_values.set(False)
+        self.neg_dollar_entry = ttk.Checkbutton(inpf, variable=self.neg_dollar_values)
+        self.neg_dollar_entry.grid(column=1, row=15, pady=5)
+        CreateToolTip(self.neg_dollar_entry, 'If not checked, all players at or below replacement level are valued at $0.')
+
         # This is its own method to make the __init__ more readable
-        row = self.set_replacement_level_ui(inpf, start_row=15)
+        row = self.set_replacement_level_ui(inpf, start_row=16)
 
         ttk.Button(inpf, text="Calculate", command=self.calculate_values).grid(row=row, column=0, pady=3)
         self.advanced_btn = ttk.Button(inpf, text='Advanced', command=self.advanced_options)
@@ -1266,6 +1274,7 @@ class ValuesCalculation(tk.Frame):
         self.value_calc.set_input(CDT.RP_IP_TO_RANK, float(self.min_rp_ip.get()))
         self.value_calc.set_input(CDT.INCLUDE_SVH, float(self.sv_hld_bv.get()))
         self.value_calc.set_input(CDT.REP_LEVEL_SCHEME, float(self.rep_level_scheme.get()))
+        self.value_calc.set_input(CDT.NEGATIVE_VALUES, self.neg_dollar_values.get())
         if not self.starting_set:
             #Safety
             self.starting_set = starting_positions_services.get_ottoneu_position_set()
@@ -1345,7 +1354,7 @@ class ValuesCalculation(tk.Frame):
                 for index in table.get_children():
                     pv = self.value_calc.get_player_value(int(table.item(index)['text']), pos)
                     if pv is None:
-                        table.set(index, 0, "$0.0")
+                        table.set(index, 0, "NR")
                     else:
                         table.set(index, 0, "${:.1f}".format(pv.value))
                 table.resort()

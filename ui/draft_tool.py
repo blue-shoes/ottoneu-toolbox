@@ -964,8 +964,8 @@ class DraftTool(tk.Frame):
 
             pv = self.value_calculation.get_player_value(id, Position.OVERALL)
             if pv is None:
-                value = '$0.0'
-                inf_cost = '$0.0'
+                value = 'NR'
+                inf_cost = 'NR'
             else:
                 value = '$' + "{:.0f}".format(pv.value)
                 inf_cost = self.__get_inflated_cost(pv)

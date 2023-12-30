@@ -269,6 +269,8 @@ def sort_cmp(t1):
         return float(v1[1:])
     if v1[-1] == '%':
         return float(v1[:-1])
+    if v1 == 'NR':
+        return -sys.float_info.max
     try:
         float(v1)
         return float(v1)
