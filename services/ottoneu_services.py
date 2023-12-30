@@ -3,7 +3,6 @@ from datetime import datetime
 import logging
 import os
 import pandas as pd
-from time import sleep
 from sqlalchemy.orm import joinedload
 
 from dao.session import Session
@@ -126,8 +125,7 @@ def resolve_draft_results_against_rosters(league:League, value_calc:ValueCalcula
     else:
         logging.debug("demo_source")
         if not os.path.exists(draft_demo.demo_trans):
-            sleep(11)
-            return tuple([],[],last_time)
+            return ([],[],last_time)
         last_trans = pd.read_csv(draft_demo.demo_trans)
         last_trans['Date'] = last_trans['Date'].apply(lambda x: datetime.strptime(x, '%Y-%m-%d %H:%M:%S.%f'))
     most_recent = last_trans.iloc[0]['Date']
