@@ -63,10 +63,10 @@ class ArmValues():
         if not available'''
         #This HBP approximation is from a linear regression I did when I first did values
         try:
-            hbp = row['HBP']
+            hbp = row['HBPA']
         except KeyError:
             #Ask forgiveness, not permission
-            hbp = 0.0951*row['BB']+0.4181
+            hbp = 0.0951*row['BBA']+0.4181
         
         if self.format == ScoringFormat.CUSTOM:
             points = 0 
@@ -76,10 +76,10 @@ class ArmValues():
                 return points
         elif(self.SABR):
             #Otto pitching points (SABR) from https://ottoneu.fangraphs.com/support
-            return 5.0*row['IP']+2.0*row['SO']-3.0*row['BB']-3.0*hbp-13.0*row['HR']+5.0*save+4.0*hold
+            return 5.0*row['IP']+2.0*row['K']-3.0*row['BBA']-3.0*hbp-13.0*row['HRA']+5.0*save+4.0*hold
         else:
             #Otto pitching points (FGP) from https://ottoneu.fangraphs.com/support
-            return 7.4*row['IP']+2.0*row['SO']-2.6*row['H']-3.0*row['BB']-3.0*hbp-12.3*row['HR']+5.0*save+4.0*hold
+            return 7.4*row['IP']+2.0*row['K']-2.6*row['HA']-3.0*row['BBA']-3.0*hbp-12.3*row['HRA']+5.0*save+4.0*hold
 
     def calc_pitch_points(self, row) -> float:
         '''Returns player pitching points for projection row using row columns.'''
@@ -107,9 +107,9 @@ class ArmValues():
     
     def calc_ppg(self, row) -> float:
         '''Calculate points per game based on known columns'''
-        if row['G'] == 0:
+        if row['GP'] == 0:
             return 0
-        return row['Points'] / row['G']
+        return row['Points'] / row['GP']
 
     def calc_ppi_no_svh(self, row) -> float:
         '''Calculate points per inning with no saves/holds based on known columns'''
@@ -119,9 +119,9 @@ class ArmValues():
     
     def calc_ppg_no_svh(self, row) -> float:
         '''Calculate points per game with no saves/holds based on known columns'''
-        if row['G'] == 0:
+        if row['GP'] == 0:
             return 0
-        return row['No SVH Points'] / row['G']
+        return row['No SVH Points'] / row['GP']
 
     def get_pitcher_fom(self, df:DataFrame) -> DataFrame:
         
@@ -307,7 +307,7 @@ class ArmValues():
     
     def usable_rp_g_calc(self, row) -> float:
         '''Returns an estimated usable number of relief games pitched based on the projection and pitcher ranking'''
-        return (row['G'] - row['GS']) * row['RP Multiplier']
+        return (row['GP'] - row['GS']) * row['RP Multiplier']
 
     def get_pitcher_fom_calc(self, df:DataFrame, split:bool=True) -> None:
         '''Sets replacement levels for the current iteration and populates FOM figures for all pitchers and roles'''
@@ -356,7 +356,7 @@ class ArmValues():
 
     def calc_pitch_fom_role(self, row, role:str, rep_level:float) -> float:
         '''Returns the FOM accumulated by the pitcher in the given role at the given replacement level.'''
-        if row['G'] == 0:
+        if row['GP'] == 0:
             return -1
         if row[f'IP {role}'] == 0: return -1
         if self.no_sv_hld:
@@ -371,7 +371,7 @@ class ArmValues():
             if role == 'SP':
                 return rate * row['GS']
             else:
-                return rate * (row['G'] - row['GS'])
+                return rate * (row['GP'] - row['GS'])
 
     def sum_role_fom(self, row) -> float:
         '''Sums the pitcher's SP and RP FOM values'''
@@ -414,26 +414,26 @@ class ArmValues():
                 return row['IP'] >= self.min_sp_ip
             if row['Position(s)'] == 'RP':
                 return row['IP'] >= self.min_rp_ip
-            if row['G'] == 0: return False
+            if row['GP'] == 0: return False
         except KeyError:
             return False
         #Got to here, this is a SP/RP with > 0 G. Ration their innings threshold based on their projected GS/G ratio
-        start_ratio = row['GS'] / row['G']
+        start_ratio = row['GS'] / row['GP']
         return row['IP'] > (self.min_sp_ip - self.min_rp_ip)*start_ratio + self.min_rp_ip
 
     def rp_ip_func(self, row) -> float:
         '''Calculates the number of innings pitched in relief based on a linear regression using games relieved per total
         games as the independent variable.'''
         #Avoid divide by zero error
-        if row['G'] == 0: return 0
+        if row['GP'] == 0: return 0
         #Only relief appearances
         if row['GS'] == 0: return row['IP']
         #Only starting appearances
-        if row['GS'] == row['G']: return 0
+        if row['GS'] == row['GP']: return 0
         #Based on second-order poly regression performed for all pitcher seasons from 2019-2021 with GS > 0 and GRP > 0
         #Regression has dep variable of GRP/G (or (G-GS)/G) and IV IPRP/IP. R^2=0.9481. Possible issues with regression: overweighting
         #of pitchers with GRP/G ratios very close to 0 (starters with few RP appearances) or 1 (relievers with few SP appearances)
-        gr_per_g = (row['G'] - row['GS']) / row['G']
+        gr_per_g = (row['GP'] - row['GS']) / row['GP']
         return row['IP'] * (0.7851*gr_per_g**2 + 0.1937*gr_per_g + 0.0328)
 
     def sp_ip_func(self, row) -> float:
@@ -473,20 +473,20 @@ class ArmValues():
 
     def rp_ppg_calc(self, row) -> float:
         '''Estimates the pitcher points per game in relieving role based off of calculated RP PIP values and IP/GR'''
-        if row['G'] == row['GS']:
+        if row['GP'] == row['GS']:
             return 0
         rp_pip = self.rp_pip_calc(row)
         rp_points = rp_pip * row['IP RP']
-        return rp_points / (row['G'] - row['GS'])
+        return rp_points / (row['GP'] - row['GS'])
     
     def rp_no_svh_ppg_calc(self, row) -> float:
         '''Estimates the pitcher points per game in relieving role based off of calculated RP PIP values and IP/GR. Does
         not include saves or holds'''
-        if row['G'] == row['GS']:
+        if row['GP'] == row['GS']:
             return 0
         rp_pip = self.rp_no_svh_pip_calc(row)
         rp_points = rp_pip * row['IP RP']
-        return rp_points / (row['G'] - row['GS'])
+        return rp_points / (row['GP'] - row['GS'])
     
     def rp_no_svh_pip_calc(self, row) -> float:
         '''Estimates pitcher points per inning in relieving role based off of difference between overall FIP and RP FIP
@@ -649,7 +649,7 @@ class ArmValues():
     
     def per_game_rate(self, row, stat:StatType) -> float:
         '''Calculates the per game column for the stat type'''
-        return row[stat.display] / row['G']
+        return row[stat.display] / row['GP']
 
     def calculate_roto_bases(self, proj:DataFrame, init=False) -> None:
         '''Calculates zScore information (average and stdev of the 4x4 or 5x5 stats). If init is true, will rank off of WHIP, otherwise ranks off of previous zScores'''
@@ -660,7 +660,7 @@ class ArmValues():
         alr = self.roto_above_rl(proj)
         above_rep_lvl = proj.loc[alr]
         self.ip_per_team = above_rep_lvl['IP'].sum() / self.num_teams
-        self.g_per_team = above_rep_lvl['G'].sum() / self.num_teams
+        self.g_per_team = above_rep_lvl['GP'].sum() / self.num_teams
 
         if self.format == ScoringFormat.CUSTOM:
             cat_to_col = {}
@@ -681,22 +681,22 @@ class ArmValues():
             proj['WHIP_Delta'] = proj.apply(self.calc_rate_delta, axis=1, args=(StatType.WHIP,))
 
             if RankingBasis.is_roto_fractional(self.rank_basis):
-                proj['SO/IP'] = proj.apply(self.per_ip_rate, axis=1, args=(StatType.SO,))
+                proj['K/IP'] = proj.apply(self.per_ip_rate, axis=1, args=(StatType.SO,))
                 if self.format == ScoringFormat.OLD_SCHOOL_5X5:
                     proj['SV/G'] = proj.apply(self.per_game_rate, axis=1, args=(StatType.SV,))
                     proj['W/G'] = proj.apply(self.per_game_rate, axis=1, args=(StatType.W,))
-                    cat_to_col = {StatType.SO : 'SO/IP', StatType.W : 'W/G', StatType.SV : 'SV/G', StatType.WHIP : 'WHIP_Delta', StatType.ERA : "ERA_Delta"}
+                    cat_to_col = {StatType.SO : 'K/IP', StatType.W : 'W/G', StatType.SV : 'SV/G', StatType.WHIP : 'WHIP_Delta', StatType.ERA : "ERA_Delta"}
                 else:
                     self.stat_avg[StatType.HR_PER_9] = dataframe_util.weighted_avg(above_rep_lvl, 'HR/9', 'IP')
                     proj['HR/9_Delta'] = proj.apply(self.calc_rate_delta, axis=1, args=(StatType.HR_PER_9,))
-                    cat_to_col = {StatType.SO : 'SO/IP', StatType.ERA : 'ERA_Delta', StatType.WHIP : 'WHIP_Delta', StatType.HR_PER_9 : 'HR/9_Delta'}
+                    cat_to_col = {StatType.SO : 'K/IP', StatType.ERA : 'ERA_Delta', StatType.WHIP : 'WHIP_Delta', StatType.HR_PER_9 : 'HR/9_Delta'}
             else:
                 if self.format == ScoringFormat.OLD_SCHOOL_5X5:
-                    cat_to_col = {StatType.SO : 'SO', StatType.W : 'W', StatType.SV : 'SV', StatType.WHIP : 'WHIP_Delta', StatType.ERA : "ERA_Delta"}
+                    cat_to_col = {StatType.SO : 'K', StatType.W : 'W', StatType.SV : 'SV', StatType.WHIP : 'WHIP_Delta', StatType.ERA : "ERA_Delta"}
                 else:
                     self.stat_avg[StatType.HR_PER_9] = dataframe_util.weighted_avg(above_rep_lvl, 'HR/9', 'IP')
                     proj['HR/9_Delta'] = proj.apply(self.calc_rate_delta, axis=1, args=(StatType.HR_PER_9,))
-                    cat_to_col = {StatType.SO : 'SO', StatType.ERA : 'ERA_Delta', StatType.WHIP : 'WHIP_Delta', StatType.HR_PER_9 : 'HR/9_Delta'}
+                    cat_to_col = {StatType.SO : 'K', StatType.ERA : 'ERA_Delta', StatType.WHIP : 'WHIP_Delta', StatType.HR_PER_9 : 'HR/9_Delta'}
         above_rep_lvl = proj.loc[alr]
         means = above_rep_lvl[list(cat_to_col.values())].mean()
         stds = above_rep_lvl[list(cat_to_col.values())].std()
@@ -714,7 +714,7 @@ class ArmValues():
             ip_suffix = '/IP'
             g_suffix = '/G'
             ip_rat = row['IP'] / self.ip_per_team
-            g_rat = row['G'] / self.g_per_team
+            g_rat = row['GP'] / self.g_per_team
         else:
             ip_suffix = g_suffix = ''
             ip_rat = g_rat = 1
@@ -731,7 +731,7 @@ class ArmValues():
                 else:
                     zScore += row[f'{cat.category.display}_Delta'] / self.stat_std.get(cat.category)
         else:
-            zScore += (row[f'SO{ip_suffix}'] - self.stat_avg.get(StatType.SO)) / self.stat_std.get(StatType.SO) * ip_rat
+            zScore += (row[f'K{ip_suffix}'] - self.stat_avg.get(StatType.SO)) / self.stat_std.get(StatType.SO) * ip_rat
             zScore += row['ERA_Delta'] / self.stat_std.get(StatType.ERA)
             zScore += row['WHIP_Delta'] / self.stat_std.get(StatType.WHIP)
             if self.format == ScoringFormat.OLD_SCHOOL_5X5:
