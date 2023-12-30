@@ -715,7 +715,7 @@ class DraftTool(tk.Frame):
                         view.table.detach(str_pid)
 
     def __refresh_views(self, drafted:List[Player]=None, cut:List[Player]=None):
-        self.inflation_str_var.set(f'Inflation: {"{:.1f}".format((self.inflation - 1.0)*100)}%')
+        self.inflation_str_var.set(f'Inflation: {"{:.1f}".format(self.inflation*100)}%')
 
         if drafted is not None:
             for dp in drafted:
@@ -777,11 +777,11 @@ class DraftTool(tk.Frame):
         else:
             val = pv.value
         if val < 1:
-            inf_cost = f'${val}'
+            inf_cost = f'${"{:.0f}".format(val)}'
         elif self.inflation_method == InflationMethod.CONVENTIONAL:
-            inf_cost = '$' + "{:.0f}".format(val * self.inflation)
+            inf_cost = '$' + "{:.0f}".format(val * (self.inflation + 1))
         else:
-            inf_cost = '$' + "{:.0f}".format((val-1) * self.inflation + 1)
+            inf_cost = '$' + "{:.0f}".format((val-1) * (self.inflation + 1) + 1)
         return inf_cost
 
     def __get_stock_player_row(self, pv:PlayerValue) -> tuple:
