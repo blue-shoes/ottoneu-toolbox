@@ -24,7 +24,6 @@ class Start(tk.Frame):
         return True
 
     def create_player_values_click(self):
-        # TODO: Move to Create Player Values Module
         self.controller.show_player_values()
 
     def run_draft_tracker(self):
