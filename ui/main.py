@@ -64,6 +64,10 @@ class Main(tk.Tk):
         self.frame_type = {}
         self.current_page = None
         self.create_frame(Start)
+
+        if self.startup_tasks():
+            sys.exit(0)
+
         self.create_frame(ValuesCalculation)
         self.create_frame(DraftTool)
         self.create_frame(League_Analysis)
@@ -71,9 +75,6 @@ class Main(tk.Tk):
         logging.debug('Starting main window')
         self.show_start_page()
         self.current_page = Start.__name__
-
-        if self.startup_tasks():
-            sys.exit(0)
 
         self.lift()
         self.focus_force()
@@ -133,8 +134,9 @@ class Main(tk.Tk):
                 progress_dialog.set_task_title("Populating Player Database")
                 salary_services.update_salary_info(pd=progress_dialog)
                 progress_dialog.increment_completion_percent(33)
-                # We also put values into the advanced calc options table
-                db_update.run_db_updates([os.path.join(sql_dir, 'adv_calc_setup.sql')])
+                # We also put values into required table
+                init_files = ['adv_calc_setup.sql', 'position_set_setup.sql']
+                db_update.run_db_updates([os.path.join(sql_dir, file) for file in init_files])
             refresh = salary_services.get_last_refresh()
             if refresh is None or (datetime.datetime.now() - refresh.last_refresh).days > self.preferences.getint('General', Pref.SALARY_REFRESH_FREQUENCY, fallback=30):
                 progress_dialog.set_task_title("Updating Player Database")

@@ -1,0 +1,12 @@
+insert into starting_position_set values (1, 'Ottoneu', 'Default Ottoneu Starting Positions');
+insert into position_set values (1, 'Ottoneu', 'Current Ottoneu Eligibilities');
+insert into starting_position values (57, 'POS_C', 1, 1);
+insert into starting_position values (58, 'POS_1B', 1, 1);
+insert into starting_position values (59, 'POS_2B', 1, 1);
+insert into starting_position values (60, 'POS_3B', 1, 1);
+insert into starting_position values (61, 'POS_SS', 1, 1);
+insert into starting_position values (62, 'POS_MI', 1, 1);
+insert into starting_position values (63, 'POS_OF', 5, 1);
+insert into starting_position values (64, 'POS_UTIL', 1, 1);
+insert into starting_position values (65, 'POS_SP', 5, 1);
+insert into starting_position values (66, 'POS_RP', 5, 1);
