@@ -144,7 +144,9 @@ def get_player_by_name_and_team_with_no_yahoo_id(name:str, team:str, session) ->
         name = ' '.join(name.split()[:-1])
     name = string_util.normalize(name)
     players = session.query(Player).options(joinedload(Player.salary_info)).filter(and_(Player.search_name.contains(name), Player.yahoo_id.is_(None))).all()
-    if len(players) == 0:
+    if len(players) == 1:
+        return players[0]
+    elif len(players) == 0:
         name_array = name.split()
         last_idx = -1
         players = session.query(Player).options(joinedload(Player.salary_info)).filter(and_(Player.search_name.contains(name_array[-1]), Player.yahoo_id.is_(None))).all()
@@ -163,10 +165,9 @@ def get_player_by_name_and_team_with_no_yahoo_id(name:str, team:str, session) ->
                 if len(players) == 1:
                     break
                 i += 1
-        
     players.sort(reverse=True, key=lambda p: p.get_salary_info_for_format().roster_percentage)
-    if players is not None and len(players) > 0:
-        player = players[0]
+    if players and len(players) > 0:
+        player = None
         for possible_player in players:
             if match_team(possible_player, team):
                 player = possible_player
@@ -194,7 +195,7 @@ def get_player_by_name_and_team(name:str, team:str) -> Player:
                 name = name_array[-1]
             else:
                 name = f'{name_array[0][:i]}% {name_array[-1]}'
-            tmp_players = search_by_name(name_array[-1])
+            tmp_players = search_by_name(name)
             if len(tmp_players) < 1:
                 break
             players = tmp_players
