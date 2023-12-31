@@ -1,7 +1,8 @@
 from yfpy.query import YahooFantasySportsQuery as yfs_query
-from yfpy import Team as YTeam, League as YLeague, Settings as YSettings, Player as YPlayer, YahooFantasySportsException, DraftResult as YDR
+from yfpy import Team as YTeam, League as YLeague, Settings as YSettings, Player as YPlayer, YahooFantasySportsException, DraftResult as YDR, Roster as YRoster
 from pathlib import Path
 import pandas as pd
+from sqlalchemy.orm import joinedload
 
 from dao.session import Session
 from demo import draft_demo
@@ -9,8 +10,8 @@ from domain.domain import League, Roster_Spot, Player, ValueCalculation, Team, P
 from domain.enum import InflationMethod, Position, ScoringFormat, Platform, StatType
 from services import player_services, league_services, custom_scoring_services, starting_positions_services
 
-from typing import List, Tuple
-import datetime
+from typing import List, Tuple, Dict
+from datetime import datetime
 import threading
 from time import sleep
 import logging
@@ -35,7 +36,7 @@ def create_league(league_yahoo_id:int, pd=None) -> League:
     lg.name = yleague.name.decode("utf-8")
     lg.num_teams = yleague.num_teams
     lg.format = ScoringFormat.CUSTOM
-    lg.last_refresh = datetime.datetime.min
+    lg.last_refresh = datetime.min
     lg.active = True
     lg.platform = Platform.YAHOO
     if settings.is_auction_draft or settings.uses_faab:
@@ -79,9 +80,58 @@ def create_league(league_yahoo_id:int, pd=None) -> League:
     
     return lg
 
-def refresh_league(league_idx:int, pd=None) -> League:
-    #TODO: Implement this
-    lg = league_services.get_league(league_idx, rosters=True)
+def refresh_league(league_id:int, pd=None) -> League:
+    '''Refreshes the given league id in the database. Retrieves current team rosters from Yahoo API and rewrites team roster spots in DB.'''
+    lg = league_services.get_league(league_id, rosters=True)
+
+    rosters:Dict[int, YRoster] = {}
+    q = __create_query(lg.site_id)
+    try:
+        if pd:
+            pd.set_task_title("Updating rosters...")
+            pd.increment_completion_percent(5)
+        pd_inc = int(75 / lg.num_teams)
+        for team in lg.teams:
+            rosters[team.site_id] = q.get_team_roster_by_week(team.site_id)
+            if pd:
+                pd.increment_completion_percent(pd_inc)
+        with Session() as session:
+                lg = (session.query(League)
+                        .options(
+                            joinedload(League.teams)
+                            .joinedload(Team.roster_spots)
+                            .joinedload(Roster_Spot.player)
+                        )
+                        .filter_by(index = league_id).first())
+                team_map = {}
+                for team in lg.teams:
+                    #Clear roster
+                    if team.site_id in rosters:
+                        for rs in team.roster_spots:
+                            session.delete(rs)
+                        team_map[team.site_id] = team
+                for site_id, roster in rosters.items():
+                    for yplayer in roster.players:
+                        rs = Roster_Spot()
+                        player = get_or_set_player_by_yahoo_id(yplayer, session)
+                        if player is None:
+                            continue
+                        rs.player = player
+                        if lg.is_salary_cap():
+                            if hasattr(yplayer, 'is_keeper'):
+                                rs.salary = yplayer.is_keeper['cost']
+                            else:
+                                rs.salary = 0
+                        else:
+                            rs.salary = 0
+                        team_map[site_id].roster_spots.append(rs)
+                
+                lg.last_refresh = datetime.now()
+                session.commit()
+                lg = league_services.get_league(league_id)
+    finally:
+        if pd:
+            pd.complete()
     return lg
 
 def get_league_metadata(league_id:int) -> YLeague:
@@ -99,27 +149,6 @@ def get_league_players(league_id:int, player_list:List=[]) -> List[YPlayer]:
     q = __create_query(league_id)
     player_list.extend(q.get_league_players())
     return player_list
-
-def update_league_rosters(league:League) -> None:
-    '''Populates the Yahoo league rosters'''
-    q = __create_query(league.site_id)
-    date = datetime.datetime.now()
-    date_string = f'{date.year}-{"{:02d}".format(date.month)}-{"{:02d}".format(date.day)}'
-    for team in league.teams:
-        team.roster_spots.clear()
-        yplayers = q.get_team_roster_player_info_by_date(team.site_id, date_string)
-        for yplayer in yplayers:
-            player = player_services.get_player_by_yahoo_id(yplayer.player_id)
-            if player is None:
-                player = player_services.get_player_by_name_and_team(f'{yplayer.name.ascii_first} {yplayer.name.ascii_last}', yplayer.editorial_team_abbr)
-                if player is None:
-                     continue
-        rs = Roster_Spot
-        rs.team = team
-        rs.player = player
-        # This looks like we should be able to get it from is_keeper somehow, but not sure how
-        rs.salary = 0
-        team.roster_spots.append(rs)
 
 def get_league_settings(league_id:int) -> YSettings:
     '''Returns the Yahoo Settings object for the given league id'''
@@ -187,7 +216,7 @@ def resolve_draft_results_against_rosters(league:League, value_calc:ValueCalcula
 def set_player_positions_for_league(league:League, pd = None) -> League:
     '''Gets Yahoo league player position eligibilities and creates a new PositionSet, if necessary. Also populates player.yahoo_id if necessary.'''
     if not league.position_set:
-        timestamp = datetime.datetime.now()
+        timestamp = datetime.now()
         position_set = PositionSet(name=f'{timestamp.year}-{league.name}')
         date = f'{timestamp.month}/{timestamp.day}/{timestamp.year}'
         position_set.detail = f'Automatic Creation for Yahoo league {league.site_id} on {date}'
@@ -201,11 +230,9 @@ def set_player_positions_for_league(league:League, pd = None) -> League:
     thread = threading.Thread(target = get_league_players, args=(league.site_id, yplayers))
     thread.start()
 
-    start = datetime.datetime.now()
     while (thread.is_alive()):
         pd.increment_completion_percent(1)
         sleep(10)
-    start = datetime.datetime.now()
     seen_ids = []
     with Session() as session:
         for yplayer in yplayers:
@@ -251,7 +278,7 @@ def __create_query(league_id:int=1, year:int=None) -> yfs_query:
         q = yfs_query(Path('conf'), league_id=league_id, game_code='mlb')
         game_keys = q.get_all_yahoo_fantasy_game_keys()
         for gk in game_keys:
-            if gk.code == 'mlb' and int(gk.season) == datetime.datetime.now().year:
+            if gk.code == 'mlb' and int(gk.season) == datetime.now().year:
                 game_id = gk.game_id
         if game_id == '':
              raise YahooFantasySportsException(f'Could not find game_key for current year')
