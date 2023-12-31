@@ -64,7 +64,6 @@ class ValuesCalculation(tk.Frame):
 
     def on_show(self):
         self.value_calc = self.controller.value_calculation
-        self.refresh_ui()
         if self.controller.value_calculation is None:
             self.controller.value_calculation = ValueCalculation()
             self.value_calc = self.controller.value_calculation
@@ -78,6 +77,7 @@ class ValuesCalculation(tk.Frame):
             self.custom_scoring_button.grid(column=2, row=2)
         else:
             self.custom_scoring_button.grid_forget()
+        self.refresh_ui()
         self.last_game_type.set(self.game_type.get())
         return True
     
@@ -167,7 +167,7 @@ class ValuesCalculation(tk.Frame):
             self.pitcher_basis.set(v.pitcher_basis.display)
             self.safe_set_input_value(CDT.SP_IP_TO_RANK, self.min_sp_ip, True)
             self.safe_set_input_value(CDT.RP_IP_TO_RANK, self.min_rp_ip, True)
-            self.safe_set_input_value(CDT.NEGATIVE_VALUES, self.neg_dollar_values, False)
+            self.safe_set_input_value(CDT.NEGATIVE_VALUES, self.neg_dollar_values, default=False)
             self.safe_set_input_value(CDT.REP_LEVEL_SCHEME, self.rep_level_scheme, True, RepLevelScheme.STATIC_REP_LEVEL.value)
             self.update_rep_level_scheme()
             off_pos = [p.position for p in self.starting_set.positions if p.position.offense]
@@ -175,9 +175,13 @@ class ValuesCalculation(tk.Frame):
 
             if self.rep_level_scheme.get() == RepLevelScheme.STATIC_REP_LEVEL.value:
                 for pos in off_pos + Position.get_discrete_pitching_pos():
+                    if pos.value not in self.rep_level_dict:
+                        self.rep_level_dict[pos.value] = StringVar()
                     self.safe_set_input_value(CDT.pos_to_rep_level().get(pos), self.rep_level_dict[pos.value])
             else:
                 for pos in off_pos + Position.get_discrete_pitching_pos():
+                    if pos.value not in self.rep_level_dict:
+                        self.rep_level_dict[pos.value] = StringVar()
                     self.safe_set_input_value(CDT.pos_to_num_rostered().get(pos), self.rep_level_dict[pos.value], True)
             for adv_inp in CDT.get_adv_inputs():
                 inp = self.value_calc.get_input(adv_inp)
@@ -1030,6 +1034,9 @@ class ValuesCalculation(tk.Frame):
         off_pos = [p for p in off_pos if Position.position_is_base(p, off_pos) or p == Position.POS_UTIL]
 
         for pos in off_pos + Position.get_discrete_pitching_pos():
+            if pos not in self.pos_rostered_sv:
+                self.pos_rostered_sv[pos] = StringVar()
+                self.pos_rep_lvl_sv[pos] = StringVar()
             self.safe_set_output_value(CDT.pos_to_num_rostered()[pos], self.pos_rostered_sv[pos], integer=True, default='--')
             self.safe_set_output_value(CDT.pos_to_rep_level()[pos], self.pos_rep_lvl_sv[pos], format="{:.2f}")
         
