@@ -193,7 +193,8 @@ class League_Analysis(tk.Frame):
         league_services.calculate_league_table(self.league, self.value_calculation, \
                                                 fill_pt=(self.standings.standings_type.get() == 1), \
                                                 inflation=self.inflation,\
-                                                use_keepers=self.__is_use_keepers())
+                                                use_keepers=self.__is_use_keepers(),
+                                                prog=pd)
         pd.set_completion_percent(90)
         pd.set_task_title('Updating display')
         self.standings.refresh()

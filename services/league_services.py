@@ -85,7 +85,8 @@ def get_league_by_draft(draft:Draft, fill_rosters:bool=False) -> League:
         league = session.query(Draft).options(joinedload(Draft.league)).filter(Draft.index == draft.index).first().league
         return get_league(league.index, fill_rosters)
 
-def calculate_league_table(league:League, value_calc:ValueCalculation, fill_pt:bool=False, inflation:float=None, in_season:bool=False, updated_teams:List[Team]=None, use_keepers=False) -> None:
+def calculate_league_table(league:League, value_calc:ValueCalculation, fill_pt:bool=False, inflation:float=None, 
+                           in_season:bool=False, updated_teams:List[Team]=None, use_keepers:bool=False, prog=None) -> None:
     '''Calculates the projected standings table for the League with the given ValueCalculation'''
     if fill_pt and not ScoringFormat.is_points_type(league.format):
         raise InputException('Roto leagues do not support filling playing time (the math makes my brain hurt)')
@@ -108,6 +109,8 @@ def calculate_league_table(league:League, value_calc:ValueCalculation, fill_pt:b
             inflation = None
         for team in league.teams:
             __project_team_results(team, value_calc, league.format, fill_pt, inflation, stats=stats, accrued_pt=pt, keepers=keepers, use_keepers=use_keepers, custom_scoring=custom_scoring)   
+            if prog:
+                prog.increment_completion_percent(int(75/league.num_teams))
     else:
         for team in league.teams:
             if __list_contains_team(team, updated_teams):
