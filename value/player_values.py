@@ -165,7 +165,7 @@ class PlayerValues():
                 pos_min_pa['Value'] = pos_min_pa['Max FOM'].apply(lambda x: x*self.dol_per_fom + 1.0 if x >= 0 else x*self.dol_per_fom)
             else:
                 pos_min_pa['Value'] = pos_min_pa['Max FOM'].apply(lambda x: x*self.dol_per_fom + 1.0 if x >= 0 else 0)
-        pos_min_pa.sort_values('Max FOM', inplace=True)
+        pos_min_pa.sort_values('Max FOM', inplace=True, ascending=False)
 
         for pos in Position.get_discrete_pitching_pos():
             pos_value = pd.DataFrame(real_pitchers.loc[real_pitchers[f'IP {pos.value}'] > 0])
@@ -195,7 +195,7 @@ class PlayerValues():
                 real_pitchers['Value'] = real_pitchers['FOM'].apply(lambda x: x*self.dol_per_fom + 1.0 if x >= 0 else x*self.dol_per_fom)
             else:
                 real_pitchers['Value'] = real_pitchers['FOM'].apply(lambda x: x*self.dol_per_fom + 1.0 if x >= 0 else 0)
-        real_pitchers.sort_values('FOM', inplace=True)
+        real_pitchers.sort_values('FOM', inplace=True, ascending=False)
 
         if self.intermediate_calculations:
             filepath = os.path.join(self.intermed_subdirpath, f"pos_value_detail.csv")
@@ -222,6 +222,7 @@ class PlayerValues():
             pitch_results = pitch_results.drop(index=index)
 
         results = pd.concat([results, pitch_results])
+        results.sort_values('FOM', inplace=True, ascending=False)
         
         for index, row in results.iterrows():
             self.value_calc.set_player_value(index, Position.OVERALL, row['Value'])
