@@ -4,7 +4,7 @@ from tkinter import ttk
 from typing import List
 
 from domain.domain import League, ValueCalculation, Team, Roster_Spot, PlayerValue, Player
-from domain.enum import Position, AvgSalaryFom, Preference as Pref
+from domain.enum import Position, AvgSalaryFom, Preference as Pref, Platform
 from services import projected_keeper_services
 from ui.table.table import ScrollableTreeFrame
 from util import date_util
@@ -25,11 +25,15 @@ class Surplus(tk.Frame):
         self.league = None
         self.ottoverse_columns = ('Avg. Price', 'L10 Price', 'Roster %')
         if date_util.is_offseason():
-            self.columns = ("Keeper?", 'Player', 'Team', 'Pos', 'Roster', 'Salary', 'Value', 'Inf. Cost', 'Surplus', 'Inf. Surplus') + self.ottoverse_columns
+            self.all_columns = ("Keeper?", 'Player', 'Team', 'Pos', 'Roster', 'Rank', 'Round', 'Salary', 'Value', 'Inf. Cost', 'Surplus', 'Inf. Surplus') + self.ottoverse_columns
+            self.rostered_columns = ("Keeper?", 'Player', 'Team', 'Pos', 'Roster', 'Salary', 'Value', 'Inf. Cost', 'Surplus', 'Inf. Surplus') + self.ottoverse_columns
             self.fa_columns = ("Keeper?", 'Player', 'Team', 'Pos', 'Value', 'Inf. Cost') + self.ottoverse_columns
+            self.non_salary_columns = ("Keeper?", 'Player', 'Team', 'Pos', 'Rank', 'Round')
         else:
-            self.columns = ('Player', 'Team', 'Pos', 'Roster', 'Salary', 'Value', 'Inf. Cost', 'Surplus', 'Inf. Surplus') + self.ottoverse_columns
+            self.all_columns = ('Player', 'Team', 'Pos', 'Roster', 'Rank', 'Round', 'Salary', 'Value', 'Inf. Cost', 'Surplus', 'Inf. Surplus') + self.ottoverse_columns
+            self.rostered_columns = ('Player', 'Team', 'Pos', 'Roster', 'Salary', 'Value', 'Inf. Cost', 'Surplus', 'Inf. Surplus') + self.ottoverse_columns
             self.fa_columns = ('Player', 'Team', 'Pos', 'Value', 'Inf. Cost') + self.ottoverse_columns
+            self.non_salary_columns = ('Player', 'Team', 'Pos', 'Rank', 'Round')
 
         self.team_sv = StringVar()
         self.team_sv.set("All Teams")
@@ -52,7 +56,7 @@ class Surplus(tk.Frame):
 
         #TODO: Add positional filter
 
-        cols = self.columns
+        cols = self.all_columns
         widths = {}
         widths['Player'] = 125
         widths['Roster'] = 125
@@ -124,7 +128,10 @@ class Surplus(tk.Frame):
                         else:
                             tags = tags + ('unchecked',)
                     self.player_table.table.insert('', tk.END, tags=tags, values=self.__get_player_row(rs, team), iid=rs.player_id)
-            self.player_table.table.set_display_columns(self.columns)
+            if self.league.is_salary_cap():
+                self.player_table.table.set_display_columns(self.rostered_columns)
+            else:
+                self.player_table.table.set_display_columns(self.non_salary_columns)
         elif self.team_sv.get() == 'Free Agents':
             for pv in self.value_calc.get_position_values(pos=Position.OVERALL):
                 if self.league.is_rostered(pv.player_id):
@@ -133,7 +140,10 @@ class Surplus(tk.Frame):
                 self.player_table.table.insert('', tk.END, tags=tags, values=self.__get_fa_row(pv), iid=pv.player_id)
             if 'Surplus' in self.player_table.table.sort_col:
                 self.player_table.table.treeview_sort_column('Value', reverse=True)
-            self.player_table.table.set_display_columns(self.fa_columns)
+            if self.league.is_salary_cap():
+                self.player_table.table.set_display_columns(self.fa_columns)
+            else:
+                self.player_table.table.set_display_columns(self.non_salary_columns)
         elif self.team_sv.get() == 'Projected FA':
             for pv in self.value_calc.get_position_values(pos=Position.OVERALL):
                 if self.league.is_keeper(pv.player_id):
@@ -142,7 +152,10 @@ class Surplus(tk.Frame):
                 self.player_table.table.insert('', tk.END, tags=tags, values=self.__get_fa_row(pv), iid=pv.player_id)
             if 'Surplus' in self.player_table.table.sort_col:
                 self.player_table.table.treeview_sort_column('Value', reverse=True)
-            self.player_table.table.set_display_columns(self.fa_columns)
+            if self.league.is_salary_cap():
+                self.player_table.table.set_display_columns(self.fa_columns)
+            else:
+                self.player_table.table.set_display_columns(self.non_salary_columns)
         else:
             for team in self.league.teams:
                 if team.name == self.team_sv.get():
@@ -154,7 +167,14 @@ class Surplus(tk.Frame):
                                 tags = ('unchecked',)
                         self.player_table.table.insert('', tk.END, tags=tags, values=self.__get_player_row(rs, team), iid=rs.player_id)
                     break
-            self.player_table.table.set_display_columns(self.columns)
+            if self.league.is_salary_cap():
+                self.player_table.table.set_display_columns(self.rostered_columns)
+            else:
+                self.player_table.table.set_display_columns(self.non_salary_columns)
+        if self.league.is_salary_cap():
+            self.player_table.table.sort_col = 'Surplus'
+        else:
+            self.player_table.table.sort_col = 'Rank'
     
     def update_inflation(self, inflation:float) -> None:
         self.inflation = inflation
@@ -177,12 +197,16 @@ class Surplus(tk.Frame):
             vals.append(pv.player.custom_positions)
         else:
             vals.append(pv.player.position)
-        vals.append('') # Ottoneu Team
-        vals.append('') # Salary
-        vals.append('$' + "{:.1f}".format(pv.value))
-        vals.append('$' + "{:.1f}".format(pv.value * (1 + self.inflation)))
-        vals.append('') # Surplus
-        vals.append('') # Inflated Surplus
+        vals.append('') # Team
+        if self.league.is_salary_cap():
+            vals.extend(['', '', ''])
+            vals.append('$' + "{:.1f}".format(pv.value))
+            vals.append('$' + "{:.1f}".format(pv.value * (1 + self.inflation)))
+        else:
+            vals.append(pv.rank)
+            vals.append(int((pv.rank - 1) / self.league.num_teams) + 1)
+            vals.extend(['', '', ''])
+        vals.extend(['', ''])
 
         vals.extend(self.__get_salary_info(pv.player))
 
@@ -197,36 +221,50 @@ class Surplus(tk.Frame):
         else:
             vals.append(rs.player.position)
         vals.append(team.name)
-        vals.append(f'${rs.salary}')
-        vc = self.value_calc.get_player_value(rs.player_id, Position.OVERALL)
-        if vc is not None:
-            val = vc.value
+        pv = self.value_calc.get_player_value(rs.player_id, Position.OVERALL)
+        if self.league.is_salary_cap():
+            vals.append(0) # Rank
+            vals.append(0) # Round
+            vals.append(f'${rs.salary}')
+            if pv is not None:
+                val = pv.value
+                vals.append('$' + "{:.1f}".format(val))
+                if val > 1:
+                    vals.append('$' + "{:.1f}".format(max(val-1, 0) * (1 + self.inflation) + 1))
+                else:
+                    vals.append('$' + "{:.1f}".format(val))
+                vals.append('$' + "{:.1f}".format(val - rs.salary))
+                if val > 1:
+                    vals.append('$' + "{:.1f}".format(max(val-1, 0) * (1 + self.inflation) - rs.salary + 1))
+                else:
+                    vals.append('$' + "{:.1f}".format(val - rs.salary))
+            else:
+                val = 'NR'
+                vals.extend([val, val, val, val])
         else:
-            val = 0.0
-        vals.append('$' + "{:.1f}".format(val))
-        if val > 1:
-            vals.append('$' + "{:.1f}".format(max(val-1, 0) * (1 + self.inflation) + 1))
-        else:
-            vals.append('$' + "{:.1f}".format(val))
-        vals.append('$' + "{:.1f}".format(val - rs.salary))
-        if val > 1:
-            vals.append('$' + "{:.1f}".format(max(val-1, 0) * (1 + self.inflation) - rs.salary + 1))
-        else:
-            vals.append('$' + "{:.1f}".format(val - rs.salary))
-
+            if pv is not None:
+                vals.append(pv.rank)
+                vals.append(int((pv.rank - 1) / self.league.num_teams) + 1)
+            else:
+                vals.extend(['NR', 'NR'])
+            vals.extend([0, 0, 0, 0, 0])
+            
         vals.extend(self.__get_salary_info(rs.player))
         
         return tuple(vals)
     
     def __get_salary_info(self, player:Player) -> List[str]:
-        vals = []
-        si = player.get_salary_info_for_format(self.league.format)
-        if self.controller.preferences.get('General', Pref.AVG_SALARY_FOM) == AvgSalaryFom.MEAN.value:
-            vals.append(f'$' + "{:.1f}".format(si.avg_salary))
+        if self.league.platform == Platform.OTTONEU:
+            vals = []
+            si = player.get_salary_info_for_format(self.league.format)
+            if self.controller.preferences.get('General', Pref.AVG_SALARY_FOM) == AvgSalaryFom.MEAN.value:
+                vals.append(f'$' + "{:.1f}".format(si.avg_salary))
+            else:
+                vals.append(f'$' + "{:.1f}".format(si.med_salary))
+            vals.append(f'$' + "{:.1f}".format(si.last_10))
+            vals.append("{:.1f}".format(si.roster_percentage) + '%')
         else:
-            vals.append(f'$' + "{:.1f}".format(si.med_salary))
-        vals.append(f'$' + "{:.1f}".format(si.last_10))
-        vals.append("{:.1f}".format(si.roster_percentage) + '%')
+            vals = [0, 0, 0]
         return vals
 
     def trade_evaluation(self):
