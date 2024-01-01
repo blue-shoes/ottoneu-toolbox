@@ -949,7 +949,7 @@ class DraftTool(tk.Frame):
 
     def __update_player_search(self):
         text = self.search_string.get().upper()
-        if text == '' or len(text) == 1:
+        if text == '' or len(text) == 1 or (self.search_unrostered_bv.get() and len(text) < 3):
             players = [] 
         else:
             players = player_services.search_by_name(text)
@@ -962,8 +962,11 @@ class DraftTool(tk.Frame):
                 si = player.get_salary_info_for_format(self.league.format)
                 if (si is None or si.roster_percentage == 0) and not self.search_unrostered_bv.get():
                     continue
+            elif player.index not in self.value_calculation.value_dict and not self.search_unrostered_bv.get():
+                continue
             else:
                 si = None
+                
             id = player.index
             name = player.name
             if player.custom_positions:
