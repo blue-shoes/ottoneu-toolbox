@@ -84,6 +84,9 @@ def refresh_league(league_id:int, pd=None) -> League:
     '''Refreshes the given league id in the database. Retrieves current team rosters from Yahoo API and rewrites team roster spots in DB.'''
     lg = league_services.get_league(league_id, rosters=True)
 
+    if (datetime.now() - lg.last_refresh).total_seconds() < (60*60*24):
+        return lg
+
     rosters:Dict[int, YRoster] = {}
     q = __create_query(lg.site_id)
     try:
