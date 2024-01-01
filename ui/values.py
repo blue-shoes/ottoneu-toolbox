@@ -167,7 +167,11 @@ class ValuesCalculation(tk.Frame):
             self.pitcher_basis.set(v.pitcher_basis.display)
             self.safe_set_input_value(CDT.SP_IP_TO_RANK, self.min_sp_ip, True)
             self.safe_set_input_value(CDT.RP_IP_TO_RANK, self.min_rp_ip, True)
-            self.safe_set_input_value(CDT.NEGATIVE_VALUES, self.neg_dollar_values, default=False)
+            neg_vals = v.get_input(CDT.NEGATIVE_VALUES)
+            if neg_vals is None or neg_vals == 0:
+                self.neg_dollar_values.set(False)
+            else:
+                self.neg_dollar_values.set(True)
             self.safe_set_input_value(CDT.REP_LEVEL_SCHEME, self.rep_level_scheme, True, RepLevelScheme.STATIC_REP_LEVEL.value)
             self.update_rep_level_scheme()
             off_pos = [p.position for p in self.starting_set.positions if p.position.offense]
