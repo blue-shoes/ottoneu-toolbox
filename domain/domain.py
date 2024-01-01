@@ -309,6 +309,8 @@ class PlayerValue:
 
     value:Mapped[float] = mapped_column(default=None)
 
+    rank:int = field(repr=False, default=None)
+
 @reg.mapped_as_dataclass
 class ValueCalculation:
     __tablename__ = "value_calculation"

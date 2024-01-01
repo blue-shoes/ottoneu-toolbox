@@ -8,7 +8,7 @@ from math import ceil
 
 from domain.domain import League, ValueCalculation, Team, Roster_Spot
 from domain.enum import Position, ScoringFormat, InflationMethod, Preference as Pref
-from services import league_services, projected_keeper_services
+from services import league_services, projected_keeper_services, calculation_services
 from ui.dialog import progress
 from ui.view import standings, surplus
 from util import date_util
@@ -180,6 +180,10 @@ class League_Analysis(tk.Frame):
         self.load_tables()
     
     def load_tables(self):
+
+        if not self.league.is_salary_cap():
+            calculation_services.set_player_ranks(self.value_calculation)
+
         self.league_text_var.set(self.controller.league.name)
         self.values_name.set(f'Value Set: {self.value_calculation.name}')
         projected_keeper_services.get_league_keepers(self.league)

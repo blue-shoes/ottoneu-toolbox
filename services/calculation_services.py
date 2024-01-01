@@ -951,3 +951,11 @@ def get_available_seasons() -> List[int]:
         if not year in tmp_seasons:
             tmp_seasons.append(year)
     return sorted(tmp_seasons, reverse=True)
+
+def set_player_ranks(vc:ValueCalculation) -> None:
+    for pos in [Position.OVERALL, Position.OFFENSE, Position.PITCHER] + [p.position for p in vc.starting_set.positions]:
+        pos_vals = vc.get_position_values(pos)
+        pos_vals.sort(key=lambda p: p.index)
+        for rank, pv in enumerate(pos_vals, start=0):
+            pv.rank = rank + 1
+    
