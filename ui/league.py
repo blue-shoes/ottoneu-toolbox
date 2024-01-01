@@ -128,8 +128,13 @@ class League_Analysis(tk.Frame):
         self.surplus.update_inflation(self.inflation)
     
     def initialize_inflation(self):
-        self.inflation = league_services.calculate_league_inflation(self.league, self.value_calculation, inf_method=self.inflation_method, use_keepers=self.__is_use_keepers())
-        self.inflation_sv.set(f'League Inflation: {"{:.1f}".format(self.inflation * 100)}%')
+        if self.league.is_salary_cap():
+            self.inflation = league_services.calculate_league_inflation(self.league, self.value_calculation, inf_method=self.inflation_method, use_keepers=self.__is_use_keepers())
+            self.inflation_sv.set(f'League Inflation: {"{:.1f}".format(self.inflation * 100)}%')
+            
+        else:
+            self.inflation = 0
+            self.inflation_sv.set('')
         self.surplus.inflation = self.inflation
 
     def optimize_keepers(self):
