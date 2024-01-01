@@ -1,5 +1,6 @@
 from yfpy.query import YahooFantasySportsQuery as yfs_query
 from yfpy import Team as YTeam, League as YLeague, Settings as YSettings, Player as YPlayer, YahooFantasySportsException, DraftResult as YDR, Roster as YRoster
+from yfpy.exceptions import YahooFantasySportsDataNotFound
 from pathlib import Path
 import pandas as pd
 from sqlalchemy.orm import joinedload
@@ -285,4 +286,10 @@ def __create_query(league_id:int=1, year:int=None) -> yfs_query:
                 game_id = gk.game_id
         if game_id == '':
              raise YahooFantasySportsException(f'Could not find game_key for current year')
+        try:
+            yfs_query(Path('conf'), league_id=league_id, game_code='mlb', game_id=game_id).get_league_info()
+        except YahooFantasySportsDataNotFound:
+            for gk in game_keys:
+                if gk.code == 'mlb' and int(gk.season) == (datetime.now().year - 1):
+                    game_id = gk.game_id
     return yfs_query(Path('conf'), league_id=league_id, game_code='mlb', game_id=game_id)
