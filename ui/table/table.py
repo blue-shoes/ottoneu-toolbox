@@ -175,7 +175,7 @@ class Table(ttk.Treeview):
                 column_index -= 1
             l = [(str(self.item(k)["values"][column_index]), k) for k in self.get_children()]
             #l = [(self.set(k, col), k) for k in self.get_children('')]
-            l.sort(reverse=self.reverse_sort[col], key=lambda x: sort_cmp(x))
+            l.sort(reverse=self.reverse_sort[col], key=lambda x, _col=col: sort_cmp(x, self.reverse_sort[_col]))
 
         # rearrange items in sorted positions
         for index, (val, k) in enumerate(l):
@@ -261,7 +261,7 @@ def bool_to_table(val):
     else:
         return ''
     
-def sort_cmp(t1):
+def sort_cmp(t1, reverse=False):
     v1 = t1[0]
     if len(v1) == 0:
         return v1
@@ -270,9 +270,11 @@ def sort_cmp(t1):
     if v1[-1] == '%':
         return float(v1[:-1])
     if v1 == 'NR':
-        return -sys.float_info.max
+        if reverse:
+            return -sys.float_info.max
+        else:
+            return sys.float_info.max
     try:
-        float(v1)
         return float(v1)
     except ValueError:
         return v1
