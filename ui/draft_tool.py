@@ -13,6 +13,8 @@ from requests.exceptions import HTTPError
 
 from functools import partial
 
+from ui.app_controller import Controller
+from ui.toolbox_view import ToolboxView
 from domain.domain import League, Player, ValueCalculation, PlayerValue, Roster_Spot
 from domain.enum import Position, ScoringFormat, StatType, Preference as Pref, AvgSalaryFom, RankingBasis, ProjectionType, InflationMethod, CalculationDataType, Platform
 from ui.table.table import Table, sort_cmp, ScrollableTreeFrame
@@ -34,7 +36,7 @@ pitch_4x4_cols = ('K', 'HR/9', 'ERA', 'WHIP')
 all_hitting_stats = tuple([st.display for st in StatType.get_all_hit_stattype()])
 all_pitching_stats = tuple([st.display for st in StatType.get_all_pitch_stattype()])
 
-class DraftTool(tk.Frame):
+class DraftTool(ToolboxView):
 
     league:League
     value_calculation:ValueCalculation
@@ -45,7 +47,7 @@ class DraftTool(tk.Frame):
     removed_detached_id_map:Dict[ScrollableTreeFrame, List[str]]
     player_to_round_map:Dict[int, int]
 
-    def __init__(self, parent, controller):
+    def __init__(self, parent:tk.Frame, controller:Controller):
         tk.Frame.__init__(self, parent)
         self.parent = parent
         self.controller = controller

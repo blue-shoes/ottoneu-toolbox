@@ -110,7 +110,3 @@ def get_rostered_ottoneu_ids(league):
         for rs in team.roster_spots:
             rostered.append(rs.player.ottoneu_id)
     return rostered
-
-if __name__ == '__main__':
-    demo_draft()
-

@@ -10,6 +10,8 @@ from pathlib import Path
 import pandas as pd
 from typing import Dict, List
 
+from ui.app_controller import Controller
+from ui.toolbox_view import ToolboxView
 from ui.table.table import Table
 from domain.domain import ValueCalculation, PlayerProjection, CustomScoring, PositionSet, PlayerValue, StartingPositionSet
 from domain.enum import CalculationDataType as CDT, RankingBasis, RepLevelScheme, StatType, Position, ProjectionType, ScoringFormat
@@ -37,14 +39,14 @@ pt_pitcher_columns = ('GP', 'GS', 'IP')
 rev_cols = ('Name', 'Team', 'Pos') + tuple([st.display for st in StatType if not st.higher_better]) 
 num_rost_rl_default = {'C':'24', '1B':'40', '2B':'38', 'SS':'42', '3B':'24', 'MI':'60', 'CI':'55', 'INF':'100', 'LF':'24', 'CF':'24', 'RF':'24', 'OF':'95', 'Util':'200', 'SP':'85', 'RP':'70'}
 
-class ValuesCalculation(tk.Frame):
+class ValuesCalculation(ToolboxView):
 
     value_calc:ValueCalculation
     custom_scoring:CustomScoring
     position_set:PositionSet
     starting_set:StartingPositionSet
 
-    def __init__(self, parent, controller):
+    def __init__(self, parent:tk.Frame, controller:Controller):
         tk.Frame.__init__(self, parent)
         self.parent = parent
         self.controller = controller
@@ -1443,15 +1445,5 @@ class ValuesCalculation(tk.Frame):
 
         return len(errors) != 0
     
-    def exit_tasks(self):
+    def league_change(self) -> bool:
         return True
-
-def main(preferences):
-    try:
-        win = ValuesCalculation(preferences)
-    except Exception as e:
-        logging.exception("Error encountered")
-        mb.showerror("Error", f'Fatal program error. See ./logs/toolbox.log')
-
-if __name__ == '__main__':
-    main()

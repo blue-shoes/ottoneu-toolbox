@@ -56,10 +56,3 @@ def roster_refresh_setup(lg_id):
     except KeyboardInterrupt:
         run_event.clear()
         t1.join()
-
-def main():
-    lg_id = input("Enter league id: ")
-    roster_refresh_setup(lg_id)
-
-if __name__ == '__main__':
-    main()

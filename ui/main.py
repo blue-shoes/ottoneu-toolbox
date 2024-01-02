@@ -10,8 +10,11 @@ import datetime
 import threading
 import requests
 import sys
+from typing import Dict
 
+from ui.app_controller import Controller
 from ui.dialog import preferences, progress, league_select, value_select, help, update
+from ui.toolbox_view import ToolboxView
 from ui.start import Start
 from ui.draft_tool import DraftTool
 from ui.values import ValuesCalculation
@@ -23,7 +26,7 @@ from dao import db_update
    
 __version__ = '1.3.0'
 
-class Main(tk.Tk):
+class Main(tk.Tk, Controller):
 
     def __init__(self, debug=False, demo_source=False, resource_path=None, *args, **kwargs):
         tk.Tk.__init__(self, *args, **kwargs)
@@ -60,7 +63,7 @@ class Main(tk.Tk):
         self.container.grid_rowconfigure(0, weight=1)
         self.container.grid_columnconfigure(0, weight=1)
 
-        self.frames = {}
+        self.frames:Dict[str, ToolboxView] = {}
         self.frame_type = {}
         self.current_page = None
         self.create_frame(Start)
@@ -81,7 +84,7 @@ class Main(tk.Tk):
 
         self.protocol("WM_DELETE_WINDOW", self.exit)
     
-    def create_frame(self, frame : tk.Frame):
+    def create_frame(self, frame : ToolboxView):
         page_name = frame.__name__
         self.frame_type[page_name] = frame
         frame = frame(parent=self.container, controller=self)
@@ -207,12 +210,7 @@ class Main(tk.Tk):
         help.Dialog(self, 'contact.txt')
 
     def exit(self):
-        if(self.current_page.exit_tasks()):
-            self.destroy()
-
-    def exit_tasks(self):
-        #To be implemented in child classes
-        return True
+        self.destroy()
 
     def open_preferences(self):
         preferences.Dialog(self)
@@ -261,7 +259,7 @@ class Main(tk.Tk):
     def show_league_analysis(self):
         self.show_frame(League_Analysis.__name__)
     
-    def select_league(self):
+    def select_league(self) -> None:
         dialog = league_select.Dialog(self)
         if dialog.league is not None :
             if dialog.league.is_linked():
@@ -279,15 +277,13 @@ class Main(tk.Tk):
                 pd.destroy()
             else:
                 self.league = dialog.league
-            if hasattr(self.frames[self.current_page], 'league_change') and callable(self.frames[self.current_page].league_change):
-                self.frames[self.current_page].league_change()
+            self.frames[self.current_page].league_change()
     
-    def select_value_set(self):
+    def select_value_set(self) -> None:
         dialog = value_select.Dialog(self.container, self)
         if dialog.value is not None:
             self.value_calculation = dialog.value
-            if hasattr(self.frames[self.current_page], 'value_change') and callable(self.frames[self.current_page].value_change):
-                self.frames[self.current_page].value_change()
+            self.frames[self.current_page].value_change()
 
     def exit(self):
         self.destroy()    

@@ -6,6 +6,7 @@ from typing import List
 from domain.domain import League, ValueCalculation, Team, Roster_Spot, PlayerValue, Player
 from domain.enum import Position, AvgSalaryFom, Preference as Pref, Platform
 from services import projected_keeper_services
+from ui.toolbox_view import ToolboxView
 from ui.table.table import ScrollableTreeFrame
 from util import date_util
 
@@ -16,7 +17,7 @@ class Surplus(tk.Frame):
     value_calc:ValueCalculation
     inflation:float
 
-    def __init__(self, parent, view):
+    def __init__(self, parent:tk.Frame, view:ToolboxView):
         tk.Frame.__init__(self, parent)
 
         self.parent = parent

@@ -2,9 +2,11 @@ import tkinter as tk
 from tkinter import *              
 from tkinter import ttk 
 
+from ui.app_controller import Controller
+from ui.toolbox_view import ToolboxView
 
-class Start(tk.Frame):
-    def __init__(self, parent, controller):
+class Start(ToolboxView):
+    def __init__(self, parent:tk.Frame, controller:Controller):
         tk.Frame.__init__(self, parent)
         self.controller = controller
         main_lbl = ttk.Label(self, text = "Select a module", font='bold')
@@ -23,6 +25,12 @@ class Start(tk.Frame):
     def leave_page(self):
         return True
 
+    def league_change(self) -> bool:
+        return True
+
+    def value_change(self) -> bool:
+        return True
+
     def create_player_values_click(self):
         self.controller.show_player_values()
 
@@ -34,13 +42,3 @@ class Start(tk.Frame):
     
     def exit(self):
         self.controller.exit()   
-
-#def main():
-#    try:
-#        program = OttoneuToolBox()
-#    except Exception as e:
-#        logging.exception("Error encountered")
-#        mb.showerror("Error", f'Fatal program error. See ./logs/toolbox.log')
-
-#if __name__ == '__main__':
-#    main()

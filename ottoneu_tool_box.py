@@ -1,4 +1,4 @@
-from ui import main
+from ui.main import Main
 import sys, getopt, os, shutil
 import icecream
 from icecream.icecream import ic
@@ -10,7 +10,7 @@ def resource_path(end_file) -> str:
     base_path = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
     return os.path.join(base_path, 'resources', end_file)
 
-if __name__ == "__main__":
+def main():
     icecream.install() #Install icecream debugger for use in rest of program
     args = sys.argv[1:]
     try:
@@ -40,7 +40,7 @@ if __name__ == "__main__":
                 bkup_db = os.path.join(bkup_path, 'otto_toolbox.db')
                 shutil.move(db_loc, bkup_db)
             shutil.copy(arg, db_loc)
-    app = main.Main(debug = debug, demo_source=demo_source, resource_path=resource_path)
+    app = Main(debug = debug, demo_source=demo_source, resource_path=resource_path)
     try:
         app.mainloop()
     except Exception as Argument:
@@ -54,4 +54,6 @@ if __name__ == "__main__":
             os.remove(db_loc)
             if bkup_db is not None:
                 shutil.move(bkup_db, db_loc)
-    
+
+if __name__ == "__main__":
+    main()

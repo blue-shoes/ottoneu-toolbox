@@ -6,6 +6,8 @@ from typing import List
 
 from math import ceil
 
+from ui.app_controller import Controller
+from ui.toolbox_view import ToolboxView
 from domain.domain import League, ValueCalculation, Team, Roster_Spot
 from domain.enum import Position, ScoringFormat, InflationMethod, Preference as Pref
 from services import league_services, projected_keeper_services, calculation_services
@@ -13,14 +15,14 @@ from ui.dialog import progress
 from ui.view import standings, surplus
 from util import date_util
 
-class League_Analysis(tk.Frame):
+class League_Analysis(ToolboxView):
 
     league:League
     value_calculation:ValueCalculation
     offseason:bool
     inflation_method:InflationMethod
 
-    def __init__(self, parent, controller):
+    def __init__(self, parent:tk.Frame, controller:Controller):
         tk.Frame.__init__(self, parent, height=600, width=1300)
         self.parent = parent
         self.controller = controller
@@ -97,6 +99,7 @@ class League_Analysis(tk.Frame):
         self.surplus.pack(side=LEFT, fill='both', expand=True)
     
     def toggle_offseason(self):
+        #TODO: Implement this
         ...
 
     def league_change(self):
