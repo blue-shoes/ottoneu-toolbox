@@ -254,6 +254,9 @@ class ScrollableTreeFrame(ttk.Frame):
 
         self.table = Table(parent, columns, column_alignments, column_widths, sortable_columns, reverse_col_sort, hscroll, init_sort_col, custom_sort, checkbox, pack)
         self.table.add_scrollbar()
+    
+    def refresh(self) -> None:
+        self.table.refresh()
 
 def bool_to_table(val):
     if val:
