@@ -193,6 +193,8 @@ def __project_team_results(team:Team, value_calc:ValueCalculation, format:Scorin
             if inflation is not None:
                 if keepers:
                     keeper_player_ids = [pk.player_id for pk in keepers]
+                else:
+                    keeper_player_ids = []
                 salaries = 0
                 count = 0
                 non_productive = 0
