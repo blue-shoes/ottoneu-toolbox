@@ -3,7 +3,7 @@ from tkinter import *
 from tkinter import ttk 
 from domain.domain import League
 from domain.enum import Platform
-from services import league_services, ottoneu_services, yahoo_services
+from services import league_services, ottoneu_services, yahoo_services, position_set_services, starting_positions_services
 from ui.dialog import progress
 from ui.dialog.wizard import wizard, yahoo_setup
 from ui.tool.tooltip import CreateToolTip
@@ -61,6 +61,8 @@ class Wizard(wizard.Wizard):
         prog.set_task_title('Saving league')
         prog.set_completion_percent(20)
         if self.league.platform == Platform.OTTONEU:
+            self.league.position_set = position_set_services.get_ottoneu_position_set()
+            self.league.starting_set = starting_positions_services.get_ottoneu_position_set()
             lg = league_services.save_league(self.league)
             self.parent.league = ottoneu_services.refresh_league(lg.index, pd=prog)
         elif self.league.platform == Platform.YAHOO:
