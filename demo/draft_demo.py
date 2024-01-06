@@ -11,6 +11,18 @@ from domain.exception import InputException
 demo_trans= '.\\demo\\data\\output\\draft_list.csv'
 yahoo_demo_trans = '.\\demo\\data\\output\\yahoo_draft_list.csv'
 
+yahoo_keepers = []
+
+def init_yahoo_keepers():
+    global yahoo_keepers
+    results = pd.read_csv('.\\demo\\data\\input\\yahoo_draft_results.csv')
+    #Generate random keepers
+    print('---Selecting Keepers---')
+    yahoo_keepers = results.sample(n=75)
+    for _, keeper in yahoo_keepers.iterrows():
+        print(f'\tPick: {keeper["pick"]}, key: {keeper["player_key"]}')
+    yahoo_keepers.to_csv(yahoo_demo_trans, encoding='utf-8-sig')
+
 def demo_draft(league, run_event: threading.Event, player_source='.\\demo\\data\\input\\draft_list.csv'):
     if league.platform == Platform.OTTONEU:
         results = pd.read_csv(player_source)
@@ -56,18 +68,13 @@ def demo_draft(league, run_event: threading.Event, player_source='.\\demo\\data\
                 os.remove(demo_trans)
     elif league.platform == Platform.YAHOO:
         results = pd.read_csv('.\\demo\\data\\input\\yahoo_draft_results.csv')
-        #Generate random keepers
-        print('---Selecting Keepers---')
-        keepers = results.sample(n=75)
-        for _, keeper in keepers.iterrows():
-            print(f'\tPick: {keeper["pick"]}, key: {keeper["player_key"]}')
         index = 0
         print('---BEGINNING DRAFT---')
         while index < len(results) and not run_event.is_set():
             run_event.wait(randint(2,8))
             picked = results.iloc[:index]
             print(results.iloc[index])
-            pick_df = pd.concat([picked, keepers]).drop_duplicates().reset_index(drop=True)
+            pick_df = pd.concat([picked, yahoo_keepers]).drop_duplicates().reset_index(drop=True)
             pick_df.to_csv(yahoo_demo_trans, encoding='utf-8-sig')
             index += 1
         print('---DRAFT COMPLETE---')

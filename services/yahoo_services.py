@@ -16,6 +16,7 @@ from datetime import datetime
 import threading
 from time import sleep
 import logging
+import os
 
 game_id:str = ''
 
@@ -168,6 +169,8 @@ def resolve_draft_results_against_rosters(league:League, value_calc:ValueCalcula
     '''Gets the latest draft information and updates rosters to reflect newly rostered or cut players.'''
     if demo_source:
         logging.debug("demo_source")
+        if not os.path.exists(draft_demo.yahoo_demo_trans):
+            draft_demo.init_yahoo_keepers()
         trans = pd.read_csv(draft_demo.yahoo_demo_trans)
         draft_results = []
         for _, row in trans.iterrows():
