@@ -128,7 +128,7 @@ class League_Analysis(ToolboxView):
             add_player = self.__is_use_keepers() and self.league.is_keeper(roster_spot.player_id)
             self.inflation = league_services.update_league_inflation(self.league, self.value_calculation.get_player_value(roster_spot.player_id, Position.OVERALL), roster_spot, inf_method=self.inflation_method, add_player=add_player)
         self.inflation_sv.set(f'League Inflation: {"{:.1f}".format(self.inflation * 100)}%')
-        self.surplus.update_inflation(self.inflation)
+        self.surplus.update_inflation(self.inflation, self.inflation_method)
     
     def initialize_inflation(self):
         if self.league.is_salary_cap():
@@ -170,7 +170,7 @@ class League_Analysis(ToolboxView):
                     self.league.projected_keepers.append(projected_keeper_services.add_keeper_by_player_id(self.league, sorted_list[i][1]))
                 else:
                     self.league.projected_keepers.remove(projected_keeper_services.remove_keeper_by_league_and_player(self.league, sorted_list[i][1]))
-            self.inflation = league_services.calculate_league_inflation(self.league, self.value_calculation, use_keepers=self.__is_use_keepers())
+            self.inflation = league_services.calculate_league_inflation(self.league, self.value_calculation, use_keepers=self.__is_use_keepers(), inf_method=self.inflation_method)
         pd.complete()
         self.load_tables()
 
@@ -236,4 +236,4 @@ class League_Analysis(ToolboxView):
         thread = threading.Thread(target=self.update_league_table, args=(team_list,))
         thread.start()
         self.after(200, self.check_if_league_table_ready, thread)
-        self.surplus.player_table.table.refresh()
+        #self.surplus.player_table.table.refresh()
