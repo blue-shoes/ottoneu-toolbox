@@ -4,7 +4,7 @@ from tkinter import ttk
 from typing import List
 
 from domain.domain import League, ValueCalculation, Team, Roster_Spot, PlayerValue, Player
-from domain.enum import Position, AvgSalaryFom, Preference as Pref, Platform
+from domain.enum import Position, AvgSalaryFom, Preference as Pref, Platform, InflationMethod
 from services import projected_keeper_services
 from ui.toolbox_view import ToolboxView
 from ui.table.table import ScrollableTreeFrame
@@ -177,18 +177,24 @@ class Surplus(tk.Frame):
         else:
             self.player_table.table.sort_col = 'Rank'
     
-    def update_inflation(self, inflation:float) -> None:
+    def update_inflation(self, inflation:float, inf_method:InflationMethod) -> None:
         self.inflation = inflation
         for player_id in self.player_table.table.get_children():
             vals = self.player_table.table.item(player_id)['values']
-            pv = float(vals[5].split('$')[1])
-            inf_pv = pv * (1 + self.inflation)
-            self.player_table.table.set(player_id, [6], '$' + "{:.1f}".format(inf_pv))
-            sal = vals[4]
+            if vals[7] == 'NR':
+                continue
+            pv = float(vals[7].split('$')[1])
+            if inf_method == InflationMethod.CONVENTIONAL:
+                inf_pv = pv * (1 + self.inflation)
+            else:
+                inf_pv = (pv - 1) * (1 + self.inflation)
+            
+            self.player_table.table.set(player_id, [8], '$' + "{:.1f}".format(inf_pv))
+            sal = vals[6]
             if sal != '':
                 sal = float(sal.split('$')[1])
-                inf_surp = pv * (1 + self.inflation) - sal
-                self.player_table.table.set(player_id, [8], '$' + "{:.1f}".format(inf_surp))
+                inf_surp = inf_pv - sal
+                self.player_table.table.set(player_id, [10], '$' + "{:.1f}".format(inf_surp))
 
     def __get_fa_row(self, pv:PlayerValue) -> tuple[str]:
         vals=[]
