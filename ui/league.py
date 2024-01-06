@@ -8,10 +8,10 @@ from math import ceil
 
 from ui.app_controller import Controller
 from ui.toolbox_view import ToolboxView
-from domain.domain import League, ValueCalculation, Team, Roster_Spot
+from domain.domain import League, ValueCalculation, Team, Roster_Spot, Projected_Keeper
 from domain.enum import Position, ScoringFormat, InflationMethod, Preference as Pref
 from services import league_services, projected_keeper_services, calculation_services
-from ui.dialog import progress
+from ui.dialog import progress, optimize_keepers
 from ui.view import standings, surplus
 from util import date_util
 
@@ -141,37 +141,33 @@ class League_Analysis(ToolboxView):
         self.surplus.inflation = self.inflation
 
     def optimize_keepers(self):
-        pd = progress.ProgressDialog(self.parent, 'Optimizing Keepers')
-        if self.league.projected_keepers is not None:
+        dialog = optimize_keepers.Dialog(self, self.inflation)
+        if not dialog.target_inflation:
+            return
+        prog = progress.ProgressDialog(self.parent, 'Optimizing Keepers')
+        prog.increment_completion_percent(5)
+        if dialog.keep_current and self.league.projected_keepers is not None:
             orig_keepers = [pk.player_id for pk in self.league.projected_keepers]
         else:
             orig_keepers = []
-        while(True):
-            pd.increment_completion_percent(5)
-            discrepancies = []
-            overpredict=False
-            underpredict=False
-            for team in self.league.teams:
-                for rs in team.roster_spots:
-                    pv = self.value_calculation.get_player_value(rs.player_id, Position.OVERALL)
-                    if pv is None:
-                        continue
-                    if pv.value * (1 + self.inflation) > rs.salary and not self.league.is_keeper(pv.player_id):
-                        discrepancies.append((pv.value * (1 + self.inflation) - rs.salary, rs.player_id))
-                        overpredict=True
-                    elif pv.value * (1 + self.inflation) < rs.salary and self.league.is_keeper(pv.player_id) and not pv.player_id in orig_keepers:
-                        discrepancies.append((rs.salary - (pv.value * (1 + self.inflation)), rs.player_id))
-                        underpredict=True
-            if len(discrepancies) < 2 or (overpredict and underpredict):
-                break
-            sorted_list = sorted(discrepancies, reverse=True)
-            for i in range(0, ceil(2*len(sorted_list)/3)):
-                if overpredict:
-                    self.league.projected_keepers.append(projected_keeper_services.add_keeper_by_player_id(self.league, sorted_list[i][1]))
-                else:
-                    self.league.projected_keepers.remove(projected_keeper_services.remove_keeper_by_league_and_player(self.league, sorted_list[i][1]))
-            self.inflation = league_services.calculate_league_inflation(self.league, self.value_calculation, use_keepers=self.__is_use_keepers(), inf_method=self.inflation_method)
-        pd.complete()
+        self.league.projected_keepers.clear()
+        projected_keeper_services.clear_keepers_for_league(self.league)
+        prog.increment_completion_percent(15)
+        inc = 70 // self.league.num_teams
+        for team in self.league.teams:
+            for rs in team.roster_spots:
+                if rs.player_id in orig_keepers:
+                    self.league.projected_keepers.append(projected_keeper_services.add_keeper_and_return(self.league, rs.player)) 
+                    continue
+                pv = self.value_calculation.get_player_value(rs.player_id, Position.OVERALL)
+                if pv is None:
+                    continue
+                if pv.value * (1 + dialog.target_inflation) > rs.salary:
+                    self.league.projected_keepers.append(projected_keeper_services.add_keeper_and_return(self.league, rs.player))    
+            prog.increment_completion_percent(inc) 
+        
+        self.inflation = league_services.calculate_league_inflation(self.league, self.value_calculation, use_keepers=self.__is_use_keepers(), inf_method=self.inflation_method)
+        prog.complete()
         self.load_tables()
 
     def clear_keepers(self):

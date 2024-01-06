@@ -43,6 +43,13 @@ def remove_keeper(keeper:Projected_Keeper) -> None:
         session.delete(_keeper)
         session.commit()
 
+def clear_keepers_for_league(league:League) -> None:
+    with Session() as session:
+        keepers = session.query(Projected_Keeper).filter_by(league_id=league.index).all()
+        for keeper in keepers:
+            session.delete(keeper)
+        session.commit()
+
 def add_keeper_and_return(league:League, player:Player) -> Projected_Keeper:
     with Session() as session:
         keeper = Projected_Keeper()
