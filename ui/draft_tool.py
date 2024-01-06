@@ -83,7 +83,7 @@ class DraftTool(ToolboxView):
     
     def on_show(self):
         if self.controller.league is None or not league_services.league_exists(self.controller.league):
-            self.controller.select_league()
+            self.controller.select_league(yahoo_refresh=False)
         if self.controller.value_calculation is None or len(self.controller.value_calculation.values) == 0:
             self.controller.select_value_set()
         if self.controller.league is None or self.controller.value_calculation is None:
@@ -113,6 +113,9 @@ class DraftTool(ToolboxView):
         return True
 
     def leave_page(self):
+        self.run_event.set()
+        if self.league.platform == Platform.YAHOO:
+            self.controller.league = league_services.get_league(self.league.index)
         return True
     
     def salary_information_refresh(self):
@@ -646,7 +649,13 @@ class DraftTool(ToolboxView):
 
     def __refresh_thread(self):
         last_time = datetime.now() - timedelta(minutes=30)
-        delay = 45
+        if self.league.platform == Platform.OTTONEU:
+            delay = 45
+        elif self.league.platform == Platform.YAHOO:
+            delay = 90
+        else:
+            logging.warning(f'Cannot get refresh thread for league platform {self.league.platform.value}')
+            return
         if self.demo_source:
             last_time = datetime.now() - timedelta(days=10)
             #speed up loop refresh for demo
@@ -1103,6 +1112,11 @@ class DraftTool(ToolboxView):
         self.rostered_detached_id_map = {}
         self.removed_detached_id_map = {}
         self.player_to_round_map = {}
+
+        if self.league.platform == Platform.YAHOO:
+            for team in self.league.teams:
+                team.roster_spots.clear()
+            yahoo_services.resolve_draft_results_against_rosters(self.league, self.value_calculation, self.inflation_method, self.demo_source)
 
         for team in self.league.teams:
             for rs in team.roster_spots:

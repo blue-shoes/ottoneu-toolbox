@@ -259,14 +259,14 @@ class Main(tk.Tk, Controller):
     def show_league_analysis(self):
         self.show_frame(League_Analysis.__name__)
     
-    def select_league(self) -> None:
+    def select_league(self, yahoo_refresh:bool=True) -> None:
         dialog = league_select.Dialog(self)
         if dialog.league is not None :
             if dialog.league.is_linked():
                 pd = progress.ProgressDialog(self, title='Updating League')
                 if dialog.league.platform == Platform.OTTONEU:
                     self.league = ottoneu_services.refresh_league(dialog.league.index, pd=pd)
-                elif dialog.league.platform == Platform.YAHOO:
+                elif dialog.league.platform == Platform.YAHOO and yahoo_refresh:
                     try:
                         self.league = yahoo_services.refresh_league(dialog.league.index, pd=pd)
                     except requests.exceptions.HTTPError:

@@ -14,7 +14,7 @@ class Controller(ABC):
     resource_path:str
 
     @abstractclassmethod
-    def select_league(self) -> None:
+    def select_league(self, yahoo_refresh:bool=True) -> None:
         pass
 
     @abstractclassmethod
