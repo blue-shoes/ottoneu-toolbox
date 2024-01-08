@@ -221,7 +221,7 @@ class League_Analysis(ToolboxView):
         if calc_thread.is_alive():
             self.after(200, self.check_if_league_table_ready, calc_thread)
         else:
-            self.standings.standings_table.table.refresh()
+            self.standings.refresh()
 
     def update(self, team:Team=None, roster_spot:Roster_Spot=None):
         if team is None:
