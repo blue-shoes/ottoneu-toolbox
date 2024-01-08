@@ -1,0 +1,7 @@
+beautifulsoup4==4.12.2
+keyring==23.13.1
+requests==2.31.0
+webdriver_manager==4.0.1
+sqlalchemy==2.0.8
+pandas==1.4.3
+selenium==4.15.2
