@@ -144,84 +144,107 @@ class BatValues():
     def __position_is_base(self, pos:P) -> bool:
         return P.position_is_base(pos, self.position_keys)
 
-    def are_games_filled(self) -> bool:
+    def are_games_filled(self, df:DataFrame, multi_pos:P=None, multi_pos_idx:int=0) -> bool:
         num_teams = self.num_teams
         '''Returns true if all positions have at least the minimum required games filled above replacement level for the league.'''
         filled_games = True
+        non_util_filled = True
+        excess_games_dict = {}
         for pos in self.position_keys:
             if self.__position_is_base(pos):
-                if self.total_games[pos.value] < num_teams * self.target_games * self.start_count[pos] and self.max_rost_num[pos.value] > self.replacement_positions[pos.value]:
+                excess_games = self.total_games[pos.value] - num_teams * self.target_games * self.start_count[pos]
+                excess_games_dict[pos.value] = excess_games
+                if  excess_games < 0 and self.max_rost_num[pos.value] > self.replacement_positions[pos.value]:
                     self.games_filled[pos.value] = False
                     filled_games = False
+                    non_util_filled = False
                 else:
                     self.games_filled[pos.value] = True
         if not filled_games:
             return filled_games
         
+        component_excess = {}
         for pos in self.position_keys:
             if not self.__position_is_base(pos):
-                if pos == P.POS_MI:
-                    position_count = self.start_count[P.POS_2B] + self.start_count[P.POS_SS] + self.start_count[P.POS_MI]
-                    if self.total_games['SS'] + self.total_games['2B'] < num_teams * self.target_games * position_count:
-                        if self.max_rost_num['SS'] > self.replacement_positions['SS']:
-                            self.games_filled['SS'] = False
-                        if self.max_rost_num['2B'] > self.replacement_positions['2B']:
-                            self.games_filled['2B'] = False
-                        if not self.games_filled['SS'] or not self.games_filled['2B']:
-                            filled_games = False
-                elif pos == P.POS_CI:
-                    position_count = self.start_count[P.POS_1B] + self.start_count[P.POS_3B] + self.start_count[P.POS_CI]
-                    if self.total_games['1B'] + self.total_games['3B'] < num_teams * self.target_games * position_count:
-                        if self.max_rost_num['1B'] > self.replacement_positions['1B']:
-                            self.games_filled['1B'] = False
-                        if self.max_rost_num['3B'] > self.replacement_positions['3B']:
-                            self.games_filled['3B'] = False
-                        if not self.games_filled['1B'] or not self.games_filled['3B']:
-                            filled_games = False
-                elif pos == P.POS_INF:
-                    position_count = self.start_count[P.POS_1B] + self.start_count[P.POS_3B] + self.start_count.get(P.POS_CI, 0) \
-                        + self.start_count[P.POS_2B] + self.start_count[P.POS_SS] + self.start_count.get(P.POS_MI, 0) + self.start_count[P.POS_INF]
-                    if self.total_games['1B'] + self.total_games['3B'] + self.total_games['2B'] + self.total_games['SS'] < num_teams * self.target_games * position_count:
-                        if self.max_rost_num['1B'] > self.replacement_positions['1B']:
-                            self.games_filled['1B'] = False
-                        if self.max_rost_num['3B'] > self.replacement_positions['3B']:
-                            self.games_filled['3B'] = False
-                        if self.max_rost_num['SS'] > self.replacement_positions['SS']:
-                            self.games_filled['SS'] = False
-                        if self.max_rost_num['2B'] > self.replacement_positions['2B']:
-                            self.games_filled['2B'] = False
-                        if not self.games_filled['1B'] or not self.games_filled['3B'] or not self.games_filled['SS'] or not self.games_filled['2B']:
-                            filled_games = False
-                elif pos == P.POS_OF:
-                    position_count = self.start_count[P.POS_LF] + self.start_count[P.CF] + self.start_count[P.POS_RF] + self.start_count[P.POS_OF]
-                    if self.total_games['LF'] + self.total_games['CF'] + self.total_games['RF'] < num_teams * self.target_games * position_count:
-                        if self.max_rost_num['LF'] > self.replacement_positions['LF']:
-                            self.games_filled['LF'] = False
-                        if self.max_rost_num['CF'] > self.replacement_positions['CF']:
-                            self.games_filled['CF'] = False
-                        if self.max_rost_num['RF'] > self.replacement_positions['RF']:
-                            self.games_filled['RF'] = False
-                        if not self.games_filled['LF'] or not self.games_filled['CF'] or not self.games_filled['RF']:
-                            filled_games = False
-                elif pos == P.POS_UTIL:
+                if pos == P.POS_UTIL:
                     if self.are_util_games_filled(num_teams):
                         self.games_filled['Util'] = True
                     else:
                         self.games_filled['Util'] = False
                         filled_games = False
+                else:
+                    position_count = sum([self.start_count[sub_pos[0]] for sub_pos in pos.component_pos]) + self.start_count[pos.value]
+                    total_game_sum = sum([self.total_games[sub_pos[0]] for sub_pos in pos.component_pos])
+                    excess_games = total_game_sum - num_teams * self.target_games * position_count
+                    excess_games_dict[pos.value] = excess_games
+                    for sub_pos in pos.component_pos:
+                        component_excess[sub_pos[0]] = excess_games_dict.pop(sub_pos[0])
+                    if excess_games < 0:
+                        for sub_pos in pos.component_pos:
+                            if P.position_is_base(P._value2member_map_[sub_pos[0]], self.position_keys):
+                                if self.max_rost_num[sub_pos[0]] > self.replacement_positions[sub_pos[0]]:
+                                    self.games_filled[sub_pos[0]] = False
+                                    filled_games = False
+                                    non_util_filled = False
 
+        max_excess = -999
+        pos_val = None
+        for pos, excess in excess_games_dict.items():
+            if pos in self.replacement_levels and self.replacement_levels[pos] == self.replacement_levels.get(P.POS_UTIL.value, None): continue
+            if excess > max_excess:
+                max_excess = excess
+                pos_val = pos
+        if not non_util_filled and max_excess > self.target_games:
+            adj_pos = None
+            pos = P._value2member_map_[pos_val]
+            if not P.position_is_base(pos, self.position_keys):
+                max_sub_excess = 0
+                for sub_pos in pos.component_pos:
+                    if component_excess.get(sub_pos[0], -999) > max_sub_excess:
+                        if sub_pos[0] in self.replacement_levels and self.replacement_levels[sub_pos[0]] == self.replacement_levels.get(P.POS_UTIL.value, None): continue
+                        max_sub_excess = component_excess[sub_pos[0]]
+                        max_pos = sub_pos[0]
+                adj_pos = P._value2member_map_[max_pos] 
+            else:
+                adj_pos = pos
+            if multi_pos == adj_pos:
+                index = multi_pos_idx
+            else:
+                index = self.replacement_positions[adj_pos.value]-1
+            pos_df = df.loc[df['Position(s)'].apply(P.eligible, args=(pos,))]
+            pos_df = pos_df.sort_values(self.rank_basis, ascending=False)
+            excess_games = excess
+            while (index > 0):
+                pos = pos_df.iloc[index]['Position(s)']
+                eligibilities = pos.split('/')
+                test_eligibilities = []
+                for elig in eligibilities:
+                    if elig == pos_val: continue
+                    if self.games_filled[elig]: continue
+                    test_eligibilities.append(elig)
+                if test_eligibilities:
+                    min_rl = 999
+                    for elig in test_eligibilities:
+                        if self.replacement_levels[elig] < min_rl:
+                            min_rl = self.replacement_levels[elig]
+                            min_pos = elig
+                    games = pos_df.iloc[index]['G']
+                    self.total_games[adj_pos.value] -= games
+                    self.total_games[min_pos] += games
+                    return self.are_games_filled(df, multi_pos=adj_pos, multi_pos_idx=index)
+                index -= 1
         return filled_games
     
     def are_util_games_filled(self, num_teams:int=12) -> bool:
         '''Determines if other position excesses are enough to fill Util games. Catcher games are not included in calculation.'''
-        #judgement call that you aren't using C to fill Util
         total_games = 0
         for pos in self.position_keys:
+            if pos == P.POS_C: continue
             if self.__position_is_base(pos) or pos == P.POS_UTIL:
                 total_games += self.total_games[pos.value] - self.target_games * num_teams * self.start_count[pos]
             else:
                 total_games -= self.target_games * self.start_count[pos] * num_teams
-            
+
         return total_games >= 0 and self.max_rost_num['Util'] > self.replacement_positions['Util']
 
     def get_position_fom(self, df:DataFrame) -> None:
@@ -253,7 +276,7 @@ class BatValues():
                 df['Max FOM'] = df.apply(self.calc_max_fom, axis=1)
                 self.calc_total_games(df)
                 last_inc = 0
-                while not self.are_games_filled():
+                while not self.are_games_filled(df):
                     last_inc += 1
                     if last_inc % int(self.num_teams / 3) == 0 and self.prog_dialog.progress < 70:
                         self.prog_dialog.increment_completion_percent(1)
@@ -290,7 +313,7 @@ class BatValues():
                     #Set maximum FOM value for each player to determine how many are rosterable
                     df['Max FOM'] = df.apply(self.calc_max_fom, axis=1)
                     self.calc_total_games(df)
-                    if not ScoringFormat.is_points_type(self.format) and self.are_games_filled():
+                    if not ScoringFormat.is_points_type(self.format) and self.are_games_filled(df):
                         sigma = self.iterate_roto(df)
                         self.calc_total_games(df)
                 #Augment the replacement levels by the input surpluses to get the final numbers

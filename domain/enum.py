@@ -1,6 +1,6 @@
 from __future__ import annotations
 from enum import Enum
-from typing import List, Dict
+from typing import List, Dict, Tuple
 import re
 from domain.exception import InputException
 
@@ -460,10 +460,11 @@ class Position(str, Enum):
 
     order:int
     offense:bool
+    component_pos:Tuple[Position]
     __exclude:bool
 
     def __new__(
-        cls, id: str, order: int, offense: bool = True, exclude:bool = False
+        cls, id: str, order: int, offense: bool = True, component_pos:Tuple[Position]=None, exclude:bool = False
     ) -> Position:
         obj = str.__new__(cls, id)
         obj._value_ = id
@@ -471,6 +472,7 @@ class Position(str, Enum):
         obj.order = order
         obj.offense = offense
         obj.__exclude = exclude 
+        obj.component_pos = component_pos
         return obj
 
     '''Enumeration of Ottoneu positions'''
@@ -479,21 +481,21 @@ class Position(str, Enum):
     POS_2B = ('2B', 6)
     POS_3B = ('3B', 7)
     POS_SS = ('SS', 8)
-    POS_CI = ('CI', 9)
-    POS_MI = ('MI', 10)
-    POS_INF = ('INF', 11)
-    POS_OF = ('OF', 15)
+    POS_CI = ('CI', 9, True, (POS_1B, POS_3B))
+    POS_MI = ('MI', 10, True, (POS_2B, POS_SS))
+    POS_INF = ('INF', 11, True, (POS_1B, POS_2B, POS_SS, POS_3B, POS_CI, POS_MI))
     POS_LF = ('LF', 12)
     POS_CF = ('CF', 13)
     POS_RF = ('RF', 14)
+    POS_OF = ('OF', 15, True, (POS_LF, POS_CF, POS_RF))
     POS_UTIL = ('Util', 16)
     POS_SP = ('SP', 17, False)
     POS_RP = ('RP', 18, False)   
     POS_P = ('P', 19, False)
-    POS_TWO_WAY = ('Two-Way', -1, True, True)
+    POS_TWO_WAY = ('Two-Way', -1, True, (), True)
     OFFENSE = ("Offense", 2)
     PITCHER = ("Pitcher", 3, False)
-    OVERALL = ('Overall', 1, True, True)
+    OVERALL = ('Overall', 1, True, (), True)
 
     @classmethod
     def get_offensive_pos(self) -> List[Position]:

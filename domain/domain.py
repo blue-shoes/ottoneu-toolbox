@@ -720,6 +720,11 @@ class StartingPositionSet:
             if sp.position == pos:
                 return sp.count
         return 0
+    
+    def get_base_positions(self, include_util=False) -> List[Position]:
+        '''Returns the list of base positions for the starting set. Will include the Util position if include_util is true.'''
+        positions = [pos.position for pos in self.positions]
+        return [pos for pos in positions if Position.position_is_base(pos, positions) or (include_util and pos == Position.POS_UTIL)]
 
 @reg.mapped_as_dataclass
 class StartingPosition:
