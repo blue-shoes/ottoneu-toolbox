@@ -1,7 +1,7 @@
 import copy
 from typing import Tuple, List, Dict
 
-from domain.domain import Team, Projection, Player, Projected_Keeper, CustomScoring, StartingPositionSet
+from domain.domain import Team, Projection, Player, Projected_Keeper, CustomScoring, League
 from domain.enum import StatType, ScoringFormat, Position, RankingBasis
 from domain.exception import InputException
 from services import calculation_services, player_services, projection_services
@@ -18,6 +18,7 @@ empty_pt_dict = {Position.POS_C:{},
                 Position.POS_RP:{},}
 
 def optimize_team_pt(team:Team, 
+                     league:League,
                      keepers:List[Projected_Keeper],
                      proj:Projection, 
                      format=ScoringFormat, 
@@ -31,14 +32,14 @@ def optimize_team_pt(team:Team,
                      current_pt:Dict[Position, Dict[int,int]]=None,
                      use_keepers:bool=False,
                      custom_scoring:CustomScoring=None,
-                     starting_set:StartingPositionSet=None) -> Dict[Position, Dict[int,int]]:
+                     ) -> Dict[Position, Dict[int,int]]:
     '''Creates a season lineup that maximizes the off_opt_stat and pit_opt_stat for the roster. Providing a rep_lvl dictionary will prevent players below replacement
     level from accruing stats/playing time. Providing a current_pt dictionary will inform how much playing time has alraedy been accrued by the team and will solve
     for the remaining playing time.'''
     o_opt_pg = {}
     p_opt_pg = {}
     if current_pt is None:
-        current_pt = copy.deepcopy(empty_pt_dict)
+        current_pt = {pos:{} for pos in league.get_starting_positions()}
     team.index_rs()
     keeper_index = [k.player_id for k in keepers]
     for rs in team.roster_spots:
@@ -97,19 +98,56 @@ def optimize_team_pt(team:Team,
     opt_sum = []
     opt_sum.append(0)
     for val in o_sorted:
+        stored = {}
         player = val[1][0]
         if val[1][1] == 0:
             continue
         elig_pos = player_services.get_player_positions(player, discrete=True)
+        max_opt_sum = max(opt_sum)
         for i in range(0, len(possibilities)):
             for pos in elig_pos:
                 if pos.offense:
                     last_pos = pos
-            for pos in elig_pos:
-                if pos.offense:
-                    last = (pos == last_pos)
-                    __add_pt(possibilities, pt, opt_sum, val, pos, i, last=last, rep_lvl=rep_lvl, g_limit=off_g_limit, starting_set=starting_set)
-                    first = False      
+            used_pt = []
+            for pos in league.get_starting_positions():
+                if player.pos_eligible(pos):
+                    used_pt.append((pos, sum(pt[i].get(pos, {0:0}).values())))
+            answer_key = tuple(used_pt)
+            answer_list = stored.get(answer_key, None)
+            if answer_list:
+                for idx, answers in enumerate(answer_list):
+                    for idx2, entry in enumerate(answers):
+                        if opt_sum[i] + val[1][2] * sum(entry.values()) < max_opt_sum:
+                            continue
+                        if idx < len(answer_list)-1 or idx2 < len(answers) - 1:
+                            possibilities.append(copy.copy(possibilities[i]))
+                            opt_sum.append(copy.copy(opt_sum[i]))
+                            pt.append(copy.deepcopy(pt[i]))
+                            target_index = -1
+                        else:
+                            target_index = i
+                        total_pt = 0
+                        for key, games in entry.items():
+                            pt[target_index].get(key, {})[val[0]] = games
+                            total_pt += games
+                        possibilities[target_index][val[0]] = total_pt
+                        opt_sum[target_index] = opt_sum[target_index] + total_pt * val[1][2] 
+            else:
+                answer_list = []
+                for pos in elig_pos:
+                    if pos.offense:
+                        last = (pos == last_pos)
+                        answer = __add_pt(team, league, possibilities, pt, opt_sum, val, pos, i, last=last, rep_lvl=rep_lvl, g_limit=off_g_limit, used_pos=[]) 
+                        for possibility in answer:
+                            to_delete = []
+                            for pos, g in possibility.items():
+                                if g == 0:
+                                    to_delete.append(pos)
+                            for pos in to_delete:
+                                possibility.pop(pos)
+                        if answer not in answer_list:
+                            answer_list.append(answer)
+                stored[answer_key] = answer_list
     bat_idx = max(range(len(opt_sum)), key=opt_sum.__getitem__)
     for player_id, games in possibilities[bat_idx].items():
         team.get_rs_by_player_id(player_id).g_h = games
@@ -121,12 +159,13 @@ def optimize_team_pt(team:Team,
     else:
         p_sorted = sorted(p_opt_pg.items(), key=lambda x:x[1][2], reverse=True) 
 
-    if pitch_basis == RankingBasis.PIP:
-        rp_left = rp_limit
-        sp_left = 1500 - rp_limit
-    else:
+    if pitch_basis == RankingBasis.PPG:
         rp_left = rp_limit * 26
         sp_left = sp_limit * 26
+    else:
+        rp_left = rp_limit
+        sp_left = 1500 - rp_limit
+        
     rp_left = rp_left - sum(current_pt.get(Position.POS_RP, {0:0}).values())
     sp_left = sp_left - sum(current_pt.get(Position.POS_SP, {0:0}).values())
     
@@ -156,9 +195,11 @@ def optimize_team_pt(team:Team,
             pt[bat_idx].get(Position.POS_SP, {})[player.index] = playing_time
     return pt[bat_idx]
 
-def __add_pt(possibilities:List[Dict[int, int]], 
+def __add_pt(team:Team,
+             league:League,
+             possibilities:List[Dict[int, int]], 
              pt:List[Dict[Position, Dict[int,int]]], 
-             opt_sum:List[int], 
+             opt_sum:List[float], 
              val:Tuple[int,Tuple[Player, int, float]], 
              target_pos:Position, 
              index:int, 
@@ -166,10 +207,11 @@ def __add_pt(possibilities:List[Dict[int, int]],
              used_pos:List[Position]=[], 
              used_pt:int=0, 
              rep_lvl:Dict[Position, float]=None,
-             g_limit:float=162,
-             starting_set:StartingPositionSet=None) -> None:
-    cap = starting_set.get_count_for_position(target_pos) * g_limit
+             g_limit:float=162) -> List[Dict[Position, int]]:
+    cap = league.get_starting_slots().get(target_pos, 0) * g_limit
+    results = []
     g_h = 0
+    playing_time = 0
     if sum(pt[index].get(target_pos, {0:0}).values()) < cap and (rep_lvl is None or rep_lvl.get(target_pos) < val[1][2]):
         if target_pos != Position.POS_UTIL and not last:
             possibilities.append(copy.copy(possibilities[index]))
@@ -179,7 +221,7 @@ def __add_pt(possibilities:List[Dict[int, int]],
         g_h = possibilities[index].get(val[0], 0)
         playing_time = min(val[1][1] - g_h, cap - sum(pt[index].get(target_pos, {0:0}).values()))
         if playing_time == 0:
-            return
+            return results
         pt[index].get(target_pos, {})[val[0]] = playing_time
         opt_sum[index] = opt_sum[index] + playing_time*val[1][2] 
         g_h = playing_time + g_h
@@ -187,14 +229,37 @@ def __add_pt(possibilities:List[Dict[int, int]],
         if g_h < val[1][1]:
             used_pt = g_h
             used_pos.append(target_pos)
+            sub_list = None
             for pos in player_services.get_player_positions(val[1][0], discrete=True):
                 if pos in used_pos:
                     continue
                 if pos.offense:
-                    __add_pt(possibilities, pt, opt_sum, val, pos, index=len(possibilities)-1, rep_lvl=rep_lvl, used_pos = used_pos, used_pt=used_pt, starting_set=starting_set)
+                    sub_list = __add_pt(team, league, possibilities, pt, opt_sum, val, pos, index=-1, rep_lvl=rep_lvl, used_pos = used_pos, used_pt=used_pt, g_limit=g_limit)
+                    for pos_dict in sub_list:
+                        pos_dict[target_pos] = playing_time
+                    results.extend(sub_list)
+            if not sub_list:
+                end_dict = {}
+                end_dict[target_pos] = playing_time
+                results.append(end_dict)
 
-    if (g_h + used_pt) < val[1][1]:
+    if possibilities[index].get(val[0], 0) < val[1][1]:
         used_pos.append(target_pos)
-        start_pos = [p.position for p in starting_set.positions if p.position.offense and p.position not in used_pos and val[1][0].pos_eligible(p.position)]
+        start_pos = [p for p in league.get_starting_positions() if p.offense and p not in used_pos and val[1][0].pos_eligible(p)]
         if start_pos:
-            __add_pt(possibilities, pt, opt_sum, val, start_pos[0], rep_lvl=rep_lvl, index=index, used_pos = used_pos, used_pt=used_pt, starting_set=starting_set)
+            sub_list = __add_pt(team, league, possibilities, pt, opt_sum, val, start_pos[0], rep_lvl=rep_lvl, index=index, used_pos = used_pos, used_pt=used_pt, g_limit=g_limit)
+            for pos_dict in sub_list:
+                pos_dict[target_pos] = playing_time
+            results.extend(sub_list)
+        else:
+            end_dict = {}
+            end_dict[target_pos] = playing_time
+            if end_dict not in results:
+                results.append(end_dict) 
+    else:
+        end_dict = {}
+        end_dict[target_pos] = playing_time
+        if end_dict not in results:
+            results.append(end_dict) 
+
+    return results

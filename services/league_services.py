@@ -103,12 +103,13 @@ def calculate_league_table(league:League, value_calc:ValueCalculation, fill_pt:b
     else:
         custom_scoring = None
     if in_season:
-        stats ,_, pt = Scrape_Ottoneu().scrape_standings_page(league.index, date_util.get_current_ottoneu_year())
+        if league.platform == Platform.OTTONEU:
+            stats ,_, pt = Scrape_Ottoneu().scrape_standings_page(league.index, date_util.get_current_ottoneu_year())
     if updated_teams is None or inflation is not None:
         if not league.is_salary_cap():
             inflation = None
         for team in league.teams:
-            __project_team_results(team, value_calc, league.format, fill_pt, inflation, stats=stats, accrued_pt=pt, keepers=keepers, use_keepers=use_keepers, custom_scoring=custom_scoring)   
+            __project_team_results(team, league, value_calc, league.format, fill_pt, inflation, stats=stats, accrued_pt=pt, keepers=keepers, use_keepers=use_keepers, custom_scoring=custom_scoring)   
             if prog:
                 prog.increment_completion_percent(int(75/league.num_teams))
     else:
@@ -116,7 +117,7 @@ def calculate_league_table(league:League, value_calc:ValueCalculation, fill_pt:b
             if __list_contains_team(team, updated_teams):
                 if not league.is_salary_cap():
                     inflation = None
-                __project_team_results(team, value_calc, league.format, fill_pt, inflation, stats=stats, accrued_pt=pt, keepers=keepers, use_keepers=use_keepers, custom_scoring=custom_scoring)   
+                __project_team_results(team, league, value_calc, league.format, fill_pt, inflation, stats=stats, accrued_pt=pt, keepers=keepers, use_keepers=use_keepers, custom_scoring=custom_scoring)   
     if not ScoringFormat.is_points_type(league.format) and (custom_scoring is None or not custom_scoring.points_format):
         calculate_league_cat_ranks(league, custom_scoring)
     team_list = []
@@ -130,7 +131,7 @@ def __list_contains_team(team:Team, team_list:List[Team]) -> bool:
             return True
     return False
 
-def __project_team_results(team:Team, value_calc:ValueCalculation, format:ScoringFormat, fill_pt:bool=False, 
+def __project_team_results(team:Team, league:League, value_calc:ValueCalculation, format:ScoringFormat, fill_pt:bool=False, 
                            inflation:float=None, stats:DataFrame=None, accrued_pt:DataFrame=None, keepers:List[Projected_Keeper]=[], 
                            use_keepers:bool=False, custom_scoring:CustomScoring=None) -> None:
     if accrued_pt is not None:
@@ -141,29 +142,29 @@ def __project_team_results(team:Team, value_calc:ValueCalculation, format:Scorin
     if fill_pt:
         rep_lvl = value_calc.get_rep_level_map()
         if ScoringFormat.is_h2h(format):
-            pt = roster_services.optimize_team_pt(team, keepers, value_calc.projection, format, 
+            pt = roster_services.optimize_team_pt(team, league, keepers, value_calc.projection, format, 
                                                   rep_lvl=rep_lvl, rp_limit=value_calc.get_input(CDT.RP_G_TARGET, 10), 
                                                   sp_limit=value_calc.get_input(CDT.GS_LIMIT, 10), pitch_basis=value_calc.pitcher_basis, 
                                                   off_g_limit=value_calc.get_input(CDT.BATTER_G_TARGET, 162), use_keepers=use_keepers, 
-                                                  custom_scoring=custom_scoring, starting_set=value_calc.starting_set)
+                                                  custom_scoring=custom_scoring)
         else:
-            pt = roster_services.optimize_team_pt(team, keepers, value_calc.projection, format, 
+            pt = roster_services.optimize_team_pt(team, league, keepers, value_calc.projection, format, 
                                                   rep_lvl=rep_lvl, rp_limit=value_calc.get_input(CDT.RP_IP_TARGET, 350), 
                                                   off_g_limit=value_calc.get_input(CDT.BATTER_G_TARGET, 162), use_keepers=use_keepers,
-                                                  custom_scoring=custom_scoring, starting_set=value_calc.starting_set)
+                                                  custom_scoring=custom_scoring)
     else:
         if ScoringFormat.is_h2h(format):
-            pt = roster_services.optimize_team_pt(team, keepers, value_calc.projection, format, 
+            pt = roster_services.optimize_team_pt(team, league, keepers, value_calc.projection, format, 
                                                   rp_limit=value_calc.get_input(CDT.RP_G_TARGET, 10), 
                                                   sp_limit=value_calc.get_input(CDT.GS_LIMIT, 10), pitch_basis=value_calc.pitcher_basis, 
                                                   off_g_limit=value_calc.get_input(CDT.BATTER_G_TARGET, 162), use_keepers=use_keepers,
-                                                  custom_scoring=custom_scoring, starting_set=value_calc.starting_set)
+                                                  custom_scoring=custom_scoring)
         else:
-            pt = roster_services.optimize_team_pt(team, keepers, value_calc.projection, format, 
+            pt = roster_services.optimize_team_pt(team, league, keepers, value_calc.projection, format, 
                                                   rp_limit=value_calc.get_input(CDT.RP_IP_TARGET, 350), 
                                                   off_g_limit=value_calc.get_input(CDT.BATTER_G_TARGET, 162), 
                                                   use_keepers=use_keepers,
-                                                  custom_scoring=custom_scoring, starting_set=value_calc.starting_set)
+                                                  custom_scoring=custom_scoring)
 
     if ScoringFormat.is_points_type(format):
         if stats is not None:
