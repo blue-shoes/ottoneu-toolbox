@@ -560,7 +560,7 @@ class Position(str, Enum):
         elif pos == Position.POS_OF:
             return bool(re.search('OF|LF|CF|RF', test_pos))
         elif pos == Position.PITCHER or pos == Position.POS_P:
-            for p in Position.get_discrete_pitching_pos():
+            for p in Position.get_pitching_pos():
                 if p.value in test_pos:
                     return True
             return False
