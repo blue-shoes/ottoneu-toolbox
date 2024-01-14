@@ -245,12 +245,13 @@ class StatType(int, Enum):
     display:str
     stat_list:List[str]
     rank:int
+    ratio:bool
     hitter: bool
     format: str
     higher_better: bool
 
     def __new__(
-        cls, id: int, stat_list: List[str], rank:int, hitter: bool, format:str = "{:.0f}", higher_better:bool = True
+        cls, id: int, stat_list: List[str], rank:int, ratio:bool, hitter: bool, format:str = "{:.0f}", higher_better:bool = True
     ) -> StatType:
         obj = int.__new__(cls, id)
         obj._value_ = id
@@ -258,69 +259,68 @@ class StatType(int, Enum):
         obj.display = stat_list[0]
         obj.stat_list = stat_list
         obj.rank = rank
+        obj.ratio = ratio
         obj.hitter = hitter
         obj.format = format
         obj.higher_better = higher_better
         return obj
 
-    G_HIT = (0, ['G', 'G_C', 'G_FB', 'G_SB', 'G_3B', 'G_SS', 'G_LF', 'G_CF', 'G_RF', 'G_DH'], 1, True)
-    GS_HIT = (1, ['H GS', 'GS'], 2, True)
-    PA = (2, ['PA'], 3, True)
-    AB = (3, ['AB'], 4, True)
-    R = (8, ['R'], 5, True)
-    RBI = (9, ['RBI'], 6, True)
-    H = (4, ['H'], 7, True)
-    SINGLE = (51, ['1B'], 8, True)
-    DOUBLE = (5, ['2B'], 9, True)
-    TRIPLE = (6, ['3B'], 10, True)
-    HR = (7, ['HR'], 11, True)
-    TB = (52, ['TB', 'Total Bases'], 12, True)
-    XBH = (53, ['XBH', 'Extra Base Hits'], 13, True)
-    K = (32, ['SO'], 14, True, "{:.0f}", False)
-    BB = (10, ['BB'], 15, True)
-    HBP = (12, ['HBP'], 16, True)
-    SB = (13, ['SB'], 17, True)
-    CS = (14, ['CS'], 18, True, "{:.0f}", False)
-    NET_SB = (46, ['Net SB', 'NSB'], 19, True)
-    AVG = (15, ['AVG', 'BA'], 20, True, "{:.3f}")
-    OBP = (16, ['OBP'], 21, True, "{:.3f}")
-    SLG = (17, ['SLG'], 22, True, "{:.3f}")
-    OPS = (18, ['OPS'], 23, True, "{:.3f}")
-    BABIP_H = (40, ['BABIP'], 24, True, "{:.3f}")
-    WOBA = (19, ['wOBA'], 25, True, "{:.3f}")
-    WRC_PLUS = (20, ['wRC+'], 26, True, "{:.0f}")
+    G_HIT = (0, ['G', 'G_C', 'G_FB', 'G_SB', 'G_3B', 'G_SS', 'G_LF', 'G_CF', 'G_RF', 'G_DH'], 1, False,True)
+    GS_HIT = (1, ['H GS', 'GS'], 2, False, True)
+    PA = (2, ['PA'], 3, False, True)
+    AB = (3, ['AB'], 4, False, True)
+    R = (8, ['R'], 5, False, True)
+    RBI = (9, ['RBI'], 6, False, True)
+    H = (4, ['H'], 7, False, True)
+    SINGLE = (51, ['1B'], 8, False, True)
+    DOUBLE = (5, ['2B'], 9, False, True)
+    TRIPLE = (6, ['3B'], 10, False, True)
+    HR = (7, ['HR'], 11, False, True)
+    TB = (52, ['TB', 'Total Bases'], 12, False, True)
+    XBH = (53, ['XBH', 'Extra Base Hits'], 13, False, True)
+    K = (32, ['SO'], 14, False, True, "{:.0f}", False)
+    BB = (10, ['BB'], 15, False, True)
+    HBP = (12, ['HBP'], 16, False, True)
+    SB = (13, ['SB'], 17, False, True)
+    CS = (14, ['CS'], 18, False, True, "{:.0f}", False)
+    NET_SB = (46, ['Net SB', 'NSB'], 19, False, True)
+    AVG = (15, ['AVG', 'BA'], 20, True, True, "{:.3f}")
+    OBP = (16, ['OBP'], 21, True, True, "{:.3f}")
+    SLG = (17, ['SLG'], 22, True, True, "{:.3f}")
+    OPS = (18, ['OPS'], 23, True, True, "{:.3f}")
+    BABIP_H = (40, ['BABIP'], 24, True, True, "{:.3f}")
+    WOBA = (19, ['wOBA'], 25, True, True, "{:.3f}")
+    WRC_PLUS = (20, ['wRC+'], 26, True, True, "{:.0f}")
     
+    G_PIT = (21, ['GP', 'G'], 1, False, False)
+    GS_PIT = (22, ['GS'], 2, False, False)
+    IP = (23, ['IP'], 3, False, False, "{:.1f}")
+    W = (24, ['W'], 4, False, False)
+    L = (25, ['L'], 5, False, False, "{:.0f}", False)
+    QS = (26, ['QS'], 6, False, False)
+    SO = (11, ['K', 'SO'], 7, False, False)
+    H_ALLOWED = (29, ['HA', 'H'], 8, False, False, "{:.0f}", False)
+    BB_ALLOWED = (33, ['BBA', 'BB'], 9, False, False, "{:.0f}", False)
+    HBP_ALLOWED = (34, ['HBPA', 'HBP'], 10, False, False, "{:.0f}", False)
+    HR_ALLOWED = (31, ['HRA', 'HR'], 11, False, False, "{:.0f}", False)
+    SV = (27, ['SV'], 12, False, False)
+    HLD = (28, ['HLD', 'Holds'], 13, False, False)
+    BS = (49, ['BS'], 14, False, False)
+    SVH = (50, ['SVH', 'SV+H'], 15, False, False)
+    NET_SAVES = (47, ['Net SV', 'NSV'], 16, False, False)
+    NET_SVH = (48, ['Net SVH', 'NSVH'], 17, False, False)
+    ER = (30, ['ER'], 18, False, False, "{:.0f}", False)
+    ERA = (38, ['ERA'], 19, True, False, "{:.2f}", False)
+    WHIP = (35, ['WHIP'], 20, True, False, "{:.2f}", False)
+    K_PER_9 = (36, ['K/9'], 21, True, False, "{:.2f}")
+    BB_PER_9 = (37, ['BB/9'], 22, True, False, "{:.2f}", False)
+    HR_PER_9 = (42, ['HR/9'], 23, True, False, "{:.2f}", False)
+    BABIP_P = (41, ['BABIP'], 24, True, False, "{:.3f}", False)
+    FIP = (39, ['FIP'], 25, False, True, "{:.2f}", False)
     
-    
-    G_PIT = (21, ['GP', 'G'], 1, False)
-    GS_PIT = (22, ['GS'], 2, False)
-    IP = (23, ['IP'], 3, False, "{:.1f}")
-    W = (24, ['W'], 4, False)
-    L = (25, ['L'], 5, False, "{:.0f}", False)
-    QS = (26, ['QS'], 6, False)
-    SO = (11, ['K', 'SO'], 7, False)
-    H_ALLOWED = (29, ['HA', 'H'], 8, False, "{:.0f}", False)
-    BB_ALLOWED = (33, ['BBA', 'BB'], 9, False, "{:.0f}", False)
-    HBP_ALLOWED = (34, ['HBPA', 'HBP'], 10, False, "{:.0f}", False)
-    HR_ALLOWED = (31, ['HRA', 'HR'], 11, False, "{:.0f}", False)
-    SV = (27, ['SV'], 12, False)
-    HLD = (28, ['HLD', 'Holds'], 13, False)
-    BS = (49, ['BS'], 14, False)
-    SVH = (50, ['SVH', 'SV+H'], 15, False)
-    NET_SAVES = (47, ['Net SV', 'NSV'], 16, False)
-    NET_SVH = (48, ['Net SVH', 'NSVH'], 17, False)
-    ER = (30, ['ER'], 18, False, "{:.0f}", False)
-    ERA = (38, ['ERA'], 19, False, "{:.2f}", False)
-    WHIP = (35, ['WHIP'], 20, False, "{:.2f}", False)
-    K_PER_9 = (36, ['K/9'], 21, False, "{:.2f}")
-    BB_PER_9 = (37, ['BB/9'], 22, False, "{:.2f}", False)
-    HR_PER_9 = (42, ['HR/9'], 23, False, "{:.2f}", False)
-    BABIP_P = (41, ['BABIP'], 24, False, "{:.3f}", False)
-    FIP = (39, ['FIP'], 25, False, "{:.2f}", False)
-    
-    POINTS = (43, ['Points'], -1, True, "{:.1f}")
-    PPG = (44, ['PPG'], -1, True, "{:.2f}", True)
-    PIP = (45, ['PIP'], -1, True, "{:.2f}", True)
+    POINTS = (43, ['Points'], -1, False, True, "{:.1f}")
+    PPG = (44, ['PPG'], -1, True, True, "{:.2f}", True)
+    PIP = (45, ['PIP'], -1, True, True, "{:.2f}", True)
 
     @property
     def rate_denom(self) -> StatType:
