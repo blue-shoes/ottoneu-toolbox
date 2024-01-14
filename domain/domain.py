@@ -38,6 +38,10 @@ class Player:
 
     def __hash__(self) -> int:
         return hash(self.index)
+    
+    @reconstructor
+    def init_on_load(self):
+        self.__is_eligible = {}
 
     def get_fg_id(self) -> object:
         '''Returns the FanGraphs Major League id, if available, otherwise returns the FanGraphs Minor League id.'''
@@ -48,11 +52,17 @@ class Player:
     
     def pos_eligible(self, pos: Position) -> bool:
         '''Returns if the Player is eligible at the input Position.'''
+        if self.__is_eligible:
+            eligible = self.__is_eligible.get(pos, None)
+            if eligible:
+                return eligible 
         if self.custom_positions:
             test_pos = self.custom_positions
         else:
             test_pos = self.position
-        return Position.eligible(test_pos, pos)
+        eligible = Position.eligible(test_pos, pos)
+        self.__is_eligible[pos] = eligible
+        return eligible
     
     def is_two_way(self) -> bool:
         '''Returns if the player is eligible at both hitting and pitching positions.'''
@@ -122,6 +132,8 @@ class League:
     @reconstructor
     def init_on_load(self):
         self.draft_results = {}
+        self.__starting_positions = []
+        self.__starting_slots = {}
 
     def is_salary_cap(self) -> bool:
         return self.team_salary_cap != -1
@@ -189,6 +201,20 @@ class League:
     
     def is_linked(self):
         return self.site_id != -1
+
+    def get_starting_positions(self) -> List[Position]:
+        if self.__starting_positions:
+            return self.__starting_positions
+        self.__starting_positions = [p.position for p in self.starting_set.positions]
+
+        return self.__starting_positions
+    
+    def get_starting_slots(self) -> Dict[Position, int]:
+        if self.__starting_slots:
+            return self.__starting_slots
+        for pos in self.get_starting_positions():
+            self.__starting_slots[pos] = self.starting_set.get_count_for_position(pos)
+        return self.__starting_slots
 
 @reg.mapped_as_dataclass
 class Team:
