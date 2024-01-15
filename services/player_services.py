@@ -90,7 +90,10 @@ def get_player_positions(player:Player, discrete=False) -> List[Position]:
     '''Returns list of Positions the player is eligible fore based on paring the Player.position attribute. If discrete is false, OFFENSE, PITCHING, MI, and UTIL 
     are added to player where appropriate. If discrete is true, these are not added, other than UTIL where the player is not eligible at any other position.'''
     positions = []
-    player_pos = player.position.split("/")
+    if player.custom_positions:
+        player_pos = player.custom_positions.split('/')
+    else:
+        player_pos = player.position.split("/")
     for pos in Position.get_offensive_pos():
         if pos.value in player_pos:
             if Position.OFFENSE not in positions and not discrete:
