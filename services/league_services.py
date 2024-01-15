@@ -306,7 +306,8 @@ def calculate_league_inflation(league:League, value_calc:ValueCalculation, inf_m
         for rs in team.roster_spots:
             if use_keepers and not league.is_keeper(rs.player_id):
                 continue
-            league.total_salary += rs.salary
+            if rs.salary:
+                league.total_salary += rs.salary
             league.num_rostered += 1
             pv = value_calc.get_player_value(rs.player_id, Position.OVERALL)
             if pv is None:
@@ -317,14 +318,15 @@ def calculate_league_inflation(league:League, value_calc:ValueCalculation, inf_m
                     league.num_valued_rostered += 1
             league.total_value += val
 
-            if val < 1:
-                if rs.salary > 7:
-                    npp = 5
-                elif rs.salary < 3:
-                    npp = rs.salary
-                else:
-                    npp = min(rs.salary, 3 + (rs.salary-3) - 0.125 * pow(rs.salary-3,2))
-                league.npp_spent += npp-1
+            if rs.salary:
+                if val < 1:
+                    if rs.salary > 7:
+                        npp = 5
+                    elif rs.salary < 3:
+                        npp = rs.salary
+                    else:
+                        npp = min(rs.salary, 3 + (rs.salary-3) - 0.125 * pow(rs.salary-3,2))
+                    league.npp_spent += npp-1
     league.max_npp = (400-40) * league.num_teams - league.captured_marginal_value
     league.npp_spent = min(league.npp_spent, league.max_npp)
     return get_league_inflation(league, inf_method)

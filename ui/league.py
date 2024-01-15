@@ -118,7 +118,7 @@ class League_Analysis(ToolboxView):
         for team in self.league.teams:
             for rs in team.roster_spots:
                 pv = self.value_calculation.get_player_value(rs.player_id, Position.OVERALL)
-                if pv is not None and pv.value > rs.salary:
+                if pv is not None and rs.salary is not None and pv.value > rs.salary:
                     self.league.projected_keepers.append(projected_keeper_services.add_keeper_and_return(self.league, rs.player))
 
     def handle_inflation(self, roster_spot:Roster_Spot):

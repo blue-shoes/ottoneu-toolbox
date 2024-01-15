@@ -175,14 +175,16 @@ class Standings(tk.Frame):
             num_players = 0
             for rs in team.roster_spots:
                 if self.league.platform != Platform.OTTONEU or self.league.is_keeper(rs.player_id):
-                    salaries += rs.salary
+                    if rs.salary:
+                        salaries += rs.salary
                     pv = self.value_calc.get_player_value(rs.player_id, pos=Position.OVERALL)
                     if pv is None:
                         val = 0
                     else:
                         val = pv.value
                     tot_val += val
-                    surplus += val - rs.salary
+                    if rs.salary:
+                        surplus += val - rs.salary
                     num_players += 1
             vals.append('$' + "{:.0f}".format(salaries))
             vals.append('$' + "{:.0f}".format(tot_val))

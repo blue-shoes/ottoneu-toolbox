@@ -240,11 +240,18 @@ class Surplus(tk.Frame):
                     vals.append('$' + "{:.1f}".format(max(val-1, 0) * (1 + self.inflation) + 1))
                 else:
                     vals.append('$' + "{:.1f}".format(val))
-                vals.append('$' + "{:.1f}".format(val - rs.salary))
-                if val > 1:
-                    vals.append('$' + "{:.1f}".format(max(val-1, 0) * (1 + self.inflation) - rs.salary + 1))
-                else:
+                if rs.salary:
                     vals.append('$' + "{:.1f}".format(val - rs.salary))
+                    if val > 1:
+                        vals.append('$' + "{:.1f}".format(max(val-1, 0) * (1 + self.inflation) - rs.salary + 1))
+                    else:
+                        vals.append('$' + "{:.1f}".format(val - rs.salary))
+                else:
+                    vals.append('$' + "{:.1f}".format(val))
+                    if val > 1:
+                        vals.append('$' + "{:.1f}".format(max(val-1, 0) * (1 + self.inflation) + 1))
+                    else:
+                        vals.append('$' + "{:.1f}".format(val))
             else:
                 val = 'NR'
                 vals.extend([val, val, val, val])
@@ -275,6 +282,7 @@ class Surplus(tk.Frame):
         return vals
 
     def trade_evaluation(self):
+        #TODO: Create Trade Eval section
         ...
     
     def update_league(self, league:League) -> None:
