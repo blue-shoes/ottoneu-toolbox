@@ -48,9 +48,7 @@ class League_Analysis(ToolboxView):
 
         if self.offseason and (self.league.projected_keepers is None or len(self.league.projected_keepers) == 0):
             self.initialize_keepers()
-
         self.load_tables()
-
         return True
     
     def leave_page(self):
@@ -106,6 +104,8 @@ class League_Analysis(ToolboxView):
         self.league = self.controller.league
         if self.offseason and (self.league.projected_keepers is None or len(self.league.projected_keepers) == 0):
             self.initialize_keepers()
+        if not ScoringFormat.is_points_type(self.league.format):
+            self.standings.standings_type.set(0)
         self.load_tables()
     
     def value_change(self):
