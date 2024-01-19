@@ -316,7 +316,7 @@ class StatType(int, Enum):
     BB_PER_9 = (37, ['BB/9'], 22, True, False, "{:.2f}", False)
     HR_PER_9 = (42, ['HR/9'], 23, True, False, "{:.2f}", False)
     BABIP_P = (41, ['BABIP'], 24, True, False, "{:.3f}", False)
-    FIP = (39, ['FIP'], 25, False, True, "{:.2f}", False)
+    FIP = (39, ['FIP'], 25, True, False, "{:.2f}", False)
     
     POINTS = (43, ['Points'], -1, False, True, "{:.1f}")
     PPG = (44, ['PPG'], -1, True, True, "{:.2f}", True)
