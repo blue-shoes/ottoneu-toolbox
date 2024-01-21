@@ -295,3 +295,11 @@ def set_player_yahoo_id_with_session(player_id:int, yahoo_id:int, session) -> Pl
     player.yahoo_id = yahoo_id
     session.commit()
     return session.query(Player).filter(Player.index == player_id).first()
+
+def get_player_mlb_id(player:Player) -> int:
+    '''Returns the mlbam id for the player using the pybaseball reverse id lookup based on the FanGraphs id. Returns -1 if the player could not be found.'''
+    p_df = playerid_reverse_lookup([player.get_fg_id()], key_type='fangraphs')
+    if len(p_df) > 0:
+        return p_df.loc[0,'key_mlbam']
+    else:
+        return -1

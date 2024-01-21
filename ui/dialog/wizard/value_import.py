@@ -6,10 +6,10 @@ from tkinter import messagebox as mb
 
 from domain.domain import ValueCalculation
 from domain.enum import ScoringFormat, RankingBasis, CalculationDataType as CDT, Position, RepLevelScheme, IdType
-from ui.dialog import progress, projection_select
-from ui.dialog.wizard import wizard, projection_import
+from ui.dialog import progress, projection_select, starting_select, format_select
+from ui.dialog.wizard import wizard, projection_import, starting_position, custom_scoring
 from ui.tool.tooltip import CreateToolTip
-from services import calculation_services, projection_services
+from services import calculation_services, projection_services, starting_positions_services, custom_scoring_services
 import pandas as pd
 import datetime
 import logging
@@ -126,7 +126,7 @@ class Wizard(wizard.Wizard):
                     self.value.projection = projection_services.get_projection(self.step1.projection.index)
                 progd.set_task_title('Uploading')
                 progd.set_completion_percent(15)
-                self.value = calculation_services.save_calculation_from_file(self.value, self.step1.df, progd, rep_val=int(self.step1.rep_level_value_str.get()))
+                self.value = calculation_services.save_calculation_from_file(self.value, self.step1.df, progd, rep_val=int(self.step1.rep_level_value_str.get()), new_pos_set=self.step2.use_file_pos_bv.get())
             progd.set_task_title("Updating")
             progd.set_completion_percent(80)
             self.parent.value = calculation_services.load_calculation(self.value.index)
@@ -301,7 +301,7 @@ class Step1(tk.Frame):
         file_btn.grid(column=1,row=3, padx=5, sticky='we', columnspan=2)
         self.value_file.set(Path.home())
 
-        id_map = [IdType.OTTONEU.value, IdType.FANGRAPHS.value]
+        id_map = [IdType.OTTONEU.value, IdType.FANGRAPHS.value, IdType.MLB.value]
         ttk.Label(self, text="Player Id Type:").grid(column=0,row=4,pady=5, stick=W)
         self.id_type = StringVar()
         self.id_type.set(IdType.OTTONEU.value)
@@ -323,8 +323,17 @@ class Step1(tk.Frame):
         gt_combo.bind("<<ComboboxSelected>>", self.update_game_type)
         # TODO: Don't hardcode game types, include other types
 
-        gt_combo['values'] = (ScoringFormat.FG_POINTS.full_name, ScoringFormat.SABR_POINTS.full_name, ScoringFormat.OLD_SCHOOL_5X5.full_name, ScoringFormat.CLASSIC_4X4.full_name)
-        gt_combo.grid(column=1,row=6,pady=5, columnspan=2)
+        gt_combo['values'] = (ScoringFormat.FG_POINTS.full_name, ScoringFormat.SABR_POINTS.full_name, ScoringFormat.H2H_FG_POINTS.full_name, ScoringFormat.H2H_SABR_POINTS.full_name, ScoringFormat.OLD_SCHOOL_5X5.full_name, ScoringFormat.CLASSIC_4X4.full_name, ScoringFormat.CUSTOM.full_name)
+        gt_combo.grid(column=1,row=6,pady=5)
+
+        self.last_game_type = StringVar()
+        self.last_game_type.set(self.game_type.get())
+
+        self.custom_scoring_lbl = StringVar()
+        self.custom_scoring_lbl.set("")
+        self.custom_scoring = None
+        self.custom_scoring_button = csb = ttk.Button(self, textvariable=self.custom_scoring_lbl, command=self.set_custom_scoring_format)
+        CreateToolTip(csb, 'Select a non-Ottoneu scoring format for value creation')
 
         ttk.Label(self, text="Number of Teams:").grid(column=0, row=7,pady=5, stick=W)
         self.num_teams_str = StringVar()
@@ -333,25 +342,31 @@ class Step1(tk.Frame):
         team_entry.grid(column=1,row=7,pady=5, sticky='we', columnspan=2)
         team_entry.config(validate="key", validatecommand=(validation, '%P'))
 
-        ttk.Label(self, text="Hitter Value Basis:").grid(column=0,row=8,pady=5, stick=W)
+        ttk.Label(self, text="Starting Position Set:").grid(column=0,row=8, pady=5, stick=W)
+        self.start_set_sv = tk.StringVar()
+        self.starting_set = starting_positions_services.get_ottoneu_position_set()
+        self.start_set_sv.set(self.starting_set.name)
+        ttk.Button(self, textvariable=self.start_set_sv, command=self.select_starting_set).grid(column=1,row=8, sticky='we', columnspan=2)
+
+        ttk.Label(self, text="Hitter Value Basis:").grid(column=0,row=9,pady=5, stick=W)
         self.hitter_basis = StringVar()
         self.hitter_basis.set('P/G')
         self.hitter_basis_cb = hbcb = ttk.Combobox(self, textvariable=self.hitter_basis)
         hbcb['values'] = ('P/G','P/PA')
-        hbcb.grid(column=1,row=8,pady=5)
+        hbcb.grid(column=1,row=9,pady=5)
 
-        ttk.Label(self, text="Pitcher Value Basis:").grid(column=0,row=9,pady=5, stick=W)
+        ttk.Label(self, text="Pitcher Value Basis:").grid(column=0,row=10,pady=5, stick=W)
         self.pitcher_basis = StringVar()
         self.pitcher_basis.set('P/IP')
         self.pitcher_basis_cb = pbcb = ttk.Combobox(self, textvariable=self.pitcher_basis)
         pbcb['values'] = ('P/IP','P/G')
-        pbcb.grid(column=1,row=9,pady=5)
+        pbcb.grid(column=1,row=10,pady=5)
 
-        ttk.Label(self, text="Replacement Level Value ($): ").grid(column=0, row=10,pady=5, stick=W)
+        ttk.Label(self, text="Replacement Level Value ($): ").grid(column=0, row=11,pady=5, stick=W)
         self.rep_level_value_str = StringVar()
         self.rep_level_value_str.set("1")
         rep_level_entry = ttk.Entry(self, textvariable=self.rep_level_value_str)
-        rep_level_entry.grid(column=1,row=10,pady=5, sticky='we', columnspan=2)
+        rep_level_entry.grid(column=1,row=11,pady=5, sticky='we', columnspan=2)
         rep_level_entry.config(validate="key", validatecommand=(validation, '%P'))
         CreateToolTip(rep_level_entry, 'Sets the dollar value assigned to the replacement level player by the original calculation')
 
@@ -396,7 +411,9 @@ class Step1(tk.Frame):
 
         try:
             self.df = df = pd.read_csv(self.value_file.get())
-            self.parent.validate_msg = calculation_services.normalize_value_upload(df, ScoringFormat.get_format_by_full_name(self.game_type.get()))
+            self.parent.validate_msg = calculation_services.normalize_value_upload(df, 
+                                                                                   ScoringFormat.get_format_by_full_name(self.game_type.get()), 
+                                                                                   id_type=IdType._value2member_map_.get(self.id_type.get(), None))
         except PermissionError:
             self.parent.validate_msg = f'Error loading values file. File permission denied.'
             return False
@@ -417,16 +434,19 @@ class Step1(tk.Frame):
     
     def init_value_calc(self):
         prog = progress.ProgressDialog(self.parent, 'Initializing Value Set')
-        vc = self.parent.value
+        vc:ValueCalculation = self.parent.value
         if self.projection is not None:
             prog.set_task_title('Getting projections...')
             prog.set_completion_percent(15)
             vc.projection = projection_services.get_projection(self.projection.index, player_data=True)
         vc.format = ScoringFormat.get_format_by_full_name(self.game_type.get())
         vc.inputs = []
+        if vc.format == ScoringFormat.CUSTOM:
+            vc.set_input(CDT.CUSTOM_SCORING_FORMAT, self.custom_scoring.id)
         vc.set_input(CDT.NUM_TEAMS, float(self.num_teams_str.get()))
         vc.hitter_basis = RankingBasis.get_enum_by_display(self.hitter_basis.get())
         vc.pitcher_basis = RankingBasis.get_enum_by_display(self.pitcher_basis.get())
+        vc.starting_set = self.starting_set
         calculation_services.init_outputs_from_upload(vc, self.df, 
             ScoringFormat.get_format_by_full_name(self.game_type.get()), int(self.rep_level_value_str.get()), 
             IdType._value2member_map_.get(self.id_type.get()), prog)
@@ -445,10 +465,43 @@ class Step1(tk.Frame):
         else:
             self.projection = None
             self.sel_proj.set("No Projection Selected")
+    
+    def select_starting_set(self) -> None:
+        count = starting_positions_services.get_starting_set_count()
+        if count == 0:
+            dialog = starting_position.Dialog(self)
+        else:
+            dialog = starting_select.Dialog(self)
+        if not dialog.starting_set:
+            return
+        reload = self.starting_set != dialog.starting_set
+        self.starting_set = dialog.starting_set
+
+        self.start_set_sv.set(dialog.starting_set.name)
+
+    def set_custom_scoring_format(self) -> ScoringFormat:
+        count = custom_scoring_services.get_format_count()
+        if count == 0:
+            dialog = custom_scoring.Dialog(self)
+        else:
+            dialog = format_select.Dialog(self)
+        if dialog.scoring is None:
+            self.game_type.set(self.last_game_type.get())
+            return ScoringFormat.get_format_by_full_name(self.game_type.get())
+        self.custom_scoring = dialog.scoring
+        self.custom_scoring_lbl.set(dialog.scoring.name)
+        self.custom_scoring_button.grid(column=2, row=6)
+        return ScoringFormat.CUSTOM
 
     def update_game_type(self, event):
         game_type = ScoringFormat.get_format_by_full_name(self.game_type.get())
-        if ScoringFormat.is_points_type(game_type):
+        if game_type == ScoringFormat.CUSTOM:
+            game_type = self.set_custom_scoring_format()
+        else:
+            self.custom_scoring = None
+            self.custom_scoring_lbl.set('')
+            self.custom_scoring_button.grid_forget()
+        if (game_type == ScoringFormat.CUSTOM and self.custom_scoring is not None and self.custom_scoring.points_format) or ScoringFormat.is_points_type(game_type):
             self.hitter_basis_cb['values'] = ('P/G','P/PA')
             self.pitcher_basis_cb['values'] = ('P/IP','P/G')
             h_default = 'P/G'
@@ -462,83 +515,126 @@ class Step1(tk.Frame):
             self.hitter_basis.set(h_default)
         if not self.pitcher_basis.get() in self.pitcher_basis_cb['values']:
             self.pitcher_basis.set(p_default)
+        self.last_game_type.set(self.game_type.get())
 
 class Step2(tk.Frame):
-    def __init__(self, parent):
+    def __init__(self, parent:Wizard):
         super().__init__(parent)
         self.parent = parent
         header = tk.Label(self, text="Confirm Value Set")
         header.grid(row=0, column=0, columnspan=3)
 
-        ttk.Label(self, text="Position", font='bold').grid(row=1, column=0)
-        ttk.Label(self, text="# Rostered", font='bold').grid(row=1, column=1)
+        self.use_file_pos_bv = BooleanVar()
+        self.use_file_pos_bv.set(False)
+        self.use_file_pos_cb = ttk.Checkbutton(self, text='Set Position eligibility from file?', variable=self.use_file_pos_bv)
+        self.use_file_pos_cb.grid(row=1, column=0, columnspan=3)
+
+        self.table_frame = ttk.Frame(self)
+        self.table_frame.grid(row=2, column=0, columnspan=3)
+
+    def on_show(self):
+        if 'POS' in self.parent.step1.df.columns:
+            self.use_file_pos_bv.set(True)
+            self.use_file_pos_cb.configure(state='enable')
+        else:
+            self.use_file_pos_bv.set(False)
+            self.use_file_pos_cb.configure(state='disable')
+
+        for widget in self.table_frame.winfo_children():
+            widget.destroy()
+
+        vc = self.parent.value
+
+        ttk.Label(self.table_frame, text="Position", font='bold').grid(row=0, column=0)
+        ttk.Label(self.table_frame, text="# Rostered", font='bold').grid(row=0, column=1)
         self.bat_rep_level_lbl = StringVar()
         self.bat_rep_level_lbl.set("Rep. Level")
-        ttk.Label(self, textvariable=self.bat_rep_level_lbl, font='bold').grid(row=1, column=2)
+        ttk.Label(self.table_frame, textvariable=self.bat_rep_level_lbl, font='bold').grid(row=0, column=2)
 
-        row = 2
+        row = 1
         self.pos_rostered_sv = {}
         self.pos_rep_lvl_sv = {}
         self.pos_rep_lvl_entry = {}
-        for pos in Position.get_discrete_offensive_pos():
-            ttk.Label(self, text=pos.value).grid(row=row, column=0)
+        
+        positions = self.parent.value.starting_set.get_base_positions(include_util=True)
+        positions = sorted(positions, key=lambda p: p.order)
+
+        for pos in positions:
+            if not pos.offense:
+                continue
+            ttk.Label(self.table_frame, text=pos.value).grid(row=row, column=0)
             pos_rep = StringVar()
             pos_rep.set("--")
             self.pos_rostered_sv[pos] = pos_rep
-            ttk.Label(self, textvariable=pos_rep).grid(row=row, column=1)
+            ttk.Label(self.table_frame, textvariable=pos_rep).grid(row=row, column=1)
             rep_lvl = StringVar()
             rep_lvl.set("--")
             self.pos_rep_lvl_sv[pos] = rep_lvl
-            pos_entry = ttk.Entry(self, textvariable=rep_lvl)
+            pos_entry = ttk.Entry(self.table_frame, textvariable=rep_lvl)
             pos_entry.grid(row=row, column=2)
             self.pos_rep_lvl_entry[pos] = pos_entry
+            self.pos_rostered_sv[pos].set(int(vc.get_output(CDT.pos_to_num_rostered()[pos])))
+            rl = vc.get_output(CDT.pos_to_rep_level()[pos])
+            if rl is None or rl == -999:
+                self.pos_rep_lvl_sv[pos].set("--")
+                self.pos_rep_lvl_entry[pos].configure(state='disable')
+            else:
+                self.pos_rep_lvl_sv[pos].set("{:.2f}".format(rl))
+                self.pos_rep_lvl_entry[pos].configure(state='enable')
             row += 1
         
         self.hit_dollars_per_fom_lbl = StringVar()
         self.hit_dollars_per_fom_lbl.set('Calculated $/PAR')
-        ttk.Label(self, textvariable=self.hit_dollars_per_fom_lbl).grid(row=row, column=0)
+        ttk.Label(self.table_frame, textvariable=self.hit_dollars_per_fom_lbl).grid(row=row, column=0)
 
         self.hit_dollars_per_fom_val = StringVar()
         self.hit_dollars_per_fom_val.set('$--')
-        self.hit_dollars_entry = ttk.Entry(self, textvariable=self.hit_dollars_per_fom_val)
+        self.hit_dollars_entry = ttk.Entry(self.table_frame, textvariable=self.hit_dollars_per_fom_val)
         self.hit_dollars_entry.grid(row=row,column=1)
 
         row += 1
         
-        ttk.Label(self, text="Position", font='bold').grid(row=row, column=0)
-        ttk.Label(self, text="# Rostered", font='bold').grid(row=row, column=1)
+        ttk.Label(self.table_frame, text="Position", font='bold').grid(row=row, column=0)
+        ttk.Label(self.table_frame, text="# Rostered", font='bold').grid(row=row, column=1)
         self.pitch_rep_level_lbl = StringVar()
         self.pitch_rep_level_lbl.set("Rep. Level")
-        ttk.Label(self, textvariable=self.pitch_rep_level_lbl, font='bold').grid(row=row, column=2)
+        ttk.Label(self.table_frame, textvariable=self.pitch_rep_level_lbl, font='bold').grid(row=row, column=2)
 
         row += 1
 
-        for pos in Position.get_discrete_pitching_pos():
-
-            ttk.Label(self, text=pos.value).grid(row=row, column=0)
+        for pos in positions:
+            if pos.offense:
+                continue
+            ttk.Label(self.table_frame, text=pos.value).grid(row=row, column=0)
             pos_rep = StringVar()
             pos_rep.set("--")
             self.pos_rostered_sv[pos] = pos_rep
-            ttk.Label(self, textvariable=pos_rep).grid(row=row, column=1)
+            ttk.Label(self.table_frame, textvariable=pos_rep).grid(row=row, column=1)
             rep_lvl = StringVar()
             rep_lvl.set("--")
             self.pos_rep_lvl_sv[pos] = rep_lvl
-            pos_entry = ttk.Entry(self, textvariable=rep_lvl)
+            pos_entry = ttk.Entry(self.table_frame, textvariable=rep_lvl)
             pos_entry.grid(row=row, column=2)
             self.pos_rep_lvl_entry[pos] = pos_entry
+            self.pos_rostered_sv[pos].set(int(vc.get_output(CDT.pos_to_num_rostered()[pos])))
+            rl = vc.get_output(CDT.pos_to_rep_level()[pos])
+            if rl is None or rl == -999:
+                self.pos_rep_lvl_sv[pos].set("--")
+                self.pos_rep_lvl_entry[pos].configure(state='disable')
+            else:
+                self.pos_rep_lvl_sv[pos].set("{:.2f}".format(rl))
+                self.pos_rep_lvl_entry[pos].configure(state='enable')
             row += 1
         
         self.pitch_dollars_per_fom_lbl = StringVar()
         self.pitch_dollars_per_fom_lbl.set('Calculated $/PAR')
-        ttk.Label(self, textvariable=self.pitch_dollars_per_fom_lbl).grid(row=row, column=0)
+        ttk.Label(self.table_frame, textvariable=self.pitch_dollars_per_fom_lbl).grid(row=row, column=0)
 
         self.pitch_dollars_per_fom_val = StringVar()
         self.pitch_dollars_per_fom_val.set('$--')
-        self.pitch_dollars_entry = ttk.Entry(self, textvariable=self.pitch_dollars_per_fom_val)
+        self.pitch_dollars_entry = ttk.Entry(self.table_frame, textvariable=self.pitch_dollars_per_fom_val)
         self.pitch_dollars_entry.grid(row=row,column=1)
 
-    def on_show(self):
-        vc = self.parent.value
         if vc.get_output(CDT.HITTER_DOLLAR_PER_FOM) is None:
             self.hit_dollars_per_fom_val.set('-999')
             self.pitch_dollars_per_fom_val.set('-999')
@@ -557,27 +653,6 @@ class Step2(tk.Frame):
         self.bat_rep_level_lbl.set(f"Rep. Level ({hitter_rb})")
         pitcher_rb = vc.pitcher_basis.display
         self.pitch_rep_level_lbl.set(f"Rep. Level ({pitcher_rb})")
-
-        for pos in Position.get_discrete_offensive_pos():
-            if pos != Position.POS_UTIL:   
-                self.pos_rostered_sv[pos].set(int(vc.get_output(CDT.pos_to_num_rostered()[pos])))
-            rl = vc.get_output(CDT.pos_to_rep_level()[pos])
-            if rl is None or rl == -999:
-                self.pos_rep_lvl_sv[pos].set("--")
-                self.pos_rep_lvl_entry[pos].configure(state='disable')
-            else:
-                self.pos_rep_lvl_sv[pos].set("{:.2f}".format(rl))
-                self.pos_rep_lvl_entry[pos].configure(state='enable')
-        
-        for pos in Position.get_discrete_pitching_pos():
-            self.pos_rostered_sv[pos].set(int(vc.get_output(CDT.pos_to_num_rostered()[pos])))
-            rl = vc.get_output(CDT.pos_to_rep_level()[pos])
-            if rl is None or rl == -999:
-                self.pos_rep_lvl_sv[pos].set("--")
-                self.pos_rep_lvl_entry[pos].configure(state='disable')
-            else:
-                self.pos_rep_lvl_sv[pos].set("{:.2f}".format(rl))
-                self.pos_rep_lvl_entry[pos].configure(state='enable')
         
         if ScoringFormat.is_points_type(vc.format):
             self.hit_dollars_per_fom_lbl.set('Calculated $/PAR')
