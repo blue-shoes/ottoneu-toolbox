@@ -195,11 +195,7 @@ class ValuesCalculation(ToolboxView):
                     adv_calc_services.set_advanced_option(adv_inp, inp)
             self.update_calc_output_frame()
         pd.set_completion_percent(33)
-        if len(self.tables) > 0:
-            for table in self.tables.values():
-                if table:
-                    table.refresh()
-                    pd.increment_completion_percent(5)
+        self.redraw_tables(overall=True, pd=pd)
         self.set_display_columns()
         pd.set_completion_percent(100)
         pd.destroy()
@@ -476,24 +472,7 @@ class ValuesCalculation(ToolboxView):
         self.starting_set_lbl.set(dialog.starting_set.name)
 
         if reload:
-            for pos, table in self.tables.items():
-                if pos == Position.OVERALL or pos == Position.OFFENSE or pos == Position.PITCHER: continue
-                if not table: continue
-                for tab_id in self.tab_control.tabs():
-                    item = self.tab_control.tab(tab_id)
-                    if item['text']==pos.value:
-                        self.tab_control.hide(tab_id)
-                    self.tables[pos] = None 
-            self.create_position_tables()
-            pd = progress.ProgressDialog(self, title='Reloading Player Tables')
-            pd.increment_completion_percent(15)
-            for pos, table in self.tables.items():
-                if pos == Position.OVERALL or pos == Position.OFFENSE or pos == Position.PITCHER: continue
-                if table:
-                    table.refresh()
-                    pd.increment_completion_percent(5)
-            self.set_display_columns()
-            pd.complete()
+            self.redraw_tables()
             for widget in self.rep_level_frm.winfo_children():
                 widget.destroy()
             self.create_replacement_level_rows()
@@ -501,6 +480,27 @@ class ValuesCalculation(ToolboxView):
             for widget in self.offensive_par_frm.winfo_children():
                 widget.destroy()
             self.set_offensive_par_outputs()
+    
+    def redraw_tables(self, overall:bool=False, pd:progress.ProgressDialog=None) -> None:
+        for pos, table in self.tables.items():
+            if pos == Position.OVERALL or pos == Position.OFFENSE or pos == Position.PITCHER: continue
+            if not table: continue
+            for tab_id in self.tab_control.tabs():
+                item = self.tab_control.tab(tab_id)
+                if item['text']==pos.value:
+                    self.tab_control.hide(tab_id)
+                self.tables[pos] = None 
+        self.create_position_tables()
+        if not pd:
+            pd = progress.ProgressDialog(self, title='Reloading Player Tables')
+        pd.increment_completion_percent(15)
+        for pos, table in self.tables.items():
+            if not overall and (pos == Position.OVERALL or pos == Position.OFFENSE or pos == Position.PITCHER): continue
+            if table:
+                table.refresh()
+                pd.increment_completion_percent(5)
+        self.set_display_columns()
+        pd.complete()
 
     def set_position_set(self) -> None:
         count = position_set_services.get_position_set_count()
