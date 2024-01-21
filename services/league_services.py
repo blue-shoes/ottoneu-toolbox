@@ -252,17 +252,14 @@ def __project_team_results(team:Team, league:League, value_calc:ValueCalculation
             
             for cat in categories:
                 if cat.hitter and rs.g_h > 0 and g > 0:
-                    if cat in [StatType.AVG, StatType.SLG]:
-                        ab = (pp.get_stat(StatType.AB) / g) * rs.g_h
-                        rate_cats[cat].append((ab, pp.get_stat(cat)))
-                    elif cat == StatType.OBP:
-                        pa = (pp.get_stat(StatType.PA) / g) * rs.g_h
-                        rate_cats[cat].append((pa, pp.get_stat(cat)))
+                    if cat.ratio:
+                        denom = cat.rate_denom / g * rs.g_h
+                        rate_cats[cat].append((denom, pp.get_stat(cat)))
                     else:
                         rate = pp.get_stat(cat) / g
                         team.cat_stats[cat] = team.cat_stats.get(cat, 0) + rate * rs.g_h
                 elif not cat.hitter and rs.ip > 0 and ip > 0:
-                    if cat in [StatType.ERA, StatType.WHIP, StatType.HR_PER_9]:
+                    if cat.ratio:
                         rate_cats[cat].append((rs.ip, pp.get_stat(cat)))
                     else:
                         rate = pp.get_stat(cat) / ip
