@@ -79,7 +79,7 @@ def convertToDcPlayingTime(proj:DataFrame, ros:bool, position:bool, fg_scraper:s
     proj = proj[proj['DC'] == True]
     proj.drop('DC', axis=1, inplace=True)
     if position:
-        denom = 'PA'
+        denom = 'G'
     else:
         denom = 'IP'
     for column in proj.columns:
