@@ -466,7 +466,13 @@ class DraftTool(ToolboxView):
         return l
     
     def __sort_dual_columns(self, cols):
-        primary = float(cols[0][0][1:])
+        if cols[0][0] == 'NR':
+            if self.search_view.table.reverse_sort['Value']:
+                primary = -999
+            else:
+                primary = 999
+        else:
+            primary = float(cols[0][0][1:])
         val = cols[0][1][:-1]
         if val is None or val == '':
             secondary = 0
