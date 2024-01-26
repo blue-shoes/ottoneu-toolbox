@@ -35,7 +35,7 @@ def update_salary_info(format=ScoringFormat.ALL, pd=None) -> None:
                 session.add(player)
             else:
                 #Update player in case attributes have changed
-                player_services.update_player(player, u_player)
+                player_services.update_player(player, idx, u_player)
             players[idx] = player
 
         existing_player_ids = []

@@ -584,11 +584,9 @@ def projection_check(projs:List[DataFrame]) -> None:
     if __must_derive_stat(StatType.NET_SB, [StatType.SB, StatType.CS], hit_proj.columns):
         hit_proj[StatType.NET_SB.display] = hit_proj.apply(__calc_nsb, axis=1)
     pitch_proj = projs[1]
-    if 'FIP' not in pitch_proj.columns and set(['IP', 'SO', 'BB', 'HBP', 'HR']).issubset(pitch_proj.columns):
-        pitch_proj['FIP'] = pitch_proj.apply(__calc_fip, axis=1)
     if 'HBP' not in pitch_proj.columns and 'BB' in pitch_proj.columns:
         # If HBP allowed is blank, fill with pre-calculated regression vs BB
-        pitch_proj[StatType.HBP_ALLOWED.display] = pitch_proj[StatType.BB_ALLOWED.display].apply(lambda bb: 0.0951*bb+0.4181)
+        pitch_proj['HBP'] = pitch_proj['BB'].apply(lambda bb: 0.0951*bb+0.4181)
     if 'FIP' not in pitch_proj.columns and set(['IP', 'SO', 'BB', 'HBP', 'HR']).issubset(pitch_proj.columns):
         pitch_proj['FIP'] = pitch_proj.apply(__calc_fip, axis=1)
     if 'ERA' not in pitch_proj.columns and set(['IP', 'ER']).issubset(pitch_proj.columns):
