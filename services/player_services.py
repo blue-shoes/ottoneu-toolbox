@@ -4,6 +4,7 @@ from sqlalchemy.orm import joinedload
 from pybaseball import playerid_reverse_lookup
 import logging
 import numpy
+from pandas import Series
 
 from domain.domain import Player, Salary_Refresh, Salary_Info
 from domain.enum import ScoringFormat, Position
@@ -12,6 +13,16 @@ from dao.session import Session
 from services import salary_services
 from util import string_util
 from typing import List, Tuple
+
+team_map = {'TBY': 'TBR',
+           'CWS': 'CHW',
+           'WAS': 'WSN',
+           'AZ' : 'ARI',
+           'KC' : 'KCR',
+           'SD' : 'SDP',
+           'SF' : 'SFG',
+           'TB' : 'TBR',
+           'WSH': 'WSN'}
 
 def create_player_universe() -> None:
     '''Scrapes the Ottoneu overall Average Salary page to get Ottoverse player infromation and save it to the database, creating Players and SalaryInfos as necessary.'''
@@ -31,6 +42,30 @@ def update_player(player: Player, ottoneu_id:int, u_player:list) -> None:
     player.fg_major_id = u_player['FG MajorLeagueID']
     player.team = u_player['Org']
     player.position = u_player['Position(s)']
+
+def create_player_from_davenport(player_row:Series) -> Player:
+    '''Creates a player using the Davenport dataframe row. This may be necessary for players who do not have a major league FG Id that
+    can be linked to a MLBID via the reverse id lookup.'''
+    with Session() as session:
+        player = Player()
+        player.name = f'{player_row["First"]} {player_row["Last"]}'
+        player.team = resolve_team_to_ottoneu_standard(player_row['Team'])
+        if "Pos" in player_row:
+            pos = player_row["Pos"]
+            if pos == 'LF' or pos == 'CF' or pos == 'RF':
+                pos = 'OF'
+        else:
+            if player_row['GS'] == 0:
+                pos = 'RP'
+            elif player_row['GS'] == player_row['G']:
+                pos = 'SP'
+            else:
+                pos = 'SP/RP'
+        player.position = pos
+        player.search_name = string_util.normalize(player.name)
+        session.add(player)
+        session.commit()
+        return player
 
 def create_player(player_row:list, ottoneu_id:int=None, fg_id=None) -> Player:
     '''Creates a player with all necessary information, saves it to the database, and returns the loaded Player. Can be from either Ottoneu or FanGraphs dataset.'''
@@ -218,33 +253,33 @@ def get_player_by_name_and_team(name:str, team:str) -> Player:
         player = None    
     return player
 
+def resolve_team_to_ottoneu_standard(team_name:str) -> str:
+    global team_map
+    if team_name in team_map:
+        return team_map[team_name]
+    return team_name
+
 def match_team(player:Player, team_name:str) -> bool:
     if player.team is None:
         return False
     db_team = player.team.split(" ")[0]
     if db_team == team_name:
         return True
-    map = {'TBY': 'TBR',
-           'CWS': 'CHW',
-           'WAS': 'WSN',
-           'AZ' : 'ARI',
-           'KC' : 'KCR',
-           'SD' : 'SDP',
-           'SF' : 'SFG',
-           'TB' : 'TBR',
-           'WSH': 'WSN'}
-    if team_name in map:
-        return db_team == map.get(team_name)
+    global team_map
+    if team_name in team_map:
+        return db_team == team_map.get(team_name)
     return False
 
 def update_from_player_page(player_tuple:Tuple[int, str, str, str, str], session:Session) -> Player:
     fg_id = player_tuple[4]
     player = get_player_by_fg_id(fg_id)
     if player is None:
-        player = Player()
-        player.name = player_tuple[1]
-        player.search_name = string_util.normalize(player.name)
-        session.add(player)
+        player = get_player_by_name_and_team_no_fg_id(player_tuple[1], player_tuple[2], session)
+        if not player:
+            player = Player()
+            player.name = player_tuple[1]
+            player.search_name = string_util.normalize(player.name)
+            session.add(player)
         if isinstance(fg_id, int) or  fg_id.isnumeric():
             player.fg_major_id = int(fg_id)
         else:
@@ -268,10 +303,17 @@ def update_from_player_page(player_tuple:Tuple[int, str, str, str, str], session
     #session.commit()
     return player
 
-def get_player_by_mlb_id(player_id:int) -> Player:
+def get_player_by_mlb_id(player_id:int, name:str='', team:str='') -> Player:
     '''Retrieves a player by MLB Id using the pybaseball playerid_reverse_lookup function to find FanGraphs id'''
-    fg_id = get_fg_id_by_mlb_id(player_id)
-    return get_player_by_fg_id(fg_id)
+    id = get_fg_id_by_mlb_id(player_id)
+    if id is None or id <= 0:
+        if name and team:
+            player = get_player_by_name_and_team(name, team)
+        else:
+            player = None
+    else:
+        player = get_player_by_fg_id(str(id), force_major=True)
+    return player
 
 def get_fg_id_by_mlb_id(player_id:int) -> str:
     '''Retrieves a player's FanGraphs Id by MLB Id using the pybaseball playerid_reverse_lookup function'''
@@ -304,3 +346,38 @@ def get_player_mlb_id(player:Player) -> int:
         return p_df.loc[0,'key_mlbam']
     else:
         return -1
+
+def get_player_by_name_and_team_no_fg_id(name:str, team:str, session:Session) -> Player:
+    name = string_util.normalize(name)
+    players = session.query(Player).options(joinedload(Player.salary_info)).filter(and_(Player.search_name.contains(name), Player.fg_major_id.is_(None), Player.fg_minor_id.is_(None))).all()
+    if len(players) == 1:
+        return players[0]
+    elif len(players) == 0:
+        name_array = name.split()
+        last_idx = -1
+        players = session.query(Player).options(joinedload(Player.salary_info)).filter(and_(Player.search_name.contains(name_array[-1]), Player.fg_major_id.is_(None), Player.fg_minor_id.is_(None))).all()
+        if len(players) == 0 and len(name_array) > 2:
+            last_idx = -2
+        i = 1
+        if len(players) != 1:
+            while True: 
+                if i >= len(name_array[0]):
+                    break
+                name = f'{name_array[0][:i]}% {name_array[last_idx]}'
+                tmp_players = session.query(Player).options(joinedload(Player.salary_info)).filter(and_(Player.search_name.contains(name), Player.yahoo_id.is_(None))).all()
+                if len(tmp_players) < 1:
+                    break
+                players = tmp_players
+                if len(players) == 1:
+                    break
+                i += 1
+    players.sort(reverse=True, key=lambda p: p.get_salary_info_for_format().roster_percentage)
+    if players and len(players) > 0:
+        player = None
+        for possible_player in players:
+            if match_team(possible_player, team):
+                player = possible_player
+                break
+    else:
+        player = None    
+    return player

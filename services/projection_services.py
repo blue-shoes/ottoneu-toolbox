@@ -1,4 +1,4 @@
-from pandas import DataFrame, Index
+from pandas import DataFrame, Index, Series
 from domain.domain import PlayerProjection, Projection, ProjectionData, Player
 from scrape import scrape_fg, scrape_davenport
 from domain.enum import ProjectionType, StatType, IdType, Position
@@ -124,13 +124,11 @@ def save_projection(projection:Projection, projs:List[DataFrame], id_type:IdType
                         player = player_services.get_player_by_ottoneu_id(idx)
                         id = idx
                     elif id_type == IdType.MLB:
-                        id = player_services.get_fg_id_by_mlb_id(idx)
-                        if id is None or id <= 0:
-                            name = f"{row['First'].strip()} {row['Last'].strip()}".upper()
-                            player = player_services.get_player_by_name_and_team(name, row['Team'])
-                        else:
-                            player = player_services.get_player_by_fg_id(str(id), force_major=True)
-
+                        player = player_services.get_player_by_mlb_id(idx)
+                        id = player.index
+                    elif id_type == IdType.OTB:
+                        player = player_services.get_player(idx)
+                        id = idx
                     else:
                         raise Exception(f'Unsupported IdType {id_type}')
                     if player == None:
@@ -530,7 +528,6 @@ def __calc_k_per_9(row) -> float:
     except ZeroDivisionError:
         return 0
         
-
 def create_projection_from_download(projection: Projection, type:ProjectionType, ros:bool=False, dc_pt:bool=False, year:int=None, progress=None) -> Tuple[DataFrame, DataFrame]:
     '''Creates a Projection based on automatic download and returns the hitter and pitcher dataframes requested.'''
     projection.type = type
@@ -565,11 +562,21 @@ def create_projection_from_download(projection: Projection, type:ProjectionType,
         projs = download_projections(proj_type_url, ros, dc_pt, progress)
     elif type == ProjectionType.DAVENPORT:
         projs = scrape_davenport.Scrape_Davenport().get_projections()
+        for proj in projs:
+            proj['OTB_ID'] = proj.apply(__set_otb_id_from_davenport, axis=1)
+            proj.set_index('OTB_ID', inplace=True)
     else:
         raise InputException(f"Unhandled projection type passed to create_projection_from_download {type}")
     projection_check(projs)
     return projs[0], projs[1]
     #return save_projection(projection, projs, progress)
+
+def __set_otb_id_from_davenport(row:Series) -> int:
+    name = f'{row["First"]} {row["Last"]}'
+    player = player_services.get_player_by_mlb_id(row['MLBID'], name=name, team=row['Team'])
+    if not player:
+        player = player_services.create_player_from_davenport(row)
+    return player.index
 
 def __must_derive_stat(stat_type:StatType, base_stats:List[StatType], df_cols:Index) -> bool:
     if any(x in stat_type.stat_list for x in df_cols): return False

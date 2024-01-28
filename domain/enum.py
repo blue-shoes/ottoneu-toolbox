@@ -600,6 +600,7 @@ class IdType(Enum):
     OTTONEU = 'Ottoneu'
     FANGRAPHS = 'FanGraphs'
     MLB = 'MLBID'
+    OTB = 'OTB'
 
 class PropertyType(Enum):
     '''Enumeration of Ottoneu Toolbox propery types'''

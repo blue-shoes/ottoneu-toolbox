@@ -23,13 +23,15 @@ def update_salary_info(format=ScoringFormat.ALL, pd=None) -> None:
         players = {}
         for idx, u_player in salary_df.iterrows():
             player = session.query(Player).filter(Player.ottoneu_id == idx).first()
-            if player is None:
+            if not player:
                 #Resolve against FG id, if possible
                 if u_player['FG MajorLeagueID'] != '':
                     player = session.query(Player).filter(Player.fg_major_id == u_player['FG MajorLeagueID']).first()
                 elif u_player['FG MinorLeagueID'] != '':
                     player = session.query(Player).filter(Player.fg_minor_id == u_player['FG MinorLeagueID']).first()
-            if player is None:
+            if not player:
+                player = player_services.get_player_by_name_and_team_no_fg_id(u_player['Name'], u_player['Org'], session)
+            if not player:
                 #Player does not exist in universe, need to add
                 player = player_services.create_player(u_player, ottoneu_id=idx)
                 session.add(player)

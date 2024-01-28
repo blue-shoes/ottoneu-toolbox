@@ -60,7 +60,7 @@ class Wizard(wizard.Wizard):
         pd.set_completion_percent(15)
         if self.step1.source_var.get():
             if self.step1.proj_type.get() == ProjectionType.DAVENPORT.type_name:
-                id_type = IdType.MLB
+                id_type = IdType.OTB
             else:
                 id_type = IdType.FANGRAPHS
         else:

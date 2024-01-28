@@ -4,6 +4,7 @@ import requests
 from io import StringIO
 from typing import Tuple, List
 import os
+import logging
 
 from scrape import scrape_base
 from scrape.exceptions import DavenportException
@@ -22,7 +23,7 @@ class Scrape_Davenport(scrape_base.Scrape_Base):
 
     def __get_dataset(self, lookup_url:str, csv_url:str, lookup_col:List[str]) -> DataFrame:
         response = requests.get(lookup_url)
-        pos_lookup = pd.read_csv(StringIO(response.text), delim_whitespace=True)[lookup_col]
+        pos_lookup = pd.read_csv(StringIO(response.text), delim_whitespace=True, on_bad_lines='skip')[lookup_col]
         pos_lookup.set_index(lookup_col[0], inplace=True)
 
         s = requests.Session()
@@ -37,19 +38,22 @@ class Scrape_Davenport(scrape_base.Scrape_Base):
             df = pd.read_csv(tmp_filepath)
             df = df.loc[df['HOWEID'] != '0'] #Remove team rows
             df['MLBID'] = df.apply(self.__get_mlbid, args=(pos_lookup,lookup_col), axis=1)
-            df = df.loc[df['MLBID'] != 0] #Remove blank rows
-            df.set_index('MLBID', inplace=True)
+            df = df.loc[df['MLBID'] != -1] #Remove blank rows
             os.remove(tmp_filepath)
-        except Exception:
+        except Exception as Argument:
+            logging.exception('Davenport Exception')
             raise DavenportException('Error retrieving player projections.')
         return df
     
     def __get_mlbid(self, row, lookup, col):
         howeid = row['HOWEID']
         if pd.isna(howeid):
-            return 0
+            return -1
         #print(howeid)
-        return lookup.loc[howeid, col[1]]
+        try:
+            return lookup.loc[howeid, col[1]]
+        except KeyError:
+            return -1
 
 
 def main():
