@@ -137,7 +137,7 @@ def save_projection(projection:Projection, projs:List[DataFrame], id_type:IdType
                         elif id_type == IdType.FANGRAPHS:
                             player = player_services.create_player(row, fg_id=id)
                         else:
-                            #TODO: Decide how we want to handle this for non-FG/Ottoneu new players. Would probably need new db column and ways to resolve against FG/Ott Ids later
+                            # Creating a player needs to happen prior to this for non-Ottoneu/FG id_types. At this point it's probably too late, so we ignore
                             continue
                     seen_players[idx] = player
                     player_proj = PlayerProjection()

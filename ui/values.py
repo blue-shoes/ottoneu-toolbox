@@ -1060,6 +1060,8 @@ class ValuesCalculation(ToolboxView):
             self.value_calc = calculation_services.save_calculation(self.value_calc)
             self.controller.value_calculation = self.value_calc
             self.projection = self.value_calc.projection
+            self.starting_set = self.value_calc.starting_set
+            self.position_set = self.value_calc.position_set
             pd.set_completion_percent(100)
             pd.destroy()
     
