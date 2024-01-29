@@ -71,7 +71,7 @@ def convertToDcPlayingTime(proj:DataFrame, ros:bool, position:bool, fg_scraper:s
             fg_scraper.close()
 
     #String and rate columns that are unaffected
-    static_columns = ['playerid', 'Name', 'Team','-1','AVG','OBP','SLG','OPS','wOBA','wRC+','ADP','WHIP','K/9','BB/9','ERA','FIP']
+    static_columns = ['playerid', 'Name', 'Team','-1','AVG','OBP','SLG','OPS','wOBA','wRC+','ADP','WHIP','K/9','BB/9','HR/9','K/BB','K%','BB%','K-BB%','BABIP','WAR','RA9-WAR','LOB%','GB%','HR/FB','InterSD', 'InterSK','IntraSD','ERA','FIP']
     #Columns directly taken from DC
     dc_columns = ['G','PA','GS','IP']
     #Filter projection to only players present in the DC projection and then drop the temp DC column
@@ -80,25 +80,116 @@ def convertToDcPlayingTime(proj:DataFrame, ros:bool, position:bool, fg_scraper:s
     proj.drop('DC', axis=1, inplace=True)
     if position:
         denom = 'G'
+        for column in proj.columns:
+            if column in static_columns:
+                continue
+            elif column in dc_columns:
+                #take care of this later so we can do the rate work first
+                continue
+            else:
+                #Ration the counting stat
+                proj[column] = proj[column] / proj[denom] * dc_proj[denom]
+        #We're done with the original projection denominator columns, so now set them to the DC values
+        for column in dc_columns:
+            if column in proj.columns:
+                proj[column] = dc_proj[column]
     else:
-        denom = 'IP'
-    for column in proj.columns:
-        if column in static_columns:
-            continue
-        elif column in dc_columns:
-            #take care of this later so we can do the rate work first
-            continue
-        else:
-            #Ration the counting stat
-            proj[column] = proj[column] / proj[denom] * dc_proj[denom]
-    #We're done with the original projection denominator columns, so now set them to the DC values
-    for column in dc_columns:
-        if column in proj.columns:
-            proj[column] = dc_proj[column]
+        if 'FIP' not in proj.columns:
+            if set(['IP', 'SO', 'BB', 'HBP', 'HR']).issubset(proj.columns):
+                proj['FIP'] = proj.apply(__calc_fip, axis=1)
+            else:
+                # We don't have FIP, so we can't use that to estimate SP/RP splits. We will just extrapolate values en masse.
+                denom = 'IP'
+                for column in proj.columns:
+                    if column in static_columns:
+                        continue
+                    elif column in dc_columns:
+                        #take care of this later so we can do the rate work first
+                        continue
+                    else:
+                        #Ration the counting stat
+                        proj[column] = proj[column] / proj[denom] * dc_proj[denom]
+                #We're done with the original projection denominator columns, so now set them to the DC values
+                for column in dc_columns:
+                    if column in proj.columns:
+                        proj[column] = dc_proj[column]
+                return proj
+
+        orig_gr_per_g = (proj['G'] - proj['GS'])/proj['G']
+
+        #Based on second-order poly regression performed for all pitcher seasons from 2019-2021 with GS > 0 and GRP > 0
+        #Regression has dep variable of GRP/G (or (G-GS)/G) and IV IPRP/IP. R^2=0.9481. Possible issues with regression: overweighting
+        #of pitchers with GRP/G ratios very close to 0 (starters with few RP appearances) or 1 (relievers with few SP appearances)
+
+        orig_ip_rp = (0.7851*orig_gr_per_g**2 + 0.1937*orig_gr_per_g + 0.0328)*proj['IP']
+        orig_ip_sp = proj['IP'] - orig_ip_rp
+
+        # Using FIP and Games started/relieved split, we calculate estimated FIP splits (RP FIP ~ 0.6 lower than SP FIP), use this to estimate counting stat splits, then
+        # extrapolate these counting stat rates based on role IP. Ratios are then adjusted accoring to counting stats where possible.
+
+        sp_fip = (proj['IP']*proj['FIP'] + 0.6*orig_ip_rp)/proj['IP']
+
+        fip_ratio =  proj['FIP'] / sp_fip
+
+        new_gr_per_g = (dc_proj['G'] - dc_proj['GS'])/dc_proj['G']
+        new_ip_rp = (0.7851*new_gr_per_g**2 + 0.1937*new_gr_per_g + 0.0328)*dc_proj['IP']
+        new_ip_sp = dc_proj['IP'] - new_ip_rp
+
+        # Counting stat method created to attempt to match expected PIP split based on FIP split. PIP split calculated as linear regression of no SVH P/IP from FIP 
+        # giving a linear coefficient of -1.3274. Approximate match achieved by multiplying non-SO counting stats by the ratio of overall FIP to SP FIP to determine SO
+        # counting stats (SO unaltered). 
+
+        for column in proj.columns:
+            if column in static_columns or column in dc_columns:
+                continue
+            if column == 'SO':
+                proj[column] = (proj[column] * (dc_proj['IP'] / proj['IP'])).apply(na_to_0)
+            elif column == 'SV' or column == 'HLD':
+                proj[column] = (proj[column] * (new_gr_per_g / orig_gr_per_g)).apply(na_to_0)
+            else:
+                orig_sp_count_stat = (proj[column] * (orig_ip_sp/proj['IP']) / fip_ratio).apply(na_to_0)
+                orig_rp_count_stat = proj[column] - orig_sp_count_stat
+                proj[column] = ((orig_sp_count_stat / orig_ip_sp * new_ip_sp) + (orig_rp_count_stat / orig_ip_rp * new_ip_rp)).apply(na_to_0)
+        for column in dc_columns:
+            if column in dc_proj:
+                proj[column] = dc_proj[column]
+        for column in static_columns:
+            try:
+                if column == 'K/9':
+                    continue
+                elif column == 'K%':
+                    proj[column] = (proj['SO'] / proj['TBF']).apply(na_to_0)
+                elif column == 'BB/9':
+                    proj[column] = (proj['BB'] / proj['IP']).apply(na_to_0)
+                elif column == 'BB%':
+                    proj[column] = (proj['BB'] / proj['TBF']).apply(na_to_0)
+                elif column == 'K-BB%':
+                    proj[column] = ((proj['SO'] - proj['BB']) / proj['TBF']).apply(na_to_0)
+                elif column == 'WHIP':
+                    proj[column] = ((proj['H'] + proj['BB']) / proj['IP']).apply(na_to_0)
+                elif column == 'ERA':
+                    proj[column] = (proj['ER'] / proj['IP'] * 9).apply(na_to_0)
+                elif column == 'HR/9':
+                    proj[column] = (proj['HR'] / proj['IP'] * 9).apply(na_to_0)
+                elif column == 'FIP':
+                    proj[column] = ((sp_fip * new_ip_sp + (sp_fip - 0.6) * new_ip_rp) / proj['IP']).apply(na_to_0)
+                else:
+                    # Leave other values unaltered
+                    continue
+            except KeyError:
+                proj[column] = proj[column]
+
     return proj
 
+def na_to_0(value) -> float:
+    '''Sanitizes NA, NaN, and infinite values to 0'''
+    if value == 'NA' or math.isnan(value) or math.isinf(value):
+        return 0
+    else:
+        return value
+
 def save_projection(projection:Projection, projs:List[DataFrame], id_type:IdType, progress=None) -> Projection:
-    '''Saves the input projection and projeciton DataFrames to the database and retursn the populated Projeciton.'''
+    '''Saves the input projection and projeciton DataFrames to the database and retursn the populated Projection.'''
     with Session() as session:
         seen_players = {}
         for proj in projs:
