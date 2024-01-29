@@ -145,7 +145,7 @@ def convertToDcPlayingTime(proj:DataFrame, ros:bool, position:bool, fg_scraper:s
             if column == 'SO':
                 proj[column] = (proj[column] * (dc_proj['IP'] / proj['IP'])).apply(na_to_0)
             elif column == 'SV' or column == 'HLD':
-                proj[column] = (proj[column] * (new_gr_per_g / orig_gr_per_g)).apply(na_to_0)
+                proj[column] = dc_proj[column]
             else:
                 orig_sp_count_stat = (proj[column] * (orig_ip_sp/proj['IP']) / fip_ratio).apply(na_to_0)
                 orig_rp_count_stat = proj[column] - orig_sp_count_stat
