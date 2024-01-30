@@ -65,6 +65,7 @@ class Standings(tk.Frame):
         self.standings_table = st = ScrollableTreeFrame(standings_frame, cols,pack=False,sortable_columns=cols,reverse_col_sort=rev_cols, column_widths=widths, init_sort_col='Rank', column_alignments=align)
         st.table.tag_configure('users', background='#FCE19D')
         st.table.set_refresh_method(self.__refresh_standings)
+        st.table.set_row_select_method(self.__select_team)
         st.pack(fill='both', expand=True)
 
         roto_frame = ttk.Frame(self.tab_control)
@@ -95,11 +96,13 @@ class Standings(tk.Frame):
         st.table.set_refresh_method(self.__refresh_stats)
         st.pack(fill='both', expand=True)
     
-    def __set_click_action(self, click_action):
-        self.standings_table.table.bind('<<TreeviewSelect>>', click_action)
-    
     def __refresh_radio(self):
         self.view.update()
+    
+    def __select_team(self, event:Event):
+        if len(event.widget.selection()) == 1:
+            if getattr(self.view, 'team_selected'):
+                self.view.team_selected(int(event.widget.selection()[0]))
 
     def __refresh_standings(self):
         for team in self.league.teams:

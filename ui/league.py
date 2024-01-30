@@ -183,6 +183,12 @@ class League_Analysis(ToolboxView):
                     self.league.projected_keepers.append(projected_keeper_services.add_keeper_by_player_id(self.league, rs.player_id))
         self.load_tables()
     
+    def team_selected(self, team_site_id:int):
+        team = self.league.get_team_by_site_id(team_site_id)
+        if team:
+            self.surplus.team_sv.set(team.name)
+            self.surplus.team_changed()
+    
     def load_tables(self):
 
         if not self.league.is_salary_cap():

@@ -113,7 +113,7 @@ class Surplus(tk.Frame):
         self.team_list['values'] = tuple(name_list)
         self.team_sv.set('All Teams')
     
-    def team_changed(self, event: Event):
+    def team_changed(self, event: Event=None):
         self.player_table.table.refresh()
 
     def update_player_table(self):
