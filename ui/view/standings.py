@@ -1,9 +1,10 @@
 import tkinter as tk
 from tkinter import *              
 from tkinter import ttk 
+from typing import List
 
 from domain.domain import League, ValueCalculation, Team, CustomScoring
-from domain.enum import Position, ScoringFormat, Platform, StatType, CalculationDataType
+from domain.enum import Position, ScoringFormat, Platform, StatType, CalculationDataType, ProjectionType
 from services import custom_scoring_services
 from ui.table.table import ScrollableTreeFrame
 from ui.tool.tooltip import CreateToolTip
@@ -56,9 +57,10 @@ class Standings(tk.Frame):
         self.tab_control.add(standings_frame, text='Standings')
         #standings_frame.pack(side='left', fill='both', expand=True)
         
-        cols = self.cols
+        cols = self.cols + ('Message',)
         widths = {}
         widths['Team'] = 125
+        widths['Message'] = 500
         align = {}
         align['Team'] = W
         rev_cols = ('Rank','Team')
@@ -105,12 +107,28 @@ class Standings(tk.Frame):
                 self.view.team_selected(int(event.widget.selection()[0]))
 
     def __refresh_standings(self):
-        for team in self.league.teams:
-            tags = ''
-            if team.users_team:
-                tags=('users',)
-            self.standings_table.table.insert('', tk.END, text=team.site_id, tags=tags, values=self.__calc_values(team))
+        if not self.value_calc.projection \
+                or (self.value_calc.projection.type == ProjectionType.VALUE_DERIVED and not ScoringFormat.is_points_type(self.value_calc.format)):
+            msg = self.__create_message_value('Cannot provide standings')
+            self.standings_table.table.insert('', tk.END, iid=-2, values=msg)
+            if not self.value_calc.projection:
+                self.standings_table.table.insert('', tk.END, iid=-1, values=self.__create_message_value('No projection suppliced'))
+            else:
+                self.standings_table.table.insert('', tk.END, iid=-1, values=self.__create_message_value('Derived projection insufficient'))
+        else:
+            for team in self.league.teams:
+                tags = ''
+                if team.users_team:
+                    tags=('users',)
+                self.standings_table.table.insert('', tk.END, iid=team.site_id, tags=tags, values=self.__calc_values(team))
     
+    def __create_message_value(self, msg:str) -> List[str]:
+        msg_row = []
+        for _ in enumerate(self.cols):
+            msg_row.append(0)
+        msg_row.append(msg)
+        return msg_row
+
     def __refresh_roto(self):
         for team in self.league.teams:
             tags = ''
@@ -148,12 +166,16 @@ class Standings(tk.Frame):
         for tab_id in self.tab_control.tabs():
             item = self.tab_control.tab(tab_id)
             if item['text']=='Categories' or item['text']=='Stats':
-                if show_cats:
+                if show_cats and self.value_calc.projection and self.value_calc.projection.type != ProjectionType.VALUE_DERIVED:
                     self.tab_control.add(tab_id)
                 else:
                     self.tab_control.hide(tab_id)
 
     def __set_display_columns(self) -> None:
+        if not self.value_calc.projection \
+                or (self.value_calc.projection.type == ProjectionType.VALUE_DERIVED and not ScoringFormat.is_points_type(self.value_calc.format)):
+            self.standings_table.table.set_display_columns(('Message'))
+            return
         if self.league.is_salary_cap():
             self.standings_table.table.set_display_columns(self.cols)
         else:

@@ -431,14 +431,16 @@ def convert_vals(value) -> float:
     else:
         return float(value)
 
-def calc_fom(row, scoring_format:ScoringFormat, custom_format:CustomScoring) -> float:
+def calc_fom(row, scoring_format:ScoringFormat, custom_format:CustomScoring = None) -> float:
     if scoring_format == ScoringFormat.OLD_SCHOOL_5X5:
         return calc_old_school_fom(row)
     if scoring_format == ScoringFormat.CLASSIC_4X4:
         return calc_classic_fom(row)
     if custom_format:
-        #TODO: calc fom for custom format
-        ...
+        fom = 0
+        for cat in custom_format.stats:
+            fom += na_to_0(row[f'{cat.category.display}_FOM'])
+        return fom
     raise InputException('None CustomFormat passed to calc_fom method.')
 
 def calc_old_school_fom(row) -> float:

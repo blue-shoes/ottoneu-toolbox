@@ -204,11 +204,12 @@ class League_Analysis(ToolboxView):
         self.standings.value_calc = self.value_calculation
         self.standings.update_league(self.league)
         pd.increment_completion_percent(10)
-        league_services.calculate_league_table(self.league, self.value_calculation, \
-                                                fill_pt=(self.standings.standings_type.get() == 1), \
-                                                inflation=self.inflation,\
-                                                use_keepers=self.__is_use_keepers(),
-                                                prog=pd)
+        if self.value_calculation.projection:
+            league_services.calculate_league_table(self.league, self.value_calculation, \
+                                                    fill_pt=(self.standings.standings_type.get() == 1), \
+                                                    inflation=self.inflation,\
+                                                    use_keepers=self.__is_use_keepers(),
+                                                    prog=pd)
         pd.set_completion_percent(90)
         pd.set_task_title('Updating display')
         self.standings.refresh()
@@ -221,7 +222,8 @@ class League_Analysis(ToolboxView):
         return (self.offseason and self.standings.standings_type.get() == 1)
     
     def update_league_table(self, team_list:List):
-        league_services.calculate_league_table(self.league, self.value_calculation, self.standings.standings_type.get() == 1, self.inflation, updated_teams=team_list, use_keepers=self.__is_use_keepers())
+        if self.value_calculation.projection:
+            league_services.calculate_league_table(self.league, self.value_calculation, self.standings.standings_type.get() == 1, self.inflation, updated_teams=team_list, use_keepers=self.__is_use_keepers())
     
     def check_if_league_table_ready(self, calc_thread:threading.Thread):
         if calc_thread.is_alive():

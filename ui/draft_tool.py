@@ -510,8 +510,9 @@ class DraftTool(ToolboxView):
                 self.__check_new_cm_teams()
     
     def update(self):
-        league_services.calculate_league_table(self.league, self.value_calculation, fill_pt=False, inflation=self.inflation)
-        self.standings.refresh()
+        if self.value_calculation.projection:
+            league_services.calculate_league_table(self.league, self.value_calculation, fill_pt=False, inflation=self.inflation)
+            self.standings.refresh()
 
     def __update_ui(self):
         if self.run_event.is_set() and self.queue.empty():
@@ -693,7 +694,8 @@ class DraftTool(ToolboxView):
                         self.rostered_ids.remove(player.index)
                     self.queue.put(('data', (drafted, cut)))
                     self.inflation = self.league.inflation
-                    league_services.calculate_league_table(self.league, self.value_calculation, False, self.inflation)
+                    if self.value_calculation.projection:
+                        league_services.calculate_league_table(self.league, self.value_calculation, False, self.inflation)
                 self.run_event.wait(delay)
         logging.info('Exiting Draft Refresh Loop')
 
@@ -832,8 +834,7 @@ class DraftTool(ToolboxView):
         for pv in self.value_calculation.get_position_values(Position.OVERALL):
             stock_player = self.__get_stock_player_row(pv)
             if self.value_calculation.projection is None:
-                #TODO: update this
-                ...
+                proj_cols = tuple([0] * 9)
             else:
                 pp = self.value_calculation.projection.get_player_projection(pv.player.index)
                 h_points = calculation_services.get_points(pp, Position.OFFENSE, sabr=False, custom_format=custom_scoring)
@@ -858,9 +859,10 @@ class DraftTool(ToolboxView):
                     spppg = "{:.2f}".format(sp_points/p_g)
                 except (ZeroDivisionError, TypeError):
                     pip = spip = pppg = spppg = "0.00"
+                proj_cols = (pts, sabr_pts, ppg, hppg, pppa, pip, spip, pppg, spppg)
             sal_tup = self.__get_salary_tuple(pv.player)
             tags = self.__get_row_tags(pv.player.index)
-            self.overall_view.table.insert('', tk.END, iid=pv.player.index, values=stock_player + (pts, sabr_pts, ppg, hppg, pppa, pip, spip, pppg, spppg) + sal_tup, tags=tags)
+            self.overall_view.table.insert('', tk.END, iid=pv.player.index, values=stock_player + proj_cols + sal_tup, tags=tags)
 
     def __refresh_pos_table(self, pos:Position):
         self.rostered_detached_id_map[self.pos_view[pos]] = []
@@ -874,10 +876,25 @@ class DraftTool(ToolboxView):
             sal_tup = self.__get_salary_tuple(pv.player)
             tags = self.__get_row_tags(pv.player.index)
             point_cols = []
+            stats = []
             if self.value_calculation.projection is None:
-                ...
+                if pos.offense:
+                    point_cols = [0] * 3
+                else:
+                    point_cols = [0] * 6
             elif self.value_calculation.projection.type == ProjectionType.VALUE_DERIVED:
-                ...
+                pp = self.value_calculation.projection.get_player_projection(pv.player.index)
+                points = pp.get_stat(StatType.POINTS)
+                point_cols.append("{:.1f}".format(points))
+                if pos.offense:
+                    point_cols.append("{:.2f}".format(pp.get_stat(StatType.PPG)))
+                    point_cols.append("{:.2f}".format(pp.get_stat(StatType.PPG)))
+                else:
+                    point_cols.append("{:.1f}".format(points))
+                    point_cols.append("{:.2f}".format(pp.get_stat(StatType.PIP)))
+                    point_cols.append("{:.2f}".format(pp.get_stat(StatType.PIP)))
+                    point_cols.append("{:.2f}".format(pp.get_stat(StatType.PIP)))
+                    point_cols.append("{:.2f}".format(pp.get_stat(StatType.PIP)))
             else:
                 pp = self.value_calculation.projection.get_player_projection(pv.player.index)
                 points = calculation_services.get_points(pp, pos, sabr=False, custom_format=custom_scoring)
@@ -892,7 +909,7 @@ class DraftTool(ToolboxView):
                     except (ZeroDivisionError, TypeError):
                         point_cols.append("0.00")
                         point_cols.append("0.00")
-                    stats = []
+                    
                     for col in all_hitting_stats:
                         stat_type = StatType.get_hit_stattype(col)
                         if stat_type is not None:
@@ -919,7 +936,6 @@ class DraftTool(ToolboxView):
                     except (ZeroDivisionError, TypeError):
                         point_cols.append("0.00")
                         point_cols.append("0.00")
-                    stats = []
                     for col in all_pitching_stats:
                         stat_type = StatType.get_pitch_stattype(col)
                         if stat_type is not None:
@@ -1190,7 +1206,8 @@ class DraftTool(ToolboxView):
 
         self.standings.value_calc = self.controller.value_calculation
         self.standings.update_league(self.controller.league)
-        league_services.calculate_league_table(self.league, self.value_calculation, fill_pt=False, inflation=self.inflation)
+        if self.standings.value_calc.projection:
+            league_services.calculate_league_table(self.league, self.value_calculation, fill_pt=False, inflation=self.inflation)
         self.standings.refresh()
 
         self.__populate_views()
