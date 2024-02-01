@@ -41,7 +41,7 @@ class Dialog(tk.Toplevel):
         refresh_btn = tk.Button(gen_frame, text='Refresh Now', command=self.refresh_player_universe)
         refresh_btn.grid(column=2, row=1)
         refresh = salary_services.get_last_refresh()
-        if (datetime.datetime.now() - refresh.last_refresh).days  < timedelta(days=1):
+        if (datetime.datetime.now() - refresh.last_refresh)  < timedelta(days=1):
             # Safety to only allow this once a day to avoid pressure on servers
             refresh_btn['state'] = DISABLED
 
