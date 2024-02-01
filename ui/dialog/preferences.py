@@ -6,7 +6,7 @@ from tkinter import messagebox as mb
 from tkinter.messagebox import OK
 import logging
 import datetime
-import timedelta
+from datetime import timedelta
 
 from domain.enum import Preference as Pref, AvgSalaryFom, Browser, InflationMethod
 from services import salary_services, browser_services
