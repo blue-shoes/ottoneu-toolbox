@@ -206,7 +206,7 @@ class League_Analysis(ToolboxView):
         pd.increment_completion_percent(10)
         if self.value_calculation.projection:
             league_services.calculate_league_table(self.league, self.value_calculation, \
-                                                    fill_pt=(self.standings.standings_type.get() == 1), \
+                                                    fill_pt=(self.standings.standings_type.get() == 1 and ScoringFormat.is_points_type(self.league.format)), \
                                                     inflation=self.inflation,\
                                                     use_keepers=self.__is_use_keepers(),
                                                     prog=pd)

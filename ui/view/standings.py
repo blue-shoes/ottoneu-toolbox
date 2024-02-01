@@ -186,7 +186,7 @@ class Standings(tk.Frame):
                 self.roto_table.table.set_display_columns(('Rank', 'Team') + stat_cats)
                 self.stats_table.table.set_display_columns(('Rank', 'Team') + stat_cats)
         elif not ScoringFormat.is_points_type(self.value_calc.format):
-            stat_cats = tuple(ScoringFormat.get_format_stat_categories(self.value_calc.format))
+            stat_cats = tuple(cat.display for cat in ScoringFormat.get_format_stat_categories(self.value_calc.format))
             self.roto_table.table.set_display_columns(('Rank', 'Team') + stat_cats)
             self.stats_table.table.set_display_columns(('Rank', 'Team') + stat_cats)
 
@@ -262,7 +262,13 @@ class Standings(tk.Frame):
         vals.append(team.name)
         for st in StatType.get_all_hit_stattype() + StatType.get_all_pitch_stattype():
             if st in team.cat_ranks:
-                vals.append(st.format.format(team.cat_stats[st]))
+                try:
+                    vals.append(st.format.format(team.cat_stats[st]))
+                except KeyError:
+                    if st.higher_better:
+                        vals.append(st.format.format(0))
+                    else:
+                        vals.append(st.format.format(999))
             else:
                 if st.higher_better:
                     vals.append(st.format.format(0))
