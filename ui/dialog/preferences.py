@@ -5,6 +5,8 @@ import os
 from tkinter import messagebox as mb
 from tkinter.messagebox import OK
 import logging
+import datetime
+import timedelta
 
 from domain.enum import Preference as Pref, AvgSalaryFom, Browser, InflationMethod
 from services import salary_services, browser_services
@@ -36,7 +38,12 @@ class Dialog(tk.Toplevel):
         sal_ref_entry.config(validate="key", validatecommand=(validation, '%P'))
         sal_ref_entry.grid(column=1, row=1)
 
-        tk.Button(gen_frame, text='Refresh Now', command=self.refresh_player_universe).grid(column=2, row=1)
+        refresh_btn = tk.Button(gen_frame, text='Refresh Now', command=self.refresh_player_universe)
+        refresh_btn.grid(column=2, row=1)
+        refresh = salary_services.get_last_refresh()
+        if (datetime.datetime.now() - refresh.last_refresh).days  < timedelta(days=1):
+            # Safety to only allow this once a day to avoid pressure on servers
+            refresh_btn['state'] = DISABLED
 
         tk.Label(gen_frame, text='Average Salary to Display:').grid(column=0, row=2)
         self.avg_type = StringVar()
