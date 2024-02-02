@@ -122,7 +122,7 @@ class Scrape_Ottoneu(scrape_base.Scrape_Base):
         tds = row.find_all('td')
         parsed_row = []
         #url in form of *id=playerid
-        playerid = tds[2].find('a').get('href').split('=')[1]
+        playerid = tds[2].find('a').get('href').split('/')[-1]
         parsed_row.append(playerid)
         #url in form of *team=teamid
         teamid = tds[3].find('a').get('href').split('=')[1]
@@ -377,7 +377,7 @@ class Scrape_Ottoneu(scrape_base.Scrape_Base):
 
     def get_player_from_player_page(self, player_id:int, league_id:int) -> Tuple[int,str, str, str, str]:
         '''Access the Ottoneu player page for the given player and league. Returns a tuple of (Ottoneu_Id, Name, Team, Position(s), FanGraphs_Id)'''
-        url = f'https://ottoneu.fangraphs.com/{league_id}/playercard?id={player_id}'
+        url = f'https://ottoneu.fangraphs.com/{league_id}/players/{player_id}'
         player_soup = self._get_soup(url)
         header = player_soup.findAll('div', {'class': 'page-header__primary'})[0]
         name = header.find('h1').contents[0].string.strip()
