@@ -122,7 +122,7 @@ class Scrape_Ottoneu(scrape_base.Scrape_Base):
         tds = row.find_all('td')
         parsed_row = []
         #url in form of *id=playerid
-        playerid = tds[2].find('a').get('href').split('=')[1]
+        playerid = tds[2].find('a').get('href').split('/')[-1]
         parsed_row.append(playerid)
         #url in form of *team=teamid
         teamid = tds[3].find('a').get('href').split('=')[1]
@@ -385,7 +385,7 @@ class Scrape_Ottoneu(scrape_base.Scrape_Base):
         org_info = header.find('h1').find('span', {'class':'strong tinytext'}).contents[0].string.split()
         team = org_info[0]
         pos = org_info[-2]
-        fg_id = header.find('a').get('href').split('=')[1]
+        fg_id = header.find('a').get('href').split('/')[-1]
         return (player_id, name, team, pos, fg_id)
     
     def scrape_standings_page(self, lg_id:int, year:int) -> Tuple[DataFrame, DataFrame]:
