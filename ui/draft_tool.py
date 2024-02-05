@@ -25,6 +25,7 @@ from ui.view.standings import Standings
 from services import salary_services, league_services, calculation_services, player_services, draft_services, custom_scoring_services, yahoo_services, ottoneu_services, starting_positions_services
 from demo import draft_demo
 from util import string_util
+from scrape.exceptions import CouchManagersException
 
 player_cols = ('Name','Value','Inf. Cost','Rank','Round','Pos','Team')
 player_salary_cap_columns = ('Name','Value','Inf. Cost','Pos','Team')
@@ -611,11 +612,15 @@ class DraftTool(ToolboxView):
         prog = progress.ProgressDialog(self.parent, 'Updating Slow Draft Results...')
         prog.set_task_title('Getting CouchManagers Results...')
         prog.increment_completion_percent(15)
-        cm_rosters_df = draft_services.get_couchmanagers_draft_dataframe(self.draft.cm_draft.cm_draft_id)
-        if len(cm_rosters_df) == 0:
-            #No results yet
+        try:
+            cm_rosters_df = draft_services.get_couchmanagers_draft_dataframe(self.draft.cm_draft.cm_draft_id)
+            if len(cm_rosters_df) == 0:
+                #No results yet
+                prog.complete()
+                return []
+        except CouchManagersException:
             prog.complete()
-            return
+            return []
         prog.set_task_title('Resolving rosters...')
         prog.increment_completion_percent(50)
         drafted = []
@@ -630,7 +635,7 @@ class DraftTool(ToolboxView):
 
         if len(drafted) == 0:
             prog.complete()
-            return
+            return []
         if not init:
             self.__refresh_views(drafted=drafted)
         prog.complete()
