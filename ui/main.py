@@ -41,7 +41,7 @@ class Main(tk.Tk, Controller):
             self.iconbitmap(bitmap=iconbitmap)
             self.iconbitmap(default=iconbitmap)
 
-        self.title(f"Ottoneu Tool Box v{__version__}") 
+        self.title(f"Ottoneu Toolbox v{__version__}") 
         #self.preferences = preferences
         self.debug = debug
         self.demo_source = demo_source
