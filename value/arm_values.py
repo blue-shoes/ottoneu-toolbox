@@ -1,5 +1,5 @@
 import pandas as pd
-from pandas import DataFrame
+from pandas import DataFrame, Series
 import os
 from os import path
 from copy import deepcopy
@@ -329,8 +329,7 @@ class ArmValues():
             df['FOM'] = df.apply(self.calc_max_fom, axis=1)
     
     def calc_roto_fom_role(self, row, pos:str, rep_level:float) -> float:
-        if (pos == Position.POS_RP.value and row['IP RP'] > self.min_rp_ip)\
-            or (pos == Position.POS_SP.value and row['IP SP'] > self.min_sp_ip):
+        if (row[f'{pos} Rankable']):
             return row[self.rank_basis.display] - rep_level
         #If the position doesn't apply, set FOM to -999.9 to differentiate from the replacement player
         return -999.9
@@ -386,11 +385,7 @@ class ArmValues():
     def get_pitcher_rep_level(self, df:DataFrame, pos:str) -> float:
         '''Returns pitcher role replacement level based on current rank value in replacement_positions dict'''
         #Filter DataFrame to just the position of interest
-        if pos == 'RP':
-            min_ip = self.min_rp_ip
-        else:
-            min_ip = self.min_sp_ip
-        pitch_df = df.loc[df[f'IP {pos}'] >= min_ip]
+        pitch_df = df.loc[df[f'{pos} Rankable']]
         if self.no_sv_hld:
             prefix = 'No SVH '
         else:
@@ -405,21 +400,31 @@ class ArmValues():
         #Get the nth value (here the # of players rostered at the position - 1 for 0 index) from the sorted data
         return pitch_df.iloc[self.replacement_positions[pos] - 1][sort_col]
 
+    def calc_rp_ip_split_ratio(self, row:Series) -> float:
+        #Based on second-order poly regression performed for all pitcher seasons from 2019-2021 with GS > 0 and GRP > 0
+        #Regression has dep variable of GRP/G (or (G-GS)/G) and IV IPRP/IP. R^2=0.9481. Possible issues with regression: overweighting
+        #of pitchers with GRP/G ratios very close to 0 (starters with few RP appearances) or 1 (relievers with few SP appearances)
+        gr_per_g = (row['GP'] - row['GS']) / row['GP']
+        return 0.7851*gr_per_g**2 + 0.1937*gr_per_g + 0.0328
+
     def not_a_belly_itcher_filter(self, row) -> bool:
         '''Determines if pitcher has sufficient innings to be included in replacement level calculations. Split role
         pitchers have their innings rationed to role and are checked against an interpolated value.'''
         #Filter pitchers from the data set who don't reach requisite innings. These thresholds are arbitrary.
         try:
-            if row['Position(s)'] == 'SP':
-                return row['IP'] >= self.min_sp_ip
-            if row['Position(s)'] == 'RP':
-                return row['IP'] >= self.min_rp_ip
-            if row['GP'] == 0: return False
+            gs = row['GS']
+            g = row['GP']
+            ip = row['IP']
+            if gs == g:
+                return ip >= self.min_sp_ip
+            if gs == 0:
+                return ip >= self.min_rp_ip
+            if g == 0: return False
         except KeyError:
             return False
         #Got to here, this is a SP/RP with > 0 G. Ration their innings threshold based on their projected GS/G ratio
-        start_ratio = row['GS'] / row['GP']
-        return row['IP'] > (self.min_sp_ip - self.min_rp_ip)*start_ratio + self.min_rp_ip
+        start_ip_to_ip = 1 - self.calc_rp_ip_split_ratio(row)
+        return row['IP'] > (self.min_sp_ip - self.min_rp_ip)*start_ip_to_ip + self.min_rp_ip
 
     def rp_ip_func(self, row) -> float:
         '''Calculates the number of innings pitched in relief based on a linear regression using games relieved per total
@@ -430,11 +435,7 @@ class ArmValues():
         if row['GS'] == 0: return row['IP']
         #Only starting appearances
         if row['GS'] == row['GP']: return 0
-        #Based on second-order poly regression performed for all pitcher seasons from 2019-2021 with GS > 0 and GRP > 0
-        #Regression has dep variable of GRP/G (or (G-GS)/G) and IV IPRP/IP. R^2=0.9481. Possible issues with regression: overweighting
-        #of pitchers with GRP/G ratios very close to 0 (starters with few RP appearances) or 1 (relievers with few SP appearances)
-        gr_per_g = (row['GP'] - row['GS']) / row['GP']
-        return row['IP'] * (0.7851*gr_per_g**2 + 0.1937*gr_per_g + 0.0328)
+        return row['IP'] * self.calc_rp_ip_split_ratio(row)
 
     def sp_ip_func(self, row) -> float:
         '''Calculates the number of innings pitched in starts based on previously calculated relief innings.'''
@@ -581,8 +582,13 @@ class ArmValues():
             df['SP Multiplier'] = 1
             df['RP Multiplier'] = 1
         
-        self.max_rost_num['SP'] = len(df.loc[df[f'IP SP'] >= self.min_sp_ip])
-        self.max_rost_num['RP'] = len(df.loc[df['IP RP'] >= self.min_rp_ip])
+        df['SP Rankable'] = df.apply(self.pos_rankable, axis=1, args=(Position.POS_SP,))
+        df['RP Rankable'] = df.apply(self.pos_rankable, axis=1, args=(Position.POS_RP,))
+        df['P Rankable'] = df.apply(self.pos_rankable, axis=1, args=(Position.POS_P,))
+    
+        self.max_rost_num['SP'] = len(df.loc[df[f'SP Rankable']])
+        self.max_rost_num['RP'] = len(df.loc[df['RP Rankable']])
+        self.max_rost_num['P'] = len(df.loc[df['P Rankable']])
     
     def iterate_roto(self, df:DataFrame) -> float:
         df['Max FOM'] = df.apply(self.calc_max_fom, axis=1)
@@ -607,17 +613,13 @@ class ArmValues():
         if rank_col is None:
             rank_col = self.rank_basis.display
         for pos in Position.get_discrete_pitching_pos():
-            if pos == Position.POS_RP:
-                min_ip = self.min_rp_ip
-            else:
-                min_ip = self.min_sp_ip
             col = f"Rank {pos.value} Rate"
             g_col = f"{pos.value} Games"
             df[g_col] = 0
-            df[col] = df.loc[df[f'IP {pos.value}'] > min_ip][rank_col].rank(ascending=ascending)
+            df[col] = df.loc[df[f'{pos.value} Rankable']][rank_col].rank(ascending=ascending)
             df[col].fillna(-999, inplace=True)
-            self.max_rost_num[pos.value] = len(df.loc[df[f'IP {pos.value}'] >= min_ip])
-    
+            self.max_rost_num[pos.value] = len(df.loc[df[f'{pos.value} Rankable']])
+
     def roto_above_rl(self, proj:DataFrame) -> List[bool]:
         above_rl = []
         for idx, row in proj.iterrows():
@@ -650,6 +652,14 @@ class ArmValues():
     def per_game_rate(self, row, stat:StatType) -> float:
         '''Calculates the per game column for the stat type'''
         return row[stat.display] / row['GP']
+
+    def pos_rankable(self, row:Series, pos:Position) -> bool:
+        if pos == Position.POS_SP:
+            return row['IP SP'] > max(1-self.calc_rp_ip_split_ratio(row),0.5)*self.min_sp_ip
+        if pos == Position.POS_RP:
+            return row['IP RP'] > max(self.calc_rp_ip_split_ratio(row),0.5)*self.min_rp_ip
+        if pos == Position.POS_P:
+            return row['IP'] > self.calc_rp_ip_split_ratio(row)*self.min_rp_ip + 1-self.calc_rp_ip_split_ratio(row)*self.min_sp_ip
 
     def calculate_roto_bases(self, proj:DataFrame, init=False) -> None:
         '''Calculates zScore information (average and stdev of the 4x4 or 5x5 stats). If init is true, will rank off of WHIP, otherwise ranks off of previous zScores'''
@@ -765,6 +775,9 @@ class ArmValues():
                 real_pitchers = df.loc[df.apply(self.not_a_belly_itcher_filter, axis=1)]
                 real_pitchers['IP RP'] = real_pitchers.apply(self.rp_ip_func, axis=1)
                 real_pitchers['IP SP'] = real_pitchers.apply(self.sp_ip_func, axis=1)
+                real_pitchers['SP Rankable'] = real_pitchers.apply(self.pos_rankable, axis=1, args=(Position.POS_SP,))
+                real_pitchers['RP Rankable'] = real_pitchers.apply(self.pos_rankable, axis=1, args=(Position.POS_RP,))
+                real_pitchers['P Rankable'] = real_pitchers.apply(self.pos_rankable, axis=1, args=(Position.POS_P,))
                 real_pitchers['SP Multiplier'] = 1
                 real_pitchers['RP Multiplier'] = 1
                 self.calculate_roto_bases(real_pitchers, init=True)
