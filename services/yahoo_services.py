@@ -164,7 +164,17 @@ def get_league_settings(league_id:int) -> YSettings:
 def get_draft_results(league_id:int) -> List[YDR]:
     '''Gets the draft results from the Yahoo league for the given id.'''
     q = __create_query(league_id)
-    return q.get_league_draft_results()
+    try:
+        return q.get_league_draft_results()
+    except YahooFantasySportsDataNotFound:
+        logging.info(f'No draft data available for league #{league_id} at {datetime.utcnow()}')
+        return []
+
+def league_in_draft(league_id:int) -> bool:
+    '''Returns if the current league draft status is "draft".'''
+    q = __create_query(league_id=league_id)
+    metadata = q.get_league_metadata()
+    return metadata.draft_status == 'draft'
 
 def resolve_draft_results_against_rosters(league:League, value_calc:ValueCalculation, inf_method:InflationMethod, demo_source:bool) -> Tuple[List[Player], List[Player]]:
     '''Gets the latest draft information and updates rosters to reflect newly rostered or cut players.'''

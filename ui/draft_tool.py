@@ -486,6 +486,10 @@ class DraftTool(ToolboxView):
 
     def __start_draft_monitor(self):
         if self.draft.cm_draft is None:
+            if self.league.platform == Platform.YAHOO and not self.demo_source:
+                if not yahoo_services.league_in_draft(self.league.site_id):
+                    mb.showinfo('League not currently drafting', f'The league "{self.league.name}" does not have an open draft room. Please wait until the room is open to start monitoring.')
+                    return
             self.monitor_status.set('Draft Started')
             self.monitor_status_lbl.config(fg='green')
             self.start_monitor['state'] = DISABLED
