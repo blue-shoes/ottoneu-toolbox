@@ -116,20 +116,21 @@ def refresh_league(league_id:int, pd=None) -> League:
                             session.delete(rs)
                         team_map[team.site_id] = team
                 for site_id, roster in rosters.items():
-                    for yplayer in roster.players:
-                        rs = Roster_Spot()
-                        player = get_or_set_player_by_yahoo_id(yplayer, session)
-                        if player is None:
-                            continue
-                        rs.player = player
-                        if lg.is_salary_cap():
-                            if hasattr(yplayer, 'is_keeper'):
-                                rs.salary = yplayer.is_keeper['cost']
+                    if roster.players:
+                        for yplayer in roster.players:
+                            rs = Roster_Spot()
+                            player = get_or_set_player_by_yahoo_id(yplayer, session)
+                            if player is None:
+                                continue
+                            rs.player = player
+                            if lg.is_salary_cap():
+                                if hasattr(yplayer, 'is_keeper'):
+                                    rs.salary = yplayer.is_keeper['cost']
+                                else:
+                                    rs.salary = 0
                             else:
                                 rs.salary = 0
-                        else:
-                            rs.salary = 0
-                        team_map[site_id].roster_spots.append(rs)
+                            team_map[site_id].roster_spots.append(rs)
                 
                 lg.last_refresh = datetime.now()
                 session.commit()
