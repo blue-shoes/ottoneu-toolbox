@@ -280,7 +280,7 @@ def sort_cmp(t1, reverse=False):
     try:
         return float(v1)
     except ValueError:
-        return v1
+        return v1.upper()
 
 def resource_path(end_file) -> str:
     """ Get absolute path to resource, works for dev and for PyInstaller """
