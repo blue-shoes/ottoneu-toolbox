@@ -25,3 +25,4 @@ insert into starting_position values (7, 'POS_OF', 5, 1);
 insert into starting_position values (8, 'POS_UTIL', 1, 1);
 insert into starting_position values (9, 'POS_SP', 5, 1);
 insert into starting_position values (10, 'POS_RP', 5, 1);
+ALTER TABLE league ADD COLUMN roster_spots int default 40 not null;

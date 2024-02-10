@@ -695,7 +695,7 @@ def init_outputs_from_upload(vc: ValueCalculation, df : DataFrame, game_type:Sco
             hit_value += value
             total_hit_count += 1
     
-    vc.set_input(CDT.NON_PRODUCTIVE_DOLLARS, (400*vc.get_input(CDT.NUM_TEAMS) - (total_value + 40*vc.get_input(CDT.NUM_TEAMS)-total_count)))
+    vc.set_input(CDT.NON_PRODUCTIVE_DOLLARS, (vc.get_input(CDT.SALARY_CAP)*vc.get_input(CDT.NUM_TEAMS) - (total_value + vc.get_input(CDT.ROSTER_SPOTS)*vc.get_input(CDT.NUM_TEAMS)-total_count)))
     hit_surplus = hit_value - total_hit_count
     hit_split = int(hit_surplus/(total_value - total_count)*100)
     vc.set_input(CDT.HITTER_SPLIT, hit_split)

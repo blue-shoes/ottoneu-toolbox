@@ -362,11 +362,27 @@ class Step1(tk.Frame):
         pbcb['values'] = ('P/IP','P/G')
         pbcb.grid(column=1,row=10,pady=5)
 
-        ttk.Label(self, text="Replacement Level Value ($): ").grid(column=0, row=11,pady=5, stick=W)
+        lbl = ttk.Label(self, text="Team salary cap/spots:")
+        lbl.grid(column=0, row=11,pady=5)
+        CreateToolTip(lbl, text='Salary cap and roster spots per team for creating available dollars pool.')
+        self.salary_cap_sv = StringVar()
+        self.salary_cap_sv.set("400")
+        salary_cap = ttk.Entry(self, textvariable=self.salary_cap_sv)
+        salary_cap.grid(column=1,row=11,pady=5)
+        salary_cap.config(validate="key", validatecommand=(validation, '%P'))
+        CreateToolTip(salary_cap, text='Salary cap per team for creating available dollars pool.')
+        self.roster_spots_sv = StringVar()
+        self.roster_spots_sv.set("40")
+        roster_spots = ttk.Entry(self, textvariable=self.roster_spots_sv)
+        roster_spots.grid(column=2,row=11,pady=5)
+        roster_spots.config(validate="key", validatecommand=(validation, '%P'))
+        CreateToolTip(salary_cap, text='Roster spots per team.')
+
+        ttk.Label(self, text="Replacement Level Value ($): ").grid(column=0, row=12,pady=5, stick=W)
         self.rep_level_value_str = StringVar()
         self.rep_level_value_str.set("1")
         rep_level_entry = ttk.Entry(self, textvariable=self.rep_level_value_str)
-        rep_level_entry.grid(column=1,row=11,pady=5, sticky='we', columnspan=2)
+        rep_level_entry.grid(column=1,row=12,pady=5, sticky='we', columnspan=2)
         rep_level_entry.config(validate="key", validatecommand=(validation, '%P'))
         CreateToolTip(rep_level_entry, 'Sets the dollar value assigned to the replacement level player by the original calculation')
 
@@ -447,6 +463,8 @@ class Step1(tk.Frame):
         vc.hitter_basis = RankingBasis.get_enum_by_display(self.hitter_basis.get())
         vc.pitcher_basis = RankingBasis.get_enum_by_display(self.pitcher_basis.get())
         vc.starting_set = self.starting_set
+        vc.set_input(CDT.SALARY_CAP, int(self.salary_cap_sv.get()))
+        vc.set_input(CDT.ROSTER_SPOTS, int(self.roster_spots_sv.get()))
         calculation_services.init_outputs_from_upload(vc, self.df, 
             ScoringFormat.get_format_by_full_name(self.game_type.get()), int(self.rep_level_value_str.get()), 
             IdType._value2member_map_.get(self.id_type.get()), prog)

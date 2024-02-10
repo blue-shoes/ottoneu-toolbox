@@ -110,9 +110,9 @@ class PlayerValues():
         self.value_calc.set_output(CalculationDataType.TOTAL_HITTERS_ROSTERED, len(rosterable_pos))
         self.value_calc.set_output(CalculationDataType.TOTAL_PITCHERS_ROSTERED, len(rosterable_pitch))
 
-        dollars = 400*num_teams
+        dollars = int(self.value_calc.get_input(CalculationDataType.SALARY_CAP))*num_teams
         dollars -= non_prod_salary
-        dollars -= num_teams*40 #remove a dollar per player at or above replacement
+        dollars -= num_teams*int(self.value_calc.get_input(CalculationDataType.ROSTER_SPOTS)) #remove a dollar per player at or above replacement
         self.dol_per_fom = dollars / total_usable_fom
 
         self.value_calc.set_output(CalculationDataType.TOTAL_GAMES_PLAYED, rosterable_pos['G'].sum())

@@ -212,10 +212,10 @@ def __project_team_results(team:Team, league:League, value_calc:ValueCalculation
                         salaries += rs.salary
                         count += 1
                 non_productive_per_team = value_calc.get_input(CDT.NON_PRODUCTIVE_DOLLARS) / value_calc.get_input(CDT.NUM_TEAMS) 
-                productive_dollars = 400 - non_productive_per_team
+                productive_dollars = value_calc.get_input(CDT.SALARY_CAP, 400) - non_productive_per_team
                 if non_productive > non_productive_per_team:
                     productive_dollars -= (non_productive - non_productive_per_team)
-                available_surplus_dol = (productive_dollars - salaries + non_productive) - (40 - count)
+                available_surplus_dol = (productive_dollars - salaries + non_productive) - (value_calc.get_input(CDT.ROSTER_SPOTS, 40) - count)
                 team.points = team.points + available_surplus_dol * (1/value_calc.get_output(CDT.DOLLARS_PER_FOM)) * (1 - inflation/100)
 
         for rs in team.roster_spots:
@@ -324,7 +324,7 @@ def calculate_league_inflation(league:League, value_calc:ValueCalculation, inf_m
                     else:
                         npp = min(rs.salary, 3 + (rs.salary-3) - 0.125 * pow(rs.salary-3,2))
                     league.npp_spent += npp-1
-    league.max_npp = (400-40) * league.num_teams - league.captured_marginal_value
+    league.max_npp = (value_calc.get_input(CDT.SALARY_CAP, 400)-value_calc.get_input(CDT.ROSTER_SPOTS, 40)) * league.num_teams - league.captured_marginal_value
     league.npp_spent = min(league.npp_spent, league.max_npp)
     return get_league_inflation(league, inf_method)
 
@@ -408,10 +408,11 @@ def update_league_inflation(league:League, pv:PlayerValue, rs:Roster_Spot, inf_m
 def get_league_inflation(league:League, inf_method:InflationMethod) -> float:
     '''Calculates the inflation rate for the given league using the given inflation methodology.'''
     salary_cap = league.team_salary_cap*league.num_teams
+    roster_spots = league.roster_spots
     if inf_method == InflationMethod.CONVENTIONAL:
         league.inflation = (salary_cap - league.total_salary) / (salary_cap - league.total_value) -1
     elif inf_method == InflationMethod.ROSTER_SPOTS_ONLY:
-        league.inflation = (salary_cap - 40*league.num_teams - (league.total_salary - league.num_rostered)) / (salary_cap - 40*league.num_teams - (league.total_value - league.num_rostered)) -1
+        league.inflation = (salary_cap - roster_spots*league.num_teams - (league.total_salary - league.num_rostered)) / (salary_cap - roster_spots*league.num_teams - (league.total_value - league.num_rostered)) -1
     else:
         num = league.captured_marginal_value - (league.total_salary - league.npp_spent - league.num_rostered)
         denom = league.captured_marginal_value - (league.total_value - league.num_valued_rostered)

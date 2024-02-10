@@ -103,6 +103,7 @@ class League:
     num_teams:Mapped[int] = mapped_column(default=None, nullable=False)
     last_refresh:Mapped[datetime] = mapped_column(default=None, nullable=False)
     active:Mapped[bool] = mapped_column(default=True, nullable = False)
+    roster_spots:Mapped[int] = mapped_column(default=40, nullable=False)
 
     platform:Mapped[Platform] = mapped_column(default=Platform.OTTONEU, nullable=False)
     team_salary_cap:Mapped[float] = mapped_column(default=400, nullable=False)

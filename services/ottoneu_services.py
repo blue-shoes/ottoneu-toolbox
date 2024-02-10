@@ -30,6 +30,7 @@ def create_league(league_ottoneu_id:int, pd=None) -> League:
     lg.active = True
     lg.platform = Platform.OTTONEU
     lg.team_salary_cap = 400
+    lg.roster_spots = 40
 
     if pd is not None:
         pd.increment_completion_percent(15)

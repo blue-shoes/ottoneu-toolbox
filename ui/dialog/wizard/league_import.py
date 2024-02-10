@@ -54,8 +54,11 @@ class Wizard(wizard.Wizard):
                 team.users_team = True
             else:
                 team.users_team = False
-        if self.league.platform == Platform.YAHOO and self.league.is_salary_cap():
-            self.league.team_salary_cap = float(self.step2.yahoo_salary.get())
+        if self.league.platform == Platform.YAHOO:
+            self.league.roster_spots = int(self.step2.roster_spots.get())
+            if self.league.is_salary_cap():
+                self.league.team_salary_cap = float(self.step2.yahoo_salary.get())
+            
 
         prog = progress.ProgressDialog(self, 'Saving League')
         prog.set_task_title('Saving league')
@@ -164,8 +167,13 @@ class Step2(tk.Frame):
         self.yahoo_frame = ttk.Frame(self)
         self.yahoo_frame.grid(row=5, column=0, columnspan=2)
 
+        ttk.Label(self.yahoo_frame, text = "Roster Spots", font='bold').grid(column=0,row=0, pady=5, sticky=tk.E)
+        self.roster_spots = StringVar()
+        self.roster_spots.set('23')
+        ttk.Label(self, textvariable=self.format_sv).grid(column=1, row=0, pady=5, sticky=tk.W)
+
         self.yahoo_salary_frame = ysf = ttk.Frame(self.yahoo_frame)
-        ysf.grid(row=0, column=0)
+        ysf.grid(row=1, column=0)
         ttk.Label(ysf, text='Team Salary Cap', font='bold').grid(row=0, column=0)
         self.yahoo_salary = ys = StringVar()
         ys.set('260')
