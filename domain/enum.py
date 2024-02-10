@@ -113,6 +113,8 @@ class CalculationDataType(Enum):
     H2H_WEEKS = 46
     CUSTOM_SCORING_FORMAT = 47
     NEGATIVE_VALUES = 48
+    SALARY_CAP = 49
+    ROSTER_SPOTS = 50
 
     @classmethod
     def pos_to_num_rostered(self) -> Dict[Position, CalculationDataType]:
