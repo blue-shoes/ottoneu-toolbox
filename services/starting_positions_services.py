@@ -10,25 +10,19 @@ def get_or_make_starting_position_set(starting_positions:List[StartingPosition],
     already exist'''
     with Session() as session:
         sps = session.query(StartingPositionSet).all()
-        for sp_set in sps:
-            found = False
-            for sp in sp_set.positions:
-                for test_sp in starting_positions:
-                    if test_sp.position == sp.position and test_sp.count == sp.count:
-                        found = True
-                        break
-                if not found:
-                    break
-            if found:
-                return sp_set
+        desired_sp_set = set([(sp.position, sp.count) for sp in starting_positions])
+        for existing_sp_set in sps:
+            test_sp_set = set([(sp.position, sp.count) for sp in existing_sp_set.positions])
+            if desired_sp_set == test_sp_set:
+                return test_sp_set
         logging.info(f'Creating new StartingPositionSet {name}')
         if description is None:
             time = datetime.datetime.now()
             description = f'Automatically created on {time.year}/{time.month}/{time.day}'
-        sp_set = StartingPositionSet(name=name, detail=description)
-        sp_set.positions.extend(starting_positions)
-        session.add(sp_set)
-        return sp_set
+        existing_sp_set = StartingPositionSet(name=name, detail=description)
+        existing_sp_set.positions.extend(starting_positions)
+        session.add(existing_sp_set)
+        return existing_sp_set
 
 def get_all_starting_sets() -> List[StartingPositionSet]:
     '''Returns all available StartingPositionSet formats saved in the DB'''

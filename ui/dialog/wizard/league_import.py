@@ -170,14 +170,14 @@ class Step2(tk.Frame):
         ttk.Label(self.yahoo_frame, text = "Roster Spots", font='bold').grid(column=0,row=0, pady=5, sticky=tk.E)
         self.roster_spots = StringVar()
         self.roster_spots.set('23')
-        ttk.Label(self, textvariable=self.format_sv).grid(column=1, row=0, pady=5, sticky=tk.W)
+        ttk.Label(self.yahoo_frame, textvariable=self.roster_spots).grid(column=1, row=0, pady=5, sticky=tk.W)
 
-        self.yahoo_salary_frame = ysf = ttk.Frame(self.yahoo_frame)
-        ysf.grid(row=1, column=0)
-        ttk.Label(ysf, text='Team Salary Cap', font='bold').grid(row=0, column=0)
+        self.salary_lbl = ttk.Label(self.yahoo_frame, text='Team Salary Cap', font='bold')
+        self.salary_lbl.grid(row=1, column=0)
         self.yahoo_salary = ys = StringVar()
         ys.set('260')
-        ttk.Entry(ysf, textvariable=ys).grid(row=0, column = 1)
+        self.salary_entry = ttk.Entry(self.yahoo_frame, textvariable=ys)
+        self.salary_entry.grid(row=1, column = 1)
 
     def on_show(self):
         lg = self.parent.league
@@ -185,12 +185,15 @@ class Step2(tk.Frame):
         self.num_teams_sv.set(lg.num_teams)
         self.format_sv.set(lg.format.full_name)
         if lg.platform == Platform.YAHOO:
+            self.yahoo_frame.grid(row=5, column=0, columnspan=2)
             if lg.is_salary_cap():
-                self.yahoo_salary_frame.grid(row=5, column=0, columnspan=2)
+                self.salary_lbl.grid(row=1, column=0)
+                self.salary_entry.grid(row=1, column = 1)
             else:
-                self.yahoo_salary_frame.grid_forget()
+                self.salary_lbl.grid_forget()
+                self.salary_entry.grid_forget()
         else:
-            self.yahoo_salary_frame.grid_forget()
+            self.yahoo_frame.grid_forget()
         teams = []
         for team in lg.teams:
             teams.append(team.name)
