@@ -26,7 +26,7 @@ class Standings(tk.Frame):
     roto_cols = ('Rank', 'Team') + all_hitting_stats + all_pitching_stats
     rev_cols = ('Rank', 'Team') + tuple([st.display for st in StatType if not st.higher_better]) 
     
-    def __init__(self, parent, view=None):
+    def __init__(self, parent, view=None, current:bool=False):
         '''Creates a new Standings View. If the controlling view is different from the view parent (i.e. the overall view is sub-framed), set the view= variable to the controlling view.'''
         tk.Frame.__init__(self, parent, width=100)
         if view is None:
@@ -36,7 +36,10 @@ class Standings(tk.Frame):
         self.pack_propagate(False)
 
         self.standings_type = IntVar()
-        self.standings_type.set(1)
+        if current:
+            self.standings_type.set(0)
+        else:
+            self.standings_type.set(1)
 
         self.__create_view()
     
@@ -103,7 +106,7 @@ class Standings(tk.Frame):
     
     def __select_team(self, event:Event):
         if len(event.widget.selection()) == 1:
-            if getattr(self.view, 'team_selected'):
+            if hasattr(self.view, 'team_selected'):
                 self.view.team_selected(int(event.widget.selection()[0]))
 
     def __refresh_standings(self):

@@ -193,15 +193,15 @@ class DraftTool(ToolboxView):
             or self.controller.preferences.getboolean('Draft', Pref.DOCK_DRAFT_TARGETS, fallback=False):
             standings_frame = ttk.Frame(self.tab_control)
             self.tab_control.add(standings_frame, text='Standings')
-            self.standings = Standings(standings_frame)
+            self.standings = Standings(standings_frame, current=True)
             self.standings.pack(side=LEFT, fill='both', expand=True)
         elif self.controller.preferences.getboolean('Draft', Pref.DOCK_DRAFT_PLAYER_SEARCH, fallback=False):
             standings_frame = ttk.Frame(ptab)
             ptab.add(standings_frame, text='Standings')
-            self.standings = Standings(standings_frame)
+            self.standings = Standings(standings_frame, current=True)
             self.standings.pack(side=LEFT, fill='both', expand=True)
         else:
-            self.standings = Standings(self)
+            self.standings = Standings(self, current=True)
             self.standings.grid(row=1,column=2, sticky='nsew')
 
         self.pos_view = {}
@@ -528,7 +528,7 @@ class DraftTool(ToolboxView):
     
     def update(self):
         if self.value_calculation.projection:
-            league_services.calculate_league_table(self.league, self.value_calculation, fill_pt=False, inflation=self.inflation)
+            league_services.calculate_league_table(self.league, self.value_calculation, fill_pt=self.standings.standings_type.get() == 1, inflation=self.inflation)
             self.standings.refresh()
 
     def __update_ui(self):
