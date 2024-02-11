@@ -93,7 +93,7 @@ class Dialog(tk.Toplevel):
         tk.Label(draft_frame, text='Stack Targets Table with Position Tables').grid(column=0, row=1)
         self.stack_targets_bv = BooleanVar()
         self.stack_targets_bv.set(self.pref.getboolean('Draft', Pref.DOCK_DRAFT_TARGETS, fallback=False))
-        tk.Checkbutton(draft_frame, variable=self.stack_targets_bv).grid(column=1, row=1)
+        tk.Checkbutton(draft_frame, variable=self.stack_targets_bv, command=self.dock_targets).grid(column=1, row=1)
 
         s_stack_lbl = tk.Label(draft_frame, text='Stack Player Search with Position Tables')
         s_stack_lbl.grid(column=0, row=2)
@@ -105,6 +105,18 @@ class Dialog(tk.Toplevel):
         s_stack_cb.grid(column=1, row=2)
         #s_stack_cb.configure(state='disable')
 
+        self.standings_lbl = tk.Label(draft_frame, text='Stack Standings with Position Tables')
+        self.standings_lbl.grid(column=0, row=3)
+        self.stack_standings_bv = BooleanVar()
+        self.stack_standings_bv.set(self.pref.getboolean('Draft', Pref.DOCK_DRAFT_TARGETS, fallback=False))
+        self.standings_cb = tk.Checkbutton(draft_frame, variable=self.stack_standings_bv)
+        self.standings_cb.grid(column=1, row=3)
+
+        if self.pref.getboolean('Draft', Pref.DOCK_DRAFT_TARGETS, fallback=False):
+            self.stack_standings_bv.set(True)
+            self.standings_lbl.configure(state='disable')
+            self.standings_cb.configure(state='disable')
+
         #--Button Frame--
         button_frame = tk.Frame(frm, pady=5)
         button_frame.grid(row=3, column=0)
@@ -112,6 +124,15 @@ class Dialog(tk.Toplevel):
         tk.Button(button_frame, command=self.apply, text='Apply', width=7).grid(row=0, column=0, padx=5)
         tk.Button(button_frame, command=self.ok, text='OK', width=7).grid(row=0, column=1, padx=5)
         tk.Button(button_frame, command=self.cancel, text='Cancel', width=7).grid(row=0, column=2, padx=5)
+
+    def dock_targets(self):
+        if self.stack_targets_bv.get():
+            self.stack_standings_bv.set(True)
+            self.standings_lbl.configure(state='disable')
+            self.standings_cb.configure(state='disable')
+        else:
+            self.standings_lbl.configure(state=NORMAL)
+            self.standings_cb.configure(state=NORMAL)
 
     def refresh_player_universe(self):
         pd = progress.ProgressDialog(self, 'Refreshing Player Universe...')
@@ -132,6 +153,7 @@ class Dialog(tk.Toplevel):
         self.set_and_check_changed('Player_Values', Pref.DEFAULT_BROWSER, Browser.get_enum_from_display(self.browser_type.get()).value)
         changed = self.set_and_check_changed('Draft', Pref.DOCK_DRAFT_TARGETS, self.get_str_for_boolean_var(self.stack_targets_bv)) or changed
         changed = self.set_and_check_changed('Draft', Pref.DOCK_DRAFT_PLAYER_SEARCH, self.get_str_for_boolean_var(self.stack_search_bv)) or changed
+        changed = self.set_and_check_changed('Draft', Pref.DOCK_DRAFT_STANDINGS, self.get_str_for_boolean_var(self.stack_standings_bv)) or changed
 
         if not os.path.exists('conf'):
             os.mkdir('conf')

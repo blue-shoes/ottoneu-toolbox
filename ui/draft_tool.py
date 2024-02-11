@@ -115,7 +115,7 @@ class DraftTool(ToolboxView):
 
     def leave_page(self):
         self.run_event.set()
-        if self.league.platform == Platform.YAHOO:
+        if self.league and self.league.platform == Platform.YAHOO:
             self.controller.league = league_services.get_league(self.league.index)
         return True
     
@@ -143,12 +143,9 @@ class DraftTool(ToolboxView):
         self.rowconfigure(2, weight=1)
 
         self.tab_control = ttk.Notebook(running_list_frame, width=570)
-        self.tab_control.grid(row=0, column=0, sticky='ns')
+        self.tab_control.grid(row=0, column=0, sticky='nsew')
 
         self.__create_search()
-
-        self.standings = Standings(self)
-        self.standings.grid(row=1,column=2, sticky='nsew')
 
         button_frame = ttk.Frame(running_list_frame)
         button_frame.grid(row=0, column=1, sticky=tk.N, pady=15)
@@ -160,43 +157,29 @@ class DraftTool(ToolboxView):
         show_removed_btn = ttk.Checkbutton(button_frame, text="Show removed players?", variable=self.show_removed_players, command=self.__toggle_show_removed)
         show_removed_btn.grid(row=1, column=1, sticky=tk.NW)
         show_removed_btn.state(['!alternate'])
-
-        self.pos_view = {}
-
-        overall_frame = ttk.Frame(self.tab_control)
-        self.tab_control.add(overall_frame, text='Overall')
-        cols = ('Name','Value','Inf. Cost','Rank','Round','Pos','Team','Points', 'SABR Pts', 'P/G','HP/G','P/PA','P/IP','SABR PIP','PP/G','SABR PPG', 'Avg. Price', 'L10 Price', 'Roster %')
-        widths = {}
-        widths['Name'] = 125
-        widths['Pos'] = 75
-        align = {}
-        align['Name'] = W
-        custom_sort = {}
-        custom_sort['Value'] = partial(self.__default_value_sort, Position.OVERALL)
-        self.overall_view = ov = ScrollableTreeFrame(overall_frame, cols,sortable_columns=cols, column_widths=widths, init_sort_col='Value', column_alignments=align, custom_sort=custom_sort, pack=False)
-        ov.table.set_row_select_method(self.__on_select)
-        ov.table.set_right_click_method(self.__player_rclick)
-        self.__set_row_colors(ov.table)
-        ov.pack(fill='both', expand=True)
-        ov.table.set_refresh_method(self.__refresh_overall_view)
-
-        self.__create_position_tables(init=True)
         
         if self.controller.preferences.getboolean('Draft', Pref.DOCK_DRAFT_TARGETS, fallback=False):
             target_frame = ttk.Frame(self.tab_control)
             self.tab_control.add(target_frame, text='Targets')
         else:
             planning_frame = ttk.Frame(self)
-            planning_frame.grid(row=2, column=2)
+            planning_frame.grid(row=2, column=2, sticky='nsew')
 
             self.planning_tab = ptab = ttk.Notebook(planning_frame, width=570, height=300)
-            ptab.grid(row=0, column=0)
+            ptab.grid(row=0, column=0, sticky='nsew')
 
             target_frame = ttk.Frame(ptab)
             ptab.add(target_frame, text='Targets')
 
         cols=['Name', 'Target Price', 'Value', 'Pos']
         rev_sort = ['Target Price', 'Value']
+        align = {}
+        align['Name'] = W
+        widths = {}
+        widths['Name'] = 125
+        widths['Pos'] = 75
+        custom_sort = {}
+        custom_sort['Value'] = partial(self.__default_value_sort, Position.OVERALL)
 
         self.target_table = tt = ScrollableTreeFrame(target_frame, columns=cols, column_alignments=align, 
             column_widths=widths, sortable_columns=cols, reverse_col_sort=rev_sort, init_sort_col='Value', pack=False)
@@ -205,6 +188,35 @@ class DraftTool(ToolboxView):
         tt.table.set_right_click_method(self.__target_rclick)
         self.__set_row_colors(tt.table, targets=False)
         tt.table.set_refresh_method(self.__refresh_targets)
+
+        if self.controller.preferences.getboolean('Draft', Pref.DOCK_DRAFT_STANDINGS, fallback=False) \
+            or self.controller.preferences.getboolean('Draft', Pref.DOCK_DRAFT_TARGETS, fallback=False):
+            standings_frame = ttk.Frame(self.tab_control)
+            self.tab_control.add(standings_frame, text='Standings')
+            self.standings = Standings(standings_frame)
+            self.standings.pack(side=LEFT, fill='both', expand=True)
+        elif self.controller.preferences.getboolean('Draft', Pref.DOCK_DRAFT_PLAYER_SEARCH, fallback=False):
+            standings_frame = ttk.Frame(ptab)
+            ptab.add(standings_frame, text='Standings')
+            self.standings = Standings(standings_frame)
+            self.standings.pack(side=LEFT, fill='both', expand=True)
+        else:
+            self.standings = Standings(self)
+            self.standings.grid(row=1,column=2, sticky='nsew')
+
+        self.pos_view = {}
+
+        overall_frame = ttk.Frame(self.tab_control)
+        self.tab_control.add(overall_frame, text='Overall')
+        cols = ('Name','Value','Inf. Cost','Rank','Round','Pos','Team','Points', 'SABR Pts', 'P/G','HP/G','P/PA','P/IP','SABR PIP','PP/G','SABR PPG', 'Avg. Price', 'L10 Price', 'Roster %')
+        self.overall_view = ov = ScrollableTreeFrame(overall_frame, cols,sortable_columns=cols, column_widths=widths, init_sort_col='Value', column_alignments=align, custom_sort=custom_sort, pack=False)
+        ov.table.set_row_select_method(self.__on_select)
+        ov.table.set_right_click_method(self.__player_rclick)
+        self.__set_row_colors(ov.table)
+        ov.pack(fill='both', expand=True)
+        ov.table.set_refresh_method(self.__refresh_overall_view)
+
+        self.__create_position_tables(init=True)
     
     def __create_position_tables(self, init:bool=False) -> None:
 
@@ -317,7 +329,7 @@ class DraftTool(ToolboxView):
                 self.values_name.set('No value calculation selected')
             else:
                 self.values_name.set(f'Selected Values: {self.value_calculation.name}')
-            ttk.Label(search_frame, textvariable=self.values_name).grid(row=7, column=0, sticky=tk.NW)
+            ttk.Label(search_frame, textvariable=self.values_name).grid(row=7, column=0, sticky=tk.NW, columnspan=2)
 
             f = ttk.Frame(self, width=250)
             f.grid(column=1,row=1, sticky='nsew')

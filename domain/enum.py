@@ -619,6 +619,7 @@ class Preference(str, Enum):
     AVG_SALARY_FOM = 'avg_sal_fom',
     DOCK_DRAFT_TARGETS = 'dock_draft_targets',
     DOCK_DRAFT_PLAYER_SEARCH = 'dock_draft_player_search',
+    DOCK_DRAFT_STANDINGS = 'dock_draft_standings'
     DEFAULT_BROWSER = 'default_proj_browser'
     INFLATION_METHOD = 'inflation_methodology'
 
