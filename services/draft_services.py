@@ -3,7 +3,7 @@ from pandas import DataFrame
 from typing import List, Tuple
 
 from dao.session import Session
-from domain.domain import Draft, Draft_Target, CouchManagers_Draft, CouchManagers_Team, League
+from domain.domain import Draft, Draft_Target, CouchManagers_Draft, CouchManagers_Team, League, TeamDraft
 from scrape.scrape_couchmanagers import Scrape_CouchManagers
 from services import player_services
 from util import date_util
@@ -72,8 +72,7 @@ def get_couchmanagers_draft_dataframe(cm_draft_id:int) -> DataFrame:
             players.sort(reverse=True, key=lambda p: p.get_salary_info_for_format().roster_percentage)
             if players is not None and len(players) > 0:
                 row['ottid'] = players[0].ottoneu_id
-    return df
-            
+    return df         
 
 def add_couchmanagers_draft(draft:Draft, cm_draft:CouchManagers_Draft) -> Draft:
     '''Saves the CouchManagers_Draft to the input draft'''
@@ -98,3 +97,22 @@ def delete_couchmanagers_draft(cm_draft:CouchManagers_Draft) -> None:
     with Session() as session:
         session.delete(cm_draft)
         session.commit()
+
+def update_team_drafts(draft_id:int, team_drafts:List[TeamDraft]) -> Draft:
+    '''Updates the draft\'s list of TeamDraft objects'''
+    with Session() as session:
+        db_draft = session.query(Draft).filter_by(index = draft_id).first()
+        if db_draft.team_drafts:
+            for new_td in team_drafts:
+                found = False
+                for old_td in db_draft.team_drafts:
+                    if old_td.team_id == new_td.team_id:
+                        old_td.custom_draft_budget = new_td.custom_draft_budget
+                        found = True
+                        break
+                if not found:
+                    db_draft.append(new_td)
+        else:
+            db_draft.team_drafts.extend(team_drafts)
+        session.commit()
+        return session.query(Draft).filter_by(index = draft_id).first()

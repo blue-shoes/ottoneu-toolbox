@@ -218,12 +218,22 @@ class Standings(tk.Frame):
             vals.append('$' + "{:.0f}".format(tot_val))
             vals.append('$' + "{:.0f}".format(surplus))
             vals.append(num_players)
-            vals.append(f'${self.league.team_salary_cap - salaries}')
+            if hasattr(self.league, 'team_drafts') and self.league.team_drafts:
+                for td in self.league.team_drafts:
+                    if td.team_id == team.index:
+                        vals.append(f'${td.custom_draft_budget - salaries}')
+                        break
+            else:
+                vals.append(f'${self.league.team_salary_cap - salaries}')
         else:
             vals.append(f'${team.salaries}')
             tot_val = 0.0
             surplus = 0.0
+            salaries = 0.0
+            num_players = 0
             for rs in team.roster_spots:
+                num_players += 1
+                salaries += rs.salary
                 pv = self.value_calc.get_player_value(rs.player_id, pos=Position.OVERALL)
                 if pv is None:
                     val = 0
@@ -233,8 +243,14 @@ class Standings(tk.Frame):
                 surplus += val - rs.salary
             vals.append('$' + "{:.0f}".format(tot_val))
             vals.append('$' + "{:.0f}".format(surplus))
-            vals.append(team.num_players)
-            vals.append(f'${team.free_cap}')
+            vals.append(num_players)
+            if hasattr(self.league, 'team_drafts') and self.league.team_drafts:
+                for td in self.league.team_drafts:
+                    if td.team_id == team.index:
+                        vals.append(f'${td.custom_draft_budget - salaries}')
+                        break
+            else:
+                vals.append(f'${self.league.team_salary_cap - salaries}')
         return vals
     
     def __calc_values(self, team:Team) -> list:

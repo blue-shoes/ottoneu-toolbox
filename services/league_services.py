@@ -288,7 +288,7 @@ def set_team_ranks(league:League) -> None:
         team.lg_rank = rank
         rank = rank + 1
 
-def calculate_league_inflation(league:League, value_calc:ValueCalculation, inf_method:InflationMethod, use_keepers:bool=False, reinitialize:bool=True) -> float:
+def calculate_league_inflation(league:League, value_calc:ValueCalculation, inf_method:InflationMethod, use_keepers:bool=False, reinitialize:bool=True, draft:Draft=None) -> float:
     '''Initializes the League's inflation level based on the method selected in user preferences. Calculates and stores the relevant 
     inputs to all methodologies in the League object. If use_keepers is False, all roster spots are used in the calculation. If it is
     True, only selected keepers are used.'''
@@ -324,7 +324,11 @@ def calculate_league_inflation(league:League, value_calc:ValueCalculation, inf_m
                     else:
                         npp = min(rs.salary, 3 + (rs.salary-3) - 0.125 * pow(rs.salary-3,2))
                     league.npp_spent += npp-1
-    league.max_npp = (value_calc.get_input(CDT.SALARY_CAP, 400)-value_calc.get_input(CDT.ROSTER_SPOTS, 40)) * league.num_teams - league.captured_marginal_value
+    if draft and draft.team_drafts:
+        league.salary_cap = sum([team_draft.custom_draft_budget for team_draft in draft.team_drafts])
+    else:
+        league.salary_cap = league.team_salary_cap * league.num_teams
+    league.max_npp = league.salary_cap-value_calc.get_input(CDT.ROSTER_SPOTS, 40) * league.num_teams - league.captured_marginal_value
     league.npp_spent = min(league.npp_spent, league.max_npp)
     return get_league_inflation(league, inf_method)
 
@@ -407,7 +411,7 @@ def update_league_inflation(league:League, pv:PlayerValue, rs:Roster_Spot, inf_m
 
 def get_league_inflation(league:League, inf_method:InflationMethod) -> float:
     '''Calculates the inflation rate for the given league using the given inflation methodology.'''
-    salary_cap = league.team_salary_cap*league.num_teams
+    salary_cap = league.salary_cap
     roster_spots = league.roster_spots
     if inf_method == InflationMethod.CONVENTIONAL:
         league.inflation = (salary_cap - league.total_salary) / (salary_cap - league.total_value) -1

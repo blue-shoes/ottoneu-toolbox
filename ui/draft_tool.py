@@ -18,7 +18,7 @@ from ui.toolbox_view import ToolboxView
 from domain.domain import League, Player, ValueCalculation, PlayerValue, Roster_Spot
 from domain.enum import Position, ScoringFormat, StatType, Preference as Pref, AvgSalaryFom, RankingBasis, ProjectionType, InflationMethod, CalculationDataType, Platform
 from ui.table.table import Table, sort_cmp, ScrollableTreeFrame
-from ui.dialog import progress, draft_target, cm_team_assignment
+from ui.dialog import progress, draft_target, cm_team_assignment, custom_draft_budget
 from ui.dialog.wizard import couchmanagers_import
 from ui.tool.tooltip import CreateToolTip
 from ui.view.standings import Standings
@@ -102,6 +102,7 @@ class DraftTool(ToolboxView):
             self.salary_information_refresh()
 
         self.draft = draft_services.get_draft_by_league(self.controller.league.index)
+        self.league.team_drafts = self.draft.team_drafts
 
         self.__initialize_draft()
 
@@ -270,10 +271,14 @@ class DraftTool(ToolboxView):
             btn.grid(column=2, row=0)
             CreateToolTip(btn, 'Link a CouchManagers draft to this league.')
 
+            self.custom_budget_btn = btn = ttk.Button(monitor_frame, text='Set Custom Budgets', command=self.__set_custom_budgets)
+            btn.grid(column=3, row=0)
+            CreateToolTip(btn, 'Set a custom draft budget amount for teams in league.')
+
             self.inflation_str_var = tk.StringVar()
 
             self.inflation_lbl = ttk.Label(monitor_frame, textvariable=self.inflation_str_var)
-            self.inflation_lbl.grid(column=3,row=0)
+            self.inflation_lbl.grid(column=4,row=0)
 
             search_frame = ttk.Frame(self.tab_control, border=4)
             self.tab_control.add(search_frame, text='Search')
@@ -320,16 +325,20 @@ class DraftTool(ToolboxView):
             btn.grid(column=0, row=5)
             CreateToolTip(btn, 'Link a CouchManagers draft to this league.')
 
+            self.custom_budget_btn = btn = ttk.Button(search_frame, text='Set Custom Budgets', command=self.__set_custom_budgets)
+            btn.grid(column=0, row=6)
+            CreateToolTip(btn, 'Set a custom draft budget amount for teams in league.')
+
             self.inflation_str_var = tk.StringVar()
 
             self.inflation_lbl = ttk.Label(search_frame, textvariable=self.inflation_str_var)
-            self.inflation_lbl.grid(column=0,row=6)
+            self.inflation_lbl.grid(column=0,row=7)
 
             if self.value_calculation is None:
                 self.values_name.set('No value calculation selected')
             else:
                 self.values_name.set(f'Selected Values: {self.value_calculation.name}')
-            ttk.Label(search_frame, textvariable=self.values_name).grid(row=7, column=0, sticky=tk.NW, columnspan=2)
+            ttk.Label(search_frame, textvariable=self.values_name).grid(row=8, column=0, sticky=tk.NW, columnspan=2)
 
             f = ttk.Frame(self, width=250)
             f.grid(column=1,row=1, sticky='nsew')
@@ -558,6 +567,13 @@ class DraftTool(ToolboxView):
         else:
             self.__unlink_couchmanagers()
     
+    def __set_custom_budgets(self):
+        dialog = custom_draft_budget.Dialog(self.master, self.draft)
+        if dialog.status == OK:
+            self.draft = dialog.draft
+            self.league.team_drafts = self.draft.team_drafts
+            self.__initialize_draft(same_values=True)
+
     def __link_couchmanagers(self):
         if self.draft.cm_draft is not None:
             if not self.__unlink_couchmanagers():
@@ -1180,9 +1196,11 @@ class DraftTool(ToolboxView):
                 self.__check_new_cm_teams()
 
         if self.league.is_linked() and self.league.is_salary_cap():
+            self.custom_budget_btn['state'] = ACTIVE
             self.league.init_inflation_calc()
-            self.inflation = league_services.calculate_league_inflation(self.league, self.value_calculation, self.inflation_method)
+            self.inflation = league_services.calculate_league_inflation(self.league, self.value_calculation, self.inflation_method, draft=self.draft)
         else:
+            self.custom_budget_btn['state'] = DISABLED
             self.inflation = 0
             self.inflation_str_var.set('')
         
@@ -1373,6 +1391,7 @@ class DraftTool(ToolboxView):
             self.league_text_var.set(f'League {self.controller.league.name} Draft')
             if self.league.is_linked():
                 self.draft = draft_services.get_draft_by_league(self.controller.league.index)
+                self.league.team_drafts = self.draft.team_drafts
                 if self.league.platform == Platform.OTTONEU:
                     self.salary_information_refresh()
             self.__initialize_draft(same_values=True)

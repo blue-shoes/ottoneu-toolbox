@@ -126,9 +126,11 @@ class League:
     captured_marginal_value:float = field(default=0, repr=False)
     npp_spent:float = field(default=0, repr=False)
     max_npp:float = field(default=0, repr=False)
+    salary_cap:int = field(default=team_salary_cap*num_teams, repr=False)
 
     # Transient draft information
     draft_results:Dict[Tuple, int] = field(default_factory=dict, repr=False)
+    team_drafts:List[TeamDraft] = field(default_factory=list, repr=False)
 
     @reconstructor
     def init_on_load(self):
@@ -630,6 +632,8 @@ class Draft:
 
     year:Mapped[int] = mapped_column(nullable=False, default=None)
 
+    team_drafts:Mapped[List[TeamDraft]] = relationship(default_factory=list, cascade="all, delete", lazy="joined", repr=False)
+
     def get_target_by_player(self, player_id:int) -> Draft_Target:
         '''Gets the Draft_Target for the input player_id. If none exists, return None'''
         if self.targets is not None:
@@ -763,3 +767,13 @@ class StartingPosition:
 
     starting_position_set_id:Mapped[int] = mapped_column(ForeignKey("starting_position_set.id"), default=None)
     starting_position_set:Mapped["StartingPositionSet"] = relationship(default=None, cascade="all, delete")
+
+@reg.mapped_as_dataclass
+class TeamDraft:
+    __tablename__ = 'team_draft'
+    id:Mapped[int] = mapped_column(init=False, primary_key=True)
+    team_id:Mapped[int] = mapped_column(ForeignKey("team.index"), default=None, nullable=False)
+
+    draft_id:Mapped[int] = mapped_column(ForeignKey("draft.index"), default=None, nullable=False)
+
+    custom_draft_budget:Mapped[int] = mapped_column(default=None, nullable=True)
