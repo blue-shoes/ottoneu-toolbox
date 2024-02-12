@@ -45,7 +45,7 @@ class Player:
 
     def get_fg_id(self) -> object:
         '''Returns the FanGraphs Major League id, if available, otherwise returns the FanGraphs Minor League id.'''
-        if self.fg_major_id != None:
+        if self.fg_major_id:
             return self.fg_major_id
         else:
             return self.fg_minor_id
