@@ -312,7 +312,7 @@ class Salary_Info:
     index:Mapped[int] = mapped_column(init=False, primary_key=True)
 
     player_id:Mapped[int] = mapped_column(ForeignKey("player.index"), default=None)
-    player:Mapped["Player"] = relationship(default=None, back_populates="salary_info")
+    player:Mapped["Player"] = relationship(default=None, back_populates="salary_info", repr=False)
 
     format:Mapped["ScoringFormat"] = mapped_column(default=None)
     
