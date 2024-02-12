@@ -1,7 +1,12 @@
 from typing import List
+import pandas as pd
+from pandas import DataFrame
 
 from dao.session import Session
-from domain.domain import PositionSet, League, ValueCalculation
+from domain.domain import PositionSet, League, ValueCalculation, PlayerPositions
+from domain.enum import IdType
+
+from services import player_services
 
 def get_all_position_sets() -> List[PositionSet]:
     '''Returns all available PositionSets saved in the DB'''
@@ -35,3 +40,42 @@ def get_ottoneu_position_set() -> PositionSet:
     '''Gets the default Ottoneu position set'''
     with Session() as session:
         return session.query(PositionSet).filter(PositionSet.name == 'Ottoneu').first()
+
+def create_position_set_from_df(df:DataFrame, id_type:IdType, name:str, desc:str) -> PositionSet:
+    '''Creates a PositionSet from an input dataframe. Columns must include ID, NAME, TEAM, POS.'''
+    pos_set = PositionSet(name=name, detail=desc)
+    for _, row in df.iterrows():
+        id = row['ID']
+        if id_type == IdType.OTTONEU:
+            player = player_services.get_player_by_ottoneu_id(id)
+        elif id_type == IdType.FANGRAPHS:
+            player = player_services.get_player_by_fg_id(str(id))
+        elif id_type == IdType.MLB:
+            player = player_services.get_player_by_mlb_id(id)
+        if not player:
+            player = player_services.get_player_by_name_and_team(row['NAME'], row['TEAM'])
+        if not player:
+            continue
+        pos_set.positions.append(PlayerPositions(player_id=player.index, position=row['POS']))
+    with Session() as session:
+        session.add(pos_set)
+        session.commit()
+        return session.query(PositionSet).filter(PositionSet.id == pos_set.id).first()
+
+def write_position_set_to_csv(pos_set:PositionSet, filepath:str) -> None:
+    '''Writes the position set to a csv file at the given filepath'''
+    rows = []
+    with Session() as session:
+        if pos_set.name == 'Ottoneu':
+            players = player_services.get_rostered_players()
+            for player in players:
+                rows.append([player.get_fg_id(), player.name, player.team, player.position])
+        else:
+            for player_pos in pos_set.positions:
+                player = player_services.get_player_with_session(player_id=player_pos.player_id, session=session)
+                rows.append([player.get_fg_id(), player.name, player.team, player_pos.position])
+    df = DataFrame(rows)
+    df.columns = ['ID','NAME','TEAM','POS']
+    if not filepath.endswith('.csv'):
+        filepath += '.csv'
+    df.to_csv(filepath, encoding='utf-8')

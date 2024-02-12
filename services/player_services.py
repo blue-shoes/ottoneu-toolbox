@@ -120,7 +120,11 @@ def is_populated() -> bool:
 def get_player(player_id:int) -> Player:
     '''Returns player from database based on Toolbox player id.'''
     with Session() as session:
-        return session.query(Player).filter(Player.index == player_id).first()
+        return get_player_with_session(player_id=player_id, session=session)
+
+def get_player_with_session(player_id:int, session:Session) -> Player:
+    '''Returns player from database based on Toolbox player id using the given session'''
+    return session.query(Player).filter(Player.index == player_id).first()
 
 def get_player_positions(player:Player, discrete=False) -> List[Position]:
     '''Returns list of Positions the player is eligible fore based on paring the Player.position attribute. If discrete is false, OFFENSE, PITCHING, MI, and UTIL 
@@ -381,3 +385,9 @@ def get_player_by_name_and_team_no_fg_id(name:str, team:str, session:Session) ->
     else:
         player = None    
     return player
+
+def get_rostered_players() -> List[Player]:
+    '''Gets a list of all players with a non-zero Roster% on Ottoneu'''
+    with Session() as session:
+        players = session.query(Player).options(joinedload(Player.salary_info)).all()
+    return [player for player in players if player.get_salary_info_for_format(ScoringFormat.ALL).roster_percentage != 0]
