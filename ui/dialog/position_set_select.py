@@ -239,5 +239,4 @@ class ImportPositionSetDialog(tk.Toplevel):
         col_map = dict([(col, col.upper()) for col in df.columns])
         df.rename(col_map, inplace=True)
         self.pos_set = position_set_services.create_position_set_from_df(df, IdType._value2member_map_.get(self.id_type.get(), None), self.name_tv.get(), self.desc_tv.get())
-        ic(self.pos_set)
         self.destroy()

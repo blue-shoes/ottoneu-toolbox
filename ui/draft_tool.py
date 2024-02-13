@@ -662,21 +662,25 @@ class DraftTool(ToolboxView):
             salary = string_util.parse_dollar(cm_player['Amount'])
             player = player_services.get_player_by_ottoneu_id(cm_player['ottid'])
             team_id = self.draft.cm_draft.get_toolbox_team_index_by_cm_team_id(cm_player['Team Number'])
-            self.__add_trans_to_rosters(player, salary, team_id)
+            self.__add_trans_to_rosters(player, salary, team_id, update_inf=False)
             drafted.append(player)
 
         if len(drafted) == 0:
             prog.complete()
             return []
         if not init:
+            self.league.init_inflation_calc()
+            self.inflation = league_services.calculate_league_inflation(self.league, self.value_calculation, self.inflation_method, draft=self.draft)
+            if self.value_calculation.projection:
+                league_services.calculate_league_table(self.league, self.value_calculation, False, self.inflation)
             self.__refresh_views(drafted=drafted)
         prog.complete()
         return drafted
     
-    def __add_trans_to_rosters(self, player:Player, salary:int, team_id:int, add_player:bool=True):
+    def __add_trans_to_rosters(self, player:Player, salary:int, team_id:int, add_player:bool=True, update_inf:bool=True):
         self.rostered_ids.append(player.index)
         for team in self.league.teams:
-            if team.site_id == team_id:
+            if team.index == team_id:
                 rs = Roster_Spot()
                 rs.player = player
                 rs.player_id = player.index
@@ -688,7 +692,7 @@ class DraftTool(ToolboxView):
             val = pv.value
         else:
             val = 0
-        if self.league.is_linked():
+        if self.league.is_linked() and update_inf:
             self.inflation = league_services.update_league_inflation_last_trans(self.league, val, salary=salary, inf_method=self.inflation_method, add_player=add_player)
 
     def __refresh_thread(self):
@@ -1002,7 +1006,7 @@ class DraftTool(ToolboxView):
         return ('$0', '$0', '0%')
 
     def __get_row_tags(self, playerid):
-        if self.league.is_rostered(player_id=playerid):
+        if self.league.is_rostered(player_id=playerid) or playerid in self.rostered_ids:
             return ('rostered',)
         if self.draft.get_target_by_player(player_id=playerid) is not None:
             return ('targeted',)
