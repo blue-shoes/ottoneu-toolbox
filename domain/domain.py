@@ -242,7 +242,7 @@ class Team:
     free_cap:Mapped[int] = mapped_column(default=None, repr=False, nullable=True)
 
     # Transient values
-    rs_map:Dict[Player,Roster_Spot] = field(default_factory=dict, repr=False)
+    rs_map:Dict[int,Roster_Spot] = field(default_factory=dict, repr=False)
     points:float=field(default=0, repr=False)
     lg_rank:int=field(default=0, repr=False)
     cat_stats:Dict[StatType,float]= field(default_factory=dict, repr=False)
