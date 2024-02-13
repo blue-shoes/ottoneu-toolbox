@@ -67,6 +67,7 @@ class DraftTool(ToolboxView):
         self.removed_players = []
         self.rostered_ids = []
         self.current_cm_auctions = []
+        self.current_cm_auction_ids = []
         self.league = None
         self.value_calculation = None
         self.starting_set = starting_positions_services.get_ottoneu_position_set()
@@ -448,6 +449,8 @@ class DraftTool(ToolboxView):
                 view.table.item(pid_str, tags=tags)
         if pid_str in self.search_view.table.get_children():
             self.search_view.table.item(pid_str, tags=tags)
+        if pid_str in self.current_auctions.table.get_children():
+            self.current_auctions.table.item(pid_str, tags=tags)
 
     def __on_select(self, event:Event):
         if len(event.widget.selection()) == 1:
@@ -639,7 +642,7 @@ class DraftTool(ToolboxView):
         cols = ('Name','Value','Inf. Cost','Cur. Bid','Pos','Team','Points', 'SABR Pts', 'P/G','HP/G','P/PA','P/IP','SABR PIP','PP/G','SABR PPG', 'Avg. Price', 'L10 Price', 'Roster %')
         self.current_auctions = ca = ScrollableTreeFrame(cm_frame, cols,sortable_columns=cols, column_widths=widths, init_sort_col='Value', column_alignments=align, pack=False)
         ca.table.set_row_select_method(self.__on_select)
-        self.__set_row_colors(ca.table)
+        self.__set_row_colors(ca.table, current=False)
         ca.pack(fill='both', expand=True)
         ca.table.set_refresh_method(self.__refresh_current_auctions)
 
@@ -706,6 +709,8 @@ class DraftTool(ToolboxView):
         prog.set_task_title('Getting current auctions...')
         prog.increment_completion_percent(20)
         self.current_cm_auctions = draft_services.get_couchmanagers_current_auctions(self.draft.cm_draft.cm_draft_id)
+
+        self.current_cm_auction_ids = [auction[0].index for auction in self.current_cm_auctions]
 
         if not init:
             self.current_auctions.table.refresh()
@@ -1076,16 +1081,23 @@ class DraftTool(ToolboxView):
     def __get_row_tags(self, playerid):
         if self.league.is_rostered(player_id=playerid) or playerid in self.rostered_ids:
             return ('rostered',)
+        combo = []
+        if playerid in self.current_cm_auction_ids:
+            combo.append('current_auction')
         if self.draft.get_target_by_player(player_id=playerid) is not None:
-            return ('targeted',)
+            combo.append('targeted')
+        if combo:
+            return tuple(combo)
         if playerid in self.removed_players:
             return ('removed',)
         return ''
     
-    def __set_row_colors(self, table: Table, targets=True):
+    def __set_row_colors(self, table: Table, targets:bool=True, current:bool=True):
         table.tag_configure('rostered', background='#A6A6A6')
         table.tag_configure('rostered', foreground='#5A5A5A')
         table.tag_configure('removed', background='#FFCCCB')
+        if current:
+            table.tag_configure('current_auction', background='#63F76D')
         if targets:
             table.tag_configure('targeted', background='#FCE19D')
 
