@@ -3,9 +3,9 @@ from pandas import DataFrame
 from typing import List, Tuple
 
 from dao.session import Session
-from domain.domain import Draft, Draft_Target, CouchManagers_Draft, CouchManagers_Team, League, TeamDraft
+from domain.domain import Draft, Draft_Target, CouchManagers_Draft, CouchManagers_Team, League, TeamDraft, Player
 from scrape.scrape_couchmanagers import Scrape_CouchManagers
-from services import player_services
+from services import player_services, browser_services
 from util import date_util
 
 def get_draft_by_league(lg_id:int) -> Draft:
@@ -116,3 +116,16 @@ def update_team_drafts(draft_id:int, team_drafts:List[TeamDraft]) -> Draft:
             db_draft.team_drafts.extend(team_drafts)
         session.commit()
         return session.query(Draft).filter_by(index = draft_id).first()
+
+def get_couchmanagers_current_auctions(cm_draft_id:int) -> List[Tuple[Player,int]]:
+    '''Returns a list of the current Couch Managers auctions as a list of Player to current bid.'''
+    scraper = Scrape_CouchManagers(browser_services.get_desired_browser())
+    current_auctions = scraper.get_current_auctions(cm_draft_id)
+    if not current_auctions:
+        return []
+    auctions = []
+    for ca in current_auctions:
+        player = player_services.get_player_by_name_and_team(ca[0], ca[1])
+        if player:
+            auctions.append((player, ca[2]))
+    return auctions

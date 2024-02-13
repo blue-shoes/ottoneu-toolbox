@@ -108,12 +108,13 @@ class Scrape_Base(object):
             seconds += 1
         return dl_wait
     
-    def setupDriver(self):
+    def setupDriver(self, force_headless:bool=False):
         '''Sets up the driver based on the established browser type. Currently supports Chrome, Firefox, Microsoft Edge.'''
         try:
             if self.browser == 'ChromeHTML':
                 options = webdriver.ChromeOptions()
-                #options.add_argument('--headless')
+                if force_headless:
+                    options.add_argument('--headless')
                 prefs = {}
                 prefs["profile.default_content_settings.popups"]=0
                 prefs["download.default_directory"]=self.download_dir
@@ -124,7 +125,8 @@ class Scrape_Base(object):
                 self.driver.set_window_size(1920, 1080)
             elif self.browser == 'MSEdgeHTM':
                 options = webdriver.EdgeOptions()
-                #options.add_argument('--headless')
+                if force_headless:
+                    options.add_argument('--headless')
                 options.add_experimental_option('prefs', {
                     "download.default_directory": self.download_dir,
                     "download.prompt_for_download": False})

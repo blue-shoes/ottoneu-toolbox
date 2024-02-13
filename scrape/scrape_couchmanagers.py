@@ -1,8 +1,12 @@
+from bs4 import BeautifulSoup as Soup
 import pandas as pd
 from pandas import DataFrame
 import os
 import requests
 from typing import List, Tuple
+import logging
+import re
+import time
 
 from scrape import scrape_base
 from scrape.exceptions import CouchManagersException
@@ -48,3 +52,28 @@ class Scrape_CouchManagers(scrape_base.Scrape_Base):
             name = team.find('div', {'class': 'teams_teamname'}).contents[0].strip()
             teams.append((id, name))
         return teams
+
+    def get_current_auctions(self, cm_id:int) -> List[Tuple[str, str, int]]:
+        '''Returns a list of the current acutions as a tuple of (name, team, current_bid).'''
+        auctions = []
+        url = f'https://www.couchmanagers.com/auctions/?auction_id={cm_id}'
+        self.setupDriver(force_headless=True)
+        self.driver.get(url)
+        time.sleep(2)
+        html = self.driver.page_source
+        self.driver.quit()
+        soup = Soup(html, 'html.parser')
+        with open('cm.txt', 'w', encoding='utf-8') as file:
+            file.write(str(soup))
+        player_divs = soup.find_all('div', {'class':'players_player_name'})
+        if len(player_divs) == 0:
+            logging.info('No current auctions')
+            return auctions
+        for pd in player_divs:
+            cm_pid = re.findall('\((.+)\)', pd.find('a').get('href'))[0]
+            name_tag = pd.find('a').contents
+            name = name_tag[0] + name_tag[1].contents[0]
+            team = soup.find('div', {'id': f'players_pos_{cm_pid}'}).contents[0].split('-')[-1]
+            current_bid = soup.find('div', {'id': f'auction_{cm_pid}_amount'}).contents[0].split('$')[-1]
+            auctions.append((name, team, current_bid))
+        return auctions        
