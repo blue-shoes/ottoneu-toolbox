@@ -576,7 +576,7 @@ class DraftTool(ToolboxView):
         if dialog.status == OK:
             self.draft = dialog.draft
             self.league.team_drafts = self.draft.team_drafts
-            self.__initialize_draft(same_values=True)
+            self.__initialize_draft(same_values=True, same_league=True)
 
     def __link_couchmanagers(self):
         if self.draft.cm_draft is not None:
@@ -608,7 +608,7 @@ class DraftTool(ToolboxView):
             draft_services.delete_couchmanagers_draft(self.draft.cm_draft)
             self.draft.cm_draft = None
             if setup:
-                self.__initialize_draft(same_values=True)
+                self.__initialize_draft(same_values=True, same_league=True)
             self.monitor_status.set('Not started')
             self.monitor_status_lbl.config(fg='red')
             self.start_draft_sv.set('Start Draft Monitor')
@@ -617,6 +617,8 @@ class DraftTool(ToolboxView):
             self.stop_monitor['state'] = DISABLED
             CreateToolTip(self.stop_monitor, 'Stop watching league for new draft results')
             self.__remove_cm_current_auctions_tab()
+            self.current_cm_auction_ids = []
+            self.current_cm_auctions = []
             return True
         return False
     
@@ -673,7 +675,7 @@ class DraftTool(ToolboxView):
                     self.monitor_status.set(f'Using CM Draft {self.draft.cm_draft.cm_draft_id}')
                     self.monitor_status_lbl.config(fg='green')
                 
-    def __resolve_cm_draft_with_rosters(self, init:bool=True) -> List[Player]:
+    def __resolve_cm_draft_with_rosters(self, init:bool=True, get_current_auctions:bool=True) -> List[Player]:
         prog = progress.ProgressDialog(self.parent, 'Updating Slow Draft Results...')
         prog.set_task_title('Getting CouchManagers Results...')
         prog.increment_completion_percent(15)
@@ -706,11 +708,12 @@ class DraftTool(ToolboxView):
                     league_services.calculate_league_table(self.league, self.value_calculation, False, self.inflation)
                 self.__refresh_views(drafted=drafted)
         
-        prog.set_task_title('Getting current auctions...')
-        prog.increment_completion_percent(20)
-        self.current_cm_auctions = draft_services.get_couchmanagers_current_auctions(self.draft.cm_draft.cm_draft_id)
+        if get_current_auctions:
+            prog.set_task_title('Getting current auctions...')
+            prog.increment_completion_percent(20)
+            self.current_cm_auctions = draft_services.get_couchmanagers_current_auctions(self.draft.cm_draft.cm_draft_id)
 
-        self.current_cm_auction_ids = [auction[0].index for auction in self.current_cm_auctions]
+            self.current_cm_auction_ids = [auction[0].index for auction in self.current_cm_auctions]
 
         if not init:
             self.current_auctions.table.refresh()
@@ -1239,7 +1242,7 @@ class DraftTool(ToolboxView):
             tags = self.__get_row_tags(id)
             self.target_table.table.insert('', tk.END, iid=id, tags=tags, values=(name, t_price, value, pos))
     
-    def __initialize_draft(self, same_values=False): 
+    def __initialize_draft(self, same_values=False, same_league:bool=False): 
         restart = False
         if not self.run_event.is_set():
             self.__stop_draft_monitor()
@@ -1276,11 +1279,13 @@ class DraftTool(ToolboxView):
             CreateToolTip(self.stop_monitor, 'Removes the connection to the CouchManagers draft for the league and reverts to the Ottoneu-only rosters.')
             if self.draft.cm_draft.setup:
                 self.__create_cm_current_auctions_tab()
-                rostered.extend(self.__resolve_cm_draft_with_rosters())
+                rostered.extend(self.__resolve_cm_draft_with_rosters(get_current_auctions=(not same_league)))
             else:
                 self.__check_new_cm_teams()
         else:
             self.__remove_cm_current_auctions_tab()
+            self.current_cm_auctions = []
+            self.current_cm_auction_ids = []
 
         if self.league.is_linked() and self.league.is_salary_cap():
             self.custom_budget_btn['state'] = ACTIVE
@@ -1488,7 +1493,7 @@ class DraftTool(ToolboxView):
             self.value_calculation = self.controller.value_calculation
             self.starting_set = self.value_calculation.starting_set
             self.values_name.set(f'Selected Values: {self.value_calculation.name}')
-            self.__initialize_draft()
+            self.__initialize_draft(same_league=True)
 
 def main():
     try:
