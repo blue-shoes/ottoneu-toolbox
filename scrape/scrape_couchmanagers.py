@@ -63,8 +63,6 @@ class Scrape_CouchManagers(scrape_base.Scrape_Base):
         html = self.driver.page_source
         self.driver.quit()
         soup = Soup(html, 'html.parser')
-        with open('cm.txt', 'w', encoding='utf-8') as file:
-            file.write(str(soup))
         player_divs = soup.find_all('div', {'class':'players_player_name'})
         if len(player_divs) == 0:
             logging.info('No current auctions')
