@@ -1,7 +1,7 @@
 import tkinter as tk
 from tkinter import *              
 from tkinter import ttk 
-from typing import List
+from typing import List, Tuple
 
 from domain.domain import League, ValueCalculation, Team, CustomScoring
 from domain.enum import Position, ScoringFormat, Platform, StatType, CalculationDataType, ProjectionType
@@ -186,12 +186,26 @@ class Standings(tk.Frame):
         if self.custom_scoring:
             if not self.custom_scoring.points_format:
                 stat_cats = tuple([cat.category.display for cat in self.custom_scoring.stats])
-                self.roto_table.table.set_display_columns(('Rank', 'Team') + stat_cats)
-                self.stats_table.table.set_display_columns(('Rank', 'Team') + stat_cats)
+                pt_stat_cats = self.get_columns_with_pt(stat_cats)
+                self.roto_table.table.set_display_columns(('Rank', 'Team') + pt_stat_cats)
+                self.stats_table.table.set_display_columns(('Rank', 'Team') + pt_stat_cats)
         elif not ScoringFormat.is_points_type(self.value_calc.format):
-            stat_cats = tuple(cat.display for cat in ScoringFormat.get_format_stat_categories(self.value_calc.format))
-            self.roto_table.table.set_display_columns(('Rank', 'Team') + stat_cats)
-            self.stats_table.table.set_display_columns(('Rank', 'Team') + stat_cats)
+            stat_cats = tuple(cat for cat in ScoringFormat.get_format_stat_categories(self.value_calc.format))
+            pt_stat_cats = self.get_columns_with_pt(stat_cats)
+            self.roto_table.table.set_display_columns(('Rank', 'Team') + pt_stat_cats)
+            self.stats_table.table.set_display_columns(('Rank', 'Team') + pt_stat_cats)
+
+    def get_columns_with_pt(self, stat_cats:tuple[StatType]) -> Tuple[StatType]:
+        pt_stat_cats = []
+        pt_stat_cats.append(StatType.G_HIT.display)
+        for st in stat_cats:
+            if StatType.get_hit_stattype:
+                pt_stat_cats.append(st.display)
+        pt_stat_cats.append(StatType.IP.display)
+        for st in stat_cats:
+            if not st.hitter:
+                pt_stat_cats.append(st.display)
+        return tuple(pt_stat_cats)
 
     def __calc_salary_info(self, team:Team) -> list:
         vals = []
@@ -269,7 +283,11 @@ class Standings(tk.Frame):
         vals.append(team.lg_rank)
         vals.append(team.name)
         for st in StatType.get_all_hit_stattype() + StatType.get_all_pitch_stattype():
-            if st in team.cat_ranks:
+            if st == StatType.G_HIT:
+                vals.append(st.format.format(sum([rs.g_h for rs in team.roster_spots])))
+            elif st == StatType.IP:
+                vals.append(st.format.format(sum([rs.ip for rs in team.roster_spots])))
+            elif st in team.cat_ranks:
                 vals.append(team.cat_ranks[st])
             else:
                 vals.append(0)
@@ -280,7 +298,11 @@ class Standings(tk.Frame):
         vals.append(team.lg_rank)
         vals.append(team.name)
         for st in StatType.get_all_hit_stattype() + StatType.get_all_pitch_stattype():
-            if st in team.cat_ranks:
+            if st == StatType.G_HIT:
+                vals.append(st.format.format(sum([rs.g_h for rs in team.roster_spots])))
+            elif st == StatType.IP:
+                vals.append(st.format.format(sum([rs.ip for rs in team.roster_spots])))
+            elif st in team.cat_ranks:
                 try:
                     vals.append(st.format.format(team.cat_stats[st]))
                 except KeyError:
