@@ -625,6 +625,10 @@ class DraftTool(ToolboxView):
                 break
     
     def __create_cm_current_auctions_tab(self):
+        for tab_id in self.tab_control.tabs():
+            item = self.tab_control.tab(tab_id)
+            if item['text']=='Cur. Auctions':
+                return
         align = {}
         align['Name'] = W
         widths = {}
