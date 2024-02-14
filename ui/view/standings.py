@@ -240,7 +240,6 @@ class Standings(tk.Frame):
             else:
                 vals.append(f'${self.league.team_salary_cap - salaries}')
         else:
-            vals.append(f'${team.salaries}')
             tot_val = 0.0
             surplus = 0.0
             salaries = 0.0
@@ -255,6 +254,7 @@ class Standings(tk.Frame):
                     val = pv.value
                 tot_val += val
                 surplus += val - rs.salary
+            vals.append(f'${salaries}')
             vals.append('$' + "{:.0f}".format(tot_val))
             vals.append('$' + "{:.0f}".format(surplus))
             vals.append(num_players)
