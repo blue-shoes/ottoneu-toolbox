@@ -172,7 +172,10 @@ def get_player_from_ottoneu_player_page(player_id: int, league_id: int, session:
     logging.info(f'Importing player {player_id} from player page')
     if pd is not None:
         pd.set_task_title(f'Populating Ottoneu Id {player_id}')
-    player_tuple = Scrape_Ottoneu().get_player_from_player_page(player_id, league_id)
+    try:
+        player_tuple = Scrape_Ottoneu().get_player_from_player_page(player_id, league_id)
+    except IndexError:
+        return None
     if session is None:
         with Session() as session2:
             player = update_from_player_page(player_tuple, session2)
@@ -219,6 +222,9 @@ def get_player_by_name_and_team_with_no_yahoo_id(name:str, team:str, session) ->
         player = None    
     return player
 
+def get_player_by_name(name:str) -> Player:
+    return get_player_by_name_and_team(name, None)
+
 def get_player_by_name_and_team(name:str, team:str) -> Player:
     '''Returns player by matching name and team. Full name match is attempted. If no matches found with full name, partial
     matches beginning with just last name are attempted, followed by adding one letter at a time from the start of the first
@@ -249,10 +255,11 @@ def get_player_by_name_and_team(name:str, team:str) -> Player:
     players.sort(reverse=True, key=lambda p: p.get_salary_info_for_format().roster_percentage)
     if players is not None and len(players) > 0:
         player = players[0]
-        for possible_player in players:
-            if match_team(possible_player, team):
-                player = possible_player
-                break
+        if team:
+            for possible_player in players:
+                if match_team(possible_player, team):
+                    player = possible_player
+                    break
     else:
         player = None    
     return player

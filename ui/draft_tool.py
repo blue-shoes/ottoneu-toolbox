@@ -695,7 +695,10 @@ class DraftTool(ToolboxView):
             if self.league.is_rostered_by_ottoneu_id(cm_player['ottid']):
                 continue
             salary = string_util.parse_dollar(cm_player['Amount'])
-            player = player_services.get_player_by_ottoneu_id(cm_player['ottid'])
+            if cm_player['ottid'] == 0:
+                player = player_services.get_player_by_name(f'{cm_player["First Name"]} {cm_player["Last Name"]}')
+            else:
+                player = player_services.get_player_by_ottoneu_id(cm_player['ottid'])
             team_id = self.draft.cm_draft.get_toolbox_team_index_by_cm_team_id(cm_player['Team Number'])
             self.__add_trans_to_rosters(player, salary, team_id, update_inf=False)
             drafted.append(player)
@@ -932,27 +935,28 @@ class DraftTool(ToolboxView):
         else:
             custom_scoring = None
         for auction in self.current_cm_auctions:
-            pv = self.value_calculation.get_player_value(auction[0].index, Position.OVERALL)
-            name = pv.player.name
-            if self.league.is_salary_cap():
+            player = auction[0]
+            pv = self.value_calculation.get_player_value(player.index, Position.OVERALL)
+            name = player.name
+            if self.league.is_salary_cap() and pv:
                 value = '$' + "{:.0f}".format(pv.value)
                 inf_cost = self.__get_inflated_cost(pv)
             else:
                 value = 0
                 inf_cost = 0
-            if pv.player.custom_positions:
-                position = pv.player.custom_positions
+            if player.custom_positions:
+                position = player.custom_positions
             else:
-                position = pv.player.position
-            team = pv.player.team
+                position = player.position
+            team = player.team
             stock_player = (name, value, inf_cost, f'${auction[1]}', position, team)
             proj_cols = self.__get_overall_projected_col(pv, custom_scoring)
-            sal_tup = self.__get_salary_tuple(pv.player)
-            tags = self.__get_row_tags(pv.player.index)
-            self.current_auctions.table.insert('', tk.END, iid=pv.player.index, values=stock_player + proj_cols + sal_tup, tags=tags)
+            sal_tup = self.__get_salary_tuple(player)
+            tags = self.__get_row_tags(player.index)
+            self.current_auctions.table.insert('', tk.END, iid=player.index, values=stock_player + proj_cols + sal_tup, tags=tags)
 
     def __get_overall_projected_col(self, pv:PlayerValue, custom_scoring:CustomScoring=None) -> Tuple:
-        if self.value_calculation.projection is None:
+        if self.value_calculation.projection is None or pv is None:
             proj_cols = tuple([0] * 9)
         else:
             pp = self.value_calculation.projection.get_player_projection(pv.player.index)
