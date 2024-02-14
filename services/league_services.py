@@ -225,6 +225,7 @@ def __project_team_results(team:Team, league:League, value_calc:ValueCalculation
             team.points = team.points + rs.g_h * calculation_services.get_batting_point_rate_from_player_projection(pp)
             team.points = team.points + rs.ip * calculation_services.get_pitching_point_rate_from_player_projection(pp, format, value_calc.pitcher_basis)
     else:
+        team.cat_stats.clear()
         rate_cats = defaultdict(list)
         if stats is not None:
             prod_bat, _ = Scrape_Ottoneu().scrape_team_production_page(team.league_id, team.site_id)
