@@ -199,7 +199,7 @@ class Standings(tk.Frame):
         pt_stat_cats = []
         pt_stat_cats.append(StatType.G_HIT.display)
         for st in stat_cats:
-            if StatType.get_hit_stattype:
+            if st.hitter:
                 pt_stat_cats.append(st.display)
         pt_stat_cats.append(StatType.IP.display)
         for st in stat_cats:
