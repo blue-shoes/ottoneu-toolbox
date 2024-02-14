@@ -719,6 +719,8 @@ class DraftTool(ToolboxView):
             self.current_cm_auction_ids = [auction[0].index for auction in self.current_cm_auctions]
 
         if not init:
+            for id in self.rostered_ids + self.current_cm_auction_ids:
+                self.__set_player_tags_all_tables(id)
             self.current_auctions.table.refresh()
 
         prog.complete()
@@ -942,8 +944,8 @@ class DraftTool(ToolboxView):
                 value = '$' + "{:.0f}".format(pv.value)
                 inf_cost = self.__get_inflated_cost(pv)
             else:
-                value = 0
-                inf_cost = 0
+                value = 'NR'
+                inf_cost = 'NR'
             if player.custom_positions:
                 position = player.custom_positions
             else:
