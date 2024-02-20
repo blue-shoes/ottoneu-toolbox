@@ -697,6 +697,8 @@ class DraftTool(ToolboxView):
             salary = string_util.parse_dollar(cm_player['Amount'])
             if cm_player['ottid'] == 0:
                 player = player_services.get_player_by_name(f'{cm_player["First Name"]} {cm_player["Last Name"]}')
+                if self.league.is_rostered(player.index):
+                    continue
             else:
                 player = player_services.get_player_by_ottoneu_id(cm_player['ottid'])
             team_id = self.draft.cm_draft.get_toolbox_team_index_by_cm_team_id(cm_player['Team Number'])
@@ -938,6 +940,8 @@ class DraftTool(ToolboxView):
             custom_scoring = None
         for auction in self.current_cm_auctions:
             player = auction[0]
+            if player.index in self.rostered_ids:
+                continue
             pv = self.value_calculation.get_player_value(player.index, Position.OVERALL)
             name = player.name
             if self.league.is_salary_cap() and pv:
@@ -1156,7 +1160,7 @@ class DraftTool(ToolboxView):
                     rank = pv.rank
                     round = self.player_to_round_map.get(pv.player.index, 'NR')
 
-            salary = f'${self.league.get_player_salary(player.index)}'
+            salary = '$' + "{:.0f}".format(self.league.get_player_salary(player.index))
 
             if self.value_calculation.projection is not None:
                 pp = self.value_calculation.projection.get_player_projection(id)
