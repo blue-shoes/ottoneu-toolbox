@@ -384,7 +384,10 @@ class Scrape_Ottoneu(scrape_base.Scrape_Base):
         org_info = header.find('h1').find('span', {'class':'strong tinytext'}).contents[0].string.split()
         team = org_info[0]
         pos = org_info[-2]
-        fg_id = header.find('a').get('href').split('=')[1]
+        fg_id = None
+        for tag in header.find_all('a'):
+            if tag.contents[0].string == 'FanGraphs Player Page':
+                fg_id = tag.get('href').split('=')[1]
         return (player_id, name, team, pos, fg_id)
     
     def scrape_standings_page(self, lg_id:int, year:int) -> Tuple[DataFrame, DataFrame, DataFrame]:
