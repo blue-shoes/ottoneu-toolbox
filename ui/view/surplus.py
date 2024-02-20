@@ -161,6 +161,7 @@ class Surplus(tk.Frame):
             for team in self.league.teams:
                 if team.name == self.team_sv.get():
                     for rs in team.roster_spots:
+                        tags = tuple()
                         if date_util.is_offseason():
                             if self.league.is_keeper(rs.player_id):
                                 tags = ('checked',)
