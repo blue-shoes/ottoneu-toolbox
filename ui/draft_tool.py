@@ -697,7 +697,10 @@ class DraftTool(ToolboxView):
             salary = string_util.parse_dollar(cm_player['Amount'])
             if cm_player['ottid'] == 0:
                 player = player_services.get_player_by_name(f'{cm_player["First Name"]} {cm_player["Last Name"]}')
-                if self.league.is_rostered(player.index):
+                if player:
+                    if self.league.is_rostered(player.index):
+                        continue
+                else:
                     continue
             else:
                 player = player_services.get_player_by_ottoneu_id(cm_player['ottid'])
@@ -865,6 +868,25 @@ class DraftTool(ToolboxView):
                             view.table.reattach(cp_ind, '', tk.END)
                             if cp_ind in self.rostered_detached_id_map.get(view):
                                 self.rostered_detached_id_map.get(view).remove(cp_ind)
+
+        if self.removed_players:
+            for rp in self.removed_players:
+                cp_ind = str(rp)
+                tags = self.__get_row_tags(cp.index)
+                if cp_ind in self.overall_view.table.get_children():
+                    self.overall_view.table.item(cp_ind, tags=tags)
+                    if not self.show_removed_players.get():
+                        self.overall_view.table.reattach(cp_ind, '', tk.END)
+                        if cp_ind in self.removed_detached_id_map.get(self.overall_view):
+                            self.removed_detached_id_map.get(self.overall_view).remove(cp_ind)
+                
+                for _, view in self.pos_view.items():
+                    if cp_ind in view.table.get_children():
+                        view.table.item(cp_ind, tags=tags)
+                        if not self.show_removed_players.get():
+                            view.table.reattach(cp_ind, '', tk.END)
+                            if cp_ind in self.removed_detached_id_map.get(view):
+                                self.removed_detached_id_map.get(view).remove(cp_ind)
 
         if drafted is not None or len(drafted) > 0 or cut is not None or len(cut) > 0:
             self.__update_table_inflations()
@@ -1443,7 +1465,8 @@ class DraftTool(ToolboxView):
                     view.table.set_display_columns(player_value_cols + p_points + pitch_rate + salary_cols)
             if self.league.platform == Platform.OTTONEU:
                 self.search_view.table.set_display_columns(stock_search + p_points + hit_rate + pitch_rate + ('Roster %',))
-                self.current_auctions.table.set_display_columns(stock_current + p_points + hit_rate + pitch_rate + ('Roster %',))
+                if self.draft.cm_draft:
+                    self.current_auctions.table.set_display_columns(stock_current + p_points + hit_rate + pitch_rate + ('Roster %',))
             else:
                 self.search_view.table.set_display_columns(stock_search + p_points + hit_rate + pitch_rate)
                 self.current_auctions.table.set_display_columns(stock_current + p_points + hit_rate + pitch_rate)
