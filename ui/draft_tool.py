@@ -852,41 +852,41 @@ class DraftTool(ToolboxView):
         
         if cut is not None:
             for cp in cut:
-                cp_ind = str(cp.index)
+                rp_ind = str(cp.index)
                 tags = self.__get_row_tags(cp.index)
-                if cp_ind in self.overall_view.table.get_children():
-                    self.overall_view.table.item(cp_ind, tags=tags)
+                if rp_ind in self.overall_view.table.get_children():
+                    self.overall_view.table.item(rp_ind, tags=tags)
                     if not self.show_drafted_players.get():
-                        self.overall_view.table.reattach(cp_ind, '', tk.END)
-                        if cp_ind in self.rostered_detached_id_map.get(self.overall_view):
-                            self.rostered_detached_id_map.get(self.overall_view).remove(cp_ind)
+                        self.overall_view.table.reattach(rp_ind, '', tk.END)
+                        if rp_ind in self.rostered_detached_id_map.get(self.overall_view):
+                            self.rostered_detached_id_map.get(self.overall_view).remove(rp_ind)
                 
                 for _, view in self.pos_view.items():
-                    if cp_ind in view.table.get_children():
-                        view.table.item(cp_ind, tags=tags)
+                    if rp_ind in view.table.get_children():
+                        view.table.item(rp_ind, tags=tags)
                         if not self.show_drafted_players.get():
-                            view.table.reattach(cp_ind, '', tk.END)
-                            if cp_ind in self.rostered_detached_id_map.get(view):
-                                self.rostered_detached_id_map.get(view).remove(cp_ind)
+                            view.table.reattach(rp_ind, '', tk.END)
+                            if rp_ind in self.rostered_detached_id_map.get(view):
+                                self.rostered_detached_id_map.get(view).remove(rp_ind)
 
         if self.removed_players:
             for rp in self.removed_players:
-                cp_ind = str(rp)
-                tags = self.__get_row_tags(cp.index)
-                if cp_ind in self.overall_view.table.get_children():
-                    self.overall_view.table.item(cp_ind, tags=tags)
+                rp_ind = str(rp)
+                tags = self.__get_row_tags(rp)
+                if rp_ind in self.overall_view.table.get_children():
+                    self.overall_view.table.item(rp_ind, tags=tags)
                     if not self.show_removed_players.get():
-                        self.overall_view.table.reattach(cp_ind, '', tk.END)
-                        if cp_ind in self.removed_detached_id_map.get(self.overall_view):
-                            self.removed_detached_id_map.get(self.overall_view).remove(cp_ind)
+                        self.overall_view.table.reattach(rp_ind, '', tk.END)
+                        if rp_ind in self.removed_detached_id_map.get(self.overall_view):
+                            self.removed_detached_id_map.get(self.overall_view).remove(rp_ind)
                 
                 for _, view in self.pos_view.items():
-                    if cp_ind in view.table.get_children():
-                        view.table.item(cp_ind, tags=tags)
+                    if rp_ind in view.table.get_children():
+                        view.table.item(rp_ind, tags=tags)
                         if not self.show_removed_players.get():
-                            view.table.reattach(cp_ind, '', tk.END)
-                            if cp_ind in self.removed_detached_id_map.get(view):
-                                self.removed_detached_id_map.get(view).remove(cp_ind)
+                            view.table.reattach(rp_ind, '', tk.END)
+                            if rp_ind in self.removed_detached_id_map.get(view):
+                                self.removed_detached_id_map.get(view).remove(rp_ind)
 
         if drafted is not None or len(drafted) > 0 or cut is not None or len(cut) > 0:
             self.__update_table_inflations()
