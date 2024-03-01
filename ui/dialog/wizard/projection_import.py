@@ -241,7 +241,7 @@ class Step1(tk.Frame):
             else:
                 #Upload proj from files
                 self.hitter_df, self.pitcher_df =  projection_services.create_projection_from_upload(self.parent.projection, self.hitter_proj_file.get(), self.pitcher_proj_file.get(), name="User Custom", year=year, progress=pd)
-                if 'NAME' in self.hitter_df:
+                if 'Name' in self.hitter_df:
                     found_player = False
                     idx = 0
                     player = None
@@ -257,12 +257,13 @@ class Step1(tk.Frame):
                         idx = idx + 1
                     if player is None:
                         raise InputException(f'The input IdType {self.id_type.get()} appears wrong for this projection set.')
-                    df_name = string_util.normalize(self.hitter_df.at[id, 'NAME'])
+                    df_name = string_util.normalize(self.hitter_df.at[id, 'Name'])
                     if df_name != player.search_name:
                         raise InputException(f'The input IdType {self.id_type.get()} appears wrong for this projection set.')
         except (FangraphsException, DavenportException, InputException) as e:
             self.parent.projection = None
             self.parent.validate_msg = e.validation_msgs
+            logging.exception('Expected exception retrieving projections')
             return False
         except Exception as Argument:
             self.parent.projection = None
