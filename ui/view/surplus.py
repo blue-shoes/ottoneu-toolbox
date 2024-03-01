@@ -53,7 +53,8 @@ class Surplus(tk.Frame):
 
         self.team_list.pack(side=LEFT)
 
-        ttk.Button(header_frame, text='Trade Evaluation', command=self.trade_evaluation).pack(side=LEFT)
+        #TODO: Implement
+        #ttk.Button(header_frame, text='Trade Evaluation', command=self.trade_evaluation).pack(side=LEFT)
 
         #TODO: Add positional filter
 
