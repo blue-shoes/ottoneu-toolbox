@@ -52,21 +52,30 @@ class Wizard(wizard.Wizard):
         super().cancel()
     
     def finish(self):
-        self.parent.validate_msg = None
-        self.projection.name = self.step2.name_tv.get()
-        self.projection.detail = self.step2.desc_text.get("1.0",'end-1c')
-        pd = progress.ProgressDialog(self.master, title='Saving Values...')
-        pd.set_task_title('Uploading')
-        pd.set_completion_percent(15)
-        if self.step1.source_var.get():
-            if self.step1.proj_type.get() == ProjectionType.DAVENPORT.type_name:
-                id_type = IdType.OTB
+        try:
+            self.parent.validate_msg = None
+            self.projection.name = self.step2.name_tv.get()
+            self.projection.detail = self.step2.desc_text.get("1.0",'end-1c')
+            pd = progress.ProgressDialog(self.master, title='Saving Values...')
+            pd.set_task_title('Uploading')
+            pd.set_completion_percent(15)
+            if self.step1.source_var.get():
+                if self.step1.proj_type.get() == ProjectionType.DAVENPORT.type_name:
+                    id_type = IdType.OTB
+                else:
+                    id_type = IdType.FANGRAPHS
             else:
-                id_type = IdType.FANGRAPHS
-        else:
-            id_type = IdType._value2member_map_.get(self.step1.id_type.get())
-        self.parent.projection = projection_services.save_projection(self.projection, [self.step1.hitter_df, self.step1.pitcher_df],id_type,pd)
-        pd.complete()
+                id_type = IdType._value2member_map_.get(self.step1.id_type.get())
+            self.parent.projection = projection_services.save_projection(self.projection, [self.step1.hitter_df, self.step1.pitcher_df],id_type,pd)
+            pd.complete()
+        except Exception as e:
+            logging.exception('Error saving projections.')
+            if hasattr(e, 'message'):
+                message = e.message
+            else:
+                message = e
+            mb.showerror('Error saving projections', f'The following error occurred when saving projections. See log for further information. \n\n{message}')
+            return
         super().finish()
 
 class Step1(tk.Frame):
