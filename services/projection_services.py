@@ -330,7 +330,7 @@ def normalize_batter_projections(proj: Projection, df: DataFrame) -> List[str]:
             df.set_index(col, inplace=True)
             found_id = True
         elif 'NAME' in col.upper():
-            col_map[col] = 'NAME'
+            col_map[col] = 'Name'
         elif 'G' == col.upper() or 'GAME' in col.upper():
             col_map[col] = 'G'
         elif 'PA' in col.upper():
@@ -441,7 +441,7 @@ def normalize_pitcher_projections(proj: Projection, df: DataFrame) -> List[str]:
             df.set_index(col, inplace=True)
             found_id = True
         elif 'NAME' in col.upper():
-            col_map[col] = 'NAME'
+            col_map[col] = 'Name'
         elif 'QS' in col.upper() or 'QUALITY' in col.upper():
             col_map[col] = 'QS'
         elif 'GS' in col.upper() or 'START' in col.upper():
