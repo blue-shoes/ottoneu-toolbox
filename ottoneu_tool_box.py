@@ -1,7 +1,7 @@
 from ui.main import Main
 import sys, getopt, os, shutil
-import icecream
-from icecream.icecream import ic
+#import icecream
+#from icecream.icecream import ic
 
 import logging
 
@@ -11,7 +11,7 @@ def resource_path(end_file) -> str:
     return os.path.join(base_path, 'resources', end_file)
 
 def main():
-    icecream.install() #Install icecream debugger for use in rest of program
+    #icecream.install() #Install icecream debugger for use in rest of program
     args = sys.argv[1:]
     try:
         opts, args = getopt.getopt(args, 'dsb:')
