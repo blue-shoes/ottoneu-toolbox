@@ -337,7 +337,6 @@ class ArmValues():
     def calc_max_fom(self, row) -> float:
         '''Returns the max FOM value for the player'''
         #Find the max FOM for player across all positions
-        #TODO: Confirm max works here instead of np.max
         return max([row['FOM SP'], row['FOM RP']])
     
     def set_number_rostered(self, df:DataFrame) -> None:

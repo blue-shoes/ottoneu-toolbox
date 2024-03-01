@@ -265,7 +265,7 @@ def normalize_value_upload(df : DataFrame, game_type:ScoringFormat, id_type:IdTy
             pitch_pt_col = col
             col_map[pitch_pt_col] = 'P_PT'
 
-        if ScoringFormat.is_points_type(game_type) or custom_scoring and custom_scoring.points_format:
+        if ScoringFormat.is_points_type(game_type) or (custom_scoring and custom_scoring.points_format):
         
             if 'PTSPG' in col.upper() or 'P/G' in col.upper() or 'PTSPPA' in col.upper() or 'P/PA' in col.upper():
                 hit_rate_col = col
@@ -321,7 +321,8 @@ def normalize_value_upload(df : DataFrame, game_type:ScoringFormat, id_type:IdTy
         
         elif custom_scoring:
             for cat in [c.category for c in custom_scoring.stats]:
-                ...
+                if f'{cat.display.upper()}_Z' in col.upper() or f'{cat.display.upper()}_SGP' in col.upper():
+                    col_map[col] = f'{cat.display.upper()}_FOM'
     
     validate_msg = ''
     if id_col is None:
