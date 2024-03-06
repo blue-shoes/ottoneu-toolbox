@@ -14,7 +14,7 @@ def get_or_make_starting_position_set(starting_positions:List[StartingPosition],
         for existing_sp_set in sps:
             test_sp_set = set([(sp.position, sp.count) for sp in existing_sp_set.positions])
             if desired_sp_set == test_sp_set:
-                return test_sp_set
+                return existing_sp_set
         logging.info(f'Creating new StartingPositionSet {name}')
         if description is None:
             time = datetime.datetime.now()
