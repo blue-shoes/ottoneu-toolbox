@@ -63,13 +63,17 @@ def create_league(league_yahoo_id:int, pd=None) -> League:
         custom_scoring_services.get_or_make_custom_scoring(stat_cats, lg.name)
     
     starting_pos = []
+    roster_spots = 0
     for rp in settings.roster_positions:
+        if rp.position not in ['IL', 'NA']:
+            roster_spots += rp.count
         if rp.is_starting_position:
             pos = Position._value2member_map_.get(rp.position, None)
             if pos is None:
                 starting_pos = None
                 break
             starting_pos.append(StartingPosition(position=pos, count = rp.count))
+    lg.roster_spots = roster_spots
 
     if starting_pos:
         lg.starting_set = starting_positions_services.get_or_make_starting_position_set(starting_pos, lg.name)

@@ -192,6 +192,7 @@ class Step2(tk.Frame):
             else:
                 self.salary_lbl.grid_forget()
                 self.salary_entry.grid_forget()
+            self.roster_spots.set(lg.roster_spots)
         else:
             self.yahoo_frame.grid_forget()
         teams = []
