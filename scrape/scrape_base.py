@@ -140,7 +140,6 @@ class Scrape_Base(object):
                 options.set_preference("browser.download.manager.showWhenStarting", False)
                 options.set_preference("browser.download.dir", self.download_dir)
                 options.set_preference("browser.helperApps.neverAsk.saveToDisk", "application/x-gzip")
-                options.add_argument('--disable-gpu')
                 service = FirefoxService(log_path='logs/geckodriver.log')
                 service.creationflags = CREATE_NO_WINDOW
                 self.driver = webdriver.Firefox(service=service, options=options)
