@@ -1417,10 +1417,12 @@ class DraftTool(ToolboxView):
                 view.table.set_display_columns(stock_overall)
             if self.league.platform == Platform.OTTONEU:
                 self.search_view.table.set_display_columns(stock_search + ('Roster %',))
-                self.current_auctions.table.set_display_columns(stock_current + ('Roster %',))
+                if self.draft.cm_draft:
+                    self.current_auctions.table.set_display_columns(stock_current + ('Roster %',))
             else:
                 self.search_view.table.set_display_columns(stock_search)
-                self.current_auctions.table.set_display_columns(stock_current)
+                if self.draft.cm_draft:
+                    self.current_auctions.table.set_display_columns(stock_current)
         elif (not self.league.platform == Platform.OTTONEU and ScoringFormat.is_points_type(self.value_calculation.format)) or (custom_scoring is not None and custom_scoring.points_format) or ScoringFormat.is_points_type(self.league.format):
             if self.league.platform == Platform.OTTONEU:
                 sabr = ScoringFormat.is_sabr(self.league.format)
@@ -1469,7 +1471,8 @@ class DraftTool(ToolboxView):
                     self.current_auctions.table.set_display_columns(stock_current + p_points + hit_rate + pitch_rate + ('Roster %',))
             else:
                 self.search_view.table.set_display_columns(stock_search + p_points + hit_rate + pitch_rate)
-                self.current_auctions.table.set_display_columns(stock_current + p_points + hit_rate + pitch_rate)
+                if self.draft.cm_draft:
+                    self.current_auctions.table.set_display_columns(stock_current + p_points + hit_rate + pitch_rate)
         elif (not self.league.platform == Platform.OTTONEU and self.value_calculation.format == ScoringFormat.OLD_SCHOOL_5X5) or self.league.format == ScoringFormat.OLD_SCHOOL_5X5:
             self.overall_view.table.set_display_columns(stock_overall)
             for pos, view in self.pos_view.items():
@@ -1479,10 +1482,12 @@ class DraftTool(ToolboxView):
                     view.table.set_display_columns(player_value_cols + pitch_5x5_cols + salary_cols)
             if self.league.platform == Platform.OTTONEU:
                 self.search_view.table.set_display_columns(stock_search + ('Roster %',))
-                self.current_auctions.table.set_display_columns(stock_current + ('Roster %',))
+                if self.draft.cm_draft:
+                    self.current_auctions.table.set_display_columns(stock_current + ('Roster %',))
             else:
                 self.search_view.table.set_display_columns(stock_search)
-                self.current_auctions.table.set_display_columns(stock_current)
+                if self.draft.cm_draft:
+                    self.current_auctions.table.set_display_columns(stock_current)
         elif (not self.league.platform == Platform.OTTONEU and self.value_calculation.format == ScoringFormat.CLASSIC_4X4) or self.league.format == ScoringFormat.CLASSIC_4X4:
             self.overall_view.table.set_display_columns(stock_overall)
             for pos, view in self.pos_view.items():
@@ -1492,10 +1497,12 @@ class DraftTool(ToolboxView):
                     view.table.set_display_columns(player_value_cols + pitch_4x4_cols + salary_cols)
             if self.league.platform == Platform.OTTONEU:
                 self.search_view.table.set_display_columns(stock_search + ('Roster %',))
-                self.current_auctions.table.set_display_columns(stock_current + ('Roster %',))
+                if self.draft.cm_draft:
+                    self.current_auctions.table.set_display_columns(stock_current + ('Roster %',))
             else:
                 self.search_view.table.set_display_columns(stock_search)
-                self.current_auctions.table.set_display_columns(stock_current)
+                if self.draft.cm_draft:
+                    self.current_auctions.table.set_display_columns(stock_current)
         elif self.value_calculation.format == ScoringFormat.CUSTOM:
             self.overall_view.table.set_display_columns(stock_overall)
             hit = []
@@ -1512,7 +1519,8 @@ class DraftTool(ToolboxView):
                 else:
                     view.table.set_display_columns(player_value_cols + tuple(pitch))
             self.search_view.table.set_display_columns(stock_search)
-            self.current_auctions.table.set_display_columns(stock_current)
+            if self.draft.cm_draft:
+                self.current_auctions.table.set_display_columns(stock_current)
         else:
             if self.league.platform == Platform.OTTONEU:
                 raise Exception(f"Unknown league type {self.league.format}")
