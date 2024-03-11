@@ -52,6 +52,7 @@ class Scrape_Fg(scrape_base.Scrape_Base):
         os.remove(filepath)
         #If the dataset is player based (not league based), reindex to the FG player id
         if player:
+            dataframe.drop_duplicates('PlayerId', inplace=True)
             dataframe.set_index("PlayerId", inplace=True)
             dataframe.index = dataframe.index.astype(str, copy = False)
         if len(dataframe) == 0:
