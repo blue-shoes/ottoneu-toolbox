@@ -185,7 +185,7 @@ class Standings(tk.Frame):
             self.standings_table.table.set_display_columns(self.non_salary_cap_cols)
         if self.custom_scoring:
             if not self.custom_scoring.points_format:
-                stat_cats = tuple([cat.category.display for cat in self.custom_scoring.stats])
+                stat_cats = tuple([cat.category for cat in self.custom_scoring.stats])
                 pt_stat_cats = self.get_columns_with_pt(stat_cats)
                 self.roto_table.table.set_display_columns(('Rank', 'Team') + pt_stat_cats)
                 self.stats_table.table.set_display_columns(('Rank', 'Team') + pt_stat_cats)
@@ -195,7 +195,7 @@ class Standings(tk.Frame):
             self.roto_table.table.set_display_columns(('Rank', 'Team') + pt_stat_cats)
             self.stats_table.table.set_display_columns(('Rank', 'Team') + pt_stat_cats)
 
-    def get_columns_with_pt(self, stat_cats:tuple[StatType]) -> Tuple[StatType]:
+    def get_columns_with_pt(self, stat_cats:tuple[StatType]) -> Tuple[str]:
         pt_stat_cats = []
         pt_stat_cats.append(StatType.G_HIT.display)
         for st in stat_cats:
