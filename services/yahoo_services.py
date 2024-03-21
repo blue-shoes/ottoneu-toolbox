@@ -199,7 +199,10 @@ def resolve_draft_results_against_rosters(league:League, value_calc:ValueCalcula
         pick = (dr.round, dr.pick)
         if pick in league.draft_results:
             continue
-        player = player_services.get_player_by_yahoo_id(int(dr.player_key.split('.')[-1]))
+        try:
+            player = player_services.get_player_by_yahoo_id(int(dr.player_key.split('.')[-1]))
+        except ValueError:
+            continue
         if player is None:
             league.draft_results[pick] = None
             if league.is_salary_cap():
