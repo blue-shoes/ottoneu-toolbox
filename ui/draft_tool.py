@@ -755,7 +755,7 @@ class DraftTool(ToolboxView):
         if self.league.platform == Platform.OTTONEU:
             delay = 45
         elif self.league.platform == Platform.YAHOO:
-            delay = 90
+            delay = 70
         else:
             logging.warning(f'Cannot get refresh thread for league platform {self.league.platform.value}')
             return
