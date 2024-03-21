@@ -449,8 +449,9 @@ class DraftTool(ToolboxView):
                 view.table.item(pid_str, tags=tags)
         if pid_str in self.search_view.table.get_children():
             self.search_view.table.item(pid_str, tags=tags)
-        if pid_str in self.current_auctions.table.get_children():
-            self.current_auctions.table.item(pid_str, tags=tags)
+        if self.draft.cm_draft:
+            if pid_str in self.current_auctions.table.get_children():
+                self.current_auctions.table.item(pid_str, tags=tags)
 
     def __on_select(self, event:Event):
         if len(event.widget.selection()) == 1:
