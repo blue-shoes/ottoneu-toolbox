@@ -152,7 +152,7 @@ def resolve_draft_results_against_rosters(league:League, value_calc:ValueCalcula
                     pv = value_calc.get_player_value(player.index, Position.OVERALL)
                     league_services.add_player_to_draft_rosters(league, team_id, player, pv, salary, inf_method)
                 elif 'CUT' in last_trans.iloc[index]['Type'].upper():
-                    cut.append(player.index)
+                    cut.append(player)
                     for team in league.teams:
                         if team.league_id == team_id:
                             found = False
