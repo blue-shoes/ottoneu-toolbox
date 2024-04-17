@@ -19,6 +19,8 @@ def download_projections(projection:str, ros:bool=False, dc_pt:bool=False, progr
         if projection == 'steamer':
             #steamer has a different convention for reasons
             projection = 'steamerr'
+        elif projection == 'atc':
+            projection = 'ratcdc'
         else:
             projection = 'r' + projection
     try:
