@@ -20,7 +20,7 @@ from domain.domain import Property
 from domain.enum import Preference as Pref, PropertyType
 from dao import db_update
    
-__version__ = '1.2.8'
+__version__ = '1.2.9'
 
 class Main(tk.Tk):
 
@@ -106,9 +106,12 @@ class Main(tk.Tk):
             progress_dialog.increment_completion_percent(5)
             to_run = []
             for filename in os.listdir(sql_dir):
-                vers = StrictVersion(filename.split('.sql')[0])
-                if vers > db_strict_vers and vers <= StrictVersion(v):
-                    to_run.append(os.path.join(sql_dir, filename))
+                try:
+                    vers = StrictVersion(filename.split('.sql')[0])
+                    if vers > db_strict_vers and vers <= StrictVersion(v):
+                        to_run.append(os.path.join(sql_dir, filename))
+                except ValueError:
+                    continue
             if len(to_run) > 0:
                 db_update.run_db_updates(to_run)
             db_vers.value = __version__
