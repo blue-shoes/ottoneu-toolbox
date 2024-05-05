@@ -20,7 +20,7 @@ from domain.domain import Property
 from domain.enum import Preference as Pref, PropertyType
 from dao import db_update
    
-__version__ = '1.2.8'
+__version__ = '1.2.9'
 
 class Main(tk.Tk):
 
