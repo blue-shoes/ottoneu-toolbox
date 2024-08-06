@@ -306,7 +306,7 @@ def __create_query(league_id:int=1, year:int=None) -> yfs_query:
             if gk.code == 'mlb' and int(gk.season) == datetime.now().year:
                 game_id = gk.game_id
         if game_id == '':
-             raise YahooFantasySportsException(f'Could not find game_key for current year')
+             raise YahooFantasySportsException('Could not find game_key for current year')
         try:
             yfs_query(Path('conf'), league_id=league_id, game_code='mlb', game_id=game_id).get_league_info()
         except YahooFantasySportsDataNotFound:

@@ -1,13 +1,11 @@
 from bs4 import BeautifulSoup as Soup
 from bs4.element import ResultSet
 import pandas as pd
-import requests
 from pandas import DataFrame
 import os
 from os import path
 from io import StringIO
 import datetime
-from decimal import Decimal
 from re import sub
 import time
 from typing import List, Tuple, Dict
@@ -87,7 +85,7 @@ class Scrape_Ottoneu(scrape_base.Scrape_Base):
         if path.exists(filepath) and not force_download:
             df = pd.read_csv(filepath)
         else:
-            if self.driver == None:
+            if not self.driver:
                 self.setupDriver()
             df = self.getDatasetAtAddress('https://ottoneu.fangraphs.com/averageValues?export=csv', filepath)
         df['playerid'] = df['FG MinorLeagueID']
@@ -130,7 +128,7 @@ class Scrape_Ottoneu(scrape_base.Scrape_Base):
         required_tds = [2,3,5]
         for ind in required_tds:
             td = tds[ind]
-            if td.find('a') != None:
+            if td.find('a'):
                 parsed_row.append(td.find('a').string)
             else:
                 parsed_row.append(td.string.strip())
@@ -221,7 +219,7 @@ class Scrape_Ottoneu(scrape_base.Scrape_Base):
             id = team_opt['value']
             if id != '-1':
                 dfs = self.scrape_team_production_page(lg_id, team_opt['value'])
-                if dfs == None:
+                if not dfs:
                     return []
                 league_bat.append(dfs[0])
                 league_arm.append(dfs[1])
@@ -476,8 +474,8 @@ class Scrape_Ottoneu(scrape_base.Scrape_Base):
         return header
 
 def main():
-    scraper = Scrape_Ottoneu()
-    scraper.get_player_from_player_page(31948, 1128)
+    scraper = Scrape_Ottoneu('FirefoxURL')
+    #scraper.get_player_from_player_page(31948, 1128)
     #avg = scraper.get_avg_salary_ds(True)
     #print(scraper.scrape_finances_page(160))
     #scraper.get_universe_production_tables()
@@ -485,6 +483,10 @@ def main():
     #print(rost.head(50))
     #trans = scraper.scrape_recent_trans_api(160)
     #print(trans.head())
+    leagues = scraper.scrape_league_table()
+    league_ids = [league_id for league_id in leagues.index]
+    print(len(league_ids))
+    print(league_ids)
 
 if __name__ == '__main__':
     main()

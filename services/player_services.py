@@ -71,7 +71,7 @@ def create_player_from_davenport(player_row:Series) -> Player:
 def create_player(player_row:list, ottoneu_id:int=None, fg_id=None) -> Player:
     '''Creates a player with all necessary information, saves it to the database, and returns the loaded Player. Can be from either Ottoneu or FanGraphs dataset.'''
     player = Player()
-    if ottoneu_id != None:
+    if ottoneu_id:
         player.ottoneu_id = int(ottoneu_id)
         player.fg_major_id = str(player_row['FG MajorLeagueID'])
         player.fg_minor_id = player_row['FG MinorLeagueID']
