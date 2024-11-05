@@ -9,7 +9,7 @@ from pandas import Series
 from domain.domain import Player, Salary_Refresh, Salary_Info
 from domain.enum import ScoringFormat, Position
 from scrape.scrape_ottoneu import Scrape_Ottoneu
-from dao.session import Session
+from dao.session import Session, sessionmaker
 from services import salary_services
 from util import string_util
 from typing import List, Tuple
@@ -123,7 +123,7 @@ def get_player(player_id:int) -> Player:
     with Session() as session:
         return get_player_with_session(player_id=player_id, session=session)
 
-def get_player_with_session(player_id:int, session:Session) -> Player:
+def get_player_with_session(player_id:int, session:sessionmaker) -> Player:
     '''Returns player from database based on Toolbox player id using the given session'''
     return session.query(Player).filter(Player.index == player_id).first()
 
@@ -168,7 +168,7 @@ def search_by_name(search_str:str, salary_info:bool=True) -> List[Player]:
         else:
             return session.query(Player).filter(Player.search_name.contains(search_str)).all()
 
-def get_player_from_ottoneu_player_page(player_id: int, league_id: int, session:Session=None, pd=None) -> Player:
+def get_player_from_ottoneu_player_page(player_id: int, league_id: int, session:sessionmaker=None, pd=None) -> Player:
     '''Scrapes the Ottoneu player page based on Ottoneu player id and League id to retrieve necessary information to populate a player in the Toolbox database.'''
     logging.info(f'Importing player {player_id} from player page')
     if pd is not None:
@@ -282,7 +282,7 @@ def match_team(player:Player, team_name:str) -> bool:
         return db_team == team_map.get(team_name)
     return False
 
-def update_from_player_page(player_tuple:Tuple[int, str, str, str, str], session:Session) -> Player:
+def update_from_player_page(player_tuple:Tuple[int, str, str, str, str], session:sessionmaker) -> Player:
     fg_id = player_tuple[4]
     player = get_player_by_fg_id(fg_id)
     if player is None:
@@ -359,7 +359,7 @@ def get_player_mlb_id(player:Player) -> int:
     else:
         return -1
 
-def get_player_by_name_and_team_no_fg_id(name:str, team:str, session:Session) -> Player:
+def get_player_by_name_and_team_no_fg_id(name:str, team:str, session:sessionmaker) -> Player:
     name = string_util.normalize(name)
     players = session.query(Player).options(joinedload(Player.salary_info)).filter(and_(Player.search_name.contains(name), Player.fg_major_id.is_(None), Player.fg_minor_id.is_(None))).all()
     if len(players) == 1:

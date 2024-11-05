@@ -391,7 +391,7 @@ class Scrape_Ottoneu(scrape_base.Scrape_Base):
     def scrape_standings_page(self, lg_id:int, year:int) -> Tuple[DataFrame, DataFrame, DataFrame]:
         '''Gets the standings page for the input league for the input year. Returns results as a tuple of two DataFrames. First DataFrame represents the league 'Statistics'\
         table. The second DataFrame represents the 'Rankings' table, if one exists. If not, a None is returned for the second DF. DataFrames are indexed by team id.'''
-        url = f'https://ottoneu.fangraphs.com/{lg_id}/standings?=date={year}-10-31'
+        url = f'https://ottoneu.fangraphs.com/{lg_id}/standings?date={year}-10-31'
         soup = self._get_soup(url)
         table_sects = soup.find_all('section', {'class':'section-container'})
         stat_df = self.__parse_standings_stats_table(table_sects)
@@ -448,21 +448,25 @@ class Scrape_Ottoneu(scrape_base.Scrape_Base):
     def __parse_standings_stat_row(self, row) -> List[float]:
         '''Parses a row from the table body from a passed league standings table.'''
         tds = row.find_all('td')
-        team_id = tds[0].find('a').get('href').split('=')[1]
+        team_id = tds[0].find('a').get('href').split('/')[-1]
         rows = []
         rows.append(team_id)
         for td in tds[1:]:
-            if len(td.find_all('strong')) > 0:
-                rows.append(td.find_all('strong')[0].contents[0].strip())
-            elif len(td.find_all('span', {'class':'negative-change-from-yesterday'})) > 0\
-                or len(td.find_all('span', {'class':'positive-change-from-yesterday'})) > 0:
-                rows.append(td.contents[0].strip())
-            elif len(td.find_all('i', {'class':'fa fa-caret-up'})) > 0:
-                rows.append(f'+{td.find_all("i", {"class":"fa fa-caret-up"})[0].next_sibling.strip()}')
-            elif len(td.find_all('i', {'class':'fa fa-caret-down'})) > 0:
-                rows.append(f'-{td.find_all("i", {"class":"fa fa-caret-down"})[0].next_sibling.strip()}')
-            else:
-                rows.append(td.contents[0].strip())
+            try:
+                if len(td.find_all('strong')) > 0:
+                    rows.append(td.find_all('strong')[0].contents[0].strip())
+                elif len(td.find_all('span', {'class':'negative-change-from-yesterday'})) > 0\
+                    or len(td.find_all('span', {'class':'positive-change-from-yesterday'})) > 0:
+                    rows.append(td.contents[0].strip())
+                elif len(td.find_all('i', {'class':'fa fa-caret-up'})) > 0:
+                    rows.append(f'{td.find_all("i", {"class":"fa fa-caret-up"})[0].next_sibling.strip()}')
+                elif len(td.find_all('i', {'class':'fa fa-caret-down'})) > 0:
+                    rows.append(f'{td.find_all("i", {"class":"fa fa-caret-down"})[0].next_sibling.strip()}')
+                else:
+                    rows.append(td.contents[0].strip())
+            except:
+                rows.append(0)
+        rows = [float(val) for val in rows]
         return rows
     
     def __parse_standings_stat_header(self, header_row) -> List[str]:
@@ -483,10 +487,49 @@ def main():
     #print(rost.head(50))
     #trans = scraper.scrape_recent_trans_api(160)
     #print(trans.head())
-    leagues = scraper.scrape_league_table()
-    league_ids = [league_id for league_id in leagues.index]
-    print(len(league_ids))
-    print(league_ids)
+    #leagues = scraper.get_all_leagues_by_format(3)
+    #league_ids = [league_id for league_id in leagues.index]
+    league_ids = ['15', '26', '40', '43', '52', '74', '81', '85', '90', '93', '94', '98', '100', '107', '120', '137', '153', '160', '171', '175', '179', '183', '184', '207', '220', '226', '228', '234', '235', '248', '285', 
+'300', '303', '324', '347', '375', '380', '382', '389', '400', '430', '435', '441', '447', '468', '480', '481', '482', '493', '502', '504', '513', '529', '530', '553', '566', '568', '569', '581', '591', '617', '639', '652', '653', '663', '699', '717', '719', '726', '743', '752', '757', '760', '761', '765', '766', '767', '772', '774', '783', '785', '788', '791', '800', '802', '815', '823', '834', '835', '842', '844', '846', '859', '863', '869', '879', '891', '948', '1011', '1013', '1033', '1039', '1043', '1059', '1085', '1124', '1130', '1151', '1170', '1202', '1213', '1231', '1238', '1242', '1252', '1260', '1271', '1272', '1286', '1323', '1337', '1350', '1354', '1355', '1385', '1395', '1396', '1419', '1431', '1452', '1464', '1469', '1478', '1487', '1511', '1513', '1588', '1600', '1604', '1659', '1684']
+    #print(league_ids)
+
+    #league_ids = ['815']
+
+    ppg_rank_count = dict()
+    pip_rank_count = dict()
+
+    failed = 0
+
+    for lid in league_ids:
+        try:
+            print(lid)
+            df, _, _ = scraper.scrape_standings_page(lid, 2023)
+            
+            df['Rank'] = df['Pts'].rank(ascending=False)
+            df['PPG Rank'] = df['P/G'].rank(ascending=False)
+            df['PIP Rank'] = df['P/IP'].rank(ascending=False)
+
+            for rank in df['Rank'].unique():
+                if rank not in ppg_rank_count:
+                    ppg_rank_count[rank] = dict()
+                    pip_rank_count[rank] = dict()
+                ppg_rank_row = df.loc[df['Rank'] == rank]
+                ppg_rank = ppg_rank_row['PPG Rank'].values[0]
+                pip_rank_row = df.loc[df['Rank'] == rank]
+                pip_rank = pip_rank_row['PIP Rank'].values[0]
+
+                ppg_rank_count[rank][ppg_rank] = ppg_rank_count[rank].get(ppg_rank, 0) + 1
+                pip_rank_count[rank][pip_rank] = pip_rank_count[rank].get(pip_rank, 0) + 1
+        except:
+            failed += 1
+        #break
+
+    print(f"There are {len(league_ids)} FGP, OPL leagues")
+    print(f"There were {failed} standings parsing errors")
+
+    print(ppg_rank_count)
+    print(pip_rank_count)
+
 
 if __name__ == '__main__':
     main()

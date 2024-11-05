@@ -18,7 +18,7 @@ import time
 import logging
 import requests
 
-from scrape.exceptions import BrowserTypeException, DownloadException
+from scrape.exceptions import BrowserTypeException
 
 class Scrape_Base(object):
     '''Abstract scraper class'''
