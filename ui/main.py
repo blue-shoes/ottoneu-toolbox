@@ -1,5 +1,5 @@
 import tkinter as tk  
-from tkinter import ttk 
+from tkinter import ttk, TclError
 import logging
 import os
 import configparser
@@ -28,14 +28,21 @@ class Main(tk.Tk):
         tk.Tk.__init__(self, *args, **kwargs)
         self.resource_path = resource_path
         if resource_path is None:
-            self.iconbitmap("otb_icon.ico")
-            self.iconbitmap(bitmap='otb_icon.ico')
-            self.iconbitmap(default='otb_icon.ico')
+            try:
+                self.iconbitmap("otb_icon.ico")
+                self.iconbitmap(bitmap='otb_icon.ico')
+                self.iconbitmap(default='otb_icon.ico')
+            except TclError:
+                pass
+            
         else:
             iconbitmap = resource_path('otb_icon.ico')
-            self.iconbitmap(iconbitmap)
-            self.iconbitmap(bitmap=iconbitmap)
-            self.iconbitmap(default=iconbitmap)
+            try:
+                self.iconbitmap(iconbitmap)
+                self.iconbitmap(bitmap=iconbitmap)
+                self.iconbitmap(default=iconbitmap)
+            except TclError:
+                pass
 
         self.title(f"Ottoneu Tool Box v{__version__}") 
         #self.preferences = preferences
@@ -232,9 +239,10 @@ class Main(tk.Tk):
             level = logging.DEBUG
         else:
             level = logging.INFO
-        if not os.path.exists('.\\logs'):
-            os.mkdir('.\\logs')
-        logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s %(message)s', level=level, filename='.\\logs\\toolbox.log')
+        if not os.path.exists('logs'):
+            os.mkdir('logs')
+        file_path = os.path.join('logs', 'toolbox.log')
+        logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s %(message)s', level=level, filename=file_path)
     
     def show_frame(self, page_name, ignore_forget=False):
         '''Show a frame for the given page name'''
