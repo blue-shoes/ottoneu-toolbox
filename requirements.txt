@@ -3,3 +3,5 @@ keyring==23.13.1
 pybaseball==2.2.5
 requests==2.28.0
 webdriver_manager==3.7.1
+pybaseball==2.2.7
+yfpy==16.0.3
