@@ -2,7 +2,6 @@ import tkinter as tk
 from tkinter import *              
 from tkinter import ttk 
 import os
-from tkinter import messagebox as mb
 from tkinter.messagebox import OK
 import logging
 import datetime

@@ -67,9 +67,9 @@ class Scrape_CouchManagers(scrape_base.Scrape_Base):
         if len(player_divs) == 0:
             logging.info('No current auctions')
             return auctions
-        for pd in player_divs:
-            cm_pid = re.findall('\((.+)\)', pd.find('a').get('href'))[0]
-            name_tag = pd.find('a').contents
+        for player_d in player_divs:
+            cm_pid = re.findall('\((.+)\)', player_d.find('a').get('href'))[0]
+            name_tag = player_d.find('a').contents
             name = name_tag[0] + name_tag[1].contents[0]
             team = soup.find('div', {'id': f'players_pos_{cm_pid}'}).contents[0].split('-')[-1]
             current_bid = soup.find('div', {'id': f'auction_{cm_pid}_amount'}).contents[0].split('$')[-1]

@@ -1,7 +1,6 @@
 import configparser
 import os
 from os import path
-import pandas as pd
 from pandas import DataFrame
 from scrape import scrape_base
 from scrape.exceptions import FangraphsException
@@ -27,7 +26,7 @@ class Scrape_Fg(scrape_base.Scrape_Base):
             os.mkdir(subdirpath)
         filepath = os.path.join(subdirpath, csv_name)
         #If we haven't used the web yet, initialize the driver
-        if self.driver == None:
+        if not self.driver:
             self.setupDriver()
         #Use driver to get dataset
         dataframe = self.getDataset(page, 'LeaderBoard1_cmdCSV', filepath, player)
@@ -45,7 +44,7 @@ class Scrape_Fg(scrape_base.Scrape_Base):
             os.mkdir(subdir)
         filepath = os.path.join(subdir, csv_name)
         #If we haven't used the web yet, initialize the driver
-        if self.driver == None:
+        if not self.driver:
             self.setupDriver()
         #Use driver to get dataset
         dataframe = self.getDataset(url, 'Export Data', filepath, by_type=By.LINK_TEXT)

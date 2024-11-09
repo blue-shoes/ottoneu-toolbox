@@ -18,7 +18,7 @@ import time
 import logging
 import requests
 
-from scrape.exceptions import BrowserTypeException, DownloadException
+from scrape.exceptions import BrowserTypeException
 
 class Scrape_Base(object):
     '''Abstract scraper class'''
@@ -43,7 +43,7 @@ class Scrape_Base(object):
 
     def close(self) -> None:
         '''Quits the internal driver once it is no longer needed'''
-        if self.driver != None:
+        if self.driver:
             self.driver.quit()
 
     def getDataset(self, page, element_id, filepath, by_type=By.ID) -> DataFrame:
