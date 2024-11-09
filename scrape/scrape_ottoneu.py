@@ -357,7 +357,7 @@ class Scrape_Ottoneu(scrape_base.Scrape_Base):
         '''Returns the contents of a Team Finance table row. Returns a list of [Team_Id, Team_Name, # Players, # Spots, Base Salary, Cap Penalties, Loans in, Loans out, Available cap space]'''
         tds = fin_row.find_all('td')
         parsed_row = []
-        id = tds[0].find('a').get('href').split('=')[1]
+        id = tds[0].find('a').get('href').split('/')[-1]
         parsed_row.append(id)
         parsed_row.append(tds[0].find('a').string)
         parsed_row.append(tds[1].string)
@@ -368,7 +368,7 @@ class Scrape_Ottoneu(scrape_base.Scrape_Base):
             else:
                 parsed_row.append(sub(r'[^\d.]', '', tds[idx].string))
         for row in depth_tbl_rows:
-            depth_id = row.find('a').get('href').split('=')[1]
+            depth_id = row.find('a').get('href').split('/')[-1]
             if id == depth_id:
                 depth_tds = row.find_all('td')
                 for td in depth_tds[1:]:
@@ -387,7 +387,7 @@ class Scrape_Ottoneu(scrape_base.Scrape_Base):
         fg_id = None
         for tag in header.find_all('a'):
             if tag.contents[0].string == 'FanGraphs Player Page':
-                fg_id = tag.get('href').split('=')[1]
+                fg_id = tag.get('href').split('/')[-1]
         return (player_id, name, team, pos, fg_id)
     
     def scrape_standings_page(self, lg_id:int, year:int) -> Tuple[DataFrame, DataFrame, DataFrame]:
@@ -450,7 +450,7 @@ class Scrape_Ottoneu(scrape_base.Scrape_Base):
     def __parse_standings_stat_row(self, row) -> List[float]:
         '''Parses a row from the table body from a passed league standings table.'''
         tds = row.find_all('td')
-        team_id = tds[0].find('a').get('href').split('=')[1]
+        team_id = tds[0].find('a').get('href').split('/')[-1]
         rows = []
         rows.append(team_id)
         for td in tds[1:]:
