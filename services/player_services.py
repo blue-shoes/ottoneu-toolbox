@@ -361,13 +361,13 @@ def get_player_mlb_id(player:Player) -> int:
 
 def get_player_by_name_and_team_no_fg_id(name:str, team:str, session:Session) -> Player:
     name = string_util.normalize(name)
-    players = session.query(Player).options(joinedload(Player.salary_info)).filter(and_(Player.search_name.contains(name), Player.fg_major_id.is_(None), Player.fg_minor_id.is_(None))).all()
+    players = session.query(Player).options(joinedload(Player.salary_info)).filter(and_(Player.search_name.contains(name), Player.ottoneu_id.is_(None), Player.fg_major_id.is_(None), Player.fg_minor_id.is_(None))).all()
     if len(players) == 1:
         return players[0]
     elif len(players) == 0:
         name_array = name.split()
         last_idx = -1
-        players = session.query(Player).options(joinedload(Player.salary_info)).filter(and_(Player.search_name.contains(name_array[-1]), Player.fg_major_id.is_(None), Player.fg_minor_id.is_(None))).all()
+        players = session.query(Player).options(joinedload(Player.salary_info)).filter(and_(Player.search_name.contains(name_array[-1]), Player.ottoneu_id.is_(None), Player.fg_major_id.is_(None), Player.fg_minor_id.is_(None))).all()
         if len(players) == 0 and len(name_array) > 2:
             last_idx = -2
         i = 1
@@ -376,7 +376,7 @@ def get_player_by_name_and_team_no_fg_id(name:str, team:str, session:Session) ->
                 if i >= len(name_array[0]):
                     break
                 name = f'{name_array[0][:i]}% {name_array[last_idx]}'
-                tmp_players = session.query(Player).options(joinedload(Player.salary_info)).filter(and_(Player.search_name.contains(name), Player.yahoo_id.is_(None))).all()
+                tmp_players = session.query(Player).options(joinedload(Player.salary_info)).filter(and_(Player.search_name.contains(name), Player.ottoneu_id.is_(None), Player.fg_major_id.is_(None), Player.fg_minor_id.is_(None), Player.yahoo_id.is_(None))).all()
                 if len(tmp_players) < 1:
                     break
                 players = tmp_players
