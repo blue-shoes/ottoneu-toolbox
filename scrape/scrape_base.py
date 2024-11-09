@@ -3,7 +3,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service as ChromeService
 from selenium.webdriver.firefox.service import Service as FirefoxService
 from selenium.webdriver.edge.service import Service as EdgeService
-from subprocess import CREATE_NO_WINDOW
+#from subprocess import CREATE_NO_WINDOW
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, WebDriverException
@@ -111,6 +111,11 @@ class Scrape_Base(object):
     def setupDriver(self, force_headless:bool=False):
         '''Sets up the driver based on the established browser type. Currently supports Chrome, Firefox, Microsoft Edge.'''
         try:
+            from subprocess import CREATE_NO_WINDOW
+            flags = CREATE_NO_WINDOW
+        except ImportError:
+            flags = None
+        try:
             if self.browser == 'ChromeHTML':
                 options = webdriver.ChromeOptions()
                 if force_headless:
@@ -120,7 +125,8 @@ class Scrape_Base(object):
                 prefs["download.default_directory"]=self.download_dir
                 options.add_experimental_option("prefs", prefs)
                 service = ChromeService()
-                service.creationflags = CREATE_NO_WINDOW
+                if flags:
+                    service.creationflags = CREATE_NO_WINDOW
                 self.driver = webdriver.Chrome(service=service, options=options)
                 self.driver.set_window_size(1920, 1080)
             elif self.browser == 'MSEdgeHTM':
@@ -131,7 +137,8 @@ class Scrape_Base(object):
                     "download.default_directory": self.download_dir,
                     "download.prompt_for_download": False})
                 service = EdgeService()
-                service.creationflags = CREATE_NO_WINDOW
+                if flags:
+                    service.creationflags = CREATE_NO_WINDOW
                 self.driver = webdriver.Edge(service=service, options=options)
             elif self.browser is not None and 'FirefoxURL' in self.browser:
                 options = webdriver.FirefoxOptions()
@@ -141,7 +148,8 @@ class Scrape_Base(object):
                 options.set_preference("browser.download.dir", self.download_dir)
                 options.set_preference("browser.helperApps.neverAsk.saveToDisk", "application/x-gzip")
                 service = FirefoxService(log_path='logs/geckodriver.log')
-                service.creationflags = CREATE_NO_WINDOW
+                if flags:
+                    service.creationflags = CREATE_NO_WINDOW
                 self.driver = webdriver.Firefox(service=service, options=options)
             else:
                 raise BrowserTypeException('Unknown browser type. Please use Chrome, Firefox, or Microsoft Edge')
