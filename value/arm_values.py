@@ -616,7 +616,7 @@ class ArmValues():
             g_col = f"{pos.value} Games"
             df[g_col] = 0
             df[col] = df.loc[df[f'{pos.value} Rankable']][rank_col].rank(ascending=ascending)
-            df[col].fillna(-999, inplace=True)
+            df[col] = df[col].fillna(-999)
             self.max_rost_num[pos.value] = len(df.loc[df[f'{pos.value} Rankable']])
 
     def roto_above_rl(self, proj:DataFrame) -> List[bool]:

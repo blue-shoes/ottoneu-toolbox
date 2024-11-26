@@ -94,7 +94,7 @@ class BatValues():
                 self.max_rost_num['Util'] = len(df)
             else:
                 df[col] = df.loc[df['Position(s)'].apply(lambda test_pos, _pos=pos: P.eligible(test_pos, _pos))][rank_col].rank(ascending=False)
-                df[col].fillna(-999, inplace=True)
+                df[col] = df[col].fillna(-999)
                 self.max_rost_num[pos.value] = len(df.loc[df['Position(s)'].apply(lambda test_pos, _pos=pos: P.eligible(test_pos, _pos))])
     
     def calc_total_games(self, df:DataFrame) -> None:
