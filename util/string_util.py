@@ -16,7 +16,10 @@ normalMap = {'À': 'A', 'Á': 'A', 'Â': 'A', 'Ã': 'A', 'Ä': 'A',
 def normalize(value:str) -> str:
     """Function that removes most diacritics from strings and returns value in all caps"""
     normalize = str.maketrans(normalMap)
-    val = value.translate(normalize)
+    try:
+        val = value.translate(normalize)
+    except AttributeError:
+        raise AttributeError
     return val.upper()
 
 def parse_dollar(value) -> float:
