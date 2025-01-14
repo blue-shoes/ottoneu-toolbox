@@ -16,4 +16,4 @@ conf/*
 dist/*
 tmp/*
 .venv
-ottoneu-toolbox-env
+.vscode/*
