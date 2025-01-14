@@ -8,6 +8,7 @@ from tkinter import filedialog as fd
 from tkinter import messagebox as mb
 from pathlib import Path
 import pandas as pd
+import openpyxl
 from typing import Dict, List
 
 from ui.app_controller import Controller
@@ -1135,8 +1136,7 @@ class ValuesCalculation(ToolboxView):
 
         if pathlib.Path(file).suffix == '.xlsx':
             #Output full value set to Excel sheet
-            with pd.ExcelWriter(file, engine='xlsxwriter') as writer:
-                dol_fmt = writer.book.add_format({'num_format': '$##0.0'})
+            with pd.ExcelWriter(file, engine='openpyxl') as writer:
                 positions = []
                 positions.append(Position.OVERALL)
                 positions.append(Position.OFFENSE)
@@ -1147,10 +1147,11 @@ class ValuesCalculation(ToolboxView):
                     df = calculation_services.get_dataframe_with_values(self.value_calc, pos, text_values=False)
                     df.to_excel(writer, sheet_name=pos.value)
                     if pos == Position.OVERALL:
-                        
-                        writer.sheets[pos.value].set_column(4, 4, None, dol_fmt)
+                        for cell in writer.sheets[pos.value]["E"]:    
+                            cell.number_format = '$##0.0'
                     else:
-                        writer.sheets[pos.value].set_column(1, 1, None, dol_fmt)
+                         for cell in writer.sheets[pos.value]["B"]:    
+                            cell.number_format = '$##0.0'
         else:
             #Output just overall values in csv format
             df = calculation_services.get_dataframe_with_values(self.value_calc, Position.OVERALL)
