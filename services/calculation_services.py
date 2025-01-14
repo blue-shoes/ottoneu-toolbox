@@ -147,9 +147,9 @@ def get_batting_point_rate_from_player_projection(player_proj: PlayerProjection,
     points = get_points(player_proj, Position.OFFENSE, custom_format=custom_format)
     if basis == RankingBasis.PPG:
         games = player_proj.get_stat(StatType.G_HIT)
-        if games is None or games == 0:
+        if games is None or int(games) == 0:
             return 0
-        return points / games
+        return points / int(games)
     if basis == RankingBasis.PPPA:
         pa = player_proj.get_stat(StatType.PA)
         if pa is None or pa == 0:

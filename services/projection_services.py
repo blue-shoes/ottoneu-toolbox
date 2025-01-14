@@ -216,13 +216,19 @@ def save_projection(projection:Projection, projs:List[DataFrame], id_type:IdType
                         id = idx
                     elif id_type == IdType.MLB:
                         player = player_services.get_player_by_mlb_id(idx)
-                        id = player.index
+                        if player:
+                            id = player.index
+                        else:
+                            #TODO: Maybe reimplement this if it's currently the problem
+                            #player = player_services.get_player_by_name_and_team(row['Name'], row['Team'])
+                            if player:
+                                id = player.index
                     elif id_type == IdType.OTB:
                         player = player_services.get_player(idx)
                         id = idx
                     else:
                         raise Exception(f'Unsupported IdType {id_type}')
-                    if player == None:
+                    if not player:
                         if id_type == IdType.OTTONEU:
                             player = player_services.create_player(row, ottoneu_id=id)
                         elif id_type == IdType.FANGRAPHS:
@@ -253,13 +259,16 @@ def save_projection(projection:Projection, projs:List[DataFrame], id_type:IdType
                             if data.stat_value is None or math.isnan(data.stat_value):
                                 data.stat_value = 0
                             player_proj.projection_data.append(data)
-                        elif stat_type != None: 
+                        elif stat_type: 
                             if player_proj.get_projection_data(stat_type) is None:
                                 data = ProjectionData()
                                 data.stat_type = stat_type
                                 data.stat_value = row[col]
-                                if data.stat_value is None or math.isnan(data.stat_value):
-                                    data.stat_value = 0
+                                try:
+                                    if data.stat_value is None or math.isnan(data.stat_value):
+                                        data.stat_value = 0
+                                except TypeError:
+                                    raise TypeError
                                 player_proj.projection_data.append(data)
                             else:
                                 data = player_proj.get_projection_data(stat_type)
@@ -295,7 +304,7 @@ def create_projection_from_upload(projection: Projection, pos_file:str, pitch_fi
     projection.player_projections = []
     projection.ros = ros
     projection.timestamp = datetime.now()
-    if year == None:
+    if not year:
         year = date_util.get_current_ottoneu_year()
     projection.season = year
 
@@ -329,8 +338,10 @@ def normalize_batter_projections(proj: Projection, df: DataFrame) -> List[str]:
         if 'ID' in col.upper():
             df.set_index(col, inplace=True)
             found_id = True
-        elif 'NAME' in col.upper():
+        elif 'NAME' == col.upper():
             col_map[col] = 'Name'
+        elif 'TEAM' == col.upper():
+            col_map[col] = 'Team'
         elif 'G' == col.upper() or 'GAME' in col.upper():
             col_map[col] = 'G'
         elif 'PA' in col.upper():
@@ -341,9 +352,9 @@ def normalize_batter_projections(proj: Projection, df: DataFrame) -> List[str]:
             col_map[col] = 'AB'
         elif 'H' == col.upper() or 'HIT' in col.upper():
             col_map[col] = 'H'
-        elif '2B' == col.upper() or 'DOUBLE' in col.upper():
+        elif '2B' == col.upper() or 'DOUBLE' in col.upper() or "B2" in col.upper():
             col_map[col] = '2B'
-        elif '3B' == col.upper() or 'TRIPLE' in col.upper():
+        elif '3B' == col.upper() or 'TRIPLE' in col.upper() or "B3" in col.upper():
             col_map[col] = '3B'
         elif 'HR' == col.upper():
             col_map[col] = 'HR'
@@ -440,21 +451,23 @@ def normalize_pitcher_projections(proj: Projection, df: DataFrame) -> List[str]:
         if 'ID' in col.upper():
             df.set_index(col, inplace=True)
             found_id = True
-        elif 'NAME' in col.upper():
+        elif 'NAME' == col.upper():
             col_map[col] = 'Name'
+        elif 'TEAM' == col.upper():
+            col_map[col] = 'Team'
         elif 'QS' in col.upper() or 'QUALITY' in col.upper():
             col_map[col] = 'QS'
         elif 'GS' in col.upper() or 'START' in col.upper():
             col_map[col] = 'GS'
         elif 'G' == col.upper() or 'GAME' in col.upper():
             col_map[col] = 'G'
-        elif 'FIP' in col.upper():
+        elif 'FIP' == col.upper():
             col_map[col] = 'FIP'
         elif 'WHIP' in col.upper():
             col_map[col] = 'WHIP'
         elif 'BABIP' in col.upper():
             col_map[col] = 'BABIP'
-        elif 'IP' in col.upper() or 'INNING' in col.upper():
+        elif 'IP' == col.upper() or 'INNING' in col.upper():
             col_map[col] = 'IP'
         elif 'W' == col.upper() or 'WIN' in col.upper():
             col_map[col] = 'W'
@@ -472,7 +485,7 @@ def normalize_pitcher_projections(proj: Projection, df: DataFrame) -> List[str]:
             col_map[col] = 'HR'
         elif 'HBP' in col.upper() or 'BY' in col.upper():
             col_map[col] = 'HBP'
-        elif 'K/9' in col.upper():
+        elif 'K/9' in col.upper() or 'SO9' in col.upper():
             col_map[col] = 'K/9'
         elif 'K/' in col.upper():
             continue
@@ -480,7 +493,7 @@ def normalize_pitcher_projections(proj: Projection, df: DataFrame) -> List[str]:
             col_map[col] = 'SO'
         elif 'ERA' == col.upper():
             col_map[col] = 'ERA'
-        elif 'BB/9' in col.upper():
+        elif 'BB/9' in col.upper() or 'BB9' in col.upper():
             col_map[col] = 'BB/9'
         elif 'BB' == col.upper() or 'WALK' in col.upper():
             col_map[col] = 'BB'
