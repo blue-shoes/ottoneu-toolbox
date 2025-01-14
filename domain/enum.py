@@ -29,16 +29,17 @@ class ProjectionType(int,Enum):
     CUSTOM = (6, 'Custom')
     VALUE_DERIVED = (7, 'Derived')
     DAVENPORT = (8, 'Davenport')
+    OOPSY = (9, 'OOPSY', 'oopsy')
 
     @classmethod
     def get_fg_downloadable(self) -> List[ProjectionType]:
         '''Returns list of ProjectionType that are downloadable from FanGraphs'''
-        return [self.STEAMER, self.ZIPS, self.DEPTH_CHARTS, self.ATC, self.THE_BAT, self.THE_BATX]
+        return [self.STEAMER, self.ZIPS, self.DEPTH_CHARTS, self.ATC, self.THE_BAT, self.THE_BATX, self.OOPSY]
     
     @classmethod
     def get_downloadable(self) -> List[ProjectionType]:
         '''Returns list of ProjectionType that are downloadable'''
-        return [self.DAVENPORT, self.STEAMER, self.ZIPS, self.DEPTH_CHARTS, self.ATC, self.THE_BAT, self.THE_BATX]
+        return [self.DAVENPORT, self.STEAMER, self.ZIPS, self.DEPTH_CHARTS, self.ATC, self.THE_BAT, self.THE_BATX, self.OOPSY]
 
     @classmethod
     def get_enum_by_name(self, name:str)->ProjectionType:

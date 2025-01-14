@@ -23,16 +23,16 @@ def download_projections(projection:str, ros:bool=False, dc_pt:bool=False, progr
             projection = 'r' + projection
     try:
         fg_scraper = scrape_fg.Scrape_Fg(browser_services.get_desired_browser())
-        pos_proj = fg_scraper.getProjectionDataset(f"https://www.fangraphs.com/projections.aspx?pos=all&stats=bat&type={projection}&team=0&lg=all&players=0", f'{projection}_pos.csv')
+        pos_proj = fg_scraper.getProjectionDataset(f"https://www.fangraphs.com/projections?pos=all&stats=bat&type={projection}", f'{projection}_pos.csv')
         #THE BAT X does not have pitcher projections, so revert them to simply THE BAT
         if progress is not None:
             progress.increment_completion_percent(20)
         if projection == 'thebatx':
-            pitch_proj = fg_scraper.getProjectionDataset(f"https://www.fangraphs.com/projections.aspx?pos=all&stats=pit&type=thebat&team=0&lg=all&players=0", f'thebat_pitch.csv')     
+            pitch_proj = fg_scraper.getProjectionDataset(f"https://www.fangraphs.com/projections?pos=all&stats=pit&type=thebat", f'thebat_pitch.csv')     
         elif projection == 'thebatxr':
-            fg_scraper.getProjectionDataset(f"https://www.fangraphs.com/projections.aspx?pos=all&stats=pit&type=thebatr&team=0&lg=all&players=0", f'thebatr_pitch.csv')
+            fg_scraper.getProjectionDataset(f"https://www.fangraphs.com/projections?pos=all&stats=pit&type=thebatr", f'thebatr_pitch.csv')
         else:
-            pitch_proj = fg_scraper.getProjectionDataset(f"https://www.fangraphs.com/projections.aspx?pos=all&stats=pit&type={projection}&team=0&lg=all&players=0", f'{projection}_pitch.csv')
+            pitch_proj = fg_scraper.getProjectionDataset(f"https://www.fangraphs.com/projections?pos=all&stats=pit&type={projection}", f'{projection}_pitch.csv')
         if progress is not None:
             progress.increment_completion_percent(20)
         if dc_pt:
@@ -63,9 +63,9 @@ def convertToDcPlayingTime(proj:DataFrame, ros:bool, position:bool, fg_scraper:s
             fg_scraper = scrape_fg.Scrape_Fg(browser_services.get_desired_browser())
             close = True
         if position:
-            dc_proj = fg_scraper.getProjectionDataset(f"https://www.fangraphs.com/projections.aspx?pos=all&stats=bat&type={dc_set}&team=0&lg=all&players=0", f'{dc_set}_pos.csv')
+            dc_proj = fg_scraper.getProjectionDataset(f"https://www.fangraphs.com/projections?pos=all&stats=bat&type={dc_set}", f'{dc_set}_pos.csv')
         else:
-            dc_proj = fg_scraper.getProjectionDataset(f"https://www.fangraphs.com/projections.aspx?pos=all&stats=pit&type={dc_set}&team=0&lg=all&players=0", f'{dc_set}_pitch.csv')
+            dc_proj = fg_scraper.getProjectionDataset(f"https://www.fangraphs.com/projections?pos=all&stats=pit&type={dc_set}", f'{dc_set}_pitch.csv')
     finally:
         if close:
             fg_scraper.close()
