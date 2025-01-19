@@ -1,4 +1,4 @@
-from winreg import *
+#from winreg import *
 import configparser
 import os
 
@@ -15,6 +15,12 @@ def get_desired_browser() -> Browser:
         preferences.read(config_path)
     browser_pref = preferences.get('Player_Values', Pref.DEFAULT_BROWSER, fallback=None)
     if browser_pref is None:
+        try :
+            import winreg
+        except:
+            raise BrowserTypeException('No browser type selected in Preferences. Please use Chrome, Firefox, or Microsoft Edge')        
+        
+        from winreg import HKEY_CURRENT_USER, OpenKey, QueryValueEx
         with OpenKey(HKEY_CURRENT_USER, r"Software\\Microsoft\\Windows\\Shell\\Associations\\UrlAssociations\\http\\UserChoice") as key:
             browser_pref = QueryValueEx(key, 'Progid')[0]
     if 'Firefox' in browser_pref:
