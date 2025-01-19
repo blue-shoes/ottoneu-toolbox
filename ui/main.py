@@ -4,7 +4,7 @@ import logging
 import os
 import configparser
 import webbrowser
-from distutils.version import StrictVersion
+from packaging.version import parse as parse_version
 from tkinter import messagebox as mb
 import datetime
 import threading
@@ -94,24 +94,25 @@ class Main(tk.Tk):
             db_vers.value = __version__
             db_vers = property_service.save_property(db_vers)
         if '-beta' in db_vers.value:
-            db_strict_vers = StrictVersion(db_vers.value.split('-beta')[0])
+            db_strict_vers = parse_version(db_vers.value.split('-beta')[0])
         else:
-            db_strict_vers = StrictVersion(db_vers.value)
+            db_strict_vers = parse_version(db_vers.value)
         if '-beta' in __version__:
             v = __version__.split('-beta')[0]
         else:
             v = __version__
-        if db_strict_vers < StrictVersion(v):
+        if db_strict_vers < parse_version(v):
             progress_dialog.set_task_title('Updating Database Structure...')
             progress_dialog.increment_completion_percent(5)
             to_run = []
             for filename in os.listdir(sql_dir):
                 try:
-                    vers = StrictVersion(filename.split('.sql')[0])
-                    if vers > db_strict_vers and vers <= StrictVersion(v):
+                    vers = parse_version(filename.split('.sql')[0])
+                    if vers > db_strict_vers and vers <= parse_version(v):
                         to_run.append(os.path.join(sql_dir, filename))
                 except ValueError:
                     continue
+
             if len(to_run) > 0:
                 db_update.run_db_updates(to_run)
             db_vers.value = __version__
@@ -124,7 +125,7 @@ class Main(tk.Tk):
             latest_version = response.json()["name"]
             if 'v' in latest_version:
                 latest_version = latest_version.split('v')[1]
-            if StrictVersion(latest_version) > StrictVersion(v):
+            if parse_version(latest_version) > parse_version(v):
                 dialog = update.Dialog(self, response)
                 if dialog.status:
                     progress_dialog.complete()
