@@ -11,6 +11,7 @@ class ProjectionType(Enum):
     THE_BATX = 5
     CUSTOM = 6
     VALUE_DERIVED = 7
+    OOPSY = 9
 
     fg_downloadable = [STEAMER, ZIPS, DEPTH_CHARTS, ATC, THE_BAT, THE_BATX]
 
@@ -24,7 +25,8 @@ class ProjectionType(Enum):
         self.THE_BAT : "THE BAT",
         self.THE_BATX : "THE BATX",
         self.CUSTOM : "Custom",
-        self.VALUE_DERIVED: "Derived"
+        self.VALUE_DERIVED: "Derived",
+        self.OOPSY: "OOPSY"
     }
 
     @classmethod
@@ -37,7 +39,8 @@ class ProjectionType(Enum):
         "THE BAT" : self.THE_BAT,
         "THE BATX" : self.THE_BATX,
         "Custom" : self.CUSTOM,
-        "Derived" : self.VALUE_DERIVED
+        "Derived" : self.VALUE_DERIVED,
+        "OOPSY" : self.OOPSY
     }
 
     @classmethod
@@ -48,7 +51,8 @@ class ProjectionType(Enum):
         self.DEPTH_CHARTS : "fangraphsdc",
         self.ATC : "atc",
         self.THE_BAT : "thebat",
-        self.THE_BATX : "thebatx"
+        self.THE_BATX : "thebatx",
+        self.OOPSY : "oopsy"
     }
 
 class CalculationDataType(Enum):
