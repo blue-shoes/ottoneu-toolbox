@@ -13,7 +13,7 @@ class ProjectionType(Enum):
     VALUE_DERIVED = 7
     OOPSY = 9
 
-    fg_downloadable = [STEAMER, ZIPS, DEPTH_CHARTS, ATC, THE_BAT, THE_BATX]
+    fg_downloadable = [STEAMER, ZIPS, DEPTH_CHARTS, ATC, THE_BAT, THE_BATX, OOPSY]
 
     @classmethod
     def enum_to_name_dict(self):

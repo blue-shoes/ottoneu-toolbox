@@ -85,7 +85,7 @@ class Step1(tk.Frame):
         tk.Label(self.fg_self , text="Projection Type:", font="bold").grid(column=0,row=0)
         
         downloadable = []
-        for proj in islice(ProjectionType, 6):
+        for proj in ProjectionType.enum_to_url():
             downloadable.append(ProjectionType.enum_to_name_dict().get(proj))
         
         self.proj_type = tk.StringVar()
