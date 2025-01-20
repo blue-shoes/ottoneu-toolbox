@@ -3,7 +3,7 @@ import os
 import logging
 from sqlite3 import OperationalError
 
-def run_db_updates(sql_files) -> None:
+def run_db_updates(sql_files:list[str]) -> None:
     '''Connects to database and runs the input list of sql command files against the database.'''
     conn = sqlite3.connect(os.path.join('db', 'otto_toolbox.db'))
     c = conn.cursor()

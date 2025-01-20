@@ -615,7 +615,7 @@ class ProjectionData:
 class Salary_Refresh:
     '''Class to track how recently the Ottoverse average values have been refreshed'''
     __tablename__ = "salary_refresh"
-    format:Mapped["ScoringFormat"] = mapped_column(default=ScoringFormat.ALL, primary_key=True)
+    s_format:Mapped["ScoringFormat"] = mapped_column(default=ScoringFormat.ALL, primary_key=True)
     last_refresh:Mapped[datetime] = mapped_column(default=datetime.now(), nullable=False)
 
 @reg.mapped_as_dataclass
