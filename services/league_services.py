@@ -131,42 +131,34 @@ def __list_contains_team(team:Team, team_list:List[Team]) -> bool:
             return True
     return False
 
-def __project_team_results(team:Team, league:League, value_calc:ValueCalculation, format:ScoringFormat, fill_pt:bool=False, 
+def __project_team_results(team:Team, league:League, value_calc:ValueCalculation, s_format:ScoringFormat, fill_pt:bool=False, 
                            inflation:float=None, stats:DataFrame=None, accrued_pt:DataFrame=None, keepers:List[Projected_Keeper]=[], 
                            use_keepers:bool=False, custom_scoring:CustomScoring=None) -> None:
     if accrued_pt is not None:
         #TODO: Need to adjust targets here
         ...
-    if fill_pt and not ScoringFormat.is_points_type(format):
+    if fill_pt and not ScoringFormat.is_points_type(s_format):
         raise InputException('Roto leagues do not support filling playing time (the math makes my brain hurt)')
     if fill_pt:
         rep_lvl = value_calc.get_rep_level_map()
-        if ScoringFormat.is_h2h(format):
-            pt = roster_services.optimize_team_pt(team, league, keepers, value_calc.projection, format, 
-                                                  rep_lvl=rep_lvl, rp_limit=value_calc.get_input(CDT.RP_G_TARGET, 10), 
-                                                  sp_limit=value_calc.get_input(CDT.GS_LIMIT, 10), pitch_basis=value_calc.pitcher_basis, 
-                                                  off_g_limit=value_calc.get_input(CDT.BATTER_G_TARGET, 162), use_keepers=use_keepers, 
+        if ScoringFormat.is_h2h(s_format):
+            pt = roster_services.optimize_team_pt(team, league, keepers, value_calc, s_format, 
+                                                  use_keepers=use_keepers, 
                                                   custom_scoring=custom_scoring)
         else:
-            pt = roster_services.optimize_team_pt(team, league, keepers, value_calc.projection, format, 
-                                                  rep_lvl=rep_lvl, rp_limit=value_calc.get_input(CDT.RP_IP_TARGET, 350), 
-                                                  off_g_limit=value_calc.get_input(CDT.BATTER_G_TARGET, 162), use_keepers=use_keepers,
+            pt = roster_services.optimize_team_pt(team, league, keepers, value_calc, s_format, 
+                                                  use_keepers=use_keepers,
                                                   custom_scoring=custom_scoring)
     else:
         if ScoringFormat.is_h2h(format):
-            pt = roster_services.optimize_team_pt(team, league, keepers, value_calc.projection, format, 
-                                                  rp_limit=value_calc.get_input(CDT.RP_G_TARGET, 10), 
-                                                  sp_limit=value_calc.get_input(CDT.GS_LIMIT, 10), pitch_basis=value_calc.pitcher_basis, 
-                                                  off_g_limit=value_calc.get_input(CDT.BATTER_G_TARGET, 162), use_keepers=use_keepers,
+            pt = roster_services.optimize_team_pt(team, league, keepers, value_calc, s_format, use_keepers=use_keepers,
                                                   custom_scoring=custom_scoring)
         else:
-            pt = roster_services.optimize_team_pt(team, league, keepers, value_calc.projection, format, 
-                                                  rp_limit=value_calc.get_input(CDT.RP_IP_TARGET, 350), 
-                                                  off_g_limit=value_calc.get_input(CDT.BATTER_G_TARGET, 162), 
+            pt = roster_services.optimize_team_pt(team, league, keepers, value_calc, s_format,
                                                   use_keepers=use_keepers,
                                                   custom_scoring=custom_scoring)
 
-    if ScoringFormat.is_points_type(format):
+    if ScoringFormat.is_points_type(s_format):
         if stats is not None:
             team.points = stats.loc[team.site_id, 'Points']
         else:
@@ -216,20 +208,20 @@ def __project_team_results(team:Team, league:League, value_calc:ValueCalculation
                 if non_productive > non_productive_per_team:
                     productive_dollars -= (non_productive - non_productive_per_team)
                 available_surplus_dol = (productive_dollars - salaries + non_productive) - (value_calc.get_input(CDT.ROSTER_SPOTS, 40) - count)
-                team.points = team.points + available_surplus_dol * (1/value_calc.get_output(CDT.DOLLARS_PER_FOM)) * (1 - inflation/100)
+                team.points += available_surplus_dol * (1/value_calc.get_output(CDT.DOLLARS_PER_FOM)) * (1 - inflation)
 
         for rs in team.roster_spots:
             pp = value_calc.projection.get_player_projection(rs.player.index)
             if pp is None:
                 continue
-            team.points = team.points + rs.g_h * calculation_services.get_batting_point_rate_from_player_projection(pp)
-            team.points = team.points + rs.ip * calculation_services.get_pitching_point_rate_from_player_projection(pp, format, value_calc.pitcher_basis)
+            team.points += rs.g_h * calculation_services.get_batting_point_rate_from_player_projection(pp)
+            team.points += rs.ip * calculation_services.get_pitching_point_rate_from_player_projection(pp, s_format, value_calc.pitcher_basis)
     else:
         team.cat_stats.clear()
         rate_cats = defaultdict(list)
         if stats is not None:
             prod_bat, _ = Scrape_Ottoneu().scrape_team_production_page(team.league_id, team.site_id)
-            for cat in StatType.get_format_stat_categories(format):
+            for cat in StatType.get_format_stat_categories(s_format):
                 if cat in [StatType.AVG, StatType.SLG]:
                     rate_cats[cat].append((prod_bat['AB'].sum(), stats.loc[team.site_id, StatType.enum_to_display_dict().get(cat)]))
                 elif cat == StatType.OBP:
@@ -243,7 +235,7 @@ def __project_team_results(team:Team, league:League, value_calc:ValueCalculation
         if custom_scoring:
             categories = [cat.category for cat in custom_scoring.stats]
         else:
-            categories = ScoringFormat.get_format_stat_categories(format)
+            categories = ScoringFormat.get_format_stat_categories(s_format)
         for rs in team.roster_spots:
             pp = value_calc.projection.get_player_projection(rs.player.index)
             if pp is None:
