@@ -251,25 +251,25 @@ class Scrape_Ottoneu(scrape_base.Scrape_Base):
             cols.append(col)
         return cols
     
-    def get_all_leagues_by_format(self, format:int=0, OPL:bool=True) -> DataFrame:
+    def get_all_leagues_by_format(self, s_format:int=0, OPL:bool=True) -> DataFrame:
         '''Returns all leagues with the given format. If OPL is True, only OPL-eligible leagues are returned. Otherwise all leagues of the format are returned. DataFrame
         indexed by league id. A format of 0 returns all formats'''
         leagues = self.scrape_league_table()
-        if format > 0:
-            if format == 1:
+        if s_format > 0:
+            if s_format == 1:
                 gt = 'Ottoneu Classic (4x4)'
-            elif format == 2:
+            elif s_format == 2:
                 gt = 'Old School (5x5)'
-            elif format == 3:
+            elif s_format == 3:
                 gt = 'FanGraphs Points'
-            elif format == 4:
+            elif s_format == 4:
                 gt = 'SABR Points'
-            elif format == 5:
+            elif s_format == 5:
                 gt = 'H2H FanGraphs Points'
-            elif format == 6:
+            elif s_format == 6:
                 gt = 'H2H SABR Points'
             else:
-                raise OttoneuException(f'Invalid format requested {format}')
+                raise OttoneuException(f'Invalid format requested {s_format}')
             leagues = leagues.loc[leagues['Game Type'] == gt]
         if OPL:
             leagues = leagues.loc[leagues['OPL-eligible'] == 'Yes']
@@ -314,12 +314,12 @@ class Scrape_Ottoneu(scrape_base.Scrape_Base):
             if count > limit:
                 break
 
-        for format in formats:
-            filepath = os.path.join(self.subdirpath, f'{format}_prod.xlsx')
+        for s_format in formats:
+            filepath = os.path.join(self.subdirpath, f'{s_format}_prod.xlsx')
             with pd.ExcelWriter(filepath) as writer:
                 for lg_id, row in leagues.iterrows():
                     if lg_id in bat_dict:
-                        if row['Game Type'] == format:
+                        if row['Game Type'] == s_format:
                             bat_dict[lg_id].to_excel(writer, sheet_name=f'{lg_id}_bat')
                             arm_dict[lg_id].to_excel(writer, sheet_name=f'{lg_id}_arm')
 

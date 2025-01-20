@@ -104,7 +104,7 @@ class League_Analysis(ToolboxView):
         self.league = self.controller.league
         if self.offseason and (self.league.projected_keepers is None or len(self.league.projected_keepers) == 0):
             self.initialize_keepers()
-        if not ScoringFormat.is_points_type(self.league.format):
+        if not ScoringFormat.is_points_type(self.league.s_format):
             self.standings.standings_type.set(0)
         self.load_tables()
     
@@ -206,7 +206,7 @@ class League_Analysis(ToolboxView):
         pd.increment_completion_percent(10)
         if self.value_calculation.projection:
             league_services.calculate_league_table(self.league, self.value_calculation, \
-                                                    fill_pt=(self.standings.standings_type.get() == 1 and ScoringFormat.is_points_type(self.league.format)), \
+                                                    fill_pt=(self.standings.standings_type.get() == 1 and ScoringFormat.is_points_type(self.league.s_format)), \
                                                     inflation=self.inflation,\
                                                     use_keepers=self.__is_use_keepers(),
                                                     prog=pd)

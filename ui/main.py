@@ -273,10 +273,10 @@ class Main(tk.Tk, Controller):
             if dialog.league.is_linked():
                 pd = progress.ProgressDialog(self, title='Updating League')
                 if dialog.league.platform == Platform.OTTONEU:
-                    self.league = ottoneu_services.refresh_league(dialog.league.index, pd=pd)
+                    self.league = ottoneu_services.refresh_league(dialog.league.id, pd=pd)
                 elif dialog.league.platform == Platform.YAHOO and yahoo_refresh:
                     try:
-                        self.league = yahoo_services.refresh_league(dialog.league.index, pd=pd)
+                        self.league = yahoo_services.refresh_league(dialog.league.id, pd=pd)
                     except requests.exceptions.HTTPError:
                         mb.showerror('Rate Limited', 'Yahoo data retrieval has hit a rate limit. League will not be refreshed. Try again later')
                 else:

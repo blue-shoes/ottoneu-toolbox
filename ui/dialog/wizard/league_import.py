@@ -67,11 +67,11 @@ class Wizard(wizard.Wizard):
             self.league.position_set = position_set_services.get_ottoneu_position_set()
             self.league.starting_set = starting_positions_services.get_ottoneu_position_set()
             lg = league_services.save_league(self.league)
-            self.parent.league = ottoneu_services.refresh_league(lg.index, pd=prog)
+            self.parent.league = ottoneu_services.refresh_league(lg.id, pd=prog)
         elif self.league.platform == Platform.YAHOO:
             try:
                 lg = yahoo_services.set_player_positions_for_league(self.league, pd=prog)
-                self.parent.league = yahoo_services.refresh_league(lg.index, pd=prog)
+                self.parent.league = yahoo_services.refresh_league(lg.id, pd=prog)
             except requests.exceptions.HTTPError:
                 mb.showerror('Rate limited', 'Yahoo data retrieval hit rate limits. Try again later.')
                 return False
@@ -183,7 +183,7 @@ class Step2(tk.Frame):
         lg = self.parent.league
         self.lg_name_sv.set(lg.name)
         self.num_teams_sv.set(lg.num_teams)
-        self.format_sv.set(lg.format.full_name)
+        self.format_sv.set(lg.s_format.full_name)
         if lg.platform == Platform.YAHOO:
             self.yahoo_frame.grid(row=5, column=0, columnspan=2)
             if lg.is_salary_cap():

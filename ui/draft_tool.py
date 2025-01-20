@@ -103,7 +103,7 @@ class DraftTool(ToolboxView):
         if self.league.platform == Platform.OTTONEU:
             self.salary_information_refresh()
 
-        self.draft = draft_services.get_draft_by_league(self.controller.league.index)
+        self.draft = draft_services.get_draft_by_league(self.controller.league.id)
         self.league.team_drafts = self.draft.team_drafts
 
         self.__initialize_draft()
@@ -119,16 +119,16 @@ class DraftTool(ToolboxView):
     def leave_page(self):
         self.run_event.set()
         if self.league and self.league.platform == Platform.YAHOO:
-            self.controller.league = league_services.get_league(self.league.index)
+            self.controller.league = league_services.get_league(self.league.id)
         return True
     
     def salary_information_refresh(self):
         pd = progress.ProgressDialog(self.parent, title='Downloading latest salary information...')
         pd.increment_completion_percent(10)
 
-        format_salary_refresh = salary_services.get_last_refresh(self.controller.league.format)
+        format_salary_refresh = salary_services.get_last_refresh(self.controller.league.s_format)
         if format_salary_refresh is None or (datetime.now() - format_salary_refresh.last_refresh) > timedelta(days=1):
-            salary_services.update_salary_info(s_format=self.league.format)
+            salary_services.update_salary_info(s_format=self.league.s_format)
         pd.complete()
 
     def __create_main(self):
@@ -400,7 +400,7 @@ class DraftTool(ToolboxView):
         if target is None:
             dialog = draft_target.Dialog(self, playerid)
             if dialog.status == OK:
-                target = draft_services.create_target(self.draft.index, playerid, dialog.price)
+                target = draft_services.create_target(self.draft.id, playerid, dialog.price)
                 self.draft.targets.append(target)
         else: 
             dialog = draft_target.Dialog(self, playerid, target.price)
@@ -414,7 +414,7 @@ class DraftTool(ToolboxView):
     def __remove_target(self, playerid):
         target = self.draft.get_target_by_player(playerid)
         self.draft.targets.remove(target)
-        draft_services.delete_target(target.index)
+        draft_services.delete_target(target.id)
         self.__refresh_planning_frame()
         self.__set_player_tags_all_tables(playerid)
     
@@ -462,16 +462,16 @@ class DraftTool(ToolboxView):
             pos_table = self.overall_view.table
         else:
             pos_table = self.pos_view.get(pos).table
-        if self.league.format is None or not self.league.platform == Platform.OTTONEU:
+        if self.league.s_format is None or not self.league.platform == Platform.OTTONEU:
             l = [(pos_table.set(k, 'Value'), k) for k in pos_table.get_children('')]
             l = sorted(l, reverse=pos_table.reverse_sort['Value'], key=lambda x: sort_cmp(x)) 
             return l
         if self.value_calculation.projection is None:
             col2 = 'Roster %'
         else:
-            if ScoringFormat.is_points_type(self.league.format):
+            if ScoringFormat.is_points_type(self.league.s_format):
                 #if pos == Position.OVERALL:
-                    if ScoringFormat.is_sabr(self.league.format):
+                    if ScoringFormat.is_sabr(self.league.s_format):
                         col2 = 'SABR Pts'
                     else:
                         col2 = 'Points'
@@ -699,13 +699,13 @@ class DraftTool(ToolboxView):
             if cm_player['ottid'] == 0:
                 player = player_services.get_player_by_name(f'{cm_player["First Name"]} {cm_player["Last Name"]}')
                 if player:
-                    if self.league.is_rostered(player.index):
+                    if self.league.is_rostered(player.id):
                         continue
                 else:
                     continue
             else:
                 player = player_services.get_player_by_ottoneu_id(cm_player['ottid'])
-            team_id = self.draft.cm_draft.get_toolbox_team_index_by_cm_team_id(cm_player['Team Number'])
+            team_id = self.draft.cm_draft.get_toolbox_team_id_by_cm_team_id(cm_player['Team Number'])
             self.__add_trans_to_rosters(player, salary, team_id, update_inf=False)
             drafted.append(player)
 
@@ -722,7 +722,7 @@ class DraftTool(ToolboxView):
             prog.increment_completion_percent(20)
             self.current_cm_auctions = draft_services.get_couchmanagers_current_auctions(self.draft.cm_draft.cm_draft_id)
 
-            self.current_cm_auction_ids = [auction[0].index for auction in self.current_cm_auctions]
+            self.current_cm_auction_ids = [auction[0].id for auction in self.current_cm_auctions]
 
         if not init:
             for id in self.rostered_ids + self.current_cm_auction_ids:
@@ -733,16 +733,16 @@ class DraftTool(ToolboxView):
         return drafted
     
     def __add_trans_to_rosters(self, player:Player, salary:int, team_id:int, add_player:bool=True, update_inf:bool=True):
-        self.rostered_ids.append(player.index)
+        self.rostered_ids.append(player.id)
         for team in self.league.teams:
-            if team.index == team_id:
+            if team.id == team_id:
                 rs = Roster_Spot()
                 rs.player = player
-                rs.player_id = player.index
+                rs.player_id = player.id
                 rs.salary = salary
                 team.roster_spots.append(rs)
                 break
-        pv = self.value_calculation.get_player_value(player.index, Position.OVERALL)
+        pv = self.value_calculation.get_player_value(player.id, Position.OVERALL)
         if pv is not None and pv.value > 0:
             val = pv.value
         else:
@@ -785,9 +785,9 @@ class DraftTool(ToolboxView):
             finally:
                 if drafted or cut:
                     for player in drafted:
-                        self.rostered_ids.append(player.index)
+                        self.rostered_ids.append(player.id)
                     for player in cut:
-                        self.rostered_ids.remove(player.index)
+                        self.rostered_ids.remove(player.id)
                     self.queue.put(('data', (drafted, cut)))
                     self.inflation = self.league.inflation
                     if self.value_calculation.projection:
@@ -836,8 +836,8 @@ class DraftTool(ToolboxView):
 
         if drafted is not None:
             for dp in drafted:
-                dp_ind = str(dp.index)
-                tags = self.__get_row_tags(dp.index)
+                dp_ind = str(dp.id)
+                tags = self.__get_row_tags(dp.id)
                 if dp_ind in self.overall_view.table.get_children():
                     self.overall_view.table.item(dp_ind, tags=tags)
                     if not self.show_drafted_players.get():
@@ -853,8 +853,8 @@ class DraftTool(ToolboxView):
         
         if cut is not None:
             for cp in cut:
-                rp_ind = str(cp.index)
-                tags = self.__get_row_tags(cp.index)
+                rp_ind = str(cp.id)
+                tags = self.__get_row_tags(cp.id)
                 if rp_ind in self.overall_view.table.get_children():
                     self.overall_view.table.item(rp_ind, tags=tags)
                     if not self.show_drafted_players.get():
@@ -934,7 +934,7 @@ class DraftTool(ToolboxView):
             value = 0
             inf_cost = 0
             rank = pv.rank
-            round = self.player_to_round_map.get(pv.player.index, 'NR')
+            round = self.player_to_round_map.get(pv.player.id, 'NR')
         if pv.player.custom_positions:
             position = pv.player.custom_positions
         else:
@@ -945,7 +945,7 @@ class DraftTool(ToolboxView):
     def __refresh_overall_view(self):
         self.rostered_detached_id_map[self.overall_view] = []
         self.removed_detached_id_map[self.overall_view] = []
-        if self.value_calculation.format == ScoringFormat.CUSTOM:
+        if self.value_calculation.s_format == ScoringFormat.CUSTOM:
             custom_scoring = custom_scoring_services.get_scoring_format(int(self.value_calculation.get_input(CalculationDataType.CUSTOM_SCORING_FORMAT)))
         else:
             custom_scoring = None
@@ -953,19 +953,19 @@ class DraftTool(ToolboxView):
             stock_player = self.__get_stock_player_row(pv)
             proj_cols = self.__get_overall_projected_col(pv, custom_scoring)
             sal_tup = self.__get_salary_tuple(pv.player)
-            tags = self.__get_row_tags(pv.player.index)
-            self.overall_view.table.insert('', tk.END, iid=pv.player.index, values=stock_player + proj_cols + sal_tup, tags=tags)
+            tags = self.__get_row_tags(pv.player.id)
+            self.overall_view.table.insert('', tk.END, iid=pv.player.id, values=stock_player + proj_cols + sal_tup, tags=tags)
 
     def __refresh_current_auctions(self):
-        if self.value_calculation.format == ScoringFormat.CUSTOM:
+        if self.value_calculation.s_format == ScoringFormat.CUSTOM:
             custom_scoring = custom_scoring_services.get_scoring_format(int(self.value_calculation.get_input(CalculationDataType.CUSTOM_SCORING_FORMAT)))
         else:
             custom_scoring = None
         for auction in self.current_cm_auctions:
             player = auction[0]
-            if player.index in self.rostered_ids:
+            if player.id in self.rostered_ids:
                 continue
-            pv = self.value_calculation.get_player_value(player.index, Position.OVERALL)
+            pv = self.value_calculation.get_player_value(player.id, Position.OVERALL)
             name = player.name
             if self.league.is_salary_cap() and pv:
                 value = '$' + "{:.0f}".format(pv.value)
@@ -981,14 +981,14 @@ class DraftTool(ToolboxView):
             stock_player = (name, value, inf_cost, f'${auction[1]}', position, team)
             proj_cols = self.__get_overall_projected_col(pv, custom_scoring)
             sal_tup = self.__get_salary_tuple(player)
-            tags = self.__get_row_tags(player.index)
-            self.current_auctions.table.insert('', tk.END, iid=player.index, values=stock_player + proj_cols + sal_tup, tags=tags)
+            tags = self.__get_row_tags(player.id)
+            self.current_auctions.table.insert('', tk.END, iid=player.id, values=stock_player + proj_cols + sal_tup, tags=tags)
 
     def __get_overall_projected_col(self, pv:PlayerValue, custom_scoring:CustomScoring=None) -> Tuple:
         if self.value_calculation.projection is None or pv is None:
             proj_cols = tuple([0] * 9)
         else:
-            pp = self.value_calculation.projection.get_player_projection(pv.player.index)
+            pp = self.value_calculation.projection.get_player_projection(pv.player.id)
             h_points = calculation_services.get_points(pp, Position.OFFENSE, sabr=False, custom_format=custom_scoring)
             p_points = calculation_services.get_points(pp, Position.PITCHER, sabr=False, custom_format=custom_scoring)
             sp_points = calculation_services.get_points(pp, Position.PITCHER, sabr=True, custom_format=custom_scoring)
@@ -1017,14 +1017,14 @@ class DraftTool(ToolboxView):
     def __refresh_pos_table(self, pos:Position):
         self.rostered_detached_id_map[self.pos_view[pos]] = []
         self.removed_detached_id_map[self.pos_view[pos]] = []
-        if self.value_calculation.format == ScoringFormat.CUSTOM:
+        if self.value_calculation.s_format == ScoringFormat.CUSTOM:
             custom_scoring = custom_scoring_services.get_scoring_format(int(self.value_calculation.get_input(CalculationDataType.CUSTOM_SCORING_FORMAT)))
         else:
             custom_scoring = None
         for pv in self.value_calculation.get_position_values(pos):
             stock_player = self.__get_stock_player_row(pv)
             sal_tup = self.__get_salary_tuple(pv.player)
-            tags = self.__get_row_tags(pv.player.index)
+            tags = self.__get_row_tags(pv.player.id)
             point_cols = []
             stats = []
             if self.value_calculation.projection is None:
@@ -1033,7 +1033,7 @@ class DraftTool(ToolboxView):
                 else:
                     point_cols = [0] * 6
             elif self.value_calculation.projection.type == ProjectionType.VALUE_DERIVED:
-                pp = self.value_calculation.projection.get_player_projection(pv.player.index)
+                pp = self.value_calculation.projection.get_player_projection(pv.player.id)
                 points = pp.get_stat(StatType.POINTS)
                 point_cols.append("{:.1f}".format(points))
                 if pos.offense:
@@ -1046,7 +1046,7 @@ class DraftTool(ToolboxView):
                     point_cols.append("{:.2f}".format(pp.get_stat(StatType.PIP)))
                     point_cols.append("{:.2f}".format(pp.get_stat(StatType.PIP)))
             else:
-                pp = self.value_calculation.projection.get_player_projection(pv.player.index)
+                pp = self.value_calculation.projection.get_player_projection(pv.player.id)
                 points = calculation_services.get_points(pp, pos, sabr=False, custom_format=custom_scoring)
                 point_cols.append("{:.1f}".format(points))
                 
@@ -1065,9 +1065,9 @@ class DraftTool(ToolboxView):
                         if stat_type is not None:
                             stat = pp.get_stat(stat_type)
                             if stat is None:
-                                stats.append(stat_type.format.format(0))
+                                stats.append(stat_type.v_format.format(0))
                             else:
-                                stats.append(stat_type.format.format(stat))
+                                stats.append(stat_type.v_format.format(stat))
                     
                 else:
                     s_points = calculation_services.get_points(pp, pos, sabr=True, custom_format=custom_scoring)
@@ -1091,25 +1091,25 @@ class DraftTool(ToolboxView):
                         if stat_type is not None:
                             stat = pp.get_stat(stat_type)
                             if stat is None:
-                                stats.append(stat_type.format.format(0))
+                                stats.append(stat_type.v_format.format(0))
                             else:
-                                stats.append(stat_type.format.format(stat))
+                                stats.append(stat_type.v_format.format(stat))
                     
-            self.pos_view[pos].table.insert('', tk.END, iid=pv.player.index, values=stock_player + tuple(point_cols) + sal_tup + tuple(stats), tags=tags)
+            self.pos_view[pos].table.insert('', tk.END, iid=pv.player.id, values=stock_player + tuple(point_cols) + sal_tup + tuple(stats), tags=tags)
     
     def __get_salary_tuple(self, player:Player):
         if self.league.platform == Platform.OTTONEU:
-            si = player.get_salary_info_for_format(self.league.format)
+            si = player.get_salary_info_for_format(self.league.s_format)
             if si is None:
                 avg = '$0.0'
                 l10 = '$0.0'
                 roster = '0.0%'
             else:
                 if self.controller.preferences.get('General', Pref.AVG_SALARY_FOM, fallback=AvgSalaryFom.MEAN.value) == AvgSalaryFom.MEAN.value:
-                    avg = f'$' + "{:.1f}".format(si.avg_salary)
+                    avg = '$' + "{:.1f}".format(si.avg_salary)
                 else:
-                    avg = f'$' + "{:.1f}".format(si.med_salary)
-                l10 = f'$' + "{:.1f}".format(si.last_10)
+                    avg = '$' + "{:.1f}".format(si.med_salary)
+                l10 = '$' + "{:.1f}".format(si.last_10)
                 roster = "{:.1f}".format(si.roster_percentage) + '%'
             return (avg, l10, roster)
         return ('$0', '$0', '0%')
@@ -1143,21 +1143,21 @@ class DraftTool(ToolboxView):
             players = [] 
         else:
             players = player_services.search_by_name(text)
-        if self.value_calculation.format == ScoringFormat.CUSTOM:
+        if self.value_calculation.s_format == ScoringFormat.CUSTOM:
             custom_scoring = custom_scoring_services.get_scoring_format(int(self.value_calculation.get_input(CalculationDataType.CUSTOM_SCORING_FORMAT)))
         else:
             custom_scoring = None
         for player in players:
             if self.league.platform == Platform.OTTONEU:
-                si = player.get_salary_info_for_format(self.league.format)
+                si = player.get_salary_info_for_format(self.league.s_format)
                 if (si is None or si.roster_percentage == 0) and not self.search_unrostered_bv.get():
                     continue
-            elif player.index not in self.value_calculation.value_dict and not self.search_unrostered_bv.get():
+            elif player.id not in self.value_calculation.value_dict and not self.search_unrostered_bv.get():
                 continue
             else:
                 si = None
                 
-            id = player.index
+            id = player.id
             name = player.name
             if player.custom_positions:
                 pos = player.custom_positions
@@ -1181,9 +1181,9 @@ class DraftTool(ToolboxView):
                     value = 0
                     inf_cost = 0
                     rank = pv.rank
-                    round = self.player_to_round_map.get(pv.player.index, 'NR')
+                    round = self.player_to_round_map.get(pv.player.id, 'NR')
 
-            salary = '$' + "{:.0f}".format(self.league.get_player_salary(player.index))
+            salary = '$' + "{:.0f}".format(self.league.get_player_salary(player.id))
 
             if self.value_calculation.projection is not None:
                 pp = self.value_calculation.projection.get_player_projection(id)
@@ -1300,7 +1300,7 @@ class DraftTool(ToolboxView):
         for team in self.league.teams:
             for rs in team.roster_spots:
                 rostered.append(rs.player)
-                self.rostered_ids.append(rs.player.index)
+                self.rostered_ids.append(rs.player.id)
 
         if self.draft.cm_draft is not None:
             self.monitor_status.set(f'Using CM Draft {self.draft.cm_draft.cm_draft_id}')
@@ -1362,7 +1362,7 @@ class DraftTool(ToolboxView):
             del self.pos_view[pos]
         
         for rank, vc in enumerate(self.value_calculation.get_position_values(Position.OVERALL)):
-            self.player_to_round_map[vc.player.index] = int((rank)/self.league.num_teams + 1)
+            self.player_to_round_map[vc.player.id] = int((rank)/self.league.num_teams + 1)
         
         self.__create_position_tables()
         prog.increment_completion_percent(25)
@@ -1389,9 +1389,9 @@ class DraftTool(ToolboxView):
 
     def __calc_format_matches_league(self) -> bool:
         if self.league.platform == Platform.OTTONEU:
-            if ScoringFormat.is_points_type(self.league.format):
-                return ScoringFormat.is_points_type(self.value_calculation.format)
-            return self.league.format == self.value_calculation.format
+            if ScoringFormat.is_points_type(self.league.s_format):
+                return ScoringFormat.is_points_type(self.value_calculation.s_format)
+            return self.league.s_format == self.value_calculation.s_format
         return True
 
     def __set_visible_columns(self) -> None:
@@ -1408,7 +1408,7 @@ class DraftTool(ToolboxView):
             stock_search = ('Name','Rank','Round','Pos','Team')
             stock_current = ('Name','Rank','Round','Pos','Team')
         stock_overall = player_value_cols + salary_cols
-        if self.value_calculation.format == ScoringFormat.CUSTOM:
+        if self.value_calculation.s_format == ScoringFormat.CUSTOM:
             custom_scoring = custom_scoring_services.get_scoring_format(int(self.value_calculation.get_input(CalculationDataType.CUSTOM_SCORING_FORMAT)))
         else:
             custom_scoring = None
@@ -1424,11 +1424,11 @@ class DraftTool(ToolboxView):
                 self.search_view.table.set_display_columns(stock_search)
                 if self.draft.cm_draft:
                     self.current_auctions.table.set_display_columns(stock_current)
-        elif (not self.league.platform == Platform.OTTONEU and ScoringFormat.is_points_type(self.value_calculation.format)) or (custom_scoring is not None and custom_scoring.points_format) or ScoringFormat.is_points_type(self.league.format):
+        elif (not self.league.platform == Platform.OTTONEU and ScoringFormat.is_points_type(self.value_calculation.s_format)) or (custom_scoring is not None and custom_scoring.points_format) or ScoringFormat.is_points_type(self.league.s_format):
             if self.league.platform == Platform.OTTONEU:
-                sabr = ScoringFormat.is_sabr(self.league.format)
+                sabr = ScoringFormat.is_sabr(self.league.s_format)
             else:
-                sabr = ScoringFormat.is_sabr(self.value_calculation.format)
+                sabr = ScoringFormat.is_sabr(self.value_calculation.s_format)
             if sabr:
                 p_points = ('SABR Pts',)
             else:
@@ -1474,7 +1474,7 @@ class DraftTool(ToolboxView):
                 self.search_view.table.set_display_columns(stock_search + p_points + hit_rate + pitch_rate)
                 if self.draft.cm_draft:
                     self.current_auctions.table.set_display_columns(stock_current + p_points + hit_rate + pitch_rate)
-        elif (not self.league.platform == Platform.OTTONEU and self.value_calculation.format == ScoringFormat.OLD_SCHOOL_5X5) or self.league.format == ScoringFormat.OLD_SCHOOL_5X5:
+        elif (not self.league.platform == Platform.OTTONEU and self.value_calculation.s_format == ScoringFormat.OLD_SCHOOL_5X5) or self.league.s_format == ScoringFormat.OLD_SCHOOL_5X5:
             self.overall_view.table.set_display_columns(stock_overall)
             for pos, view in self.pos_view.items():
                 if pos.offense:
@@ -1489,7 +1489,7 @@ class DraftTool(ToolboxView):
                 self.search_view.table.set_display_columns(stock_search)
                 if self.draft.cm_draft:
                     self.current_auctions.table.set_display_columns(stock_current)
-        elif (not self.league.platform == Platform.OTTONEU and self.value_calculation.format == ScoringFormat.CLASSIC_4X4) or self.league.format == ScoringFormat.CLASSIC_4X4:
+        elif (not self.league.platform == Platform.OTTONEU and self.value_calculation.s_format == ScoringFormat.CLASSIC_4X4) or self.league.s_format == ScoringFormat.CLASSIC_4X4:
             self.overall_view.table.set_display_columns(stock_overall)
             for pos, view in self.pos_view.items():
                 if pos.offense:
@@ -1504,7 +1504,7 @@ class DraftTool(ToolboxView):
                 self.search_view.table.set_display_columns(stock_search)
                 if self.draft.cm_draft:
                     self.current_auctions.table.set_display_columns(stock_current)
-        elif self.value_calculation.format == ScoringFormat.CUSTOM:
+        elif self.value_calculation.s_format == ScoringFormat.CUSTOM:
             self.overall_view.table.set_display_columns(stock_overall)
             hit = []
             pitch = []
@@ -1524,9 +1524,9 @@ class DraftTool(ToolboxView):
                 self.current_auctions.table.set_display_columns(stock_current)
         else:
             if self.league.platform == Platform.OTTONEU:
-                raise Exception(f"Unknown league type {self.league.format}")
+                raise Exception(f"Unknown league type {self.league.s_format}")
             else:
-                raise Exception(f"Unhandled scoring format for non-Ottoneu League {self.value_calculation.format.short_name}")
+                raise Exception(f"Unhandled scoring format for non-Ottoneu League {self.value_calculation.s_format.short_name}")
 
     def league_change(self):
         while self.controller.league is None:
@@ -1535,7 +1535,7 @@ class DraftTool(ToolboxView):
             self.league = self.controller.league
             self.league_text_var.set(f'League {self.controller.league.name} Draft')
             if self.league.is_linked():
-                self.draft = draft_services.get_draft_by_league(self.controller.league.index)
+                self.draft = draft_services.get_draft_by_league(self.controller.league.id)
                 self.league.team_drafts = self.draft.team_drafts
                 if self.league.platform == Platform.OTTONEU:
                     self.salary_information_refresh()

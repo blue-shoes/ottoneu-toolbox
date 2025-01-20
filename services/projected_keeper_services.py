@@ -9,7 +9,7 @@ from util import date_util
 def get_league_keepers(league:League):
     with Session() as session:
         keepers = session.query(Projected_Keeper) \
-            .filter(Projected_Keeper.league_id == league.index) \
+            .filter(Projected_Keeper.league_id == league.id) \
             .filter(Projected_Keeper.season == date_util.get_current_ottoneu_year()) \
             .all()
         if keepers == None:
@@ -20,18 +20,18 @@ def add_keeper(league:League, player:Player) -> League:
     '''Creates a Projected Keeper for the given league based on player id, saves it to the database, and returns the fully loaded keeper.'''
     with Session() as session:
         keeper = Projected_Keeper()
-        keeper.league_id = league.index
+        keeper.league_id = league.id
         keeper.player = player
         keeper.season = date_util.get_current_ottoneu_year()
         session.add(keeper)
         session.commit()
         keeper = session.query(Projected_Keeper).filter_by(id=keeper.id).first()
-    return league_services.get_league(league.index)
+    return league_services.get_league(league.id)
 
 def remove_keeper_by_league_and_player(league:League, player:Player) -> Projected_Keeper:
     '''Deletes the keeper from the database based on the league and player'''
     with Session() as session:
-        _keeper = session.query(Projected_Keeper).filter_by(league_id=league.id).filter_by(player_id=player.index).first()
+        _keeper = session.query(Projected_Keeper).filter_by(league_id=league.id).filter_by(player_id=player.id).first()
         session.delete(_keeper)
         session.commit()
     return _keeper
@@ -45,7 +45,7 @@ def remove_keeper(keeper:Projected_Keeper) -> None:
 
 def clear_keepers_for_league(league:League) -> None:
     with Session() as session:
-        keepers = session.query(Projected_Keeper).filter_by(league_id=league.index).all()
+        keepers = session.query(Projected_Keeper).filter_by(league_id=league.id).all()
         for keeper in keepers:
             session.delete(keeper)
         session.commit()
@@ -53,7 +53,7 @@ def clear_keepers_for_league(league:League) -> None:
 def add_keeper_and_return(league:League, player:Player) -> Projected_Keeper:
     with Session() as session:
         keeper = Projected_Keeper()
-        keeper.league_id = league.index
+        keeper.league_id = league.id
         keeper.player = player
         keeper.season = date_util.get_current_ottoneu_year()
         session.add(keeper)
@@ -64,7 +64,7 @@ def add_keeper_and_return(league:League, player:Player) -> Projected_Keeper:
 def add_keeper_by_player_id(league:League, player_id:int) -> Projected_Keeper:
     with Session() as session:
         keeper = Projected_Keeper()
-        keeper.league_id = league.index
+        keeper.league_id = league.id
         keeper.player = player_services.get_player(player_id)
         keeper.season = date_util.get_current_ottoneu_year()
         session.add(keeper)

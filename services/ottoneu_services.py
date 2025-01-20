@@ -25,7 +25,7 @@ def create_league(league_ottoneu_id:int, pd=None) -> League:
     lg.site_id = league_ottoneu_id
     lg.name = league_data['Name']
     lg.num_teams = league_data['Num Teams']
-    lg.format = ScoringFormat.get_format_by_full_name(league_data['Format'])
+    lg.s_format = ScoringFormat.get_format_by_full_name(league_data['Format'])
     lg.last_refresh = datetime.min
     lg.active = True
     lg.platform = Platform.OTTONEU
@@ -53,7 +53,7 @@ def refresh_league(league_idx:int, pd=None) -> League:
     and updates Roster_Spots for the league.'''
     lg = league_services.get_league(league_idx, rosters=False)
 
-    league_idx = lg.index
+    league_idx = lg.id
     scraper = Scrape_Ottoneu()
     if pd is not None:
         pd.set_task_title("Checking last transaction date...")
@@ -78,7 +78,7 @@ def refresh_league(league_idx:int, pd=None) -> League:
                         .joinedload(Team.roster_spots)
                         .joinedload(Roster_Spot.player)
                     )
-                    .filter_by(index = league_idx).first())
+                    .filter_by(id = league_idx).first())
             team_map = {}
             for team in lg.teams:
                 #Clear roster
@@ -149,7 +149,7 @@ def resolve_draft_results_against_rosters(league:League, value_calc:ValueCalcula
                 
                 if last_trans.iloc[index]['Type'].upper() == 'ADD':
                     drafted.append(player)
-                    pv = value_calc.get_player_value(player.index, Position.OVERALL)
+                    pv = value_calc.get_player_value(player.id, Position.OVERALL)
                     league_services.add_player_to_draft_rosters(league, team_id, player, pv, salary, inf_method)
                 elif 'CUT' in last_trans.iloc[index]['Type'].upper():
                     cut.append(player)
@@ -157,12 +157,12 @@ def resolve_draft_results_against_rosters(league:League, value_calc:ValueCalcula
                         if team.league_id == team_id:
                             found = False
                             for rs in team.roster_spots:
-                                if rs.player.index == player.index:
+                                if rs.player.id == player.id:
                                     found = True
                                     break
                             if found:
                                 salary = rs.salary
-                                pv = value_calc.get_player_value(player.index, Position.OVERALL)
+                                pv = value_calc.get_player_value(player.id, Position.OVERALL)
                                 if pv is None:
                                     val = 0
                                 else:

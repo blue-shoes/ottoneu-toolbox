@@ -65,8 +65,8 @@ class Dialog(tk.Toplevel):
     
     def populate_table(self):
         for lg in self.league_list:
-            lgfmt = lg.format.short_name
-            self.league_table.insert('', tk.END, text=str(lg.index), values=(lg.site_id, lg.name, lg.platform.value, lgfmt, lg.num_teams))
+            lgfmt = lg.s_format.short_name
+            self.league_table.insert('', tk.END, text=str(lg.id), values=(lg.site_id, lg.name, lg.platform.value, lgfmt, lg.num_teams))
 
     def double_click(self, event):
         self.on_select(event)
@@ -76,8 +76,8 @@ class Dialog(tk.Toplevel):
         if len(event.widget.selection()) > 0:
             selection = event.widget.item(event.widget.selection()[0])["text"]
             for lg in self.league_list:
-                if lg.index == int(selection):
-                    self.league = league_services.get_league(lg.index, rosters=False)
+                if lg.id == int(selection):
+                    self.league = league_services.get_league(lg.id, rosters=False)
                     break
         else:
             selection = None
@@ -95,7 +95,7 @@ class Dialog(tk.Toplevel):
     
     def delete_league(self, lg_id):
         for lg in self.league_list:
-            if lg.index == lg_id:
+            if lg.id == lg_id:
                 league = lg
                 break
         if mb.askokcancel('Delete League', f'Confirm deletion of league {league.name}'):
@@ -104,7 +104,7 @@ class Dialog(tk.Toplevel):
             pd.set_completion_percent(15)
             league_services.delete_league_by_id(lg_id)
             for idx, lg in enumerate(self.league_list):
-                if lg.index == lg_id:
+                if lg.id == lg_id:
                     self.league_list.pop(idx)
                     break
             self.league_table.refresh()
@@ -115,7 +115,7 @@ class Dialog(tk.Toplevel):
         self.destroy()
     
     def set_league(self):
-        self.league = league_services.get_league(self.league.index, rosters=True)
+        self.league = league_services.get_league(self.league.id, rosters=True)
         self.destroy()
     
     def non_ottoneu(self):

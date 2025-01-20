@@ -79,7 +79,7 @@ class Surplus(tk.Frame):
             updated_team=None
             for team in self.league.teams:
                 for rs in team.roster_spots:
-                    if rs.player.index == row_id:
+                    if rs.player.id == row_id:
                         updated_team = team
                         self.league.projected_keepers.append(projected_keeper_services.add_keeper_and_return(self.league, rs.player))     
                         roster_spot = rs  
@@ -92,7 +92,7 @@ class Surplus(tk.Frame):
             updated_team=None
             for team in self.league.teams:
                 for rs in team.roster_spots:
-                    if rs.player.index == row_id:
+                    if rs.player.id == row_id:
                         updated_team = team
                         roster_spot = rs
                         break
@@ -272,7 +272,7 @@ class Surplus(tk.Frame):
     def __get_salary_info(self, player:Player) -> List[str]:
         if self.league.platform == Platform.OTTONEU:
             vals = []
-            si = player.get_salary_info_for_format(self.league.format)
+            si = player.get_salary_info_for_format(self.league.s_format)
             if self.controller.preferences.get('General', Pref.AVG_SALARY_FOM) == AvgSalaryFom.MEAN.value:
                 vals.append(f'$' + "{:.1f}".format(si.avg_salary))
             else:

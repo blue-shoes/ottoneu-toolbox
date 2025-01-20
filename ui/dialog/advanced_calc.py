@@ -6,7 +6,7 @@ from services import adv_calc_services
 from util import string_util
 
 class Dialog(tk.Toplevel):
-    def __init__(self, controller, format:ScoringFormat, rep_scheme:RepLevelScheme, hit_basis:RankingBasis, pitch_basis:RankingBasis):
+    def __init__(self, controller, s_format:ScoringFormat, rep_scheme:RepLevelScheme, hit_basis:RankingBasis, pitch_basis:RankingBasis):
         super().__init__(controller)
         self.controller = controller
         self.title("Advanced Inputs")
@@ -25,7 +25,7 @@ class Dialog(tk.Toplevel):
 
         row = row + 1
 
-        if not ScoringFormat.is_points_type(format):
+        if not ScoringFormat.is_points_type(s_format):
             if RankingBasis.is_roto_fractional(hit_basis):
                 row = self.add_row('Target games filled by hitter:', CDT.BATTER_G_TARGET, row)
             if RankingBasis.is_roto_fractional(pitch_basis):
@@ -34,7 +34,7 @@ class Dialog(tk.Toplevel):
 
         if rep_scheme == RepLevelScheme.FILL_GAMES:
             row = self.add_row('Target games filled by hitter:', CDT.BATTER_G_TARGET, row)
-            if ScoringFormat.is_h2h(format):
+            if ScoringFormat.is_h2h(s_format):
                 ##Fill Games
                 row = self.add_row('SP Games per Week:', CDT.GS_LIMIT, row)
                 row = self.add_row('Est. RP Games per Week:', CDT.RP_G_TARGET, row)

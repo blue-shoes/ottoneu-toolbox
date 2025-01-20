@@ -67,14 +67,14 @@ def save_calculation(value_calc: ValueCalculation) -> ValueCalculation:
                     pv.player = player
         session.add(value_calc)
         session.commit()
-        saved = load_calculation(value_calc.index)
+        saved = load_calculation(value_calc.id)
     return saved
 
-def load_calculation(calc_index: int) -> ValueCalculation:
+def load_calculation(calc_id: int) -> ValueCalculation:
     '''Returns a ValueCalculation loaded with player values and player projections, as well as an internally populated player value dictionary'''
     with Session() as session:
         value_calc = (session.query(ValueCalculation)
-                .filter_by(index = calc_index)
+                .filter_by(id = calc_id)
                 .first()
         )
         value_calc.values
@@ -353,7 +353,7 @@ def normalize_value_upload(df : DataFrame, game_type:ScoringFormat, id_type:IdTy
 
     df.rename(columns=col_map, inplace=True)
 
-    if ScoringFormat.is_points_type(format):
+    if ScoringFormat.is_points_type(s_format):
         if hit_rate_col is not None:
             df['Hit_Rate'] = df['Hit_Rate'].apply(convert_vals)
         if pitch_rate_col is not None:
@@ -427,7 +427,7 @@ def convert_vals(value) -> float:
     '''Sanitizes NA, --, or NaN values to 0, and string values to a float'''
     if value == 'NA' or value == '--' or math.isnan(value):
         return float(0)
-    elif type(value) == float:
+    elif type(value) is float:
         return value
     else:
         return float(value)
@@ -509,15 +509,15 @@ def get_values_from_fg_auction_files(vc: ValueCalculation, hit_df : DataFrame, p
             continue
         if row['Dollars'] >= rep_lvl_dol:
             total_hitters = total_hitters + 1
-        vc.set_player_value(player.index, Position.OVERALL, row['Dollars'])
-        vc.set_player_value(player.index, Position.OFFENSE, row['Dollars'])
+        vc.set_player_value(player.id, Position.OVERALL, row['Dollars'])
+        vc.set_player_value(player.id, Position.OFFENSE, row['Dollars'])
         player.custom_positions = row['POS']
         for pos in Position.get_offensive_pos():
             if pos == Position.OFFENSE:
                 continue
             if player.pos_eligible(pos):
                 val = row['PTS'] + rep_lvls.get(pos) + float(rep_lvl_dol)
-                vc.set_player_value(player.index, pos, val)
+                vc.set_player_value(player.id, pos, val)
                 if row['Dollars'] >= rep_lvl_dol:
                     rost[pos] = rost.get(pos, 0) + 1
 
@@ -542,17 +542,17 @@ def get_values_from_fg_auction_files(vc: ValueCalculation, hit_df : DataFrame, p
         if player is None:
             continue
         player.custom_positions = row['POS']
-        if player.index in vc.value_dict:
-            vc.set_player_value(player.index, Position.OVERALL, row['Dollars'] + vc.get_player_value(player.index, Position.OVERALL).value)
+        if player.id in vc.value_dict:
+            vc.set_player_value(player.id, Position.OVERALL, row['Dollars'] + vc.get_player_value(player.id, Position.OVERALL).value)
         else:
-            vc.set_player_value(player.index, Position.OVERALL, row['Dollars'])
-        vc.set_player_value(player.index, Position.PITCHER, row['Dollars'])
+            vc.set_player_value(player.id, Position.OVERALL, row['Dollars'])
+        vc.set_player_value(player.id, Position.PITCHER, row['Dollars'])
         if row['Dollars'] > rep_lvl_dol:
             total_pitchers = total_pitchers + 1
         for pos in Position.get_discrete_pitching_pos():
             if player.pos_eligible(pos):
                 #with info given by Auction Calculator, may not be possible to split swing roles, so leave as-is 
-                vc.set_player_value(player.index, pos, row['Dollars'])
+                vc.set_player_value(player.id, pos, row['Dollars'])
                 if row['Dollars'] >= float(rep_lvl_dol):
                     rost[pos] = rost.get(pos, 0) + 1
     for pos in Position.get_discrete_offensive_pos() + Position.get_discrete_pitching_pos():
@@ -623,7 +623,7 @@ def init_outputs_from_upload(vc: ValueCalculation, df : DataFrame, game_type:Sco
             #Player not in Ottoneu ToolBox Database, won't have a projection
             df.at[index, 'OTB_Idx'] = -1
             continue
-        df.at[index, 'OTB_Idx'] = int(player.index)
+        df.at[index, 'OTB_Idx'] = int(player.id)
         hit = False
         pitch = False
         if 'POS' in df.columns:
@@ -631,19 +631,19 @@ def init_outputs_from_upload(vc: ValueCalculation, df : DataFrame, game_type:Sco
             pos_list = re.split('[,\s/\\]+', pos_string)
             positions = [Position._value2member_map_.get(pos) if pos != 'DH' else Position.POS_UTIL for pos in pos_list ]
             pos_string = '/'.join(positions)
-            pos_set.positions.append(PlayerPositions(player_id=player.index, position=pos_string))
+            pos_set.positions.append(PlayerPositions(player_id=player.id, position=pos_string))
             player.custom_positions = pos_string
         else:
             positions = player_services.get_player_positions(player, discrete=True)
         if vc.projection is not None:
-            pp = vc.projection.get_player_projection(player.index)
+            pp = vc.projection.get_player_projection(player.id)
             if len(positions) == 1 and pp is not None:
                 pos = positions[0]
                 pitch_role_good = True
                 if not pos.offense:
                     #This mitigates potential issues where a pitcher's Ottoneu position doens't reflect their projection
                     #and protects against swingman roles being used to determine replacement level
-                    pp = vc.projection.get_player_projection(player.index)
+                    pp = vc.projection.get_player_projection(player.id)
                     if pos == Position.POS_SP:
                         if pp.get_stat(StatType.G_PIT) > pp.get_stat(StatType.GS_PIT):
                             pitch_role_good = False
@@ -656,14 +656,14 @@ def init_outputs_from_upload(vc: ValueCalculation, df : DataFrame, game_type:Sco
                         sample_list = []
                         sample_players[positions[0]] = sample_list
                     if proj_derive:
-                        sample_list.append((value, player.index))
+                        sample_list.append((value, player.id))
                     elif ScoringFormat.is_points_type(game_type):
                         if (positions[0].offense and row['H_PT']) or (not positions[0].offense and row['P_PT']):
                             sample_list.append((value, row['Points'], row['H_PT'], row['P_PT']))
                     elif game_type == ScoringFormat.OLD_SCHOOL_5X5 or game_type == ScoringFormat.CLASSIC_4X4:
                         sample_list.append((value, row['FOM']))
                     else:
-                        sample_list.append((value, player.index))
+                        sample_list.append((value, player.id))
         elif not proj_derive:
             if len(positions) == 1 and above_rep:
                 sample_list = sample_players.get(positions[0])
@@ -676,7 +676,7 @@ def init_outputs_from_upload(vc: ValueCalculation, df : DataFrame, game_type:Sco
                 elif game_type == ScoringFormat.OLD_SCHOOL_5X5 or game_type == ScoringFormat.CLASSIC_4X4:
                     sample_list.append((value, row['FOM']))
                 else:
-                    sample_list.append((value, player.index))
+                    sample_list.append((value, player.id))
 
         for pos in positions:
             if pos.offense:
@@ -805,9 +805,9 @@ def save_calculation_from_file(vc : ValueCalculation, df : DataFrame, pd=None, r
     tick = int(len(df)/remaining - 1)
     count = 0
     vc.values = []
-    proj_derive = not has_required_data_for_rl(df, vc.format)
+    proj_derive = not has_required_data_for_rl(df, vc.s_format)
     pop_proj = False
-    if not proj_derive and vc.projection is None and ScoringFormat.is_points_type(vc.format):
+    if not proj_derive and vc.projection is None and ScoringFormat.is_points_type(vc.s_format):
         pop_proj = True
         # Create hidden projection
         proj = Projection()
@@ -820,9 +820,9 @@ def save_calculation_from_file(vc : ValueCalculation, df : DataFrame, pd=None, r
         proj.season = date_util.get_current_ottoneu_year()
         proj.timestamp = datetime.datetime.now()
         proj.type = ProjectionType.VALUE_DERIVED
-        proj.valid_4x4 = vc.format == ScoringFormat.CLASSIC_4X4
-        proj.valid_5x5 = vc.format == ScoringFormat.OLD_SCHOOL_5X5
-        proj.valid_points = ScoringFormat.is_points_type(vc.format)
+        proj.valid_4x4 = vc.s_format == ScoringFormat.CLASSIC_4X4
+        proj.valid_5x5 = vc.s_format == ScoringFormat.OLD_SCHOOL_5X5
+        proj.valid_points = ScoringFormat.is_points_type(vc.s_format)
         vc.projection = proj
     if not new_pos_set:
         vc.position_set = position_set_services.get_ottoneu_position_set()
@@ -837,20 +837,20 @@ def save_calculation_from_file(vc : ValueCalculation, df : DataFrame, pd=None, r
             logging.debug(f'player with idx {idx} is not available')
             continue
         if new_pos_set:
-            player.custom_positions = vc.position_set.get_player_positions(player.index)
+            player.custom_positions = vc.position_set.get_player_positions(player.id)
         vc.set_player_value(idx, Position.OVERALL, val)
         if proj_derive and vc.projection is not None:
             pp = vc.projection.get_player_projection(idx)
             if pp is None:
                 #Can't do any more. They simply won't show up in position-specific tables
                 continue
-            sabr = vc.format in (ScoringFormat.SABR_POINTS, ScoringFormat.H2H_SABR_POINTS)
+            sabr = vc.s_format in (ScoringFormat.SABR_POINTS, ScoringFormat.H2H_SABR_POINTS)
             h_points = get_points(pp, Position.OFFENSE, sabr)
             if vc.hitter_basis == RankingBasis.PPG:
                 h_pt = pp.get_stat(StatType.G_HIT)
             elif vc.hitter_basis == RankingBasis.PPPA:
                 h_pt = pp.get_stat(StatType.PA)
-            elif not ScoringFormat.is_points_type(vc.format):
+            elif not ScoringFormat.is_points_type(vc.s_format):
                 h_pt = pp.get_stat(StatType.G_HIT)
             else:
                 raise Exception(f'Unhandled hitting basis {vc.hitter_basis}')
@@ -859,11 +859,11 @@ def save_calculation_from_file(vc : ValueCalculation, df : DataFrame, pd=None, r
                 p_pt = pp.get_stat(StatType.IP)
             elif vc.pitcher_basis == RankingBasis.PPG:
                 p_pt = pp.get_stat(StatType.G_PIT)
-            elif not ScoringFormat.is_points_type(vc.format):
+            elif not ScoringFormat.is_points_type(vc.s_format):
                 p_pt = pp.get_stat(StatType.IP)
             else:
                 raise Exception(f'Unhandled pitching basis {vc.pitcher_basis}')
-        elif not proj_derive and ScoringFormat.is_points_type(vc.format):
+        elif not proj_derive and ScoringFormat.is_points_type(vc.s_format):
             h_points = row['Points']
             h_pt = row['H_PT']
             if pop_proj:
@@ -879,7 +879,7 @@ def save_calculation_from_file(vc : ValueCalculation, df : DataFrame, pd=None, r
                 vc.projection.player_projections.append(pp)
         hit = False
         pitch = False
-        if ScoringFormat.is_points_type(vc.format):
+        if ScoringFormat.is_points_type(vc.s_format):
             if vc.projection is None:
                 # We don't have projections and we don't have points/rates/pt in values. Can't make position-specific determinations
                 for pos in player_services.get_player_positions(player, discrete=False):
@@ -977,7 +977,7 @@ def save_calculation_from_file(vc : ValueCalculation, df : DataFrame, pd=None, r
 def delete_values_by_id(values_id:int) -> None:
     '''Deletes a ValueCalculation from the database according to its ID'''
     with Session() as session:
-        val = session.query(ValueCalculation).filter(ValueCalculation.index == values_id).first()
+        val = session.query(ValueCalculation).filter(ValueCalculation.id == values_id).first()
         proj = None
         if val.projection is not None and val.projection.type == ProjectionType.VALUE_DERIVED:
             proj = val.projection
@@ -989,7 +989,7 @@ def delete_values_by_id(values_id:int) -> None:
 def get_values_with_projection_id(proj_id) -> List[ValueCalculation]:
     '''Gets all ValueCalculations in the databse with the input projection id'''
     with Session() as session:
-        return session.query(ValueCalculation).join(ValueCalculation.projection).filter(Projection.index == proj_id).all()
+        return session.query(ValueCalculation).join(ValueCalculation.projection).filter(Projection.id == proj_id).all()
 
 def get_available_seasons() -> List[int]:
     '''Returns list of all seasons that have at least one value calculation associated with them, sorted in descending order.'''
@@ -1005,7 +1005,7 @@ def get_available_seasons() -> List[int]:
 def set_player_ranks(vc:ValueCalculation) -> None:
     for pos in [Position.OVERALL, Position.OFFENSE, Position.PITCHER] + [p.position for p in vc.starting_set.positions]:
         pos_vals = vc.get_position_values(pos)
-        pos_vals.sort(key=lambda p: p.index)
+        pos_vals.sort(key=lambda p: p.id)
         for rank, pv in enumerate(pos_vals, start=0):
             pv.rank = rank + 1
     

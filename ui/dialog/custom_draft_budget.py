@@ -32,7 +32,7 @@ class Dialog(tk.Toplevel):
         for team in league.teams:
             found = False
             for td in self.draft.team_drafts:
-                if td.team_id == team.index:
+                if td.team_id == team.id:
                     found = True
                     tk.Label(self.team_frm, text=team.name).grid(row=row, column=0)
                     budget = StringVar()
@@ -40,10 +40,10 @@ class Dialog(tk.Toplevel):
                     entry = tk.Entry(self.team_frm, textvariable=budget, justify='center')
                     entry.config(validate="key", validatecommand=(validation, '%P'))
                     entry.grid(row=row, column=1)
-                    self.team_id_to_budget[team.index] = budget
+                    self.team_id_to_budget[team.id] = budget
                     break
             if not found:
-                td = TeamDraft(team_id=team.index)
+                td = TeamDraft(team_id=team.id)
                 #draft.team_drafts.append(td)
                 tk.Label(self.team_frm, text=team.name).grid(row=row, column=0)
                 budget = StringVar()
@@ -51,7 +51,7 @@ class Dialog(tk.Toplevel):
                 entry = tk.Entry(self.team_frm, textvariable=budget, justify='center')
                 entry.config(validate="key", validatecommand=(validation, '%P'))
                 entry.grid(row=row, column=1)
-                self.team_id_to_budget[team.index] = budget
+                self.team_id_to_budget[team.id] = budget
             row += 1
 
         tk.Button(frm, text="OK", command=self.ok_click).grid(row=2, column=0)
@@ -72,7 +72,7 @@ class Dialog(tk.Toplevel):
         team_drafts = []
         for key, val in self.team_id_to_budget.items():
             team_drafts.append(TeamDraft(team_id=key, custom_draft_budget=int(val.get())))
-        self.draft = draft_services.update_team_drafts(self.draft.index, team_drafts)
+        self.draft = draft_services.update_team_drafts(self.draft.id, team_drafts)
 
         self.status = OK
         self.destroy()

@@ -37,7 +37,7 @@ def create_league(league_yahoo_id:int, pd=None) -> League:
     lg.site_id = league_yahoo_id
     lg.name = yleague.name.decode("utf-8")
     lg.num_teams = yleague.num_teams
-    lg.format = ScoringFormat.CUSTOM
+    lg.s_format = ScoringFormat.CUSTOM
     lg.last_refresh = datetime.min
     lg.active = True
     lg.platform = Platform.YAHOO
@@ -111,7 +111,7 @@ def refresh_league(league_id:int, pd=None) -> League:
                             .joinedload(Team.roster_spots)
                             .joinedload(Roster_Spot.player)
                         )
-                        .filter_by(index = league_id).first())
+                        .filter_by(id = league_id).first())
                 team_map = {}
                 for team in lg.teams:
                     #Clear roster
@@ -208,10 +208,10 @@ def resolve_draft_results_against_rosters(league:League, value_calc:ValueCalcula
             if league.is_salary_cap():
                 league_services.update_league_inflation_last_trans(league, value=0, salary=dr.cost, inf_method=inf_method)
             continue
-        league.draft_results[pick] = player.index
+        league.draft_results[pick] = player.id
         new_drafted.append(player)
         team_id = int(dr.team_key.split('.')[-1])
-        pv = value_calc.get_player_value(player.index, Position.OVERALL)
+        pv = value_calc.get_player_value(player.id, Position.OVERALL)
         league_services.add_player_to_draft_rosters(league, team_id, player, pv, dr.cost, inf_method)
     pick_list = [(dr.round, dr.pick) for dr in draft_results]
     for pick, player_id in league.draft_results.items():
@@ -222,7 +222,7 @@ def resolve_draft_results_against_rosters(league:League, value_calc:ValueCalcula
                 if team.league_id == team_id:
                     found = False
                     for rs in team.roster_spots:
-                        if rs.player.index == player.index:
+                        if rs.player.id == player.id:
                             found = True
                             break
                     if found:
@@ -264,17 +264,17 @@ def set_player_positions_for_league(league:League, pd = None) -> League:
             player = get_or_set_player_by_yahoo_id(yplayer, session)
             if player is None:
                 continue
-            if player.index in seen_ids:
+            if player.id in seen_ids:
                 for pp in position_set.positions:
-                    if pp.player_id == player.index:
+                    if pp.player_id == player.id:
                         pp.position += f'/{yplayer.display_position.replace(",","/")}'
                         break
             else:
                 player_position = PlayerPositions()
-                player_position.player_id = player.index
+                player_position.player_id = player.id
                 player_position.position = yplayer.display_position.replace(',','/')
                 position_set.positions.append(player_position)
-                seen_ids.append(player.index)
+                seen_ids.append(player.id)
     return league_services.save_league(league)
 
 def get_or_set_player_by_yahoo_id(yplayer:YPlayer, session) -> Player:
@@ -285,7 +285,7 @@ def get_or_set_player_by_yahoo_id(yplayer:YPlayer, session) -> Player:
         player = player_services.get_player_by_name_and_team_with_no_yahoo_id(f'{yplayer.name.first} {yplayer.name.last}', yplayer.editorial_team_abbr, session)
         if player is None:
             return None
-        player = player_services.set_player_yahoo_id_with_session(player.index, yplayer.player_id, session)
+        player = player_services.set_player_yahoo_id_with_session(player.id, yplayer.player_id, session)
     return player
 
 def __create_query(league_id:int=1, year:int=None) -> yfs_query:

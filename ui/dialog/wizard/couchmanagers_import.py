@@ -118,7 +118,7 @@ class Step2(tk.Frame):
         league = league_services.get_league_by_draft(self.parent.draft, fill_rosters=True)
         for team in league.teams:
             o_team_names.append(team.name)
-            self.o_team_map[team.name] = team.index
+            self.o_team_map[team.name] = team.id
         self.team_sv_dict = {}
         row = 0
         ttk.Label(self.team_frm, text='CM Team Name').grid(row=row, column=0)

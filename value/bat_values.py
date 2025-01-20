@@ -27,8 +27,8 @@ class BatValues():
     start_count:Dict[P, int]
 
     def __init__(self, value_calc:ValueCalculation, intermediate_calc=False, target_bat=244, max_pos_value=True, prog = None):
-        self.format = value_calc.format
-        if self.format == ScoringFormat.CUSTOM:
+        self.s_format = value_calc.s_format
+        if self.s_format == ScoringFormat.CUSTOM:
             self.scoring = custom_scoring_services.get_scoring_format(value_calc.get_input(CDT.CUSTOM_SCORING_FORMAT))
         self.intermediate_calculations = intermediate_calc
         self.rank_basis = value_calc.hitter_basis.display
@@ -298,10 +298,10 @@ class BatValues():
                                 max_rep_lvl = rep_lvl
                                 max_pos = pos
                     self.replacement_positions[max_pos.value] = self.replacement_positions[max_pos.value] + 1
-                    if not ScoringFormat.is_points_type(self.format):
+                    if not ScoringFormat.is_points_type(self.s_format):
                         self.calculate_roto_bases(df)
                     #Recalculate FOM for the position given the new replacement level
-                    if ScoringFormat.is_points_type(self.format):
+                    if ScoringFormat.is_points_type(self.s_format):
                         self.get_position_fom_calc(df, max_pos)
                         self.get_position_fom_calc(df, P.POS_UTIL)
                     else:
@@ -313,7 +313,7 @@ class BatValues():
                     #Set maximum FOM value for each player to determine how many are rosterable
                     df['Max FOM'] = df.apply(self.calc_max_fom, axis=1)
                     self.calc_total_games(df)
-                    if not ScoringFormat.is_points_type(self.format) and self.are_games_filled(df):
+                    if not ScoringFormat.is_points_type(self.s_format) and self.are_games_filled(df):
                         sigma = self.iterate_roto(df)
                         self.calc_total_games(df)
                 #Augment the replacement levels by the input surpluses to get the final numbers
@@ -336,7 +336,7 @@ class BatValues():
                                 min_rep_lvl = rep_lvl
                                 min_pos = pos
                         self.replacement_positions[min_pos.value] = self.replacement_positions[min_pos.value]-1
-                        if not ScoringFormat.is_points_type(self.format):
+                        if not ScoringFormat.is_points_type(self.s_format):
                             self.calculate_roto_bases(df)
                         #Recalcluate FOM for the position given the new replacement level
                         self.get_position_fom_calc(df, min_pos)
@@ -359,7 +359,7 @@ class BatValues():
                             maxed_out = True
                         else:
                             self.replacement_positions[max_pos.value] = self.replacement_positions[max_pos.value] + 1
-                            if not ScoringFormat.is_points_type(self.format):
+                            if not ScoringFormat.is_points_type(self.s_format):
                                 self.calculate_roto_bases(df)
                             #Recalcluate FOM for the position given the new replacement level
                             self.get_position_fom_calc(df, max_pos)
@@ -369,7 +369,7 @@ class BatValues():
                     #FOM is how many bats with a non-negative max FOM
                     num_bats = len(df.loc[df['Max FOM'] >= 0])
             elif self.rep_level_scheme == RepLevelScheme.NUM_ROSTERED:
-                if not ScoringFormat.is_points_type(self.format):
+                if not ScoringFormat.is_points_type(self.s_format):
                     sigma = self.iterate_roto(df)
                 else:
                     df['Max FOM'] = df.apply(self.calc_max_fom, axis=1)
@@ -413,7 +413,7 @@ class BatValues():
             #Filter to the current position
             par_rate = row[self.rank_basis] - rep_level
             #Are we doing P/PA values, or P/G values
-            if ScoringFormat.is_points_type(self.format):
+            if ScoringFormat.is_points_type(self.s_format):
                 if self.rank_basis == 'P/PA':
                     return par_rate * row['PA']
                 else:
@@ -507,7 +507,7 @@ class BatValues():
         if RankingBasis.is_roto_fractional(RankingBasis.get_enum_by_display(self.rank_basis)):
             self.pa_per_team = above_rep_lvl['PA/G'].sum() / self.num_teams
             self.ab_per_team = above_rep_lvl['AB/G'].sum() / self.num_teams
-            if self.format == ScoringFormat.CUSTOM:
+            if self.s_format == ScoringFormat.CUSTOM:
                 cat_to_col = {}
                 for cat in self.scoring.stats:
                     if not cat.category.hitter: continue
@@ -521,7 +521,7 @@ class BatValues():
             else:
                 proj['R/G'] = proj.apply(self.per_game_rate, axis=1, args=(StatType.R,))
                 proj['HR/G'] = proj.apply(self.per_game_rate, axis=1, args=(StatType.HR,))
-                if self.format == ScoringFormat.OLD_SCHOOL_5X5:
+                if self.s_format == ScoringFormat.OLD_SCHOOL_5X5:
                     proj['RBI/G'] = proj.apply(self.per_game_rate, axis=1, args=(StatType.RBI,))
                     proj['SB/G'] = proj.apply(self.per_game_rate, axis=1, args=(StatType.SB,))
                     self.stat_avg[StatType.AVG] = dataframe_util.weighted_avg(above_rep_lvl, 'AVG', 'AB/G')
@@ -536,7 +536,7 @@ class BatValues():
         else:
             self.pa_per_team = above_rep_lvl['PA'].sum() / self.num_teams
             self.ab_per_team = above_rep_lvl['AB'].sum() / self.num_teams
-            if self.format == ScoringFormat.CUSTOM:
+            if self.s_format == ScoringFormat.CUSTOM:
                 cat_to_col = {}
                 for cat in self.scoring.stats:
                     if not cat.category.hitter: continue
@@ -547,7 +547,7 @@ class BatValues():
                     else:
                         cat_to_col[cat.category] = cat.category.display
             else:
-                if self.format == ScoringFormat.OLD_SCHOOL_5X5:
+                if self.s_format == ScoringFormat.OLD_SCHOOL_5X5:
                     self.stat_avg[StatType.AVG] = dataframe_util.weighted_avg(above_rep_lvl, 'AVG', 'AB')
                     proj['AVG_Delta'] = proj.apply(self.calc_rate_delta, axis=1, args=(StatType.AVG,))
                     cat_to_col = {StatType.R : 'R', StatType.HR : 'HR', StatType.RBI : 'RBI', StatType.SB : 'SB', StatType.AVG : "AVG_Delta"}
@@ -612,7 +612,7 @@ class BatValues():
             col_add = ''
             rat = 1
         zScore = 0
-        if self.format == ScoringFormat.CUSTOM:
+        if self.s_format == ScoringFormat.CUSTOM:
             for cat in self.scoring.stats:
                 if not cat.category.hitter: continue
                 if cat.category.rate_denom is None:
@@ -626,7 +626,7 @@ class BatValues():
         else:
             zScore += (row[f'R{col_add}'] - self.stat_avg.get(StatType.R)) / self.stat_std.get(StatType.R) * rat
             zScore += (row[f'HR{col_add}'] - self.stat_avg.get(StatType.HR)) / self.stat_std.get(StatType.HR) * rat
-            if self.format == ScoringFormat.OLD_SCHOOL_5X5:
+            if self.s_format == ScoringFormat.OLD_SCHOOL_5X5:
                 zScore += (row[f'RBI{col_add}'] - self.stat_avg.get(StatType.RBI)) / self.stat_std.get(StatType.RBI) * rat
                 zScore += (row[f'SB{col_add}'] - self.stat_avg.get(StatType.SB)) / self.stat_std.get(StatType.SB) * rat
                 zScore += row['AVG_Delta'] / self.stat_std.get(StatType.AVG)
@@ -637,7 +637,7 @@ class BatValues():
 
     def calc_fom(self, pos_proj: DataFrame, min_pa:int) -> DataFrame:
         '''Returns a populated DataFrame with all required FOM information for all players above the minimum PA at all positions.'''
-        if (self.scoring is not None and self.scoring.points_format) or ScoringFormat.is_points_type(self.format):
+        if (self.scoring is not None and self.scoring.points_format) or ScoringFormat.is_points_type(self.s_format):
             pos_proj['Points'] = pos_proj.apply(self.calc_bat_points, axis=1)
             pos_proj['P/G'] = pos_proj.apply(self.calc_ppg, axis=1)
             pos_proj['P/PA'] = pos_proj.apply(self.calc_pppa, axis=1)

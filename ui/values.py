@@ -75,7 +75,7 @@ class ValuesCalculation(ToolboxView):
         else:
             self.position_set = self.value_calc.position_set
             self.starting_set = self.value_calc.starting_set
-        if self.value_calc.format == ScoringFormat.CUSTOM:
+        if self.value_calc.s_format == ScoringFormat.CUSTOM:
             self.custom_scoring = custom_scoring_services.get_scoring_format(int(self.value_calc.get_input(CDT.CUSTOM_SCORING_FORMAT)))
             self.custom_scoring_button.grid(column=2, row=2)
         else:
@@ -85,7 +85,7 @@ class ValuesCalculation(ToolboxView):
         return True
     
     def leave_page(self):
-        if self.value_calc.index is None and len(self.value_calc.values) > 0:
+        if self.value_calc.id is None and len(self.value_calc.values) > 0:
             ret = mb.askyesnocancel('Save Calculation', 'Do you want to save the last run value calculation?')
             if ret is None:
                 return False
@@ -98,7 +98,7 @@ class ValuesCalculation(ToolboxView):
     def refresh_ui(self):
         pd = progress.ProgressDialog(self.parent, 'Updating Value Calculator Window...')
         pd.set_completion_percent(10)
-        if self.value_calc is None or self.value_calc.format is None:
+        if self.value_calc is None or self.value_calc.s_format is None:
             self.game_type.set(ScoringFormat.FG_POINTS.full_name)
             self.sel_proj.set("None")
             self.projection = None
@@ -138,7 +138,7 @@ class ValuesCalculation(ToolboxView):
             self.set_display_columns()
         else:
             v = self.value_calc
-            self.game_type.set(v.format.full_name)
+            self.game_type.set(v.s_format.full_name)
             if v.projection is None:
                 self.sel_proj.set("No Projection")
             else:
@@ -644,13 +644,13 @@ class ValuesCalculation(ToolboxView):
         if dialog.projection is not None:
             pd = progress.ProgressDialog(self, title='Loading Projection')
             pd.increment_completion_percent(15)
-            self.projection = projection_services.get_projection(dialog.projection.index)
+            self.projection = projection_services.get_projection(dialog.projection.id)
             pd.set_completion_percent(100)
             pd.destroy()
             self.sel_proj.set(self.projection.name)
             self.populate_projections()
         elif len(dialog.deleted_proj_ids) > 0:
-                if self.projection is not None and self.projection.index in dialog.deleted_proj_ids:
+                if self.projection is not None and self.projection.id in dialog.deleted_proj_ids:
                     self.projection = None
                     self.sel_proj.set("No Projection Selected")
                     self.populate_projections()
@@ -676,7 +676,7 @@ class ValuesCalculation(ToolboxView):
     
     def append_player_column_data(self, val:PlayerValue, pp:PlayerProjection, pos:Position):
         if len(self.value_calc.values) > 0:
-            pv = self.value_calc.get_player_value(pp.player.index, pos)
+            pv = self.value_calc.get_player_value(pp.player.id, pos)
             if pv is None:
                 val.append("$0.0")
             else:
@@ -769,7 +769,7 @@ class ValuesCalculation(ToolboxView):
     def get_player_row(self, pp:PlayerProjection, hitter:bool, cols, pos):
         val = []
         if len(self.value_calc.values) > 0:
-            pv = self.value_calc.get_player_value(pp.player.index, pos)
+            pv = self.value_calc.get_player_value(pp.player.id, pos)
             if pv is None:
                 val.append("$0.0")
             else:
@@ -873,9 +873,9 @@ class ValuesCalculation(ToolboxView):
                 if stat_type is not None:
                     stat = pp.get_stat(stat_type)
                     if stat is None:
-                        val.append(stat_type.format.format(0))
+                        val.append(stat_type.v_format.format(0))
                     else:
-                        val.append(stat_type.format.format(stat))
+                        val.append(stat_type.v_format.format(stat))
         return val
     
     def get_player_row_no_proj(self, player_id, pos, cols):
@@ -1343,9 +1343,9 @@ class ValuesCalculation(ToolboxView):
         self.value_calc.projection = self.projection
         self.value_calc.position_set = self.position_set
         self.value_calc.starting_set = self.starting_set
-        self.value_calc.format = ScoringFormat.get_format_by_full_name(self.game_type.get())
+        self.value_calc.s_format = ScoringFormat.get_format_by_full_name(self.game_type.get())
         self.value_calc.inputs = []
-        if self.value_calc.format == ScoringFormat.CUSTOM:
+        if self.value_calc.s_format == ScoringFormat.CUSTOM:
             self.value_calc.set_input(CDT.CUSTOM_SCORING_FORMAT, int(self.custom_scoring.id))
         self.value_calc.set_input(CDT.NUM_TEAMS, float(self.num_teams_str.get()))
         if self.manual_split.get():
@@ -1389,13 +1389,13 @@ class ValuesCalculation(ToolboxView):
             pd.complete()
     
     def get_advanced_inputs(self):
-        if not ScoringFormat.is_points_type(self.value_calc.format):
+        if not ScoringFormat.is_points_type(self.value_calc.s_format):
             #TODO: SGP info
             if RankingBasis.is_roto_fractional(self.value_calc.hitter_basis):
                 self.value_calc.set_input(CDT.BATTER_G_TARGET, adv_calc_services.get_advanced_option(CDT.BATTER_G_TARGET).value)
         if self.value_calc.get_input(CDT.REP_LEVEL_SCHEME) == RepLevelScheme.FILL_GAMES.value:
             self.value_calc.set_input(CDT.BATTER_G_TARGET, adv_calc_services.get_advanced_option(CDT.BATTER_G_TARGET, default=162).value)
-            if ScoringFormat.is_h2h(self.value_calc.format):
+            if ScoringFormat.is_h2h(self.value_calc.s_format):
                 ##Fill Games
                 self.value_calc.set_input(CDT.GS_LIMIT, adv_calc_services.get_advanced_option(CDT.GS_LIMIT, default=10).value)
                 self.value_calc.set_input(CDT.RP_G_TARGET, adv_calc_services.get_advanced_option(CDT.RP_G_TARGET, default=10).value)
@@ -1471,17 +1471,17 @@ class ValuesCalculation(ToolboxView):
         if self.projection is None:
             errors.append("No projection selected. Please select a projection before calculating.")
         elif self.projection.type == ProjectionType.VALUE_DERIVED:
-            errors.append(f"Projection created from value upload cannot be used for calculations. Select a different projetion.")
+            errors.append("Projection created from value upload cannot be used for calculations. Select a different projetion.")
         elif ScoringFormat.is_points_type(game_type) and not self.projection.valid_points:
-            errors.append(f'Selected projection does not have required columns for points calculations. Please select another projection')
+            errors.append('Selected projection does not have required columns for points calculations. Please select another projection')
         elif game_type == ScoringFormat.OLD_SCHOOL_5X5 and not self.projection.valid_5x5:
-            errors.append(f'Selected projection does not have required columns for 5x5 calculations. Please select another projection')
+            errors.append('Selected projection does not have required columns for 5x5 calculations. Please select another projection')
         elif game_type == ScoringFormat.CLASSIC_4X4 and not self.projection.valid_4x4:
-            errors.append(f'Selected projection does not have required columns for 4x4 calculations. Please select another projection')
+            errors.append('Selected projection does not have required columns for 4x4 calculations. Please select another projection')
         
         if self.projection is not None:
             if self.projection.ros and self.rep_level_scheme.get() == RepLevelScheme.FILL_GAMES.value:
-                errors.append(f'Fill Games option not currently supported for RoS projection sets. Please pick another replacement level scheme.')
+                errors.append('Fill Games option not currently supported for RoS projection sets. Please pick another replacement level scheme.')
 
         if self.rep_level_scheme.get() == RepLevelScheme.NUM_ROSTERED.value:
             for key, value in self.rep_level_dict.items():

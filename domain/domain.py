@@ -17,7 +17,7 @@ class Property:
 @reg.mapped_as_dataclass
 class Player:
     __tablename__ = "player"
-    index:Mapped[int] = mapped_column(init=False, primary_key=True)
+    id:Mapped[int] = mapped_column(init=False, primary_key=True)
     ottoneu_id:Mapped[int] = mapped_column("Ottoneu ID", default=None, index=True, nullable=True)
     fg_major_id:Mapped[str] = mapped_column("FG MajorLeagueID", default=None, repr=False, nullable=True)
     fg_minor_id:Mapped[str] = mapped_column("FG MinorLeagueID", default=None, repr=False, nullable=True)
@@ -37,7 +37,7 @@ class Player:
     __table_args__ = (Index('idx_fg_id','FG MajorLeagueID','FG MinorLeagueID'),)
 
     def __hash__(self) -> int:
-        return hash(self.index)
+        return hash(self.id)
     
     @reconstructor
     def init_on_load(self):
@@ -77,13 +77,13 @@ class Player:
                 pitch = True
         return hit and pitch
     
-    def get_salary_info_for_format(self, format=ScoringFormat.ALL) -> Salary_Info:
+    def get_salary_info_for_format(self, s_format=ScoringFormat.ALL) -> Salary_Info:
         '''Gets the Player's Salary_Info for the input ScoringFormat'''
         for si in self.salary_info:
-            if si.format == format:
+            if si.s_format == s_format:
                 return si
         si = Salary_Info()
-        si.format = format
+        si.s_format = s_format
         si.avg_salary = 0.0
         si.last_10 = 0.0
         si.max_salary = 0.0
@@ -95,11 +95,11 @@ class Player:
 @reg.mapped_as_dataclass
 class League:
     __tablename__ = "league"
-    index:Mapped[int] = mapped_column(init=False, primary_key=True)
+    id:Mapped[int] = mapped_column(init=False, primary_key=True)
     site_id:Mapped[int] = mapped_column(default=None, nullable=False)
     name:Mapped[str] = mapped_column(default=None)
   
-    format:Mapped[ScoringFormat] = mapped_column(default=None, nullable=False)
+    s_format:Mapped[ScoringFormat] = mapped_column(default=None, nullable=False)
     num_teams:Mapped[int] = mapped_column(default=None, nullable=False)
     last_refresh:Mapped[datetime] = mapped_column(default=None, nullable=False)
     active:Mapped[bool] = mapped_column(default=True, nullable = False)
@@ -148,10 +148,10 @@ class League:
                 return team
         return None
     
-    def get_team_by_index(self, team_id:int) -> Team:
-        '''Returns the team from the league by OTB index'''
+    def get_team_by_id(self, team_id:int) -> Team:
+        '''Returns the team from the league by OTB id'''
         for team in self.teams:
-            if team.index == team_id:
+            if team.id == team_id:
                 return team
         return None
 
@@ -180,7 +180,7 @@ class League:
     def get_player_salary(self, player_id:int) -> int:
         for team in self.teams:
             for rs in team.roster_spots:
-                if rs.player.index == player_id:
+                if rs.player.id == player_id:
                     return rs.salary
         return 0
     
@@ -222,10 +222,10 @@ class League:
 @reg.mapped_as_dataclass
 class Team:
     __tablename__ = "team"
-    index:Mapped[int] = mapped_column(init=False, primary_key=True)
+    id:Mapped[int] = mapped_column(init=False, primary_key=True)
     site_id:Mapped[int] = mapped_column(default=None, nullable=False)
 
-    league_id:Mapped[int] = mapped_column(ForeignKey("league.index"), default=None)
+    league_id:Mapped[int] = mapped_column(ForeignKey("league.id"), default=None)
     league:Mapped["League"] = relationship(default=None, back_populates="teams", repr=False)
 
     name:Mapped[str] = mapped_column(default=None)
@@ -257,13 +257,13 @@ class Team:
         '''Returns the team's Roster_Spot for the input player'''
         if player is None:
             return None
-        return self.get_rs_by_player_id(player.index)
+        return self.get_rs_by_player_id(player.id)
 
     def get_rs_by_player_id(self, player_id:int) -> Roster_Spot:
         '''Returns the team's Roster_Spot for the input player id'''
         if self.rs_map is None:
             for rs in self.roster_spots:
-                if rs.player.index == player_id:
+                if rs.player.id == player_id:
                     return rs
             return None
         else:
@@ -279,12 +279,12 @@ class Team:
 @reg.mapped_as_dataclass
 class Roster_Spot:
     __tablename__ = "roster_spot"
-    index:Mapped[int] = mapped_column(init=False, primary_key=True)
+    id:Mapped[int] = mapped_column(init=False, primary_key=True)
 
-    team_id:Mapped[int] = mapped_column(ForeignKey("team.index"), default=None)
+    team_id:Mapped[int] = mapped_column(ForeignKey("team.id"), default=None)
     team:Mapped["Team"] = relationship(default=None, back_populates="roster_spots", repr=False)
 
-    player_id:Mapped[int] = mapped_column(ForeignKey("player.index"), default=None)
+    player_id:Mapped[int] = mapped_column(ForeignKey("player.id"), default=None)
     player:Mapped["Player"] = relationship(default=None, lazy="joined")
 
     salary:Mapped[int] = mapped_column(default=None, nullable=True)
@@ -296,9 +296,9 @@ class Roster_Spot:
 class Projected_Keeper:
     __tablename__ = "projected_keeper"
     id:Mapped[int] = mapped_column(init=False, primary_key=True)
-    league_id:Mapped[int] = mapped_column(ForeignKey("league.index"), default=None, nullable=False)
+    league_id:Mapped[int] = mapped_column(ForeignKey("league.id"), default=None, nullable=False)
     
-    player_id:Mapped[int] = mapped_column(ForeignKey("player.index"), default=None, nullable=False)
+    player_id:Mapped[int] = mapped_column(ForeignKey("player.id"), default=None, nullable=False)
     player:Mapped[Player] = relationship(default=None, lazy="joined")
 
     season:Mapped[int] = mapped_column(default=None)
@@ -309,12 +309,12 @@ class Projected_Keeper:
 @reg.mapped_as_dataclass
 class Salary_Info:
     __tablename__ = "salary_info"
-    index:Mapped[int] = mapped_column(init=False, primary_key=True)
+    id:Mapped[int] = mapped_column(init=False, primary_key=True)
 
-    player_id:Mapped[int] = mapped_column(ForeignKey("player.index"), default=None)
+    player_id:Mapped[int] = mapped_column(ForeignKey("player.id"), default=None)
     player:Mapped["Player"] = relationship(default=None, back_populates="salary_info", repr=False)
 
-    format:Mapped["ScoringFormat"] = mapped_column(default=None)
+    s_format:Mapped["ScoringFormat"] = mapped_column(default=None)
     
     avg_salary:Mapped[float] = mapped_column("Avg Salary", default=None)
     med_salary:Mapped[float] = mapped_column("Median Salary", default=None)
@@ -326,14 +326,14 @@ class Salary_Info:
 @reg.mapped_as_dataclass
 class PlayerValue:
     __tablename__ = "player_value"
-    index:Mapped[int] = mapped_column(primary_key=True, init=False)
+    id:Mapped[int] = mapped_column(primary_key=True, init=False)
 
-    player_id:Mapped[int] = mapped_column(ForeignKey("player.index"), nullable=False)
+    player_id:Mapped[int] = mapped_column(ForeignKey("player.id"), nullable=False)
     player:Mapped["Player"] = relationship(default=None, lazy="joined")
 
     position:Mapped["Position"] = mapped_column(default=None)
 
-    calculation_id:Mapped[int] = mapped_column(ForeignKey("value_calculation.index"), default=None)
+    calculation_id:Mapped[int] = mapped_column(ForeignKey("value_calculation.id"), default=None)
     calculation:Mapped["ValueCalculation"] = relationship(default=None, back_populates="values", repr=False)
 
     value:Mapped[float] = mapped_column(default=None)
@@ -343,15 +343,15 @@ class PlayerValue:
 @reg.mapped_as_dataclass
 class ValueCalculation:
     __tablename__ = "value_calculation"
-    index:Mapped[int] = mapped_column(init=False, primary_key=True)
+    id:Mapped[int] = mapped_column(init=False, primary_key=True)
     name:Mapped[str] = mapped_column(default=None)
     description:Mapped[str] = mapped_column(default=None, nullable=True)
     timestamp:Mapped[datetime] = mapped_column(default=datetime.now(), nullable=False)
 
-    projection_id:Mapped[int] = mapped_column(ForeignKey("projection.index"), default=None, nullable=True)
+    projection_id:Mapped[int] = mapped_column(ForeignKey("projection.id"), default=None, nullable=True)
     projection:Mapped["Projection"] = relationship(default=None, back_populates="calculations", repr=False)
     # Corresponds to ScoringFormat enum
-    format:Mapped["ScoringFormat"] = mapped_column(default=None)
+    s_format:Mapped["ScoringFormat"] = mapped_column(default=None)
     hitter_basis:Mapped["RankingBasis"] = mapped_column(default=None, nullable=True)
     pitcher_basis:Mapped["RankingBasis"] = mapped_column(default=None, nullable=True)
 
@@ -501,31 +501,31 @@ class CustomScoringCategory:
 class CalculationInput:
 
     __tablename__ = "calculation_input"
-    index:Mapped[int] = mapped_column(init=False, primary_key=True)
+    id:Mapped[int] = mapped_column(init=False, primary_key=True)
 
     data_type:Mapped["CalculationDataType"] = mapped_column(default=None, nullable=False)
 
     value:Mapped[float] = mapped_column(default=None, nullable=False)
 
-    calculation_id:Mapped[int] = mapped_column(ForeignKey("value_calculation.index"), default=None)
+    calculation_id:Mapped[int] = mapped_column(ForeignKey("value_calculation.id"), default=None)
     calculation:Mapped["ValueCalculation"] = relationship(default=None, back_populates="inputs", repr=False)
 
 @reg.mapped_as_dataclass
 class ValueData:
     __tablename__ = "value_data"
-    index:Mapped[int] = mapped_column(init=False, primary_key=True)
+    id:Mapped[int] = mapped_column(init=False, primary_key=True)
 
     data_type:Mapped["CalculationDataType"] = mapped_column(default=None, nullable=False)
 
     value:Mapped[float] = mapped_column(default=None, nullable=False)
 
-    calculation_id:Mapped[int] = mapped_column(ForeignKey("value_calculation.index"), default=None)
+    calculation_id:Mapped[int] = mapped_column(ForeignKey("value_calculation.id"), default=None)
     calculation:Mapped["ValueCalculation"] = relationship(default=None, back_populates="data", repr=False)
 
 @reg.mapped_as_dataclass   
 class Projection:
     __tablename__ = "projection"
-    index:Mapped[int] = mapped_column(init=False, primary_key=True)
+    id:Mapped[int] = mapped_column(init=False, primary_key=True)
     
     # This corresponds to the ProjectionType enum
     type:Mapped[ProjectionType] = mapped_column(default=None, nullable=False)
@@ -566,19 +566,19 @@ class Projection:
                             return pp
         else:
             for pp in self.player_projections:
-                if pp.player_id == player_id or pp.player.index == player_id:
+                if pp.player_id == player_id or pp.player.id == player_id:
                     return pp
         return None
 
 @reg.mapped_as_dataclass   
 class PlayerProjection:
     __tablename__ = "player_projection"
-    index:Mapped[int] = mapped_column(init=False, primary_key=True)
+    id:Mapped[int] = mapped_column(init=False, primary_key=True)
 
-    player_id:Mapped[int] = mapped_column(ForeignKey("player.index"), default=None, nullable=False)
+    player_id:Mapped[int] = mapped_column(ForeignKey("player.id"), default=None, nullable=False)
     player:Mapped["Player"] = relationship(default=None, lazy="joined")
 
-    projection_id:Mapped[int] = mapped_column(ForeignKey("projection.index"), default=None)
+    projection_id:Mapped[int] = mapped_column(ForeignKey("projection.id"), default=None)
     projection:Mapped["Projection"] = relationship(default=None, back_populates="player_projections", repr=False)
 
     projection_data:Mapped[List["ProjectionData"]] = relationship(default_factory=list, back_populates="player_projection", cascade="all, delete", lazy="joined", repr=False)
@@ -603,9 +603,9 @@ class PlayerProjection:
 @reg.mapped_as_dataclass
 class ProjectionData:
     __tablename__ = "projection_data"
-    index:Mapped[int] = mapped_column(init=False, primary_key=True)
+    id:Mapped[int] = mapped_column(init=False, primary_key=True)
 
-    player_projection_id:Mapped[int] = mapped_column(ForeignKey("player_projection.index"), default=None)
+    player_projection_id:Mapped[int] = mapped_column(ForeignKey("player_projection.id"), default=None)
     player_projection:Mapped["PlayerProjection"] = relationship(default=None, back_populates="projection_data", repr=False)
 
     stat_type:Mapped["StatType"] = mapped_column(default=None, nullable=False) 
@@ -622,8 +622,8 @@ class Salary_Refresh:
 class Draft:
     '''Class to hold user draft inputs'''
     __tablename__ = 'draft'
-    index:Mapped[int] = mapped_column(init=False, primary_key=True)
-    league_id:Mapped[int] = mapped_column(ForeignKey("league.index"), default=None)
+    id:Mapped[int] = mapped_column(init=False, primary_key=True)
+    league_id:Mapped[int] = mapped_column(ForeignKey("league.id"), default=None)
     league:Mapped["League"] = relationship(default=None, repr=False)
 
     targets:Mapped[List["Draft_Target"]] = relationship(default_factory=list, cascade="all, delete", lazy="joined", repr=False)
@@ -638,7 +638,7 @@ class Draft:
         '''Gets the Draft_Target for the input player_id. If none exists, return None'''
         if self.targets is not None:
             for target in self.targets:
-                if target.player.index == player_id:
+                if target.player.id == player_id:
                     return target
         return None
 
@@ -656,11 +656,11 @@ class Draft:
 class Draft_Target:
     '''Class to hold user draft target information'''
     __tablename__ = 'draft_target'
-    index:Mapped[int] = mapped_column(init=False, primary_key=True)
-    draft_id:Mapped[int] = mapped_column(ForeignKey("draft.index"), default=None, nullable=False)
+    id:Mapped[int] = mapped_column(init=False, primary_key=True)
+    draft_id:Mapped[int] = mapped_column(ForeignKey("draft.id"), default=None, nullable=False)
     #draft:Mapped["Draft"] = relationship(default=None, back_populates='targets')
 
-    player_id:Mapped[int] = mapped_column(ForeignKey("player.index"), default=None, nullable=False)
+    player_id:Mapped[int] = mapped_column(ForeignKey("player.id"), default=None, nullable=False)
     player:Mapped["Player"] = relationship(default=None, lazy="joined")
 
     price:Mapped[int] = mapped_column(default=None, nullable=True)
@@ -669,16 +669,16 @@ class Draft_Target:
 class CouchManagers_Draft:
     '''Class to hold CouchManagers Draft Data'''
     __tablename__ = 'cm_draft'
-    index:Mapped[int] = mapped_column(init=False, primary_key=True)
+    id:Mapped[int] = mapped_column(init=False, primary_key=True)
     cm_draft_id:Mapped[int] = mapped_column(default=None, nullable=False)
-    draft_id:Mapped[int] = mapped_column(ForeignKey("draft.index"), default=None, nullable=False)
+    draft_id:Mapped[int] = mapped_column(ForeignKey("draft.id"), default=None, nullable=False)
     draft:Mapped["Draft"] = relationship(default=None, back_populates='cm_draft', repr=False)
     setup:Mapped[bool] = mapped_column(default=False)
 
     teams:Mapped[List["CouchManagers_Team"]] = relationship(default_factory=list, back_populates="cm_draft", cascade="all, delete", lazy="joined", repr=False)
 
-    def get_toolbox_team_index_by_cm_team_id(self, cm_team_id:int) -> int:
-        '''Gets the linked Ottoneu Toolbox Team index associated with the input CouchManagers team id'''
+    def get_toolbox_team_id_by_cm_team_id(self, cm_team_id:int) -> int:
+        '''Gets the linked Ottoneu Toolbox Team id associated with the input CouchManagers team id'''
         for team in self.teams:
             if team.cm_team_id == cm_team_id:
                 return team.ottoneu_team_id
@@ -688,8 +688,8 @@ class CouchManagers_Draft:
 class CouchManagers_Team:
     '''Class that maps CouchManagers draft team numbers'''
     __tablename__ = 'cm_teams'
-    index:Mapped[int] = mapped_column(init=False, primary_key=True)
-    cm_draft_id:Mapped[int] = mapped_column(ForeignKey("cm_draft.index"), default=None, nullable=False)
+    id:Mapped[int] = mapped_column(init=False, primary_key=True)
+    cm_draft_id:Mapped[int] = mapped_column(ForeignKey("cm_draft.id"), default=None, nullable=False)
     cm_draft:Mapped["CouchManagers_Draft"] = relationship(default=None, back_populates='teams', repr=False)
 
     cm_team_id:Mapped[int] = mapped_column(nullable=False, default=None)
@@ -697,13 +697,13 @@ class CouchManagers_Team:
     ottoneu_team_id:Mapped[int] = mapped_column(nullable=False, default=None)
 
     def __hash__(self) -> int:
-        return hash(self.index)
+        return hash(self.id)
 
 @reg.mapped_as_dataclass
 class Adv_Calc_Option:
     '''Class to hold advanced calculation inputs'''
     __tablename__ = 'adv_calc_option'
-    index:Mapped["CalculationDataType"] = mapped_column(default=None, primary_key=True)
+    id:Mapped["CalculationDataType"] = mapped_column(default=None, primary_key=True)
     value:Mapped[float] = mapped_column(default=None)
 
 @reg.mapped_as_dataclass
@@ -728,7 +728,7 @@ class PlayerPositions:
     __tablename__ = 'player_positions'
     id:Mapped[int] = mapped_column(init=False, primary_key=True)
     
-    player_id:Mapped[int] = mapped_column(ForeignKey("player.index"), default=None)
+    player_id:Mapped[int] = mapped_column(ForeignKey("player.id"), default=None)
 
     position_set_id:Mapped[int] = mapped_column(ForeignKey("position_set.id"), default=None)
     position_set:Mapped["PositionSet"] = relationship(default=None, cascade="all, delete")
@@ -772,8 +772,8 @@ class StartingPosition:
 class TeamDraft:
     __tablename__ = 'team_draft'
     id:Mapped[int] = mapped_column(init=False, primary_key=True)
-    team_id:Mapped[int] = mapped_column(ForeignKey("team.index"), default=None, nullable=False)
+    team_id:Mapped[int] = mapped_column(ForeignKey("team.id"), default=None, nullable=False)
 
-    draft_id:Mapped[int] = mapped_column(ForeignKey("draft.index"), default=None, nullable=False)
+    draft_id:Mapped[int] = mapped_column(ForeignKey("draft.id"), default=None, nullable=False)
 
     custom_draft_budget:Mapped[int] = mapped_column(default=None, nullable=True)

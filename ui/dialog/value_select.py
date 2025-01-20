@@ -86,11 +86,11 @@ class Dialog(tk.Toplevel):
     
     def populate_table(self):
         for value in self.value_list:
-            if value.format == ScoringFormat.CUSTOM:
+            if value.s_format == ScoringFormat.CUSTOM:
                 v_type = custom_scoring_services.get_scoring_format(value.get_input(CalculationDataType.CUSTOM_SCORING_FORMAT)).name
             else:
-                v_type = value.format.short_name
-            self.value_table.insert('', tk.END, text=str(value.index), values=(value.name, v_type, int(value.get_input(CalculationDataType.NUM_TEAMS)), value.description))
+                v_type = value.s_format.short_name
+            self.value_table.insert('', tk.END, text=str(value.id), values=(value.name, v_type, int(value.get_input(CalculationDataType.NUM_TEAMS)), value.description))
 
     def double_click(self, event):
         self.on_select(event)
@@ -100,7 +100,7 @@ class Dialog(tk.Toplevel):
         if len(event.widget.selection()) > 0:
             selection = event.widget.item(event.widget.selection()[0])["text"]
             for value in self.value_list:
-                if value.index == int(selection):
+                if value.id == int(selection):
                     self.value = value
                     break
         else:
@@ -119,7 +119,7 @@ class Dialog(tk.Toplevel):
     
     def delete_values(self, values_id):
         for values in self.value_list:
-            if values.index == values_id:
+            if values.id == values_id:
                 val = values
                 break
         if mb.askokcancel('Delete Values', f'Confirm deletion of values {val.name}'):
@@ -128,7 +128,7 @@ class Dialog(tk.Toplevel):
             pd.set_completion_percent(15)
             calculation_services.delete_values_by_id(values_id)
             for idx, vc in enumerate(self.value_list):
-                if vc.index == values_id:
+                if vc.id == values_id:
                     self.value_list.pop(idx)
                     break
             self.value_table.refresh()
@@ -141,7 +141,7 @@ class Dialog(tk.Toplevel):
     def set_value(self):
         pd = progress.ProgressDialog(self.master, title='Loading Values...')
         pd.set_completion_percent(15)
-        self.value = calculation_services.load_calculation(self.value.index)
+        self.value = calculation_services.load_calculation(self.value.id)
         pd.set_completion_percent(100)
         pd.destroy()
         self.destroy()

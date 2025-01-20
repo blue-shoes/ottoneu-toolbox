@@ -111,7 +111,7 @@ class Standings(tk.Frame):
 
     def __refresh_standings(self):
         if not self.value_calc.projection \
-                or (self.value_calc.projection.type == ProjectionType.VALUE_DERIVED and not ScoringFormat.is_points_type(self.value_calc.format)):
+                or (self.value_calc.projection.type == ProjectionType.VALUE_DERIVED and not ScoringFormat.is_points_type(self.value_calc.s_format)):
             msg = self.__create_message_value('Cannot provide standings')
             self.standings_table.table.insert('', tk.END, iid=-2, values=msg)
             if not self.value_calc.projection:
@@ -149,7 +149,7 @@ class Standings(tk.Frame):
     def update_league(self, league:League) -> None:
         self.league = league
         show_cats = False
-        if self.value_calc.format == ScoringFormat.CUSTOM:
+        if self.value_calc.s_format == ScoringFormat.CUSTOM:
             self.custom_scoring = custom_scoring_services.get_scoring_format(self.value_calc.get_input(CalculationDataType.CUSTOM_SCORING_FORMAT))
             if not self.custom_scoring.points_format:
                 self.standings_type.set(0)
@@ -159,7 +159,7 @@ class Standings(tk.Frame):
                 self.proj_button.configure(state='active')
         else:
             self.custom_scoring = None
-            if not ScoringFormat.is_points_type(self.value_calc.format):
+            if not ScoringFormat.is_points_type(self.value_calc.s_format):
                 self.standings_type.set(0)
                 self.proj_button.configure(state='disable')
                 show_cats = True
@@ -176,7 +176,7 @@ class Standings(tk.Frame):
 
     def __set_display_columns(self) -> None:
         if not self.value_calc.projection \
-                or (self.value_calc.projection.type == ProjectionType.VALUE_DERIVED and not ScoringFormat.is_points_type(self.value_calc.format)):
+                or (self.value_calc.projection.type == ProjectionType.VALUE_DERIVED and not ScoringFormat.is_points_type(self.value_calc.s_format)):
             self.standings_table.table.set_display_columns(('Message'))
             return
         if self.league.is_salary_cap():
@@ -189,8 +189,8 @@ class Standings(tk.Frame):
                 pt_stat_cats = self.get_columns_with_pt(stat_cats)
                 self.roto_table.table.set_display_columns(('Rank', 'Team') + pt_stat_cats)
                 self.stats_table.table.set_display_columns(('Rank', 'Team') + pt_stat_cats)
-        elif not ScoringFormat.is_points_type(self.value_calc.format):
-            stat_cats = tuple(cat for cat in ScoringFormat.get_format_stat_categories(self.value_calc.format))
+        elif not ScoringFormat.is_points_type(self.value_calc.s_format):
+            stat_cats = tuple(cat for cat in ScoringFormat.get_format_stat_categories(self.value_calc.s_format))
             pt_stat_cats = self.get_columns_with_pt(stat_cats)
             self.roto_table.table.set_display_columns(('Rank', 'Team') + pt_stat_cats)
             self.stats_table.table.set_display_columns(('Rank', 'Team') + pt_stat_cats)
@@ -234,7 +234,7 @@ class Standings(tk.Frame):
             vals.append(num_players)
             if hasattr(self.league, 'team_drafts') and self.league.team_drafts:
                 for td in self.league.team_drafts:
-                    if td.team_id == team.index:
+                    if td.team_id == team.id:
                         vals.append(f'${td.custom_draft_budget - salaries}')
                         break
             else:
@@ -260,7 +260,7 @@ class Standings(tk.Frame):
             vals.append(num_players)
             if hasattr(self.league, 'team_drafts') and self.league.team_drafts:
                 for td in self.league.team_drafts:
-                    if td.team_id == team.index:
+                    if td.team_id == team.id:
                         vals.append(f'${td.custom_draft_budget - salaries}')
                         break
             else:
@@ -284,9 +284,9 @@ class Standings(tk.Frame):
         vals.append(team.name)
         for st in StatType.get_all_hit_stattype() + StatType.get_all_pitch_stattype():
             if st == StatType.G_HIT:
-                vals.append(st.format.format(sum([rs.g_h for rs in team.roster_spots])))
+                vals.append(st.v_format.format(sum([rs.g_h for rs in team.roster_spots])))
             elif st == StatType.IP:
-                vals.append(st.format.format(sum([rs.ip for rs in team.roster_spots])))
+                vals.append(st.v_format.format(sum([rs.ip for rs in team.roster_spots])))
             elif st in team.cat_ranks:
                 vals.append(team.cat_ranks[st])
             else:
@@ -299,22 +299,22 @@ class Standings(tk.Frame):
         vals.append(team.name)
         for st in StatType.get_all_hit_stattype() + StatType.get_all_pitch_stattype():
             if st == StatType.G_HIT:
-                vals.append(st.format.format(sum([rs.g_h for rs in team.roster_spots])))
+                vals.append(st.v_format.format(sum([rs.g_h for rs in team.roster_spots])))
             elif st == StatType.IP:
-                vals.append(st.format.format(sum([rs.ip for rs in team.roster_spots])))
+                vals.append(st.v_format.format(sum([rs.ip for rs in team.roster_spots])))
             elif st in team.cat_ranks:
                 try:
                     vals.append(st.format.format(team.cat_stats[st]))
                 except KeyError:
                     if st.higher_better:
-                        vals.append(st.format.format(0))
+                        vals.append(st.v_format.format(0))
                     else:
-                        vals.append(st.format.format(999))
+                        vals.append(st.v_format.format(999))
             else:
                 if st.higher_better:
-                    vals.append(st.format.format(0))
+                    vals.append(st.v_format.format(0))
                 else:
-                    vals.append(st.format.format(999))
+                    vals.append(st.v_format.format(999))
         return vals
 
     def refresh(self) -> None:

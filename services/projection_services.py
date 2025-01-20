@@ -75,7 +75,7 @@ def convertToDcPlayingTime(proj:DataFrame, ros:bool, position:bool, fg_scraper:s
     #Columns directly taken from DC
     dc_columns = ['G','PA','GS','IP']
     #Filter projection to only players present in the DC projection and then drop the temp DC column
-    proj = proj.assign(DC=proj.index.isin(dc_proj.index).astype(bool))
+    proj = proj.assign(DC=proj.id.isin(dc_proj.id).astype(bool))
     proj = proj[proj['DC'] == True]
     proj.drop('DC', axis=1, inplace=True)
     if position:
@@ -204,7 +204,7 @@ def save_projection(projection:Projection, projs:List[DataFrame], id_type:IdType
                 player = None
                 if idx in seen_players:
                     player = seen_players[idx]
-                    player_proj = projection.get_player_projection(player.index, idx=idx)
+                    player_proj = projection.get_player_projection(player.id, idx=idx)
                     player_proj.pitcher = False
                     player_proj.two_way = True
                 else:
@@ -217,12 +217,12 @@ def save_projection(projection:Projection, projs:List[DataFrame], id_type:IdType
                     elif id_type == IdType.MLB:
                         player = player_services.get_player_by_mlb_id(idx)
                         if player:
-                            id = player.index
+                            id = player.id
                         else:
                             #TODO: Maybe reimplement this if it's currently the problem
                             #player = player_services.get_player_by_name_and_team(row['Name'], row['Team'])
                             if player:
-                                id = player.index
+                                id = player.id
                     elif id_type == IdType.OTB:
                         player = player_services.get_player(idx)
                         id = idx
@@ -289,7 +289,7 @@ def save_projection(projection:Projection, projs:List[DataFrame], id_type:IdType
         session.add(projection)
         session.commit()
 
-        new_proj = get_projection(projection.index, player_data=False) 
+        new_proj = get_projection(projection.id, player_data=False) 
     return new_proj
 
 def create_projection_from_upload(projection: Projection, pos_file:str, pitch_file:str, name:str, desc:str='', ros:bool=False, year:int=None, progress=None):
@@ -686,7 +686,7 @@ def __set_otb_id_from_davenport(row:Series) -> int:
     player = player_services.get_player_by_mlb_id(row['MLBID'], name=name, team=row['Team'])
     if not player:
         player = player_services.create_player_from_davenport(row)
-    return player.index
+    return player.id
 
 def __must_derive_stat(stat_type:StatType, base_stats:List[StatType], df_cols:Index) -> bool:
     if any(x in stat_type.stat_list for x in df_cols): return False
@@ -738,10 +738,10 @@ def get_projection(proj_id: int, player_data=True) -> Projection:
         if player_data:
             proj = (session.query(Projection)
                 .options(joinedload(Projection.player_projections))
-                .filter_by(index = proj_id).first()
+                .filter_by(id = proj_id).first()
             )
         else:
-            proj = session.query(Projection).filter(Projection.index == proj_id).first()
+            proj = session.query(Projection).filter(Projection.id == proj_id).first()
     return proj     
 
 def convert_to_df(proj:Projection) -> List[DataFrame]:
@@ -791,7 +791,7 @@ def convert_to_df(proj:Projection) -> List[DataFrame]:
 
 def db_rows_to_df(player_proj:PlayerProjection, columns):
     row = []
-    row.append(player_proj.player.index)
+    row.append(player_proj.player.id)
     row.append(player_proj.player.name)
     row.append(player_proj.player.team)
     if player_proj.player.custom_positions:
@@ -823,16 +823,16 @@ def get_available_seasons() -> List[int]:
     return sorted(tmp_seasons, reverse=True)
 
 def delete_projection_by_id(proj_id: int) -> None:
-    '''Deletes a Projection from the database by index.'''
+    '''Deletes a Projection from the database by id.'''
     with Session() as session:
-        proj = session.query(Projection).filter(Projection.index == proj_id).first()
+        proj = session.query(Projection).filter(Projection.id == proj_id).first()
         session.delete(proj)
         session.commit()
 
 def get_player_projection(pp_id: int) -> PlayerProjection:
-    '''Returns a PlayerProjection from the database based on index.'''
+    '''Returns a PlayerProjection from the database based on id.'''
     with Session() as session:
-        return session.query(PlayerProjection).filter(PlayerProjection.index == pp_id).first()
+        return session.query(PlayerProjection).filter(PlayerProjection.id == pp_id).first()
 
 def get_pitcher_role_ips(pp:PlayerProjection) -> Tuple[float, float]:
     '''Calculates the number of innings pitched in relief based on a linear regression using games relieved per total

@@ -104,11 +104,11 @@ class Wizard(wizard.Wizard):
                     return False
                 self.value.name = self.step1_fg.name_tv.get()
                 self.value.description = self.step1_fg.desc_tv.get()
-                self.value.format = ScoringFormat.get_format_by_full_name(self.step1_fg.game_type.get())
+                self.value.s_format = ScoringFormat.get_format_by_full_name(self.step1_fg.game_type.get())
                 self.value.hitter_basis = RankingBasis.FG_AC
                 self.value.pitcher_basis = RankingBasis.FG_AC
                 if self.step1_fg.projection is not None:
-                    self.value.projection = projection_services.get_projection(self.step1_fg.projection.index)
+                    self.value.projection = projection_services.get_projection(self.step1_fg.projection.id)
                 progd.set_task_title('Parsing')
                 progd.set_completion_percent(15)
                 self.value = calculation_services.get_values_from_fg_auction_files(self.value, hit_df, pitch_df, int(self.step1_fg.rep_level_value_str.get()),progd)
@@ -123,13 +123,13 @@ class Wizard(wizard.Wizard):
                 self.value.description = self.step1.desc_tv.get()
                 self.value.set_input(CDT.REP_LEVEL_SCHEME, float(RepLevelScheme.STATIC_REP_LEVEL.value))
                 if self.step1.projection is not None:
-                    self.value.projection = projection_services.get_projection(self.step1.projection.index)
+                    self.value.projection = projection_services.get_projection(self.step1.projection.id)
                 progd.set_task_title('Uploading')
                 progd.set_completion_percent(15)
                 self.value = calculation_services.save_calculation_from_file(self.value, self.step1.df, progd, rep_val=int(self.step1.rep_level_value_str.get()), new_pos_set=self.step2.use_file_pos_bv.get())
             progd.set_task_title("Updating")
             progd.set_completion_percent(80)
-            self.parent.value = calculation_services.load_calculation(self.value.index)
+            self.parent.value = calculation_services.load_calculation(self.value.id)
             progd.complete()
             super().finish()
         except Exception as Argument:
@@ -454,10 +454,10 @@ class Step1(tk.Frame):
         if self.projection is not None:
             prog.set_task_title('Getting projections...')
             prog.set_completion_percent(15)
-            vc.projection = projection_services.get_projection(self.projection.index, player_data=True)
-        vc.format = ScoringFormat.get_format_by_full_name(self.game_type.get())
+            vc.projection = projection_services.get_projection(self.projection.id, player_data=True)
+        vc.s_format = ScoringFormat.get_format_by_full_name(self.game_type.get())
         vc.inputs = []
-        if vc.format == ScoringFormat.CUSTOM:
+        if vc.s_format == ScoringFormat.CUSTOM:
             vc.set_input(CDT.CUSTOM_SCORING_FORMAT, self.custom_scoring.id)
         vc.set_input(CDT.NUM_TEAMS, float(self.num_teams_str.get()))
         vc.hitter_basis = RankingBasis.get_enum_by_display(self.hitter_basis.get())
@@ -672,7 +672,7 @@ class Step2(tk.Frame):
         pitcher_rb = vc.pitcher_basis.display
         self.pitch_rep_level_lbl.set(f"Rep. Level ({pitcher_rb})")
         
-        if ScoringFormat.is_points_type(vc.format):
+        if ScoringFormat.is_points_type(vc.s_format):
             self.hit_dollars_per_fom_lbl.set('Calculated $/PAR')
             self.pitch_dollars_per_fom_lbl.set('Calculated $/PAR')
         else:

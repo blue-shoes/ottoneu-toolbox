@@ -19,7 +19,7 @@ class PlayerValues():
         self.target_bat = rostered_hitters
         self.target_pitch = rostered_pitchers
         self.rp_limit = rp_limit
-        self.SABR = ScoringFormat.is_sabr(value_calc.format)
+        self.SABR = ScoringFormat.is_sabr(value_calc.s_format)
         self.value_calc = value_calc
 
         #Initialize directory for intermediate calc files if required

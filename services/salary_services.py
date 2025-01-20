@@ -10,12 +10,12 @@ from datetime import datetime
 def update_salary_info(s_format=ScoringFormat.ALL, pd=None) -> None:
     '''Updates the database with the salary information for the input scoring format.'''
     scraper = Scrape_Ottoneu()
-    salary_df = scraper.get_avg_salary_ds(game_type = format.value)
+    salary_df = scraper.get_avg_salary_ds(game_type = s_format.value)
     if pd is not None:
         pd.set_task_title('Refreshing DB...')
         pd.increment_completion_percent(40)
     with Session() as session:
-        refresh = session.query(Salary_Refresh).filter(Salary_Refresh.format == format).first()
+        refresh = session.query(Salary_Refresh).filter(Salary_Refresh.s_format == s_format).first()
         if refresh is None:
             refresh = Salary_Refresh(s_format=s_format,last_refresh=datetime.now())
         else:
@@ -44,9 +44,9 @@ def update_salary_info(s_format=ScoringFormat.ALL, pd=None) -> None:
 
         current_players = session.query(Player).join(Salary_Info).all()
         for c_player in current_players:
-            si = get_format_salary_info(c_player, format)
+            si = get_format_salary_info(c_player, s_format)
             existing_player_ids.append(c_player.ottoneu_id)
-            if not c_player.ottoneu_id in salary_df.index:
+            if c_player.ottoneu_id not in salary_df.id:
                 # Not rostered in format, set all to 0
                 si.avg_salary = 0.0
                 si.med_salary = 0.0
@@ -61,7 +61,7 @@ def update_salary_info(s_format=ScoringFormat.ALL, pd=None) -> None:
             if idx not in existing_player_ids:
                 si = Salary_Info()
                 si.player = players.get(idx)
-                si.format = format
+                si.s_format = s_format
                 update_salary(si, row)
                 session.add(si)
         session.add(refresh)
@@ -69,21 +69,21 @@ def update_salary_info(s_format=ScoringFormat.ALL, pd=None) -> None:
     #TODO: Might want this to automatically update loaded value calc/rosters
 
 
-def get_format_salary_info(player: Player, format:ScoringFormat) -> Salary_Info:
+def get_format_salary_info(player: Player, s_format:ScoringFormat) -> Salary_Info:
     '''Returns the salary info for the player for the given format. If the salary info doesn't exist, create a new blank one and add it to the Player's list.'''
     for si in player.salary_info:
-        if si.format == format:
+        if si.s_format == s_format:
             return si
     si = Salary_Info()
-    si.format = format
+    si.s_format = s_format
     player.salary_info.append(si)
     return si
 
-def create_salary(row, format:ScoringFormat, player:Player) -> None:
+def create_salary(row, s_format:ScoringFormat, player:Player) -> None:
     '''Create a new Salary_Info for the Player in the given ScoringFormat, including setting the specific values. Expects a row from the Ottoneu average salaries dataset.'''
     salary_info = Salary_Info()
-    salary_info.player_id=player.index
-    salary_info.format = format
+    salary_info.player_id=player.id
+    salary_info.s_format = s_format
     salary_info.player = player
     update_salary(salary_info, row)
     player.salary_info.append(salary_info)

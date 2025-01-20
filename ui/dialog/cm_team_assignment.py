@@ -28,12 +28,12 @@ class Dialog(tk.Toplevel):
         for team in league.teams:
             found = False
             for team2 in self.draft.cm_draft.teams:
-                if team2.ottoneu_team_id == team.index:
+                if team2.ottoneu_team_id == team.id:
                     found = True
                     break
             if not found:
                 o_team_names.append(team.name)
-                self.o_team_map[team.name] = team.index
+                self.o_team_map[team.name] = team.id
         self.team_sv_dict = {}
         row = 0
         tk.Label(self.team_frm, text='CM Team Name').grid(row=row, column=0)
@@ -87,7 +87,7 @@ class Dialog(tk.Toplevel):
                     break
             cm_team.ottoneu_team_id = self.o_team_map.get(name)
             new_teams.append(cm_team)
-        self.draft.cm_draft = draft_services.update_couchmanger_teams(self.draft.cm_draft.index, new_teams, self.draft.cm_draft.setup)
+        self.draft.cm_draft = draft_services.update_couchmanger_teams(self.draft.cm_draft.id, new_teams, self.draft.cm_draft.setup)
 
         self.status = OK
         self.destroy()

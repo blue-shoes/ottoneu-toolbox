@@ -27,7 +27,7 @@ class ArmValues():
         self.replacement_positions = deepcopy(self.default_replacement_positions)
         self.replacement_levels = deepcopy(self.default_replacement_levels)
         self.target_pitch = target_arm
-        self.SABR = ScoringFormat.is_sabr(value_calc.format)
+        self.SABR = ScoringFormat.is_sabr(value_calc.s_format)
         self.rp_limit = rp_limit
         self.rep_level_scheme = RepLevelScheme._value2member_map_[int(value_calc.get_input(CDT.REP_LEVEL_SCHEME))]
         self.num_teams = value_calc.get_input(CDT.NUM_TEAMS)
@@ -35,8 +35,8 @@ class ArmValues():
         self.min_sp_ip = value_calc.get_input(CDT.SP_IP_TO_RANK)
         self.min_rp_ip = value_calc.get_input(CDT.RP_IP_TO_RANK)
         self.rank_basis = value_calc.pitcher_basis
-        self.format = value_calc.format
-        if self.format == ScoringFormat.CUSTOM:
+        self.s_format = value_calc.s_format
+        if self.s_format == ScoringFormat.CUSTOM:
             self.scoring = custom_scoring_services.get_scoring_format(value_calc.get_input(CDT.CUSTOM_SCORING_FORMAT))
         self.stat_avg = {}
         self.stat_std = {}
@@ -44,7 +44,7 @@ class ArmValues():
         self.no_sv_hld = value_calc.get_input(CDT.INCLUDE_SVH) == 0
         
         if self.rep_level_scheme == RepLevelScheme.FILL_GAMES:
-            if ScoringFormat.is_h2h(self.format):
+            if ScoringFormat.is_h2h(self.s_format):
                 self.gs_per_week = value_calc.get_input(CDT.GS_LIMIT)
                 self.est_rp_g_per_week = value_calc.get_input(CDT.RP_G_TARGET)
             else:
@@ -68,7 +68,7 @@ class ArmValues():
             #Ask forgiveness, not permission
             hbp = 0.0951*row['BBA']+0.4181
         
-        if self.format == ScoringFormat.CUSTOM:
+        if self.s_format == ScoringFormat.CUSTOM:
             points = 0 
             for cat in self.scoring.stats:
                 if cat.category.hitter: continue
@@ -131,7 +131,7 @@ class ArmValues():
         else:
             num_arms = 0
             total_ip = 0
-            split = ScoringFormat.is_points_type(self.format)
+            split = ScoringFormat.is_points_type(self.s_format)
             self.get_pitcher_fom_calc(df, split=split)
 
             rosterable = df.loc[df['FOM'] >= 0]
@@ -143,25 +143,25 @@ class ArmValues():
             rp_g = rosterable.apply(self.usable_rp_g_calc, axis=1).sum()
 
             if self.rep_level_scheme == RepLevelScheme.FILL_GAMES:
-                if not ScoringFormat.is_h2h(self.format):
+                if not ScoringFormat.is_h2h(self.s_format):
                     while sp_ip < self.num_teams * (self.target_ip_per_team-self.rp_ip_per_team) and self.replacement_positions['SP'] < self.max_rost_num['SP']:
                         self.replacement_positions['SP'] = self.replacement_positions['SP'] + 1
-                        if not ScoringFormat.is_points_type(self.format):
+                        if not ScoringFormat.is_points_type(self.s_format):
                             self.calculate_roto_bases(df)
                         self.get_pitcher_fom_calc(df, split=split)
                         rosterable = df.loc[df['FOM SP'] >= 0]
                         sp_ip = rosterable.apply(self.usable_ip_calc, args=("SP",), axis=1).sum()
-                        if not ScoringFormat.is_points_type(self.format) and sp_ip >= self.num_teams * (self.target_ip_per_team-self.rp_ip_per_team):
+                        if not ScoringFormat.is_points_type(self.s_format) and sp_ip >= self.num_teams * (self.target_ip_per_team-self.rp_ip_per_team):
                             sigma = self.iterate_roto(df)
                             sp_ip = rosterable.apply(self.usable_ip_calc, args=("SP",), axis=1).sum()
                     while rp_ip < self.num_teams * self.rp_ip_per_team and self.replacement_positions['RP'] < self.max_rost_num['RP']:
                         self.replacement_positions['RP'] = self.replacement_positions['RP'] + 1
-                        if not ScoringFormat.is_points_type(self.format):
+                        if not ScoringFormat.is_points_type(self.s_format):
                             self.calculate_roto_bases(df)
                         self.get_pitcher_fom_calc(df, split=split)
                         rosterable = df.loc[df['FOM RP'] >= 0]
                         rp_ip = rosterable.apply(self.usable_ip_calc, args=("RP",), axis=1).sum()
-                        if not ScoringFormat.is_points_type(self.format) and rp_ip >= self.num_teams * self.rp_ip_per_team:
+                        if not ScoringFormat.is_points_type(self.s_format) and rp_ip >= self.num_teams * self.rp_ip_per_team:
                             sigma = self.iterate_roto(df)
                             rp_ip = rosterable.apply(self.usable_ip_calc, args=("RP",), axis=1).sum()
                 else:
@@ -177,7 +177,7 @@ class ArmValues():
                         rp_g = rosterable.apply(self.usable_rp_g_calc, axis=1).sum()
                 self.replacement_positions['SP'] = min(self.replacement_positions['SP'] + self.surplus_pos['SP'], self.max_rost_num['SP'])
                 self.replacement_positions['RP'] = min(self.replacement_positions['RP'] + self.surplus_pos['RP'], self.max_rost_num['RP'])
-                if not ScoringFormat.is_points_type(self.format) and rp_ip < self.num_teams * self.rp_ip_per_team:
+                if not ScoringFormat.is_points_type(self.s_format) and rp_ip < self.num_teams * self.rp_ip_per_team:
                     sigma = self.iterate_roto(df)
                 else:
                     self.get_pitcher_fom_calc(df, split=split)
@@ -671,7 +671,7 @@ class ArmValues():
         self.ip_per_team = above_rep_lvl['IP'].sum() / self.num_teams
         self.g_per_team = above_rep_lvl['GP'].sum() / self.num_teams
 
-        if self.format == ScoringFormat.CUSTOM:
+        if self.s_format == ScoringFormat.CUSTOM:
             cat_to_col = {}
             for cat in self.scoring.stats:
                 if cat.category.hitter: continue
@@ -691,7 +691,7 @@ class ArmValues():
 
             if RankingBasis.is_roto_fractional(self.rank_basis):
                 proj['K/IP'] = proj.apply(self.per_ip_rate, axis=1, args=(StatType.SO,))
-                if self.format == ScoringFormat.OLD_SCHOOL_5X5:
+                if self.s_format == ScoringFormat.OLD_SCHOOL_5X5:
                     proj['SV/G'] = proj.apply(self.per_game_rate, axis=1, args=(StatType.SV,))
                     proj['W/G'] = proj.apply(self.per_game_rate, axis=1, args=(StatType.W,))
                     cat_to_col = {StatType.SO : 'K/IP', StatType.W : 'W/G', StatType.SV : 'SV/G', StatType.WHIP : 'WHIP_Delta', StatType.ERA : "ERA_Delta"}
@@ -700,7 +700,7 @@ class ArmValues():
                     proj['HR/9_Delta'] = proj.apply(self.calc_rate_delta, axis=1, args=(StatType.HR_PER_9,))
                     cat_to_col = {StatType.SO : 'K/IP', StatType.ERA : 'ERA_Delta', StatType.WHIP : 'WHIP_Delta', StatType.HR_PER_9 : 'HR/9_Delta'}
             else:
-                if self.format == ScoringFormat.OLD_SCHOOL_5X5:
+                if self.s_format == ScoringFormat.OLD_SCHOOL_5X5:
                     cat_to_col = {StatType.SO : 'K', StatType.W : 'W', StatType.SV : 'SV', StatType.WHIP : 'WHIP_Delta', StatType.ERA : "ERA_Delta"}
                 else:
                     self.stat_avg[StatType.HR_PER_9] = dataframe_util.weighted_avg(above_rep_lvl, 'HR/9', 'IP')
@@ -728,7 +728,7 @@ class ArmValues():
             ip_suffix = g_suffix = ''
             ip_rat = g_rat = 1
         zScore = 0
-        if self.format == ScoringFormat.CUSTOM:
+        if self.s_format == ScoringFormat.CUSTOM:
             for cat in self.scoring.stats:
                 if cat.category.hitter: continue
                 if cat.category.rate_denom is None:
@@ -743,7 +743,7 @@ class ArmValues():
             zScore += (row[f'K{ip_suffix}'] - self.stat_avg.get(StatType.SO)) / self.stat_std.get(StatType.SO) * ip_rat
             zScore += row['ERA_Delta'] / self.stat_std.get(StatType.ERA)
             zScore += row['WHIP_Delta'] / self.stat_std.get(StatType.WHIP)
-            if self.format == ScoringFormat.OLD_SCHOOL_5X5:
+            if self.s_format == ScoringFormat.OLD_SCHOOL_5X5:
                 zScore += (row[f'W{g_suffix}'] - self.stat_avg.get(StatType.W)) / self.stat_std.get(StatType.W) * g_rat
                 zScore += (row[f'SV{g_suffix}'] - self.stat_avg.get(StatType.SV)) / self.stat_std.get(StatType.SV) * g_rat
             else:
@@ -752,7 +752,7 @@ class ArmValues():
 
     def calc_fom(self, df:DataFrame) -> DataFrame:
         '''Returns a populated DataFrame with all required FOM information for all players above the minimum IP at all positions.'''
-        if ScoringFormat.is_points_type(self.format):
+        if ScoringFormat.is_points_type(self.s_format):
             df['Points'] = df.apply(self.calc_pitch_points, axis=1)
             df['No SVH Points'] = df.apply(self.calc_pitch_points_no_svh, axis=1)
 

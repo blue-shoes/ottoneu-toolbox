@@ -19,18 +19,18 @@ def get_leagues(active: bool=True) -> List[League]:
         else:
             return session.query(League).order_by(League.site_id).all()
 
-def get_league_site_id(league_idx:int) -> int:
-    '''Gets the site id for the input league index'''
+def get_league_site_id(league_id:int) -> int:
+    '''Gets the site id for the input league id'''
     with Session() as session:
-        return session.query(League).filter_by(index = league_idx).first().site_id
+        return session.query(League).filter_by(id = league_id).first().site_id
 
-def get_league(league_idx:int, rosters:bool=True) -> League:
-    '''Retrieves the league from the database for the given index. If rosters is True, the league's teams and roster_spots are populated. Otherwise a shallow load is returned.'''
+def get_league(league_id:int, rosters:bool=True) -> League:
+    '''Retrieves the league from the database for the given id. If rosters is True, the league's teams and roster_spots are populated. Otherwise a shallow load is returned.'''
     with Session() as session:
-        league = get_league_in_session(session, league_idx, rosters)
+        league = get_league_in_session(session, league_id, rosters)
     return league
 
-def get_league_in_session(session:Session, league_idx:int, rosters:bool=True) -> League:
+def get_league_in_session(session:Session, league_id:int, rosters:bool=True) -> League:
     if rosters:
         league = (session.query(League)
                 .options(
@@ -38,22 +38,22 @@ def get_league_in_session(session:Session, league_idx:int, rosters:bool=True) ->
                     .joinedload(Team.roster_spots)
                     .joinedload(Roster_Spot.player)
                 )
-                .filter_by(index = league_idx).first())
+                .filter_by(id = league_id).first())
         for keeper in league.projected_keepers:
             pass
         if league.position_set.name != 'Ottoneu':
             for team in league.teams:
                 for rs in team.roster_spots:
-                    rs.player.custom_positions = league.position_set.get_player_positions(rs.player.index)
+                    rs.player.custom_positions = league.position_set.get_player_positions(rs.player.id)
         league.starting_set
     else:
-        league = (session.query(League).filter_by(index = league_idx).first())
+        league = (session.query(League).filter_by(id = league_id).first())
     return league
 
 def save_league(lg:League) -> League:
     '''Updates the league in the database with new league name, team names, and rosters, saves it to the database, and returns the updated League.'''
     with Session() as session:
-        old_lg = session.query(League).filter(League.index == lg.index).first()
+        old_lg = session.query(League).filter(League.id == lg.id).first()
         if old_lg is None:
             session.add(lg)
         else:
@@ -61,34 +61,34 @@ def save_league(lg:League) -> League:
             old_lg.active = lg.active
             for team in old_lg.teams:
                 for n_team in lg.teams:
-                    if n_team.index == team.index:
+                    if n_team.id == team.id:
                         team.name = n_team.name
         session.commit()
-        lg_idx = lg.index
-    return get_league(lg_idx, rosters=False)
+        lg_id = lg.id
+    return get_league(lg_id, rosters=False)
 
 def delete_league_by_id(lg_id: int) -> None:
     '''Deletes the league from the database by id.'''
     with Session() as session:
-        league = session.query(League).filter(League.index == lg_id).first()
+        league = session.query(League).filter(League.id == lg_id).first()
         session.delete(league)
         session.commit()
 
 def league_exists(lg:League) -> bool:
-    '''Checks if the given league exists in the database by index.'''
+    '''Checks if the given league exists in the database by id.'''
     with Session() as session:
-        return session.query(League).filter(League.index == lg.index).first() is not None
+        return session.query(League).filter(League.id == lg.id).first() is not None
 
 def get_league_by_draft(draft:Draft, fill_rosters:bool=False) -> League:
     '''Returns the populated league by Draft'''
     with Session() as session:
-        league = session.query(Draft).options(joinedload(Draft.league)).filter(Draft.index == draft.index).first().league
-        return get_league(league.index, fill_rosters)
+        league = session.query(Draft).options(joinedload(Draft.league)).filter(Draft.id == draft.id).first().league
+        return get_league(league.id, fill_rosters)
 
 def calculate_league_table(league:League, value_calc:ValueCalculation, fill_pt:bool=False, inflation:float=None, 
                            in_season:bool=False, updated_teams:List[Team]=None, use_keepers:bool=False, prog=None) -> None:
     '''Calculates the projected standings table for the League with the given ValueCalculation'''
-    if fill_pt and not ScoringFormat.is_points_type(league.format):
+    if fill_pt and not ScoringFormat.is_points_type(league.s_format):
         raise InputException('Roto leagues do not support filling playing time (the math makes my brain hurt)')
     if value_calc.projection is None:
         raise InputException('ValueCalculation requires a projection to calculate league table')
@@ -98,18 +98,18 @@ def calculate_league_table(league:League, value_calc:ValueCalculation, fill_pt:b
         keepers = league.projected_keepers
     else:
         keepers = []
-    if value_calc.format == ScoringFormat.CUSTOM:
+    if value_calc.s_format == ScoringFormat.CUSTOM:
         custom_scoring = custom_scoring_services.get_scoring_format(value_calc.get_input(CDT.CUSTOM_SCORING_FORMAT))
     else:
         custom_scoring = None
     if in_season:
         if league.platform == Platform.OTTONEU:
-            stats ,_, pt = Scrape_Ottoneu().scrape_standings_page(league.index, date_util.get_current_ottoneu_year())
+            stats ,_, pt = Scrape_Ottoneu().scrape_standings_page(league.id, date_util.get_current_ottoneu_year())
     if updated_teams is None or inflation is not None:
         if not league.is_salary_cap():
             inflation = None
         for team in league.teams:
-            __project_team_results(team, league, value_calc, league.format, fill_pt, inflation, stats=stats, accrued_pt=pt, keepers=keepers, use_keepers=use_keepers, custom_scoring=custom_scoring)   
+            __project_team_results(team, league, value_calc, league.s_format, fill_pt, inflation, stats=stats, accrued_pt=pt, keepers=keepers, use_keepers=use_keepers, custom_scoring=custom_scoring)   
             if prog:
                 prog.increment_completion_percent(int(75/league.num_teams))
     else:
@@ -117,8 +117,8 @@ def calculate_league_table(league:League, value_calc:ValueCalculation, fill_pt:b
             if __list_contains_team(team, updated_teams):
                 if not league.is_salary_cap():
                     inflation = None
-                __project_team_results(team, league, value_calc, league.format, fill_pt, inflation, stats=stats, accrued_pt=pt, keepers=keepers, use_keepers=use_keepers, custom_scoring=custom_scoring)   
-    if not ScoringFormat.is_points_type(league.format) and (custom_scoring is None or not custom_scoring.points_format):
+                __project_team_results(team, league, value_calc, league.s_format, fill_pt, inflation, stats=stats, accrued_pt=pt, keepers=keepers, use_keepers=use_keepers, custom_scoring=custom_scoring)   
+    if not ScoringFormat.is_points_type(league.s_format) and (custom_scoring is None or not custom_scoring.points_format):
         calculate_league_cat_ranks(league, custom_scoring)
     team_list = []
     for team in league.teams:
@@ -127,7 +127,7 @@ def calculate_league_table(league:League, value_calc:ValueCalculation, fill_pt:b
 
 def __list_contains_team(team:Team, team_list:List[Team]) -> bool:
     for test_team in team_list:
-        if team.index == test_team.index:
+        if team.id == test_team.id:
             return True
     return False
 
@@ -150,7 +150,7 @@ def __project_team_results(team:Team, league:League, value_calc:ValueCalculation
                                                   use_keepers=use_keepers,
                                                   custom_scoring=custom_scoring)
     else:
-        if ScoringFormat.is_h2h(format):
+        if ScoringFormat.is_h2h(s_format):
             pt = roster_services.optimize_team_pt(team, league, keepers, value_calc, s_format, use_keepers=use_keepers,
                                                   custom_scoring=custom_scoring)
         else:
@@ -211,7 +211,7 @@ def __project_team_results(team:Team, league:League, value_calc:ValueCalculation
                 team.points += available_surplus_dol * (1/value_calc.get_output(CDT.DOLLARS_PER_FOM)) * (1 - inflation)
 
         for rs in team.roster_spots:
-            pp = value_calc.projection.get_player_projection(rs.player.index)
+            pp = value_calc.projection.get_player_projection(rs.player.id)
             if pp is None:
                 continue
             team.points += rs.g_h * calculation_services.get_batting_point_rate_from_player_projection(pp)
@@ -237,7 +237,7 @@ def __project_team_results(team:Team, league:League, value_calc:ValueCalculation
         else:
             categories = ScoringFormat.get_format_stat_categories(s_format)
         for rs in team.roster_spots:
-            pp = value_calc.projection.get_player_projection(rs.player.index)
+            pp = value_calc.projection.get_player_projection(rs.player.id)
             if pp is None:
                 continue
             g = pp.get_stat(StatType.G_HIT)
@@ -264,7 +264,7 @@ def calculate_league_cat_ranks(league:League, custom_scoring:CustomScoring=None)
     if custom_scoring:
         categories = [cat.category for cat in custom_scoring.stats]
     else:
-        categories = ScoringFormat.get_format_stat_categories(league.format)
+        categories = ScoringFormat.get_format_stat_categories(league.s_format)
     for cat in categories:
         cat_list = [team.cat_stats.get(cat) for team in league.teams]
         rank_map = list_util.rank_list_with_ties(cat_list,reverse=cat.higher_better, max_rank=league.num_teams)
@@ -330,7 +330,7 @@ def add_player_to_draft_rosters(league:League, team_id:int, player:Player, pv:Pl
         if team.site_id == team_id:
             rs = Roster_Spot()
             rs.player = player
-            rs.player_id = player.index
+            rs.player_id = player.id
             if league.is_salary_cap():
                 rs.salary = salary
             else:

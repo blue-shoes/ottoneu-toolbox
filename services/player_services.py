@@ -125,7 +125,7 @@ def get_player(player_id:int) -> Player:
 
 def get_player_with_session(player_id:int, session:sessionmaker) -> Player:
     '''Returns player from database based on Toolbox player id using the given session'''
-    return session.query(Player).filter(Player.index == player_id).first()
+    return session.query(Player).filter(Player.id == player_id).first()
 
 def get_player_positions(player:Player, discrete=False) -> List[Position]:
     '''Returns list of Positions the player is eligible fore based on paring the Player.position attribute. If discrete is false, OFFENSE, PITCHING, MI, and UTIL 
@@ -304,7 +304,7 @@ def update_from_player_page(player_tuple:Tuple[int, str, str, str, str], session
     player.salary_info = []
     sal_info = Salary_Info()
     sal_info.avg_salary = 0
-    sal_info.format = ScoringFormat.ALL
+    sal_info.s_format = ScoringFormat.ALL
     sal_info.last_10 = 0
     sal_info.max_salary = 0
     sal_info.med_salary = 0
@@ -346,10 +346,10 @@ def get_player_by_yahoo_id_with_session(yahoo_id:int, session) -> Player:
 
 def set_player_yahoo_id_with_session(player_id:int, yahoo_id:int, session) -> Player:
     '''Sets the Yahoo id for the given player id'''
-    player = session.query(Player).filter(Player.index == player_id).first()
+    player = session.query(Player).filter(Player.id == player_id).first()
     player.yahoo_id = yahoo_id
     session.commit()
-    return session.query(Player).filter(Player.index == player_id).first()
+    return session.query(Player).filter(Player.id == player_id).first()
 
 def get_player_mlb_id(player:Player) -> int:
     '''Returns the mlbam id for the player using the pybaseball reverse id lookup based on the FanGraphs id. Returns -1 if the player could not be found.'''

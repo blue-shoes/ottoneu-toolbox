@@ -36,7 +36,7 @@ def optimize_team_pt(team:Team,
     return pitch_opt(current_pt, p_opt_pg, pt, team, pit_opt_stat, value_calc)
 
 def pitch_opt(current_pt:dict[Position, dict[int, int]], p_opt_pg:list, pt, team:Team, pit_opt_stat:StatType, value_calc:ValueCalculation) -> dict[Position, dict[int, int]]:
-    if ScoringFormat.is_points_type(value_calc.format):
+    if ScoringFormat.is_points_type(value_calc.s_format):
         p_sorted = sorted(p_opt_pg.items(), key=lambda x:x[1][2], reverse=True)
     elif pit_opt_stat in [StatType.WHIP, StatType.ERA, StatType.HR_PER_9]:
         p_sorted = sorted(p_opt_pg.items(), key=lambda x:x[1][2], reverse=False)
@@ -70,7 +70,7 @@ def pitch_opt(current_pt:dict[Position, dict[int, int]], p_opt_pg:list, pt, team
                 playing_time = rp_ip
             rp_left = rp_left - playing_time
             team.get_rs_by_player(player).ip = playing_time
-            pt.get(Position.POS_RP, {})[player.index] = playing_time
+            pt.get(Position.POS_RP, {})[player.id] = playing_time
         if sp_left > 0 and sp_ip > 0 and (rep_lvl is None or rep_lvl.get(Position.POS_SP) < val[1][2]):
             if sp_ip > sp_left:
                 playing_time = sp_left
@@ -78,7 +78,7 @@ def pitch_opt(current_pt:dict[Position, dict[int, int]], p_opt_pg:list, pt, team
                 playing_time = sp_ip
             sp_left = sp_left - playing_time
             team.get_rs_by_player(player).ip = playing_time + team.get_rs_by_player(player).ip
-            pt.get(Position.POS_SP, {})[player.index] = playing_time
+            pt.get(Position.POS_SP, {})[player.id] = playing_time
     return pt
 
 def get_player_rates(team:Team, use_keepers:bool, keeper_index:list[int], proj:Projection, s_format:ScoringFormat, off_opt_stat:StatType, pit_opt_stat:StatType, pitch_basis:RankingBasis, custom_scoring:CustomScoring) -> tuple[list[PlayerProjection], list[PlayerProjection]]:
@@ -90,7 +90,7 @@ def get_player_rates(team:Team, use_keepers:bool, keeper_index:list[int], proj:P
             if rs.player.pos_eligible(Position.OFFENSE):
 
                 #Offense
-                pp = proj.get_player_projection(rs.player.index)
+                pp = proj.get_player_projection(rs.player.id)
                 if pp is None:
 
                     continue
@@ -100,17 +100,17 @@ def get_player_rates(team:Team, use_keepers:bool, keeper_index:list[int], proj:P
                 
                 if not ScoringFormat.is_points_type(s_format):
                     if g is None or g == 0:
-                        o_opt_pg[rs.player.index] = (rs.player, 0, 0)
+                        o_opt_pg[rs.player.id] = (rs.player, 0, 0)
                     else:
-                        o_opt_pg[rs.player.index] = (rs.player, g, pp.get_stat(off_opt_stat) / g)
+                        o_opt_pg[rs.player.id] = (rs.player, g, pp.get_stat(off_opt_stat) / g)
                 else:
                     if g is None or g == 0:
-                        o_opt_pg[rs.player.index] = (rs.player, 0, 0)
+                        o_opt_pg[rs.player.id] = (rs.player, 0, 0)
                     else:
-                        o_opt_pg[rs.player.index] = (rs.player, g, calculation_services.get_batting_point_rate_from_player_projection(pp, RankingBasis.PPG, custom_format=custom_scoring))
+                        o_opt_pg[rs.player.id] = (rs.player, g, calculation_services.get_batting_point_rate_from_player_projection(pp, RankingBasis.PPG, custom_format=custom_scoring))
             if rs.player.pos_eligible(Position.PITCHER):
                 #Pitcher
-                pp = proj.get_player_projection(rs.player.index)
+                pp = proj.get_player_projection(rs.player.id)
                 if pp is None:
                     continue
                 g = int(pp.get_stat(StatType.G_PIT))
@@ -118,23 +118,23 @@ def get_player_rates(team:Team, use_keepers:bool, keeper_index:list[int], proj:P
                 ip = pp.get_stat(StatType.IP)
                 if not ScoringFormat.is_points_type(s_format):
                     if g is None or g == 0 or ip is None or ip == 0:
-                        p_opt_pg[rs.player.index] = (rs.player, (0,0), 0)
+                        p_opt_pg[rs.player.id] = (rs.player, (0,0), 0)
                     else:
                         if pitch_basis == RankingBasis.PIP:
-                            p_opt_pg[rs.player.index] = (rs.player, projection_services.get_pitcher_role_ips(pp), pp.get_stat(pit_opt_stat) / ip)
+                            p_opt_pg[rs.player.id] = (rs.player, projection_services.get_pitcher_role_ips(pp), pp.get_stat(pit_opt_stat) / ip)
                         elif pitch_basis == RankingBasis.PPG:
-                            p_opt_pg[rs.player.index] = (rs.player, (gs, g-gs), pp.get_stat(pit_opt_stat) / g)
+                            p_opt_pg[rs.player.id] = (rs.player, (gs, g-gs), pp.get_stat(pit_opt_stat) / g)
                         else:
                             raise InputException(f'Unexpected pitch_basis value {pitch_basis}')
                 else:
                     if g is None or g == 0 or ip is None or ip == 0:
-                        p_opt_pg[rs.player.index] = (rs.player, (0,0), 0)
+                        p_opt_pg[rs.player.id] = (rs.player, (0,0), 0)
                     else:
                         #TODO: need to update this to get SP/RP rate splits
                         if pitch_basis == RankingBasis.PIP:
-                            p_opt_pg[rs.player.index] = (rs.player, projection_services.get_pitcher_role_ips(pp), calculation_services.get_pitching_point_rate_from_player_projection(pp, s_format=s_format, basis=RankingBasis.PIP))
+                            p_opt_pg[rs.player.id] = (rs.player, projection_services.get_pitcher_role_ips(pp), calculation_services.get_pitching_point_rate_from_player_projection(pp, s_format=s_format, basis=RankingBasis.PIP))
                         elif pitch_basis == RankingBasis.PPG:
-                            p_opt_pg[rs.player.index] = (rs.player, (gs, g-gs), calculation_services.get_pitching_point_rate_from_player_projection(pp, s_format=s_format, basis=RankingBasis.PPG))
+                            p_opt_pg[rs.player.id] = (rs.player, (gs, g-gs), calculation_services.get_pitching_point_rate_from_player_projection(pp, s_format=s_format, basis=RankingBasis.PPG))
                         else:
                             raise InputException(f'Unexpected pitch_basis value {pitch_basis}')
     return o_opt_pg, p_opt_pg

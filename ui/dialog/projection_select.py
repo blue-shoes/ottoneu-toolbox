@@ -85,7 +85,7 @@ class Dialog(tk.Toplevel):
     
     def populate_table(self):
         for proj in self.proj_list:
-            self.proj_table.insert('', tk.END, text=str(proj.index), values=(proj.name, proj.detail, proj.type.type_name, proj.timestamp, bool_to_table(proj.ros), bool_to_table(proj.dc_pt)))
+            self.proj_table.insert('', tk.END, text=str(proj.id), values=(proj.name, proj.detail, proj.type.type_name, proj.timestamp, bool_to_table(proj.ros), bool_to_table(proj.dc_pt)))
 
     def double_click(self, event):
         self.on_select(event)
@@ -95,8 +95,8 @@ class Dialog(tk.Toplevel):
         if len(event.widget.selection()) > 0:
             selection = event.widget.item(event.widget.selection()[0])["text"]
             for proj in self.proj_list:
-                if proj.index == int(selection):
-                    self.projection = projection_services.get_projection(proj_id=proj.index, player_data=False)
+                if proj.id == int(selection):
+                    self.projection = projection_services.get_projection(proj_id=proj.id, player_data=False)
                     break
         else:
             self.projection = None
@@ -114,7 +114,7 @@ class Dialog(tk.Toplevel):
     
     def delete_proj(self, proj_id):
         for projection in self.proj_list:
-            if projection.index == proj_id:
+            if projection.id == proj_id:
                 proj = projection
                 break
         dep_values = calculation_services.get_values_with_projection_id(proj_id)
@@ -134,10 +134,10 @@ class Dialog(tk.Toplevel):
         self.lift()
         pd = progress.ProgressDialog(self.parent, 'Deleting Projection')
         pd.set_completion_percent(15)
-        p_id = projection.index
-        projection_services.delete_projection_by_id(projection.index)
+        p_id = projection.id
+        projection_services.delete_projection_by_id(projection.id)
         for idx, proj in enumerate(self.proj_list):
-            if proj.index == p_id:
+            if proj.id == p_id:
                 self.proj_list.pop(idx)
                 break
         self.proj_table.refresh()

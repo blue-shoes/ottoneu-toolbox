@@ -17,7 +17,7 @@ def get_draft_by_league(lg_id:int) -> Draft:
             .first()
         if draft is None:
             draft = Draft()
-            draft.league = session.query(League).filter_by(index = lg_id).first()
+            draft.league = session.query(League).filter_by(id = lg_id).first()
             draft.year = year
             draft.targets = []
             session.add(draft)
@@ -36,21 +36,21 @@ def create_target(draft_id:int, playerid: int, price: int) -> Draft_Target:
         target.price = price
         session.add(target)
         session.commit()
-        target = session.query(Draft_Target).filter_by(index=target.index)\
+        target = session.query(Draft_Target).filter_by(id=target.id)\
             .options(joinedload(Draft_Target.player)).first()
     return target
 
 def update_target(target: Draft_Target, price: int) -> None:
     '''Updates the price of the specified Draft_Target'''
     with Session() as session:
-        target = session.query(Draft_Target).filter_by(index = target.index).first()
+        target = session.query(Draft_Target).filter_by(id = target.id).first()
         target.price = price
         session.commit()
 
 def delete_target(target_id:int) -> None:
     '''Deletes the given Draft_Target by id from the database'''
     with Session() as session:
-        target = session.query(Draft_Target).filter_by(index = target_id).first()
+        target = session.query(Draft_Target).filter_by(id = target_id).first()
         session.delete(target)
         session.commit()
             
@@ -77,20 +77,20 @@ def get_couchmanagers_draft_dataframe(cm_draft_id:int) -> DataFrame:
 def add_couchmanagers_draft(draft:Draft, cm_draft:CouchManagers_Draft) -> Draft:
     '''Saves the CouchManagers_Draft to the input draft'''
     with Session() as session:
-        old_draft = session.query(Draft).filter_by(index = draft.index).first()
+        old_draft = session.query(Draft).filter_by(id = draft.id).first()
         old_draft.cm_draft = cm_draft
         session.commit()
-        return session.query(Draft).filter_by(index = draft.index).first()
+        return session.query(Draft).filter_by(id = draft.id).first()
 
-def update_couchmanger_teams(draft_index:int, new_teams:List[CouchManagers_Team], set_up:bool) -> CouchManagers_Draft:
+def update_couchmanger_teams(draft_id:int, new_teams:List[CouchManagers_Team], set_up:bool) -> CouchManagers_Draft:
     '''Updates the team mappings from CouchManagers to Ottoneu Toolbox'''
     with Session() as session:
-        db_cm_draft = session.query(CouchManagers_Draft).filter_by(index = draft_index).first()
+        db_cm_draft = session.query(CouchManagers_Draft).filter_by(id = draft_id).first()
         db_cm_draft.setup = set_up
         for cm_team in new_teams:
             db_cm_draft.teams.append(cm_team)
         session.commit()
-        return session.query(CouchManagers_Draft).filter_by(index = draft_index).first()
+        return session.query(CouchManagers_Draft).filter_by(id = draft_id).first()
 
 def delete_couchmanagers_draft(cm_draft:CouchManagers_Draft) -> None:
     '''Deletes the input CouchManagers_Draft'''
@@ -101,7 +101,7 @@ def delete_couchmanagers_draft(cm_draft:CouchManagers_Draft) -> None:
 def update_team_drafts(draft_id:int, team_drafts:List[TeamDraft]) -> Draft:
     '''Updates the draft\'s list of TeamDraft objects'''
     with Session() as session:
-        db_draft = session.query(Draft).filter_by(index = draft_id).first()
+        db_draft = session.query(Draft).filter_by(id = draft_id).first()
         if db_draft.team_drafts:
             for new_td in team_drafts:
                 found = False
@@ -115,7 +115,7 @@ def update_team_drafts(draft_id:int, team_drafts:List[TeamDraft]) -> Draft:
         else:
             db_draft.team_drafts.extend(team_drafts)
         session.commit()
-        return session.query(Draft).filter_by(index = draft_id).first()
+        return session.query(Draft).filter_by(id = draft_id).first()
 
 def get_couchmanagers_current_auctions(cm_draft_id:int) -> List[Tuple[Player,int]]:
     '''Returns a list of the current Couch Managers auctions as a list of Player to current bid.'''

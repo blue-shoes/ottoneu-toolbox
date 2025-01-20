@@ -56,7 +56,7 @@ def create_position_set_from_df(df:DataFrame, id_type:IdType, name:str, desc:str
             player = player_services.get_player_by_name_and_team(row['NAME'], row['TEAM'])
         if not player:
             continue
-        pos_set.positions.append(PlayerPositions(player_id=player.index, position=row['POS']))
+        pos_set.positions.append(PlayerPositions(player_id=player.id, position=row['POS']))
     with Session() as session:
         session.add(pos_set)
         session.commit()

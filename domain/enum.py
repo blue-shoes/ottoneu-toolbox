@@ -250,11 +250,11 @@ class StatType(int, Enum):
     rank:int
     ratio:bool
     hitter: bool
-    format: str
+    v_format: str
     higher_better: bool
 
     def __new__(
-        cls, id: int, stat_list: List[str], rank:int, ratio:bool, hitter: bool, format:str = "{:.0f}", higher_better:bool = True
+        cls, id: int, stat_list: List[str], rank:int, ratio:bool, hitter: bool, v_format:str = "{:.0f}", higher_better:bool = True
     ) -> StatType:
         obj = int.__new__(cls, id)
         obj._value_ = id
@@ -264,7 +264,7 @@ class StatType(int, Enum):
         obj.rank = rank
         obj.ratio = ratio
         obj.hitter = hitter
-        obj.format = format
+        obj.v_format = v_format
         obj.higher_better = higher_better
         return obj
 
@@ -414,11 +414,11 @@ class ScoringFormat(int, Enum):
     CUSTOM = (7, 'Custom', 'Custom')
 
     @classmethod
-    def get_format_stat_categories(self, format:ScoringFormat) -> List[StatType]:
-        if format == ScoringFormat.OLD_SCHOOL_5X5:
+    def get_format_stat_categories(self, s_format:ScoringFormat) -> List[StatType]:
+        if s_format == ScoringFormat.OLD_SCHOOL_5X5:
             cats = [StatType.R, StatType.HR, StatType.RBI, StatType.SB, StatType.AVG,
                     StatType.W, StatType.SV, StatType.SO, StatType.ERA, StatType.WHIP]
-        elif format == ScoringFormat.CLASSIC_4X4:
+        elif s_format == ScoringFormat.CLASSIC_4X4:
             cats = [StatType.R, StatType.HR, StatType.OBP, StatType.SLG,
                     StatType.SO, StatType.ERA, StatType.WHIP, StatType.HR_PER_9]
         else:
@@ -426,19 +426,19 @@ class ScoringFormat(int, Enum):
         return cats
 
     @classmethod
-    def is_points_type(self, format:ScoringFormat) -> bool:
+    def is_points_type(self, s_format:ScoringFormat) -> bool:
         '''Returns if the argument format is a points format'''
-        return format in [self.FG_POINTS, self.H2H_FG_POINTS, self.SABR_POINTS, self.H2H_SABR_POINTS]
+        return s_format in [self.FG_POINTS, self.H2H_FG_POINTS, self.SABR_POINTS, self.H2H_SABR_POINTS]
     
     @classmethod
-    def is_sabr(self, format:ScoringFormat) -> bool:
+    def is_sabr(self, s_format:ScoringFormat) -> bool:
         '''Returns if the argument format is a SABR points format'''
-        return format in [self.SABR_POINTS, self.H2H_SABR_POINTS]
+        return s_format in [self.SABR_POINTS, self.H2H_SABR_POINTS]
     
     @classmethod
-    def is_h2h(self, format:ScoringFormat) -> bool:
+    def is_h2h(self, s_format:ScoringFormat) -> bool:
         '''Returns if the argument format is a head-to-head format'''
-        return format in [self.H2H_FG_POINTS, self.H2H_SABR_POINTS]
+        return s_format in [self.H2H_FG_POINTS, self.H2H_SABR_POINTS]
 
     @classmethod
     def get_format_by_full_name(self, full_name:str) -> ScoringFormat:
