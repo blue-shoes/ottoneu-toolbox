@@ -233,7 +233,7 @@ class Main(tk.Tk, Controller):
 
     
     def setup_logging(self, config=None):
-        if config != None and 'log_level' in config:
+        if config and 'log_level' in config:
             level = logging.getLevelName(config['log_level'].upper())
         elif self.debug:
             level = logging.DEBUG
@@ -291,10 +291,7 @@ class Main(tk.Tk, Controller):
         dialog = value_select.Dialog(self.container, self)
         if dialog.value is not None:
             self.value_calculation = dialog.value
-            self.frames[self.current_page].value_change()
-
-    def exit(self):
-        self.destroy()    
+            self.frames[self.current_page].value_change()  
 
     def initialize_treeview_style(self):
         #Fix for Tkinter version issue found here: https://stackoverflow.com/a/67141755
