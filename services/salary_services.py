@@ -7,7 +7,7 @@ from re import sub
 from services import player_services
 from datetime import datetime
 
-def update_salary_info(format=ScoringFormat.ALL, pd=None) -> None:
+def update_salary_info(s_format=ScoringFormat.ALL, pd=None) -> None:
     '''Updates the database with the salary information for the input scoring format.'''
     scraper = Scrape_Ottoneu()
     salary_df = scraper.get_avg_salary_ds(game_type = format.value)
@@ -17,7 +17,7 @@ def update_salary_info(format=ScoringFormat.ALL, pd=None) -> None:
     with Session() as session:
         refresh = session.query(Salary_Refresh).filter(Salary_Refresh.format == format).first()
         if refresh is None:
-            refresh = Salary_Refresh(format=format,last_refresh=datetime.now())
+            refresh = Salary_Refresh(s_format=s_format,last_refresh=datetime.now())
         else:
             refresh.last_refresh = datetime.now()
         players = {}
@@ -100,4 +100,4 @@ def update_salary(salary_info, row) -> None:
 def get_last_refresh(scoring_format=ScoringFormat.ALL) -> Salary_Refresh:
     '''Gets the Salary_Refresh for the input scoring format'''
     with Session() as session:
-        return session.query(Salary_Refresh).filter(Salary_Refresh.format == scoring_format).first()
+        return session.query(Salary_Refresh).filter(Salary_Refresh.s_format == scoring_format).first()

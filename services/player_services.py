@@ -27,7 +27,7 @@ team_map = {'TBY': 'TBR',
 def create_player_universe() -> None:
     '''Scrapes the Ottoneu overall Average Salary page to get Ottoverse player infromation and save it to the database, creating Players and SalaryInfos as necessary.'''
     player_df = Scrape_Ottoneu().get_avg_salary_ds()
-    refresh = Salary_Refresh(format=ScoringFormat.ALL,last_refresh=datetime.now())
+    refresh = Salary_Refresh(s_format=ScoringFormat.ALL,last_refresh=datetime.now())
     with Session() as session:
         for idx, row in player_df.iterrows():
             player = create_player(row, ottoneu_id=idx)

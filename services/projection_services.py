@@ -59,7 +59,7 @@ def convertToDcPlayingTime(proj:DataFrame, ros:bool, position:bool, fg_scraper:s
         dc_set = 'fangraphsdc'
     close = False
     try:
-        if fg_scraper == None:
+        if not fg_scraper:
             fg_scraper = scrape_fg.Scrape_Fg(browser_services.get_desired_browser())
             close = True
         if position:
@@ -390,6 +390,8 @@ def normalize_batter_projections(proj: Projection, df: DataFrame) -> List[str]:
         df['OBP'] = df.apply(calc_obp, axis=1)
     if 'SLG' not in df.columns and set(['H', '2B', '3B', 'HR', 'AB']).issubset(df.columns):
         df['SLG'] = df.apply(calc_slg, axis=1)
+    if __must_derive_stat(StatType.OPS, [StatType.SLG, StatType.OBP], df.columns):
+        df[StatType.OPS.display] = df.apply(__calc_ops, axis=1)
     if __must_derive_stat(StatType.NET_SB, [StatType.SB, StatType.CS], df.columns):
         df[StatType.NET_SB.display] = df.apply(__calc_nsb, axis=1)
     if __must_derive_stat(StatType.SINGLE, [StatType.H, StatType.DOUBLE, StatType.TRIPLE, StatType.HR], df.columns):
@@ -586,6 +588,10 @@ def __calc_xbh(row) -> float:
 def __calc_nsb(row) -> float:
     '''Calculates net stolen bases'''
     return row[StatType.SB.display] - row[StatType.CS.display]
+
+def __calc_ops(row: Series) -> float:
+    '''Calculates player OPS'''
+    return row[StatType.OBP.display] + row[StatType.SLG.display]
 
 def __calc_fip(row) -> float:
     '''Approximates pitcher FIP based on other columns. Assums a FIP constant of 3.15.'''

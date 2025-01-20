@@ -157,12 +157,12 @@ def get_batting_point_rate_from_player_projection(player_proj: PlayerProjection,
         return points / pa
     return 0
 
-def get_pitching_point_rate_from_player_projection(player_proj: PlayerProjection, format: ScoringFormat, basis:RankingBasis=RankingBasis.PIP, custom_format:CustomScoring=None) -> float:
+def get_pitching_point_rate_from_player_projection(player_proj: PlayerProjection, s_format: ScoringFormat, basis:RankingBasis=RankingBasis.PIP, custom_format:CustomScoring=None) -> float:
     '''Returns the point rate for the input pitcher PlayerProjection based on the requested rate basis and scoring format'''
     if basis == RankingBasis.PIP and player_proj.get_stat(StatType.PIP) is not None:
         return player_proj.get_stat(StatType.PIP)
     if custom_format is None:
-        points = get_points(player_proj, Position.PITCHER, ScoringFormat.is_sabr(format))
+        points = get_points(player_proj, Position.PITCHER, ScoringFormat.is_sabr(s_format))
     else:
         points = get_points(player_proj, Position.PITCHER, custom_format=custom_format)
     if basis == RankingBasis.PPG:
@@ -628,7 +628,7 @@ def init_outputs_from_upload(vc: ValueCalculation, df : DataFrame, game_type:Sco
         pitch = False
         if 'POS' in df.columns:
             pos_string = row['POS']
-            pos_list = re.split('[,\s/\\\]+', pos_string)
+            pos_list = re.split('[,\s/\\]+', pos_string)
             positions = [Position._value2member_map_.get(pos) if pos != 'DH' else Position.POS_UTIL for pos in pos_list ]
             pos_string = '/'.join(positions)
             pos_set.positions.append(PlayerPositions(player_id=player.index, position=pos_string))
@@ -717,7 +717,7 @@ def init_outputs_from_upload(vc: ValueCalculation, df : DataFrame, game_type:Sco
             if vc.projection is None:
                 hit_dol_per_fom = 0
                 pitch_dol_per_fom = 0
-                vc.set_output(CDT.pos_to_rep_level().get(pos), rl)
+                vc.set_output(CDT.pos_to_rep_level().get(pos), 0)
                 continue
             if ScoringFormat.is_points_type(game_type):
                 p_idx = [sample_list[0][1], sample_list[-1][1], sample_list[1][1], sample_list[-2][1]]

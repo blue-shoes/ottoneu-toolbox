@@ -205,21 +205,21 @@ class ValuesCalculation(ToolboxView):
         pd.set_completion_percent(100)
         pd.destroy()
 
-    def safe_set_input_value(self, data_type, string_var, integer=False, default='--', format='{:.3f}'):
+    def safe_set_input_value(self, data_type, string_var, integer=False, default='--', s_format='{:.3f}'):
         val = self.value_calc.get_input(data_type)
-        self.safe_set_value(val, string_var, integer, default, format)
+        self.safe_set_value(val, string_var, integer, default, s_format)
     
-    def safe_set_output_value(self, data_type, string_var, integer=False, default='--', format='{:.3f}'):
+    def safe_set_output_value(self, data_type, string_var, integer=False, default='--', s_format='{:.3f}'):
         val = self.value_calc.get_output(data_type)
-        self.safe_set_value(val, string_var, integer, default, format)
+        self.safe_set_value(val, string_var, integer, default, s_format)
     
-    def safe_set_value(self, val, string_var, integer=False, default='--', format='{:.3f}'):
+    def safe_set_value(self, val, string_var, integer=False, default='--', s_format='{:.3f}'):
         if val is None or val == -999:
             string_var.set(default)
         elif integer:
             string_var.set(int(val))
         else:
-            string_var.set(format.format(val))
+            string_var.set(s_format.format(val))
 
     def create_input_frame(self):
 
@@ -1079,11 +1079,11 @@ class ValuesCalculation(ToolboxView):
             else:
                 self.dollars_per_fom_val.set('$' + "{:.3f}".format(dol_per))
         
-        self.safe_set_output_value(CDT.TOTAL_FOM_ABOVE_REPLACEMENT, self.total_fom_sv, format="{:.0f}")
+        self.safe_set_output_value(CDT.TOTAL_FOM_ABOVE_REPLACEMENT, self.total_fom_sv, s_format="{:.0f}")
         self.safe_set_output_value(CDT.TOTAL_HITTERS_ROSTERED, self.total_bat_rostered_sv, integer=True)
         self.safe_set_output_value(CDT.TOTAL_PITCHERS_ROSTERED, self.total_pitch_rostered_sv, integer=True)
-        self.safe_set_output_value(CDT.TOTAL_GAMES_PLAYED, self.total_games_rostered_sv, format="{:.0f}")
-        self.safe_set_output_value(CDT.TOTAL_INNINGS_PITCHED, self.total_ip_rostered_sv, format="{:.0f}")
+        self.safe_set_output_value(CDT.TOTAL_GAMES_PLAYED, self.total_games_rostered_sv, s_format="{:.0f}")
+        self.safe_set_output_value(CDT.TOTAL_INNINGS_PITCHED, self.total_ip_rostered_sv, s_format="{:.0f}")
         hitter_rb = self.value_calc.hitter_basis.display
         self.bat_rep_level_lbl.set(f"Rep. Level ({hitter_rb})")
         pitcher_rb = self.value_calc.pitcher_basis.display
@@ -1097,7 +1097,7 @@ class ValuesCalculation(ToolboxView):
                 self.pos_rostered_sv[pos] = StringVar()
                 self.pos_rep_lvl_sv[pos] = StringVar()
             self.safe_set_output_value(CDT.pos_to_num_rostered()[pos], self.pos_rostered_sv[pos], integer=True, default='--')
-            self.safe_set_output_value(CDT.pos_to_rep_level()[pos], self.pos_rep_lvl_sv[pos], format="{:.2f}")
+            self.safe_set_output_value(CDT.pos_to_rep_level()[pos], self.pos_rep_lvl_sv[pos], s_format="{:.2f}")
         
         self.save_btn['state'] = ACTIVE
         self.export_btn['state'] = ACTIVE

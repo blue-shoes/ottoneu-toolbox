@@ -128,7 +128,7 @@ class DraftTool(ToolboxView):
 
         format_salary_refresh = salary_services.get_last_refresh(self.controller.league.format)
         if format_salary_refresh is None or (datetime.now() - format_salary_refresh.last_refresh) > timedelta(days=1):
-            salary_services.update_salary_info(format=self.league.format)
+            salary_services.update_salary_info(s_format=self.league.format)
         pd.complete()
 
     def __create_main(self):
