@@ -580,7 +580,6 @@ class PlayerProjection:
     projection_id:Mapped[int] = mapped_column(ForeignKey("projection.id"), default=None)
     projection:Mapped["Projection"] = relationship(default=None, back_populates="player_projections", repr=False)
 
-    #projection_data:Mapped[List["ProjectionData"]] = relationship(default_factory=list, back_populates="player_projection", cascade="all, delete", lazy="joined", repr=False)
     projection_data:Mapped[dict[StatType, float]] = mapped_column(JSON(), default_factory=dict, repr=False)
 
     pitcher:Mapped[bool] = mapped_column(default=False)
@@ -588,22 +587,7 @@ class PlayerProjection:
 
     def get_stat(self, stat_type:StatType) -> float:
         '''Gets the stat value associated with the input StatType'''
-        return self.get_projection_data(stat_type)
-
-    def get_projection_data(self, stat_type:StatType) -> float:
-        '''Gets the ProjectionData object associated with the input StatType'''
         return self.projection_data.get(stat_type, None)
-
-'''@reg.mapped_as_dataclass
-class ProjectionData:
-    __tablename__ = "projection_data"
-    id:Mapped[int] = mapped_column(init=False, primary_key=True)
-
-    player_projection_id:Mapped[int] = mapped_column(ForeignKey("player_projection.id"), default=None)
-    player_projection:Mapped["PlayerProjection"] = relationship(default=None, back_populates="projection_data", repr=False)
-
-    stat_type:Mapped["StatType"] = mapped_column(default=None, nullable=False) 
-    stat_value:Mapped[float] = mapped_column(default=None, nullable=False)'''
 
 @reg.mapped_as_dataclass
 class Salary_Refresh:

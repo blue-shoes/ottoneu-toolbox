@@ -258,7 +258,7 @@ def save_projection(projection:Projection, projs:List[DataFrame], id_type:IdType
                                 val = 0
                             player_proj.projection_data[stat_type] = val
                         elif stat_type: 
-                            if player_proj.get_projection_data(stat_type) is None:
+                            if player_proj.get_stat(stat_type) is None:
                                 val = row[col]
                                 try:
                                     if val is None or math.isnan(val):
@@ -267,7 +267,7 @@ def save_projection(projection:Projection, projs:List[DataFrame], id_type:IdType
                                     raise TypeError
                                 player_proj.projection_data[stat_type] = val
                             else:
-                                data = player_proj.get_projection_data(stat_type)
+                                data = player_proj.get_stat(stat_type)
                                 if stat_type == StatType.G_HIT:
                                     if not generic_games:
                                         player_proj.projection_data[stat_type] = data + row[col]
