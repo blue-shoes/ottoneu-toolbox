@@ -1,6 +1,6 @@
 from pandas import DataFrame
 from dao.session import Session
-from domain.domain import ValueCalculation, Projection, PlayerProjection, ProjectionData, CustomScoring, PositionSet, PlayerPositions
+from domain.domain import ValueCalculation, Projection, PlayerProjection, CustomScoring, PositionSet, PlayerPositions
 from domain.enum import Position, CalculationDataType as CDT, StatType, ScoringFormat, RankingBasis, IdType, RepLevelScheme, ProjectionType
 from domain.exception import InputException
 from value.player_values import PlayerValues
@@ -353,7 +353,7 @@ def normalize_value_upload(df : DataFrame, game_type:ScoringFormat, id_type:IdTy
 
     df.rename(columns=col_map, inplace=True)
 
-    if ScoringFormat.is_points_type(s_format):
+    if ScoringFormat.is_points_type(game_type):
         if hit_rate_col is not None:
             df['Hit_Rate'] = df['Hit_Rate'].apply(convert_vals)
         if pitch_rate_col is not None:
@@ -870,10 +870,10 @@ def save_calculation_from_file(vc : ValueCalculation, df : DataFrame, pd=None, r
                 p_pt = row['P_PT']
                 pp = PlayerProjection()
                 pp.player = player
-                pp.projection_data = []
-                pp.projection_data.append(ProjectionData(stat_type=StatType.POINTS, stat_value=row['Points']))
-                pp.projection_data.append(ProjectionData(stat_type=StatType.PPG, stat_value=row['Hit_Rate']))
-                pp.projection_data.append(ProjectionData(stat_type=StatType.PIP, stat_value=row['Pitch_Rate']))
+                pp.projection_data = {}
+                pp.projection_data[StatType.POINTS] = row['Points']
+                pp.projection_data[StatType.PPG] = row['Hit_Rate']
+                pp.projection_data[StatType.PIP] = row['Pitch_Rate']
                 pp.pitcher = p_pt > 0 and h_pt == 0
                 pp.two_way = (p_pt > 0 and h_pt > 0) or (row['Hit_Rate'] == 'NA' and row['Pitch_Rate'] == 'NA')
                 vc.projection.player_projections.append(pp)

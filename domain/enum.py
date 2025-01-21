@@ -1,8 +1,9 @@
 from __future__ import annotations
-from enum import Enum
+from enum import Enum, IntEnum
 from typing import List, Dict, Tuple
 import re
 from domain.exception import InputException
+import json
 
 class ProjectionType(int,Enum):
     '''Enumeration of the available types of projections for the system, including name and url information.'''
@@ -241,7 +242,7 @@ class RankingBasis(int, Enum):
         '''Returns if ranking basis is for a roto league and is a rate basis'''
         return basis in [self.ZSCORE_PER_G, self.ZSCORE_PER_IP]
     
-class StatType(int, Enum):
+class StatType(IntEnum):
     '''Enumeration of the available stat types for Projections'''
 
     id:int
@@ -386,6 +387,9 @@ class StatType(int, Enum):
                     continue
                 sts.append(st)
         return sorted(sts, key=lambda st: st.rank)
+
+def as_enum(d):
+    return {StatType._value2member_map_[int(key)]:val for key, val in d.items()}
 
 class ScoringFormat(int, Enum):
     '''Enumeration of all Ottoneu Scoring Formats'''

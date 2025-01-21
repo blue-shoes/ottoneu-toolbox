@@ -1,5 +1,5 @@
 from pandas import DataFrame, Index, Series
-from domain.domain import PlayerProjection, Projection, ProjectionData, Player
+from domain.domain import PlayerProjection, Projection
 from scrape import scrape_fg, scrape_davenport
 from domain.enum import ProjectionType, StatType, IdType, Position
 from domain.exception import InputException
@@ -239,7 +239,7 @@ def save_projection(projection:Projection, projs:List[DataFrame], id_type:IdType
                     seen_players[idx] = player
                     player_proj = PlayerProjection()
                     projection.player_projections.append(player_proj)
-                    player_proj.projection_data = []
+                    player_proj.projection_data = {}
                     player_proj.pitcher = pitch
                     player_proj.two_way = False
                 player_proj.player = player
@@ -253,32 +253,29 @@ def save_projection(projection:Projection, projs:List[DataFrame], id_type:IdType
                             stat_type = StatType.get_hit_stattype(col)       
                         if col == 'G':
                             generic_games = True 
-                            data = ProjectionData()
-                            data.stat_type = stat_type
-                            data.stat_value = row[col]
-                            if data.stat_value is None or math.isnan(data.stat_value):
-                                data.stat_value = 0
-                            player_proj.projection_data.append(data)
+                            val = row[col]
+                            if val is None or math.isnan(val):
+                                val = 0
+                            player_proj.projection_data[stat_type] = val
                         elif stat_type: 
                             if player_proj.get_projection_data(stat_type) is None:
-                                data = ProjectionData()
-                                data.stat_type = stat_type
-                                data.stat_value = row[col]
+                                val = row[col]
                                 try:
-                                    if data.stat_value is None or math.isnan(data.stat_value):
-                                        data.stat_value = 0
+                                    if val is None or math.isnan(val):
+                                        val = 0
                                 except TypeError:
                                     raise TypeError
-                                player_proj.projection_data.append(data)
+                                player_proj.projection_data[stat_type] = val
                             else:
                                 data = player_proj.get_projection_data(stat_type)
                                 if stat_type == StatType.G_HIT:
                                     if not generic_games:
-                                        data.stat_value = data.stat_value + row[col]
+                                        player_proj.projection_data[stat_type] = data + row[col]
                                 else:
-                                    data.stat_value = row[col]
-                                    if data.stat_value is None or math.isnan(data.stat_value):
-                                        data.stat_value = 0
+                                    val = row[col]
+                                    if val is None or math.isnan(val):
+                                        val = 0
+                                    player_proj.projection_data[stat_type] = val
 
                 
                 inc_count += 1
@@ -753,13 +750,13 @@ def convert_to_df(proj:Projection) -> List[DataFrame]:
         if len(pos_col) > 0 and len(pitch_col) > 0:
             break
         if pp.pitcher or pp.two_way and len(pitch_col) == 0:
-            for pd in pp.projection_data:
-                if not pd.stat_type.hitter:
-                    pitch_col.append(pd.stat_type)
+            for stat_type, val in pp.projection_data.items():
+                if not stat_type.hitter:
+                    pitch_col.append(stat_type)
         elif not pp.pitcher and not pp.two_way and len(pos_col) == 0:
-            for pd in pp.projection_data:
-                if pd.stat_type.hitter:
-                    pos_col.append(pd.stat_type)
+            for stat_type, val in pp.projection_data.items():
+                if stat_type.hitter:
+                    pos_col.append(stat_type)
     
     pos_rows = []
     pitch_rows = []

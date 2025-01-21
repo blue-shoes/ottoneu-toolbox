@@ -2,6 +2,7 @@ from __future__ import annotations
 from datetime import datetime
 from dataclasses import field
 from sqlalchemy import ForeignKey, Index
+from sqlalchemy.dialects.sqlite import JSON
 from sqlalchemy.orm import relationship, registry, Mapped, mapped_column, reconstructor
 from domain.enum import CalculationDataType, ProjectionType, RankingBasis, ScoringFormat, StatType, Position, IdType, Platform
 from typing import List, Dict, Tuple
@@ -28,8 +29,6 @@ class Player:
     yahoo_id:Mapped[int] = mapped_column(default=None, repr=False, nullable=True)
 
     salary_info:Mapped[List["Salary_Info"]] = relationship(default_factory=list, back_populates="player", cascade="all, delete", lazy="joined", repr=False)
-    #values:Mapped[List["PlayerValue"]] = relationship(default_factory=list, back_populates="player", cascade="all, delete", repr=False)
-    #projections:Mapped[List["PlayerProjection"]] = relationship(default_factory=list, back_populates="player", cascade="all, delete", repr=False)
 
     # Transient fields
     custom_positions:str = field(default=None,)
@@ -581,26 +580,21 @@ class PlayerProjection:
     projection_id:Mapped[int] = mapped_column(ForeignKey("projection.id"), default=None)
     projection:Mapped["Projection"] = relationship(default=None, back_populates="player_projections", repr=False)
 
-    projection_data:Mapped[List["ProjectionData"]] = relationship(default_factory=list, back_populates="player_projection", cascade="all, delete", lazy="joined", repr=False)
+    #projection_data:Mapped[List["ProjectionData"]] = relationship(default_factory=list, back_populates="player_projection", cascade="all, delete", lazy="joined", repr=False)
+    projection_data:Mapped[dict[StatType, float]] = mapped_column(JSON(), default_factory=dict, repr=False)
 
     pitcher:Mapped[bool] = mapped_column(default=False)
     two_way:Mapped[bool] = mapped_column(default=False)
 
     def get_stat(self, stat_type:StatType) -> float:
         '''Gets the stat value associated with the input StatType'''
-        pd = self.get_projection_data(stat_type)
-        if pd is None:
-            return None
-        return pd.stat_value
+        return self.get_projection_data(stat_type)
 
-    def get_projection_data(self, stat_type:StatType) -> ProjectionData:
+    def get_projection_data(self, stat_type:StatType) -> float:
         '''Gets the ProjectionData object associated with the input StatType'''
-        for pd in self.projection_data:
-            if pd.stat_type == stat_type:
-                return pd
-        return None
+        return self.projection_data.get(stat_type, None)
 
-@reg.mapped_as_dataclass
+'''@reg.mapped_as_dataclass
 class ProjectionData:
     __tablename__ = "projection_data"
     id:Mapped[int] = mapped_column(init=False, primary_key=True)
@@ -609,7 +603,7 @@ class ProjectionData:
     player_projection:Mapped["PlayerProjection"] = relationship(default=None, back_populates="projection_data", repr=False)
 
     stat_type:Mapped["StatType"] = mapped_column(default=None, nullable=False) 
-    stat_value:Mapped[float] = mapped_column(default=None, nullable=False)
+    stat_value:Mapped[float] = mapped_column(default=None, nullable=False)'''
 
 @reg.mapped_as_dataclass
 class Salary_Refresh:
