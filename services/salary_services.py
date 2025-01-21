@@ -46,7 +46,7 @@ def update_salary_info(s_format=ScoringFormat.ALL, pd=None) -> None:
         for c_player in current_players:
             si = get_format_salary_info(c_player, s_format)
             existing_player_ids.append(c_player.ottoneu_id)
-            if c_player.ottoneu_id not in salary_df.id:
+            if c_player.ottoneu_id not in salary_df.index:
                 # Not rostered in format, set all to 0
                 si.avg_salary = 0.0
                 si.med_salary = 0.0
