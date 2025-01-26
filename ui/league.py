@@ -162,7 +162,7 @@ class League_Analysis(ToolboxView):
                 pv = self.value_calculation.get_player_value(rs.player_id, Position.OVERALL)
                 if pv is None:
                     continue
-                if pv.value * (1 + dialog.target_inflation) > rs.salary:
+                if (pv.value-1) * (1 + dialog.target_inflation) + 1 > rs.salary:
                     self.league.projected_keepers.append(projected_keeper_services.add_keeper_and_return(self.league, rs.player))    
             prog.increment_completion_percent(inc) 
         
