@@ -932,7 +932,9 @@ class ValuesCalculation(ToolboxView):
                         self.tables[pos].insert('', tk.END, text=str(pp.player_id), values=val)
                 elif pp.get_stat(StatType.IP) is not None:
                     pg = pp.get_stat(StatType.G_PIT)
-                    gr_per_g = (pg - pp.get_stat(StatType.GS_PIT)) / pp.get_stat(StatType.G_PIT)
+                    if pg == 0:
+                        continue
+                    gr_per_g = (pg - pp.get_stat(StatType.GS_PIT)) / pg
                     if  pos == Position.PITCHER \
                         or (pos == Position.POS_RP and gr_per_g > 0.15) \
                         or (pos == Position.POS_SP and gr_per_g < 0.85):

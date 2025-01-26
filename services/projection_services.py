@@ -250,16 +250,17 @@ def save_projection(projection:Projection, projs:List[DataFrame], id_type:IdType
                         if pitch:
                             stat_type = StatType.get_pitch_stattype(col)
                         else:
-                            stat_type = StatType.get_hit_stattype(col)       
+                            stat_type = StatType.get_hit_stattype(col)  
                         if col == 'G':
                             generic_games = True 
                             val = row[col]
                             if val is None or math.isnan(val):
                                 val = 0
                             player_proj.projection_data[stat_type] = val
-                        elif stat_type: 
-                            if player_proj.get_stat(stat_type) is None:
-                                val = row[col]
+                        elif stat_type is not None: 
+                            data = player_proj.get_stat(stat_type)
+                            val = row[col]
+                            if not data:
                                 try:
                                     if val is None or math.isnan(val):
                                         val = 0
@@ -267,12 +268,10 @@ def save_projection(projection:Projection, projs:List[DataFrame], id_type:IdType
                                     raise TypeError
                                 player_proj.projection_data[stat_type] = val
                             else:
-                                data = player_proj.get_stat(stat_type)
                                 if stat_type == StatType.G_HIT:
                                     if not generic_games:
-                                        player_proj.projection_data[stat_type] = data + row[col]
+                                        player_proj.projection_data[stat_type] = data + val
                                 else:
-                                    val = row[col]
                                     if val is None or math.isnan(val):
                                         val = 0
                                     player_proj.projection_data[stat_type] = val
