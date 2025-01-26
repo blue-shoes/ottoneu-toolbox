@@ -356,7 +356,8 @@ class ArmValues():
         '''Returns the FOM accumulated by the pitcher in the given role at the given replacement level.'''
         if row['GP'] == 0:
             return -1
-        if row[f'IP {role}'] == 0: return -1
+        if row[f'IP {role}'] == 0: 
+            return -1
         if self.no_sv_hld:
             prefix = 'No SVH '
         else:
@@ -404,6 +405,10 @@ class ArmValues():
         #Regression has dep variable of GRP/G (or (G-GS)/G) and IV IPRP/IP. R^2=0.9481. Possible issues with regression: overweighting
         #of pitchers with GRP/G ratios very close to 0 (starters with few RP appearances) or 1 (relievers with few SP appearances)
         gr_per_g = (row['GP'] - row['GS']) / row['GP']
+        if gr_per_g > 0.85:
+            return 1
+        if gr_per_g < 0.15:
+            return 0
         return 0.7851*gr_per_g**2 + 0.1937*gr_per_g + 0.0328
 
     def not_a_belly_itcher_filter(self, row) -> bool:

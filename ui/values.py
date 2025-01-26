@@ -931,9 +931,11 @@ class ValuesCalculation(ToolboxView):
                         val = self.get_player_row(pp, False, all_pitching_stats, pos)
                         self.tables[pos].insert('', tk.END, text=str(pp.player_id), values=val)
                 elif pp.get_stat(StatType.IP) is not None:
+                    pg = pp.get_stat(StatType.G_PIT)
+                    gr_per_g = (pg - pp.get_stat(StatType.GS_PIT)) / pp.get_stat(StatType.G_PIT)
                     if  pos == Position.PITCHER \
-                        or (pos == Position.POS_RP and pp.get_stat(StatType.G_PIT) > pp.get_stat(StatType.GS_PIT)) \
-                        or (pos == Position.POS_SP and pp.get_stat(StatType.GS_PIT) > 0):
+                        or (pos == Position.POS_RP and gr_per_g > 0.15) \
+                        or (pos == Position.POS_SP and gr_per_g < 0.85):
                             val = self.get_player_row(pp, False, all_pitching_stats, pos)
                             self.tables[pos].insert('', tk.END, text=str(pp.player_id), values=val)
         elif self.value_calc is not None and self.value_calc.values is not None and len(self.value_calc.values) > 0:
