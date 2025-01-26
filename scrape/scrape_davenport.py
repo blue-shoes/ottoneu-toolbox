@@ -23,7 +23,7 @@ class Scrape_Davenport(scrape_base.Scrape_Base):
 
     def __get_dataset(self, lookup_url:str, csv_url:str, lookup_col:List[str]) -> DataFrame:
         response = requests.get(lookup_url)
-        pos_lookup = pd.read_csv(StringIO(response.text), delim_whitespace=True, on_bad_lines='skip')[lookup_col]
+        pos_lookup = pd.read_csv(StringIO(response.text), sep='\\s+', on_bad_lines='skip')[lookup_col]
         pos_lookup.set_index(lookup_col[0], inplace=True)
 
         s = requests.Session()
