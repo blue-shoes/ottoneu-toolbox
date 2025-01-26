@@ -634,9 +634,9 @@ def __calc_k_per_9(row) -> float:
     except ZeroDivisionError:
         return 0
         
-def create_projection_from_download(projection: Projection, type:ProjectionType, ros:bool=False, dc_pt:bool=False, year:int=None, progress=None) -> Tuple[DataFrame, DataFrame]:
+def create_projection_from_download(projection: Projection, p_type:ProjectionType, ros:bool=False, dc_pt:bool=False, year:int=None, progress=None) -> Tuple[DataFrame, DataFrame]:
     '''Creates a Projection based on automatic download and returns the hitter and pitcher dataframes requested.'''
-    projection.type = type
+    projection.type = p_type
     if ros:
         ros_string = ' RoS'
     else:
@@ -645,7 +645,7 @@ def create_projection_from_download(projection: Projection, type:ProjectionType,
         dc_string = ' DC Playing Time'
     else:
         dc_string = ''
-    projection.name = f"{type.type_name}{ros_string}{dc_string}"
+    projection.name = f"{p_type.type_name}{ros_string}{dc_string}"
     projection.calculations = []
     projection.dc_pt = dc_pt
     projection.detail = ''
@@ -656,23 +656,23 @@ def create_projection_from_download(projection: Projection, type:ProjectionType,
     projection.valid_points = True 
     projection.valid_5x5 = True
     projection.valid_4x4 = True
-    if year == None:
+    if not year:
         year = date_util.get_current_ottoneu_year()
     projection.season = year
 
-    if type in ProjectionType.get_fg_downloadable():
-        proj_type_url = type.url
+    if p_type in ProjectionType.get_fg_downloadable():
+        proj_type_url = p_type.url
         if progress is not None:
             progress.set_task_title('Downloading projections...')
             progress.increment_completion_percent(10)
         projs = download_projections(proj_type_url, ros, dc_pt, progress)
-    elif type == ProjectionType.DAVENPORT:
+    elif p_type == ProjectionType.DAVENPORT:
         projs = scrape_davenport.Scrape_Davenport().get_projections()
         for proj in projs:
             proj['OTB_ID'] = proj.apply(__set_otb_id_from_davenport, axis=1)
             proj.set_index('OTB_ID', inplace=True)
     else:
-        raise InputException(f"Unhandled projection type passed to create_projection_from_download {type}")
+        raise InputException(f"Unhandled projection type passed to create_projection_from_download {p_type}")
     projection_check(projs)
     return projs[0], projs[1]
     #return save_projection(projection, projs, progress)
