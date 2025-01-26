@@ -45,7 +45,7 @@ def pitch_opt(current_pt:dict[Position, dict[int, int]], p_opt_pg:list, pt, team
 
     rep_lvl = value_calc.get_rep_level_map()
 
-    if value_calc.get_input(CDT.PITCHER_RANKING_BASIS, RankingBasis.PIP) == RankingBasis.PPG:
+    if value_calc.pitcher_basis == RankingBasis.PPG:
         rp_left = value_calc.get_input(CDT.RP_G_TARGET) * 26
         sp_left = value_calc.get_input(CDT.GS_LIMIT) * 26
     else:
