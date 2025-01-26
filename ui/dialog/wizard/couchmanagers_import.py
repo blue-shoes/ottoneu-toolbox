@@ -1,5 +1,5 @@
 import tkinter as tk     
-from tkinter import *              
+from tkinter import StringVar
 from tkinter import ttk 
 from tkinter import messagebox as mb
 from typing import Dict
@@ -9,7 +9,6 @@ from scrape.exceptions import CouchManagersException
 from services import draft_services, league_services
 from ui.dialog import progress
 from ui.dialog.wizard import wizard
-import logging
 
 
 class Dialog(wizard.Dialog):

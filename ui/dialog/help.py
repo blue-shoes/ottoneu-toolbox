@@ -1,5 +1,4 @@
 import tkinter as tk     
-from tkinter import *   
 from tkinter import scrolledtext, font  
 
 class Dialog(tk.Toplevel):

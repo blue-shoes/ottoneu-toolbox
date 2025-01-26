@@ -1,5 +1,6 @@
 import tkinter as tk     
-from tkinter import *              
+from tkinter import StringVar, BooleanVar
+from tkinter import W
 from tkinter import ttk 
 from tkinter import filedialog as fd
 from tkinter import messagebox as mb
@@ -93,13 +94,13 @@ class Wizard(wizard.Wizard):
                     hit_df = pd.read_csv(self.step1_fg.hitter_value_file.get())
                     pitch_df = pd.read_csv(self.step1_fg.pitcher_value_file.get())
                 except PermissionError:
-                    self.parent.validate_msg = f'Error loading values file. File permission denied.'
+                    self.parent.validate_msg = 'Error loading values file. File permission denied.'
                     return False
                 except FileNotFoundError:
                     self.parent.validate_msg = "Error loading values file. Values file not found."
                     return False
-                except Exception as Argument:
-                    self.parent.validate_msg = f'Error loading values file. See log file for details.'
+                except Exception:
+                    self.parent.validate_msg = 'Error loading values file. See log file for details.'
                     logging.exception('Error loading values file.')
                     return False
                 self.value.name = self.step1_fg.name_tv.get()
@@ -132,7 +133,7 @@ class Wizard(wizard.Wizard):
             self.parent.value = calculation_services.load_calculation(self.value.id)
             progd.complete()
             super().finish()
-        except Exception as Argument:
+        except Exception:
             logging.exception('Error loading values')
             self.parent.validate_msg = 'Error uploading values. Please check logs/toolbox.log'
             mb.showerror('Error uploading', 'There was an error uploading values. Please check logs/toolbox.log')
@@ -431,13 +432,13 @@ class Step1(tk.Frame):
                                                                                    ScoringFormat.get_format_by_full_name(self.game_type.get()), 
                                                                                    id_type=IdType._value2member_map_.get(self.id_type.get(), None))
         except PermissionError:
-            self.parent.validate_msg = f'Error loading values file. File permission denied.'
+            self.parent.validate_msg = 'Error loading values file. File permission denied.'
             return False
         except FileNotFoundError:
             self.parent.validate_msg = "Error loading values file. Values file not found."
             return False
-        except Exception as Argument:
-            self.parent.validate_msg = f'Error loading values file. See log file for details.'
+        except Exception:
+            self.parent.validate_msg = 'Error loading values file. See log file for details.'
             logging.exception('Error loading values file.')
             return False
 
@@ -492,7 +493,6 @@ class Step1(tk.Frame):
             dialog = starting_select.Dialog(self)
         if not dialog.starting_set:
             return
-        reload = self.starting_set != dialog.starting_set
         self.starting_set = dialog.starting_set
 
         self.start_set_sv.set(dialog.starting_set.name)
@@ -529,9 +529,9 @@ class Step1(tk.Frame):
             self.pitcher_basis_cb['values'] = ('zScore', 'zScore/G', 'SGP')
             h_default = 'zScore/G'
             p_default = 'zScore/G'
-        if not self.hitter_basis.get() in self.hitter_basis_cb['values']:
+        if self.hitter_basis.get() not in self.hitter_basis_cb['values']:
             self.hitter_basis.set(h_default)
-        if not self.pitcher_basis.get() in self.pitcher_basis_cb['values']:
+        if self.pitcher_basis.get() not in self.pitcher_basis_cb['values']:
             self.pitcher_basis.set(p_default)
         self.last_game_type.set(self.game_type.get())
 
@@ -692,6 +692,4 @@ class Step2(tk.Frame):
         return True
     
     def validate(self):
-        vc = self.parent.value
-
         return True

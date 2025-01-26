@@ -71,7 +71,8 @@ class ArmValues():
         if self.s_format == ScoringFormat.CUSTOM:
             points = 0 
             for cat in self.scoring.stats:
-                if cat.category.hitter: continue
+                if cat.category.hitter: 
+                    continue
                 points += cat.points * row[cat.category.display]
                 return points
         elif(self.SABR):
@@ -178,7 +179,7 @@ class ArmValues():
                 self.replacement_positions['SP'] = min(self.replacement_positions['SP'] + self.surplus_pos['SP'], self.max_rost_num['SP'])
                 self.replacement_positions['RP'] = min(self.replacement_positions['RP'] + self.surplus_pos['RP'], self.max_rost_num['RP'])
                 if not ScoringFormat.is_points_type(self.s_format) and rp_ip < self.num_teams * self.rp_ip_per_team:
-                    sigma = self.iterate_roto(df)
+                    _ = self.iterate_roto(df)
                 else:
                     self.get_pitcher_fom_calc(df, split=split)
 
@@ -280,13 +281,13 @@ class ArmValues():
                 if split:
                     self.get_pitcher_fom_calc(df)
                 else:
-                    sigma = self.iterate_roto(df)
+                    _ = self.iterate_roto(df)
             else:
                 raise Exception("Unusable Replacement Level Scheme")
         if(self.intermediate_calculations):
-            filepath = os.path.join(self.intermed_subdirpath, f"pit_rost.csv")
+            filepath = os.path.join(self.intermed_subdirpath, "pit_rost.csv")
             rosterable.to_csv(filepath, encoding='utf-8-sig')
-            filepath = os.path.join(self.intermed_subdirpath, f"df_tot.csv")
+            filepath = os.path.join(self.intermed_subdirpath, "df_tot.csv")
             df.to_csv(filepath, encoding='utf-8-sig')
 
         return df
@@ -423,7 +424,8 @@ class ArmValues():
                 return ip >= self.min_sp_ip
             if gs == 0:
                 return ip >= self.min_rp_ip
-            if g == 0: return False
+            if g == 0: 
+                return False
         except KeyError:
             return False
         #Got to here, this is a SP/RP with > 0 G. Ration their innings threshold based on their projected GS/G ratio
@@ -434,11 +436,14 @@ class ArmValues():
         '''Calculates the number of innings pitched in relief based on a linear regression using games relieved per total
         games as the independent variable.'''
         #Avoid divide by zero error
-        if row['GP'] == 0: return 0
+        if row['GP'] == 0: 
+            return 0
         #Only relief appearances
-        if row['GS'] == 0: return row['IP']
+        if row['GS'] == 0: 
+            return row['IP']
         #Only starting appearances
-        if row['GS'] == row['GP']: return 0
+        if row['GS'] == row['GP']: 
+            return 0
         return row['IP'] * self.calc_rp_ip_split_ratio(row)
 
     def sp_ip_func(self, row) -> float:
@@ -448,22 +453,27 @@ class ArmValues():
     def sp_fip_calc(self, row) -> float:
         '''Estimates pitcher FIP in the starting role based on overall FIP and number of innings pitched in starts. Assumes
         approximately a 0.6 point improvement in FIP when transitioning from SP to RP based on historical analysis.'''
-        if row['IP RP'] == 0: return row['FIP']
-        if row['IP SP'] == 0: return 0
+        if row['IP RP'] == 0: 
+            return row['FIP']
+        if row['IP SP'] == 0: 
+            return 0
         #Weighted results from 2019-2021 dataset shows an approxiately 0.6 FIP improvement from SP to RP
         return (row['IP']*row['FIP'] + 0.6*row['IP RP']) / row['IP']
 
     def rp_fip_calc(self, row) -> float:
         '''Estimates pitcher FIP in the relieving role based on the previously calculated starter FIP and subtracting 0.6 based
         on historical analysis'''
-        if row['IP RP'] == 0: return 0
-        if row['IP SP'] == 0: return row['FIP']
+        if row['IP RP'] == 0: 
+            return 0
+        if row['IP SP'] == 0: 
+            return row['FIP']
         return row['FIP SP'] -0.6
 
     def sp_pip_calc(self, row) -> float:
         '''Estimates pitcher points per inning in starting role based off of difference between overall FIP and SP FIP
         using a linear regression.'''
-        if row['IP SP'] == 0: return 0
+        if row['IP SP'] == 0: 
+            return 0
         #Regression of no SVH P/IP from FIP gives linear coefficient of -1.3274
         fip_diff = row['FIP SP'] - row['FIP']
         return row['No SVH P/IP'] -1.3274*fip_diff
@@ -496,8 +506,10 @@ class ArmValues():
     def rp_no_svh_pip_calc(self, row) -> float:
         '''Estimates pitcher points per inning in relieving role based off of difference between overall FIP and RP FIP
         using a linear regression. Does not include saves or holds'''
-        if row['IP RP'] == 0: return 0
-        if row['IP SP'] == 0: return row['No SVH P/IP']
+        if row['IP RP'] == 0: 
+            return 0
+        if row['IP SP'] == 0: 
+            return row['No SVH P/IP']
         fip_diff = row['FIP RP'] - row['FIP']
         no_svh_pip = row['No SVH P/IP'] - 1.3274*fip_diff 
         return (no_svh_pip * row['IP RP'])/row['IP RP'] 
@@ -505,8 +517,10 @@ class ArmValues():
     def rp_pip_calc(self, row) -> float:
         '''Estimates pitcher points per inning in relieving role based off of difference between overall FIP and RP FIP
         using a linear regression.'''
-        if row['IP RP'] == 0: return 0
-        if row['IP SP'] == 0: return row['P/IP']
+        if row['IP RP'] == 0: 
+            return 0
+        if row['IP SP'] == 0: 
+            return row['P/IP']
         try:
             save = row['SV']
         except KeyError:
@@ -590,7 +604,7 @@ class ArmValues():
         df['RP Rankable'] = df.apply(self.pos_rankable, axis=1, args=(Position.POS_RP,))
         df['P Rankable'] = df.apply(self.pos_rankable, axis=1, args=(Position.POS_P,))
     
-        self.max_rost_num['SP'] = len(df.loc[df[f'SP Rankable']])
+        self.max_rost_num['SP'] = len(df.loc[df['SP Rankable']])
         self.max_rost_num['RP'] = len(df.loc[df['RP Rankable']])
         self.max_rost_num['P'] = len(df.loc[df['P Rankable']])
     
@@ -679,7 +693,8 @@ class ArmValues():
         if self.s_format == ScoringFormat.CUSTOM:
             cat_to_col = {}
             for cat in self.scoring.stats:
-                if cat.category.hitter: continue
+                if cat.category.hitter: 
+                    continue
                 if cat.category.rate_denom is None:
                     if RankingBasis.is_roto_fractional(self.rank_basis):
                         proj[f'{cat.category.display}/IP'] = proj.apply(self.per_ip_rate, axis=1, args=(cat.category,))
@@ -735,7 +750,8 @@ class ArmValues():
         zScore = 0
         if self.s_format == ScoringFormat.CUSTOM:
             for cat in self.scoring.stats:
-                if cat.category.hitter: continue
+                if cat.category.hitter: 
+                    continue
                 if cat.category.rate_denom is None:
                     if cat.category.higher_better:
                         mult = 1
@@ -793,7 +809,7 @@ class ArmValues():
             self.intermed_subdirpath = os.path.join(self.dirname, 'data_dirs', 'intermediate')
             if not path.exists(self.intermed_subdirpath):
                 os.mkdir(self.intermed_subdirpath)
-            filepath = os.path.join(self.intermed_subdirpath, f"pitch_ranks.csv")
+            filepath = os.path.join(self.intermed_subdirpath, "pitch_ranks.csv")
             real_pitchers.to_csv(filepath, encoding='utf-8-sig')
 
         return real_pitchers

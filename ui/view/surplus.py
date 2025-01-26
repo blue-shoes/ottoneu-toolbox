@@ -1,5 +1,6 @@
 import tkinter as tk
-from tkinter import *              
+from tkinter import StringVar, Event
+from tkinter import TOP, LEFT, W       
 from tkinter import ttk 
 from typing import List
 
@@ -274,10 +275,10 @@ class Surplus(tk.Frame):
             vals = []
             si = player.get_salary_info_for_format(self.league.s_format)
             if self.controller.preferences.get('General', Pref.AVG_SALARY_FOM) == AvgSalaryFom.MEAN.value:
-                vals.append(f'$' + "{:.1f}".format(si.avg_salary))
+                vals.append('$' + "{:.1f}".format(si.avg_salary))
             else:
-                vals.append(f'$' + "{:.1f}".format(si.med_salary))
-            vals.append(f'$' + "{:.1f}".format(si.last_10))
+                vals.append('$' + "{:.1f}".format(si.med_salary))
+            vals.append('$' + "{:.1f}".format(si.last_10))
             vals.append("{:.1f}".format(si.roster_percentage) + '%')
         else:
             vals = [0, 0, 0]

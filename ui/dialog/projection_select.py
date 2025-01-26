@@ -1,12 +1,12 @@
 import tkinter as tk     
-from tkinter import *              
+from tkinter import Event
+from tkinter import W
 from tkinter import ttk 
 from tkinter import messagebox as mb
 
 from ui.dialog import progress
 from ui.dialog.wizard import projection_import
 from ui.table.table import Table, bool_to_table
-from domain.enum import ProjectionType
 
 from services import projection_services, calculation_services
 

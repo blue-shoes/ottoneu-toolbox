@@ -1,6 +1,7 @@
 #from winreg import *
 import configparser
 import os
+import importlib
 
 from domain.enum import Preference as Pref, Browser
 from scrape.exceptions import BrowserTypeException
@@ -15,9 +16,7 @@ def get_desired_browser() -> Browser:
         preferences.read(config_path)
     browser_pref = preferences.get('Player_Values', Pref.DEFAULT_BROWSER, fallback=None)
     if browser_pref is None:
-        try :
-            import winreg
-        except:
+        if not importlib.util.find_spec('winreg'):
             raise BrowserTypeException('No browser type selected in Preferences. Please use Chrome, Firefox, or Microsoft Edge')        
         
         from winreg import HKEY_CURRENT_USER, OpenKey, QueryValueEx

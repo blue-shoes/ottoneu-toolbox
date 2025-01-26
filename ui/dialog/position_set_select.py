@@ -1,5 +1,6 @@
-import tkinter as tk     
-from tkinter import *              
+import tkinter as tk 
+from tkinter import StringVar, Event    
+from tkinter import W
 from tkinter import ttk 
 from tkinter import messagebox as mb
 from tkinter import filedialog as fd

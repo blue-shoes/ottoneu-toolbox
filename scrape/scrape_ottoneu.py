@@ -464,7 +464,7 @@ class Scrape_Ottoneu(scrape_base.Scrape_Base):
                     rows.append(f'{td.find_all("i", {"class":"fa fa-caret-down"})[0].next_sibling.strip()}')
                 else:
                     rows.append(td.contents[0].strip())
-            except:
+            except Exception:
                 rows.append(0)
         rows = [float(val) for val in rows]
         return rows
@@ -520,7 +520,7 @@ def main():
 
                 ppg_rank_count[rank][ppg_rank] = ppg_rank_count[rank].get(ppg_rank, 0) + 1
                 pip_rank_count[rank][pip_rank] = pip_rank_count[rank].get(pip_rank, 0) + 1
-        except:
+        except Exception:
             failed += 1
         #break
 

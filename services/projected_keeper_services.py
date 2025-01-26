@@ -1,6 +1,3 @@
-from typing import List
-from sqlalchemy.orm import joinedload
-
 from dao.session import Session
 from domain.domain import Projected_Keeper, League, Player
 from services import league_services, player_services
@@ -12,7 +9,7 @@ def get_league_keepers(league:League):
             .filter(Projected_Keeper.league_id == league.id) \
             .filter(Projected_Keeper.season == date_util.get_current_ottoneu_year()) \
             .all()
-        if keepers == None:
+        if keepers is None:
             keepers = []
     league.projected_keepers = keepers
 

@@ -1,6 +1,6 @@
 import tkinter as tk     
-from tkinter import *              
-from tkinter import font
+from tkinter import StringVar
+from tkinter import W
 from ui.dialog.wizard import wizard
 import logging
 from tkinter import messagebox as mb
@@ -51,7 +51,7 @@ class Wizard(wizard.Wizard):
         if os.path.exists('conf/token.json'):
             self.parent.status = OK
             return super().finish()
-        self.parent.validate_msg = f'The token file was not successfully created. Please try again.'
+        self.parent.validate_msg = 'The token file was not successfully created. Please try again.'
         return False
 
     def next(self):
@@ -121,7 +121,7 @@ class Step2(tk.Frame):
             json.dump(client_dict, private)
         try:
             self.parent.oauth = custom_yahoo_oauth.init_oauth()
-        except Exception as Argument:
+        except Exception:
             logging.exception('Error creating OAuth2')
             mb.showerror('Error Authenticating', 'There was an error creating an authentication token for the service. Confirm the Client ID and Secret were entered correctly.')
             return False

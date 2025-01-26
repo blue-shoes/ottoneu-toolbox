@@ -1,5 +1,5 @@
 import tkinter as tk     
-from tkinter import *              
+from tkinter import Toplevel
 from tkinter import ttk 
 
 
@@ -14,7 +14,7 @@ class ProgressDialog(tk.Toplevel):
         ttk.Progressbar(self, variable=self.progress_var, maximum=100).grid(row=1, column=0)
         self.pack_slaves()
 
-        self.progress_step = sv = tk.StringVar()
+        self.progress_step = tk.StringVar()
         self.progress_label = ttk.Label(self, textvariable=self.progress_step)
         self.progress_label.grid(column=0,row=2)
 

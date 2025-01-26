@@ -1,5 +1,6 @@
 import tkinter as tk     
-from tkinter import *              
+from tkinter import IntVar
+from tkinter import END
 from tkinter.messagebox import CANCEL, OK 
 
 from services import player_services

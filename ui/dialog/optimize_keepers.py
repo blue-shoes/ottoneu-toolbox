@@ -1,5 +1,6 @@
 import tkinter as tk
-from tkinter import *    
+from tkinter import StringVar, IntVar, BooleanVar
+from tkinter import DISABLED, NORMAL
 from tkinter import messagebox as mb
 
 class Dialog(tk.Toplevel):

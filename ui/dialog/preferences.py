@@ -1,5 +1,6 @@
 import tkinter as tk     
-from tkinter import *              
+from tkinter import StringVar, BooleanVar
+from tkinter import DISABLED, NORMAL
 from tkinter import ttk 
 import os
 from tkinter.messagebox import OK
@@ -9,6 +10,7 @@ from datetime import timedelta
 
 from domain.enum import Preference as Pref, AvgSalaryFom, Browser, InflationMethod
 from services import salary_services, browser_services
+from browser_services import BrowserTypeException
 from ui.dialog import progress, fg_login
 from util import string_util
 
@@ -69,7 +71,7 @@ class Dialog(tk.Toplevel):
         try:
             browser = browser_services.get_desired_browser()
             self.browser_type.set(browser.display)
-        except:
+        except BrowserTypeException:
             logging.warning('Bad browser attempted to load in preferences')
         
         browser_combo = ttk.Combobox(value_frame, textvariable=self.browser_type)

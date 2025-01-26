@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import *    
+from tkinter import StringVar
 
 from domain.enum import ScoringFormat, RepLevelScheme, RankingBasis, CalculationDataType as CDT
 from services import adv_calc_services
@@ -14,7 +14,7 @@ class Dialog(tk.Toplevel):
 
         frm.pack(fill='both', expand=True)
 
-        validation = frm.register(string_util.int_validation)
+        _ = frm.register(string_util.int_validation)
 
         self.option_dict = adv_calc_services.get_adv_option_dict()
         self.value_dict = {}

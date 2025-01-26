@@ -3,7 +3,6 @@ from enum import Enum, IntEnum
 from typing import List, Dict, Tuple
 import re
 from domain.exception import InputException
-import json
 
 class ProjectionType(int,Enum):
     '''Enumeration of the available types of projections for the system, including name and url information.'''

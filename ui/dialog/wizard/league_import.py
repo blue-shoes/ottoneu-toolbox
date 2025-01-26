@@ -1,5 +1,5 @@
 import tkinter as tk     
-from tkinter import *              
+from tkinter import StringVar
 from tkinter import ttk 
 from domain.domain import League
 from domain.enum import Platform
@@ -126,7 +126,7 @@ class Step1(tk.Frame):
                 self.parent.validate_msg = f"The platform {self.platform.get()} is not implemented."
                 return False
 
-        except Exception as Argument:
+        except Exception:
             logging.exception(f'Error creating league #{self.league_num_entry.get()}')
             self.parent.validate_msg = f"There was an error downloading league number {self.league_num_entry.get()}. Please confirm this is the correct league."
             return False

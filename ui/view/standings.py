@@ -1,5 +1,6 @@
 import tkinter as tk
-from tkinter import *              
+from tkinter import Event, IntVar
+from tkinter import LEFT, TOP, W             
 from tkinter import ttk 
 from typing import List, Tuple
 

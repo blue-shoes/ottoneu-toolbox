@@ -1,14 +1,13 @@
 import tkinter as tk     
-from tkinter import *              
+from tkinter import StringVar
+from tkinter import TOP, LEFT
 from tkinter import ttk 
 import threading
 from typing import List
 
-from math import ceil
-
 from ui.app_controller import Controller
 from ui.toolbox_view import ToolboxView
-from domain.domain import League, ValueCalculation, Team, Roster_Spot, Projected_Keeper
+from domain.domain import League, ValueCalculation, Team, Roster_Spot
 from domain.enum import Position, ScoringFormat, InflationMethod, Preference as Pref
 from services import league_services, projected_keeper_services, calculation_services
 from ui.dialog import progress, optimize_keepers

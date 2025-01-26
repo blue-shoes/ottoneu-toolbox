@@ -3,7 +3,7 @@ from sqlalchemy.orm import joinedload
 from typing import List
 from collections import defaultdict
 
-from domain.domain import League, Team, Roster_Spot, Player, Draft, ValueCalculation, Projected_Keeper, PlayerValue, CustomScoring, StartingPositionSet
+from domain.domain import League, Team, Roster_Spot, Player, Draft, ValueCalculation, Projected_Keeper, PlayerValue, CustomScoring
 from domain.enum import ScoringFormat, Position, CalculationDataType as CDT, StatType, RankingBasis, InflationMethod, Platform
 from domain.exception import InputException
 from dao.session import Session

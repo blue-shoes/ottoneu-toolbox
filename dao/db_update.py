@@ -17,7 +17,7 @@ def run_db_updates(sql_files:list[str]) -> None:
         for command in sqlCommands:
             try:
                 c.execute(command)
-            except OperationalError as Argument:
+            except OperationalError:
                 logging.exception(f'Error running sql command {command}')
     c.close()
     conn.commit()

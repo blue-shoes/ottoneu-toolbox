@@ -363,13 +363,13 @@ def normalize_value_upload(df : DataFrame, game_type:ScoringFormat, id_type:IdTy
         if pitch_pt_col is not None:
             df['P_PT'] = df['P_PT'].apply(convert_vals)
 
-        if not None in [hit_rate_col, points_col] or not None in [points_col, hit_pt_col]:
+        if None not in [hit_rate_col, points_col] or None not in [points_col, hit_pt_col]:
             fill_df_hit_columns(df)
 
-        if not None in [pitch_rate_col, points_col] or not None in [points_col, pitch_pt_col]:
+        if None not in [pitch_rate_col, points_col] or None not in [points_col, pitch_pt_col]:
             fill_df_pitch_columns(df)
         
-        if 'Points' not in df and not None in [hit_rate_col, hit_pt_col] and not None in [pitch_rate_col, pitch_pt_col]:
+        if 'Points' not in df and None not in [hit_rate_col, hit_pt_col] and None not in [pitch_rate_col, pitch_pt_col]:
             df['Points'] = df.apply(calc_points, axis=0)
     else:
         if has_required_data_for_rl(df, game_type):
@@ -854,7 +854,7 @@ def save_calculation_from_file(vc : ValueCalculation, df : DataFrame, pd=None, r
                 h_pt = pp.get_stat(StatType.G_HIT)
             else:
                 raise Exception(f'Unhandled hitting basis {vc.hitter_basis}')
-            p_points = get_points(pp, Position.PITCHER, sabr)
+            _ = get_points(pp, Position.PITCHER, sabr)
             if vc.pitcher_basis == RankingBasis.PIP:
                 p_pt = pp.get_stat(StatType.IP)
             elif vc.pitcher_basis == RankingBasis.PPG:
@@ -998,7 +998,7 @@ def get_available_seasons() -> List[int]:
     tmp_seasons = []
     for ts in timestamps:
         year = ts.timestamp.year if ts.timestamp.month < 10 else ts.timestamp.year + 1
-        if not year in tmp_seasons:
+        if year not in tmp_seasons:
             tmp_seasons.append(year)
     return sorted(tmp_seasons, reverse=True)
 

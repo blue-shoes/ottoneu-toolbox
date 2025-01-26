@@ -1,4 +1,5 @@
-from tkinter import *
+from tkinter import Label, Toplevel
+from tkinter import LEFT, SOLID
 
 class ToolTip(object):
 

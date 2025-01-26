@@ -1,6 +1,6 @@
 import tkinter as tk     
-from tkinter import *              
-from tkinter import ttk 
+from tkinter import StringVar, IntVar, BooleanVar
+from tkinter import W, LEFT
 
 from domain.domain import CustomScoring, CustomScoringCategory
 from domain.enum import StatType

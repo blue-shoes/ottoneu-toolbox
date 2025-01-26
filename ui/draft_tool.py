@@ -1,5 +1,6 @@
 import tkinter as tk     
-from tkinter import *              
+from tkinter import StringVar, Event
+from tkinter import W, LEFT, TOP, DISABLED, ACTIVE
 from tkinter import ttk 
 import tkinter.messagebox as mb
 from tkinter.messagebox import OK
@@ -463,9 +464,9 @@ class DraftTool(ToolboxView):
         else:
             pos_table = self.pos_view.get(pos).table
         if self.league.s_format is None or not self.league.platform == Platform.OTTONEU:
-            l = [(pos_table.set(k, 'Value'), k) for k in pos_table.get_children('')]
-            l = sorted(l, reverse=pos_table.reverse_sort['Value'], key=lambda x: sort_cmp(x)) 
-            return l
+            li = [(pos_table.set(k, 'Value'), k) for k in pos_table.get_children('')]
+            li = sorted(li, reverse=pos_table.reverse_sort['Value'], key=lambda x: sort_cmp(x)) 
+            return li
         if self.value_calculation.projection is None:
             col2 = 'Roster %'
         else:
@@ -483,14 +484,14 @@ class DraftTool(ToolboxView):
                 else:
                     #TODO: I'd like this to be WHIP, but need to make it not reverse sort then
                     col2 = 'K'
-        l = [((pos_table.set(k, 'Value'), pos_table.set(k,col2)), k) for k in pos_table.get_children('')]
-        l = sorted(l, reverse=pos_table.reverse_sort['Value'], key=lambda x: self.__sort_dual_columns(x))
-        return l
+        li = [((pos_table.set(k, 'Value'), pos_table.set(k,col2)), k) for k in pos_table.get_children('')]
+        li = sorted(li, reverse=pos_table.reverse_sort['Value'], key=lambda x: self.__sort_dual_columns(x))
+        return li
 
     def __default_search_sort(self):
-        l = [((self.search_view.table.set(k, 'Value'), self.search_view.table.set(k,'Roster %')), k) for k in self.search_view.table.get_children('')]
-        l = sorted(l, reverse=self.search_view.table.reverse_sort['Value'], key=lambda x: self.__sort_dual_columns(x))
-        return l
+        li = [((self.search_view.table.set(k, 'Value'), self.search_view.table.set(k,'Roster %')), k) for k in self.search_view.table.get_children('')]
+        li = sorted(li, reverse=self.search_view.table.reverse_sort['Value'], key=lambda x: self.__sort_dual_columns(x))
+        return li
     
     def __sort_dual_columns(self, cols):
         if cols[0][0] == 'NR':
@@ -555,7 +556,7 @@ class DraftTool(ToolboxView):
             if not self.queue.empty():
                 _, data = self.queue.get()
                 self.__refresh_views(data[0], data[1])
-        except Exception as Argument:
+        except Exception:
             logging.exception('Exception updating Draft Tool UI.')
         finally:
             self.parent.after(1000, self.__update_ui)
@@ -780,7 +781,7 @@ class DraftTool(ToolboxView):
                 else:
                     #do nothing
                     continue
-            except Exception as Argument:
+            except Exception:
                 logging.exception('Exception processing transaction.')
             finally:
                 if drafted or cut:
@@ -1346,8 +1347,10 @@ class DraftTool(ToolboxView):
         prog.increment_completion_percent(25)
         to_remove = []
         for pos, table in self.pos_view.items():
-            if pos == Position.OVERALL or pos == Position.OFFENSE or pos == Position.PITCHER: continue
-            if not table: continue
+            if pos == Position.OVERALL or pos == Position.OFFENSE or pos == Position.PITCHER: 
+                continue
+            if not table: 
+                continue
             for tab_id in self.tab_control.tabs():
                 item = self.tab_control.tab(tab_id)
                 if item['text']==pos.value:
@@ -1551,7 +1554,7 @@ class DraftTool(ToolboxView):
 def main():
     try:
         run_event = threading.Event()
-        tool = DraftTool(run_event)
+        DraftTool(run_event)
     except Exception:
         if not run_event.is_set():
             run_event.set()

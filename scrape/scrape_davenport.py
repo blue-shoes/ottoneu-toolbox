@@ -40,7 +40,7 @@ class Scrape_Davenport(scrape_base.Scrape_Base):
             df['MLBID'] = df.apply(self.__get_mlbid, args=(pos_lookup,lookup_col), axis=1)
             df = df.loc[df['MLBID'] != -1] #Remove blank rows
             os.remove(tmp_filepath)
-        except Exception as Argument:
+        except Exception:
             logging.exception('Davenport Exception')
             raise DavenportException('Error retrieving player projections.')
         return df

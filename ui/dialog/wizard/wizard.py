@@ -1,5 +1,4 @@
 import tkinter as tk     
-from tkinter import *    
 from tkinter import messagebox as mb
 from abc import ABC, abstractclassmethod
 

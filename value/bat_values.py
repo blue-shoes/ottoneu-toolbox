@@ -1,5 +1,5 @@
 import pandas as pd
-from pandas import DataFrame, Series
+from pandas import DataFrame
 import os
 from os import path
 from copy import deepcopy
@@ -65,7 +65,8 @@ class BatValues():
             return -1.0*row['AB'] + 5.6*row['H'] + 2.9*row['2B'] + 5.7*row['3B'] + 9.4*row['HR']+3.0*row['BB']+3.0*row['HBP']+1.9*row['SB']-2.8*row['CS']
         points = 0 
         for cat in self.scoring.stats:
-            if not cat.category.hitter: continue
+            if not cat.category.hitter: 
+                continue
             points += cat.points * row[cat.category.display]
         return points
 
@@ -128,8 +129,10 @@ class BatValues():
             min_rep_pos = ''
             min_rep = 999
             for pos2 in self.position_keys:
-                if not (self.__position_is_base(pos2) or pos2 == P.POS_UTIL): continue
-                if not P.eligible(row['Position(s)'], pos2): continue
+                if not (self.__position_is_base(pos2) or pos2 == P.POS_UTIL): 
+                    continue
+                if not P.eligible(row['Position(s)'], pos2): 
+                    continue
                 if self.replacement_levels[pos2.value] < min_rep:
                     min_rep = self.replacement_levels[pos2.value]
                     min_rep_pos = pos2.value
@@ -190,7 +193,8 @@ class BatValues():
         max_excess = -999
         pos_val = None
         for pos, excess in excess_games_dict.items():
-            if pos in self.replacement_levels and self.replacement_levels[pos] == self.replacement_levels.get(P.POS_UTIL.value, None): continue
+            if pos in self.replacement_levels and self.replacement_levels[pos] == self.replacement_levels.get(P.POS_UTIL.value, None): 
+                continue
             if excess > max_excess:
                 max_excess = excess
                 pos_val = pos
@@ -201,7 +205,8 @@ class BatValues():
                 max_sub_excess = 0
                 for sub_pos in pos.component_pos:
                     if component_excess.get(sub_pos[0], -999) > max_sub_excess:
-                        if sub_pos[0] in self.replacement_levels and self.replacement_levels[sub_pos[0]] == self.replacement_levels.get(P.POS_UTIL.value, None): continue
+                        if sub_pos[0] in self.replacement_levels and self.replacement_levels[sub_pos[0]] == self.replacement_levels.get(P.POS_UTIL.value, None): 
+                            continue
                         max_sub_excess = component_excess[sub_pos[0]]
                         max_pos = sub_pos[0]
                 adj_pos = P._value2member_map_[max_pos] 
@@ -219,8 +224,10 @@ class BatValues():
                 eligibilities = pos.split('/')
                 test_eligibilities = []
                 for elig in eligibilities:
-                    if elig == pos_val: continue
-                    if self.games_filled[elig]: continue
+                    if elig == pos_val: 
+                        continue
+                    if self.games_filled[elig]: 
+                        continue
                     test_eligibilities.append(elig)
                 if test_eligibilities:
                     min_rl = 999
@@ -239,7 +246,8 @@ class BatValues():
         '''Determines if other position excesses are enough to fill Util games. Catcher games are not included in calculation.'''
         total_games = 0
         for pos in self.position_keys:
-            if pos == P.POS_C: continue
+            if pos == P.POS_C: 
+                continue
             if self.__position_is_base(pos) or pos == P.POS_UTIL:
                 total_games += self.total_games[pos.value] - self.target_games * num_teams * self.start_count[pos]
             else:
@@ -252,7 +260,7 @@ class BatValues():
         self.rank_position_players(df)
 
         if self.intermediate_calculations:
-            filepath = os.path.join(self.intermed_subdirpath, f"pos_ranks.csv")
+            filepath = os.path.join(self.intermed_subdirpath, "pos_ranks.csv")
             df.to_csv(filepath, encoding='utf-8-sig')
 
         num_bats = 0
@@ -283,8 +291,10 @@ class BatValues():
                         last_inc = 1
                     max_rep_lvl = -999
                     for pos in self.position_keys:
-                        if pos == P.POS_UTIL: continue
-                        if not self.__position_is_base(pos): continue
+                        if pos == P.POS_UTIL: 
+                            continue
+                        if not self.__position_is_base(pos): 
+                            continue
                         rep_lvl = self.replacement_levels[pos.value]
                         if not self.games_filled[pos.value] and rep_lvl > max_rep_lvl:
                             max_rep_lvl = rep_lvl
@@ -292,7 +302,8 @@ class BatValues():
                     if max_rep_lvl == -999:
                         #Need to fill Util games with highest replacement
                         for pos in self.position_keys:
-                            if not self.__position_is_base(pos) or pos == P.POS_UTIL: continue
+                            if not self.__position_is_base(pos) or pos == P.POS_UTIL: 
+                                continue
                             rep_lvl = self.replacement_levels[pos.value]
                             if rep_lvl > max_rep_lvl:
                                 max_rep_lvl = rep_lvl
@@ -314,7 +325,7 @@ class BatValues():
                     df['Max FOM'] = df.apply(self.calc_max_fom, axis=1)
                     self.calc_total_games(df)
                     if not ScoringFormat.is_points_type(self.s_format) and self.are_games_filled(df):
-                        sigma = self.iterate_roto(df)
+                        _ = self.iterate_roto(df)
                         self.calc_total_games(df)
                 #Augment the replacement levels by the input surpluses to get the final numbers
                 for pos in self.position_keys:
@@ -329,8 +340,10 @@ class BatValues():
                         #Too many players, find the current minimum replacement level and bump that replacement_position down by 1
                         min_rep_lvl = 999.9
                         for pos in self.position_keys:
-                            if pos == P.POS_UTIL or pos == P.POS_C: continue
-                            if not self.__position_is_base(pos): continue
+                            if pos == P.POS_UTIL or pos == P.POS_C: 
+                                continue
+                            if not self.__position_is_base(pos): 
+                                continue
                             rep_lvl = self.replacement_levels[pos.value]
                             if rep_lvl < min_rep_lvl:
                                 min_rep_lvl = rep_lvl
@@ -344,15 +357,20 @@ class BatValues():
                         #Too few players, find the current maximum replacement level and bump that replacement_position up by 1
                         max_rep_lvl = 0.0
                         for pos in self.position_keys:
-                            if pos == P.POS_UTIL or pos == P.POS_C: continue
-                            if not self.__position_is_base(pos): continue
+                            if pos == P.POS_UTIL or pos == P.POS_C: 
+                                continue
+                            if not self.__position_is_base(pos): 
+                                continue
                             rep_lvl = self.replacement_levels[pos.value]
                             if rep_lvl > max_rep_lvl:
-                                if self.replacement_positions[pos.value] == self.max_rost_num[pos.value]: continue
+                                if self.replacement_positions[pos.value] == self.max_rost_num[pos.value]: 
+                                    continue
                                 #These two conditionals are arbitrarily determined by me at the time, but they seem to do a good job reigning in 1B and OF
                                 #to reasonable levels. No one is going to roster a 1B that hits like a replacement level SS, for example
-                                if pos == P.POS_1B and self.replacement_positions['1B'] > 1.5*self.replacement_positions['SS']: continue
-                                if pos == P.POS_OF and self.replacement_positions['OF'] > 3*self.replacement_positions['SS']: continue
+                                if pos == P.POS_1B and self.replacement_positions['1B'] > 1.5*self.replacement_positions['SS']: 
+                                    continue
+                                if pos == P.POS_OF and self.replacement_positions['OF'] > 3*self.replacement_positions['SS']: 
+                                    continue
                                 max_rep_lvl = rep_lvl
                                 max_pos = pos
                         if max_rep_lvl == 0.0:
@@ -370,7 +388,7 @@ class BatValues():
                     num_bats = len(df.loc[df['Max FOM'] >= 0])
             elif self.rep_level_scheme == RepLevelScheme.NUM_ROSTERED:
                 if not ScoringFormat.is_points_type(self.s_format):
-                    sigma = self.iterate_roto(df)
+                    _ = self.iterate_roto(df)
                 else:
                     df['Max FOM'] = df.apply(self.calc_max_fom, axis=1)
             else:
@@ -471,7 +489,7 @@ class BatValues():
     def get_position_rep_level(self, df:DataFrame, pos:P) -> float:
         '''Based on the number of players to roster above replacement level, return the corresponding replacment level
         required for it to be true.'''
-        if not pos in self.position_keys:
+        if pos not in self.position_keys:
             return 999
         if pos != P.POS_UTIL:
             #Filter DataFrame to just the position of interest
@@ -484,7 +502,8 @@ class BatValues():
             pos_df = df
             max_rep_lvl = -100.0
             for pos in self.position_keys:
-                if not self.__position_is_base(pos): continue
+                if not self.__position_is_base(pos): 
+                    continue
                 rep_level = self.replacement_levels[pos.value]
                 if rep_level > max_rep_lvl:
                     max_rep_lvl = rep_level
@@ -510,7 +529,8 @@ class BatValues():
             if self.s_format == ScoringFormat.CUSTOM:
                 cat_to_col = {}
                 for cat in self.scoring.stats:
-                    if not cat.category.hitter: continue
+                    if not cat.category.hitter: 
+                        continue
                     if cat.category.rate_denom is None:
                         proj[f'{cat.category.display}/G'] = proj.apply(self.per_game_rate, axis=1, args=(cat.category,))
                         cat_to_col[cat.category] = f'{cat.category.display}/G'
@@ -539,7 +559,8 @@ class BatValues():
             if self.s_format == ScoringFormat.CUSTOM:
                 cat_to_col = {}
                 for cat in self.scoring.stats:
-                    if not cat.category.hitter: continue
+                    if not cat.category.hitter: 
+                        continue
                     if cat.category.rate_denom is not None:
                         self.stat_avg[cat.category] = dataframe_util.weighted_avg(above_rep_lvl, cat.category.display, cat.category.display)
                         proj[f'{cat.category.display}_Delta'] = proj.apply(self.calc_rate_delta, axis=1, args=(cat.category,))
@@ -614,7 +635,8 @@ class BatValues():
         zScore = 0
         if self.s_format == ScoringFormat.CUSTOM:
             for cat in self.scoring.stats:
-                if not cat.category.hitter: continue
+                if not cat.category.hitter: 
+                    continue
                 if cat.category.rate_denom is None:
                     if cat.category.higher_better:
                         mult = 1
@@ -658,6 +680,6 @@ class BatValues():
             self.intermed_subdirpath = os.path.join(self.dirname, 'data_dirs', 'intermediate')
             if not path.exists(self.intermed_subdirpath):
                 os.mkdir(self.intermed_subdirpath)
-            filepath = os.path.join(self.intermed_subdirpath, f"pos_ranks.csv")
+            filepath = os.path.join(self.intermed_subdirpath, "pos_ranks.csv")
             pos_min_pa.to_csv(filepath, encoding='utf-8-sig')
         return pos_min_pa

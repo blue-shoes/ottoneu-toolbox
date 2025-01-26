@@ -28,9 +28,9 @@ def download_projections(projection:str, ros:bool=False, dc_pt:bool=False, progr
         if progress is not None:
             progress.increment_completion_percent(20)
         if projection == 'thebatx':
-            pitch_proj = fg_scraper.getProjectionDataset(f"https://www.fangraphs.com/projections?pos=all&stats=pit&type=thebat", f'thebat_pitch.csv')     
+            pitch_proj = fg_scraper.getProjectionDataset("https://www.fangraphs.com/projections?pos=all&stats=pit&type=thebat", 'thebat_pitch.csv')     
         elif projection == 'thebatxr':
-            fg_scraper.getProjectionDataset(f"https://www.fangraphs.com/projections?pos=all&stats=pit&type=thebatr", f'thebatr_pitch.csv')
+            fg_scraper.getProjectionDataset("https://www.fangraphs.com/projections?pos=all&stats=pit&type=thebatr", 'thebatr_pitch.csv')
         else:
             pitch_proj = fg_scraper.getProjectionDataset(f"https://www.fangraphs.com/projections?pos=all&stats=pit&type={projection}", f'{projection}_pitch.csv')
         if progress is not None:
@@ -76,7 +76,7 @@ def convertToDcPlayingTime(proj:DataFrame, ros:bool, position:bool, fg_scraper:s
     dc_columns = ['G','PA','GS','IP']
     #Filter projection to only players present in the DC projection and then drop the temp DC column
     proj = proj.assign(DC=proj.id.isin(dc_proj.id).astype(bool))
-    proj = proj[proj['DC'] == True]
+    proj = proj[proj['DC']]
     proj.drop('DC', axis=1, inplace=True)
     if position:
         denom = 'G'
@@ -685,9 +685,11 @@ def __set_otb_id_from_davenport(row:Series) -> int:
     return player.id
 
 def __must_derive_stat(stat_type:StatType, base_stats:List[StatType], df_cols:Index) -> bool:
-    if any(x in stat_type.stat_list for x in df_cols): return False
+    if any(x in stat_type.stat_list for x in df_cols): 
+        return False
     for st in base_stats:
-        if not any(x in st.stat_list for x in df_cols): return False
+        if not any(x in st.stat_list for x in df_cols): 
+            return False
     return True
 
 def projection_check(projs:List[DataFrame]) -> None:
@@ -808,7 +810,7 @@ def get_projections_for_year(year:int, inc_hidden:bool=False) -> List[Projection
         if inc_hidden:
             projs = session.query(Projection).filter(Projection.season == year).all()
         else:
-            projs = session.query(Projection).filter(Projection.season == year, Projection.hide == False).all()
+            projs = session.query(Projection).filter(Projection.season == year, not Projection.hide).all()
     return projs
 
 def get_available_seasons() -> List[int]:

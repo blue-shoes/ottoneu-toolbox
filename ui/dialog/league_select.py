@@ -1,5 +1,5 @@
 import tkinter as tk     
-from tkinter import *              
+from tkinter import W
 from tkinter import ttk 
 from tkinter import messagebox as mb
 from ui.dialog.wizard import league_import
@@ -9,7 +9,6 @@ import logging
 from ui.dialog import progress
 from services import league_services
 from domain.domain import League
-from domain.enum import Platform
 
 class Dialog(tk.Toplevel):
     def __init__(self, parent, active=True):
@@ -59,7 +58,7 @@ class Dialog(tk.Toplevel):
             else:
                 self.lift()
                 self.focus_force()
-        except Exception as Arguement:
+        except Exception:
             mb.showerror('Error downloading league, please try again')
             logging.exception('Error downloading league')
     

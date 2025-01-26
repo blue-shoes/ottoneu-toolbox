@@ -1,11 +1,12 @@
-import tkinter as tk     
-from tkinter import *              
+import tkinter as tk 
+from tkinter import Event    
+from tkinter import W     
 from tkinter import ttk 
 from tkinter import messagebox as mb
 
 from ui.dialog import progress
 from ui.dialog.wizard import starting_position
-from ui.table.table import Table, bool_to_table
+from ui.table.table import Table
 from domain.domain import StartingPositionSet
 
 from services import starting_positions_services

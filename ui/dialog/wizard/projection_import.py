@@ -1,5 +1,6 @@
 import tkinter as tk     
-from tkinter import *              
+from tkinter import StringVar, Event, Text
+from tkinter import W
 from tkinter import ttk 
 from tkinter import filedialog as fd
 from tkinter import messagebox as mb
@@ -265,7 +266,7 @@ class Step1(tk.Frame):
             self.parent.validate_msg = e.validation_msgs
             logging.exception('Expected exception retrieving projections')
             return False
-        except Exception as Argument:
+        except Exception:
             self.parent.projection = None
             logging.exception("Error retrieving projections")
             self.parent.validate_msg = 'Error retrieving projection. See log file for details.'

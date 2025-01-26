@@ -1,5 +1,5 @@
 import tkinter as tk     
-from tkinter import *     
+from tkinter import StringVar
 from tkinter import ttk 
 from tkinter import messagebox as mb
 from tkinter.messagebox import CANCEL, OK 

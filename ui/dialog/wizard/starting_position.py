@@ -1,6 +1,6 @@
 import tkinter as tk     
-from tkinter import *              
-from tkinter import ttk 
+from tkinter import StringVar, BooleanVar
+from tkinter import W, LEFT
 
 from domain.domain import StartingPosition, StartingPositionSet
 from domain.enum import Position
@@ -79,7 +79,8 @@ class Positions(tk.Frame):
         self.counts = {}
         
         for idx, pos in enumerate(Position.get_offensive_pos() + Position.get_discrete_pitching_pos() + [Position.POS_P]):
-            if pos == Position.OFFENSE: continue
+            if pos == Position.OFFENSE: 
+                continue
             self.positions[pos] = BooleanVar()
             tk.Checkbutton(self, text = pos.value, variable=self.positions[pos], command=lambda _pos=pos: self.toggle_pos(_pos), justify=LEFT, anchor=W).grid(sticky=W, row = (int)(idx/2)+1, column=2*(idx % 2))
             count = StringVar()

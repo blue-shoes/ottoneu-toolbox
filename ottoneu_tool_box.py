@@ -1,7 +1,10 @@
 from ui.main import Main
-import sys, getopt, os, shutil
 #import icecream
 #from icecream.icecream import ic
+import sys
+import getopt
+import os
+import shutil
 
 import logging
 
@@ -43,7 +46,7 @@ def main():
     app = Main(debug = debug, demo_source=demo_source, resource_path=resource_path)
     try:
         app.mainloop()
-    except Exception as Argument:
+    except Exception:
         if not app.run_event.is_set():
             app.run_event.set()
         logging.exception('Fatal Application Exception')

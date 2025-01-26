@@ -1,7 +1,8 @@
-from tkinter import *              
+from tkinter import CENTER, NO
 from tkinter import ttk 
 from PIL import ImageTk, Image
-import sys, os
+import sys 
+import os
 
 class Table(ttk.Treeview):
 
@@ -32,16 +33,16 @@ class Table(ttk.Treeview):
         self.checkbox = checkbox
         for col in columns:
             align = CENTER
-            if column_alignments != None:
+            if column_alignments is not None:
                 if col in column_alignments:
                     align = column_alignments[col]
             width = 50
-            if column_widths != None:
+            if column_widths is not None:
                 if col in column_widths:
                     width = column_widths[col]
             self.column_map[col] = col_num
             self.column(f"#{col_num}",anchor=align, stretch=NO, width=width)
-            if sortable_columns != None:
+            if sortable_columns is not None:
                 if col in sortable_columns and col_num != 0:
                     # From https://stackoverflow.com/a/30724912
                     self.heading(f'#{col_num}', text=col, command=lambda _col=col: self.treeview_sort_column(_col) )
@@ -56,7 +57,7 @@ class Table(ttk.Treeview):
         if reverse_col_sort is not None:
             for col in reverse_col_sort:
                 self.reverse_sort[col] = False
-        if sortable_columns != None:
+        if sortable_columns is not None:
             if init_sort_col is None:
                 self.sort_col = sortable_columns[0]
             else:
@@ -167,18 +168,18 @@ class Table(ttk.Treeview):
             self.reverse_sort[col] = reverse
             
         if col in self.custom_sort:
-            l = self.custom_sort.get(col)()
+            li = self.custom_sort.get(col)()
         else:
             # From https://stackoverflow.com/a/1967793
             column_index = self["columns"].index(col)
             if self.checkbox:
                 column_index -= 1
-            l = [(str(self.item(k)["values"][column_index]), k) for k in self.get_children()]
+            li = [(str(self.item(k)["values"][column_index]), k) for k in self.get_children()]
             #l = [(self.set(k, col), k) for k in self.get_children('')]
-            l.sort(reverse=self.reverse_sort[col], key=lambda x, _col=col: sort_cmp(x, self.reverse_sort[_col]))
+            li.sort(reverse=self.reverse_sort[col], key=lambda x, _col=col: sort_cmp(x, self.reverse_sort[_col]))
 
         # rearrange items in sorted positions
-        for index, (val, k) in enumerate(l):
+        for index, (val, k) in enumerate(li):
             self.move(k, '', index)
 
         # reverse sort next time
@@ -204,7 +205,8 @@ class Table(ttk.Treeview):
         if self.checkbox:
             display_col = []
             for col in columns:
-                if self.column_map[col] == 0: continue
+                if self.column_map[col] == 0: 
+                    continue
                 display_col.append(max(0, self.column_map[col]-1))
             self['displaycolumns'] = tuple(display_col)
         else:

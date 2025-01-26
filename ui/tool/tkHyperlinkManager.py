@@ -1,4 +1,4 @@
-from tkinter import *
+from tkinter import CURRENT
 
 class HyperlinkManager:
     def __init__(self, text):

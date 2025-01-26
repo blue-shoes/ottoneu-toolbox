@@ -26,7 +26,7 @@ class Scrape_Base(object):
         self.driver = None
         self.browser = browser
         dirname = os.path.abspath(os.path.join(os.path.dirname( __file__ ), '..'))
-        self.download_dir = dir = os.path.join(dirname, 'tmp') + '\\'
+        self.download_dir = dir = os.path.join(dirname, 'tmp')
         if not os.path.exists(dir):
             os.mkdir(dir)
         #clear tmp directory before proceeding
@@ -63,10 +63,10 @@ class Scrape_Base(object):
                 counter = counter + 1
             if counter == 5:
                 raise TimeoutException('Timeout exception waiting for download')
-        except TimeoutException as Argument:
+        except TimeoutException:
             logging.exception('Timeout exception waiting for csv click')
             return None
-        except Exception as Argument:
+        except Exception:
             logging.exception('Exception getting download')
             return None
 

@@ -2,7 +2,9 @@ from datetime import datetime
 import logging
 import pathlib
 import tkinter as tk     
-from tkinter import *              
+from tkinter import StringVar, BooleanVar, IntVar
+from tkinter import Event
+from tkinter import W, E, DISABLED, ACTIVE
 from tkinter import ttk 
 from tkinter import filedialog as fd
 from tkinter import messagebox as mb
@@ -536,8 +538,10 @@ class ValuesCalculation(ToolboxView):
     
     def redraw_tables(self, overall:bool=False, pd:progress.ProgressDialog=None) -> None:
         for pos, table in self.tables.items():
-            if pos == Position.OVERALL or pos == Position.OFFENSE or pos == Position.PITCHER: continue
-            if not table: continue
+            if pos == Position.OVERALL or pos == Position.OFFENSE or pos == Position.PITCHER: 
+                continue
+            if not table: 
+                continue
             for tab_id in self.tab_control.tabs():
                 item = self.tab_control.tab(tab_id)
                 if item['text']==pos.value:
@@ -548,7 +552,8 @@ class ValuesCalculation(ToolboxView):
             pd = progress.ProgressDialog(self, title='Reloading Player Tables')
         pd.increment_completion_percent(15)
         for pos, table in self.tables.items():
-            if not overall and (pos == Position.OVERALL or pos == Position.OFFENSE or pos == Position.PITCHER): continue
+            if not overall and (pos == Position.OVERALL or pos == Position.OFFENSE or pos == Position.PITCHER): 
+                continue
             if table:
                 table.refresh()
                 pd.increment_completion_percent(5)
@@ -1247,7 +1252,8 @@ class ValuesCalculation(ToolboxView):
                 pitch.extend([s.display for s in pitch_cats])
         self.overall_table.set_display_columns(tuple(overall))
         for pos, table in self.tables.items():
-            if pos == Position.OVERALL: continue
+            if pos == Position.OVERALL: 
+                continue
             if table:
                 if pos.offense:
                     table.set_display_columns(tuple(hit))
@@ -1339,7 +1345,7 @@ class ValuesCalculation(ToolboxView):
             if self.has_errors():
                 logging.warning("Input errors")
                 return
-        except Exception as Argument:
+        except Exception:
             mb.showerror("Error starting calculation", 'There was an error checking inputs. Please see the logs.')
             logging.exception("Errors validating calculation inputs")
             return
@@ -1386,7 +1392,7 @@ class ValuesCalculation(ToolboxView):
             self.update_values()
             #self.populate_projections()
             self.update_calc_output_frame()
-        except Exception as Argument:
+        except Exception:
             logging.exception('Error creating player values')
             mb.showerror('Error creating player values',  'See log for details')
         finally:
@@ -1411,11 +1417,13 @@ class ValuesCalculation(ToolboxView):
     def set_default_rep_level(self, scheme, update_only:bool=False):
         if scheme == RepLevelScheme.NUM_ROSTERED:
             for pos, sv in self.rep_level_dict.items():
-                if update_only and sv.get() != '': continue
+                if update_only and sv.get() != '': 
+                    continue
                 sv.set(num_rost_rl_default[pos])
         elif scheme == RepLevelScheme.FILL_GAMES:
             for sv in self.rep_level_dict.values():
-                if update_only and sv.get() != '': continue
+                if update_only and sv.get() != '': 
+                    continue
                 sv.set('0')
         elif scheme == RepLevelScheme.STATIC_REP_LEVEL:
             off_pos = [p.position for p in self.starting_set.positions if p.position.offense]
@@ -1424,12 +1432,14 @@ class ValuesCalculation(ToolboxView):
             if RankingBasis.get_enum_by_display(self.hitter_basis.get()) == RankingBasis.PPG:
                 for pos in off_pos:
                     sv = self.rep_level_dict[pos.value]
-                    if update_only and sv.get() != '': continue
+                    if update_only and sv.get() != '': 
+                        continue
                     sv.set("4.5")
             elif RankingBasis.get_enum_by_display(self.hitter_basis.get()) == RankingBasis.PPPA:
                 for pos in off_pos:
                     sv = self.rep_level_dict[pos.value]
-                    if update_only and sv.get() != '': continue
+                    if update_only and sv.get() != '': 
+                        continue
                     sv.set("1.0")
             if RankingBasis.get_enum_by_display(self.pitcher_basis.get()) == RankingBasis.PIP:
                 self.rep_level_dict["SP"].set("3.5")
@@ -1494,7 +1504,7 @@ class ValuesCalculation(ToolboxView):
         elif self.rep_level_scheme.get() == RepLevelScheme.FILL_GAMES.value:
             for key, value in self.rep_level_dict.items():
                 try:
-                    val = int(value.get())
+                    _ = int(value.get())
                 except ValueError:
                     bad_rep_level.append(key)
         else:
