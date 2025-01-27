@@ -153,7 +153,7 @@ class ArmValues():
                         rosterable = df.loc[df['FOM SP'] >= 0]
                         sp_ip = rosterable.apply(self.usable_ip_calc, args=("SP",), axis=1).sum()
                         if not ScoringFormat.is_points_type(self.s_format) and sp_ip >= self.num_teams * (self.target_ip_per_team-self.rp_ip_per_team):
-                            sigma = self.iterate_roto(df)
+                            _ = self.iterate_roto(df)
                             sp_ip = rosterable.apply(self.usable_ip_calc, args=("SP",), axis=1).sum()
                     while rp_ip < self.num_teams * self.rp_ip_per_team and self.replacement_positions['RP'] < self.max_rost_num['RP']:
                         self.replacement_positions['RP'] = self.replacement_positions['RP'] + 1
@@ -163,7 +163,7 @@ class ArmValues():
                         rosterable = df.loc[df['FOM RP'] >= 0]
                         rp_ip = rosterable.apply(self.usable_ip_calc, args=("RP",), axis=1).sum()
                         if not ScoringFormat.is_points_type(self.s_format) and rp_ip >= self.num_teams * self.rp_ip_per_team:
-                            sigma = self.iterate_roto(df)
+                            _ = self.iterate_roto(df)
                             rp_ip = rosterable.apply(self.usable_ip_calc, args=("RP",), axis=1).sum()
                 else:
                     while sp_g < self.num_teams * self.gs_per_week * self.weeks and self.replacement_positions['SP'] < self.max_rost_num['SP']:
