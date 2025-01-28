@@ -684,7 +684,7 @@ def init_outputs_from_upload(vc: ValueCalculation, df: DataFrame, game_type: Sco
         pitch = False
         if "POS" in df.columns:
             pos_string = row["POS"]
-            pos_list = re.split("[,\s/\\]+", pos_string)
+            pos_list = re.split("[,\\s/\\]+", pos_string)
             positions = [Position._value2member_map_.get(pos) if pos != "DH" else Position.POS_UTIL for pos in pos_list]
             pos_string = "/".join(positions)
             pos_set.positions.append(PlayerPositions(player_id=player.id, position=pos_string))
