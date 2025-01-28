@@ -670,6 +670,7 @@ class BatValues:
         # Filter to players projected to a baseline amount of playing time
 
         self.get_position_fom(pos_min_pa)
+        self.set_num_rostered_from_rep_level(pos_min_pa, P.POS_UTIL)
         if self.intermediate_calculations:
             self.dirname = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
             self.intermed_subdirpath = os.path.join(self.dirname, 'data_dirs', 'intermediate')
