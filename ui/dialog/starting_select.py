@@ -1,7 +1,7 @@
-import tkinter as tk 
-from tkinter import Event    
-from tkinter import W     
-from tkinter import ttk 
+import tkinter as tk
+from tkinter import Event
+from tkinter import W
+from tkinter import ttk
 from tkinter import messagebox as mb
 
 from ui.dialog import progress
@@ -11,13 +11,14 @@ from domain.domain import StartingPositionSet
 
 from services import starting_positions_services
 
+
 class Dialog(tk.Toplevel):
     def __init__(self, parent):
         super().__init__(parent)
         self.parent = parent
         self.starting_set = None
         self.deleted_starting_set_ids = []
-        self.title("Select a Starting Position Set")
+        self.title('Select a Starting Position Set')
         frm = tk.Frame(self, borderwidth=4)
 
         top_frm = tk.Frame(frm)
@@ -45,18 +46,18 @@ class Dialog(tk.Toplevel):
         bot_frm = tk.Frame(frm)
         bot_frm.grid(row=1, sticky=tk.E)
 
-        ttk.Button(bot_frm, text="OK", command=self.set_starting_set).grid(row=0, column=0)
-        ttk.Button(bot_frm, text="Cancel", command=self.cancel).grid(row=0, column=1)
-        ttk.Button(bot_frm, text="Create New...", command=self.create_starting_set).grid(row=0,column=2)
+        ttk.Button(bot_frm, text='OK', command=self.set_starting_set).grid(row=0, column=0)
+        ttk.Button(bot_frm, text='Cancel', command=self.cancel).grid(row=0, column=1)
+        ttk.Button(bot_frm, text='Create New...', command=self.create_starting_set).grid(row=0, column=2)
 
         frm.pack()
 
-        self.protocol("WM_DELETE_WINDOW", self.cancel)
+        self.protocol('WM_DELETE_WINDOW', self.cancel)
 
         self.focus_force()
 
         self.wait_window()
-    
+
     def create_starting_set(self):
         dialog = starting_position.Dialog(self.master)
         if dialog.starting_set is not None:
@@ -65,7 +66,7 @@ class Dialog(tk.Toplevel):
         else:
             self.lift()
             self.focus_force()
-    
+
     def populate_table(self):
         for starting_set in self.starting_set_list:
             self.starting_set_table.insert('', tk.END, text=str(starting_set.id), values=(starting_set.name, starting_set.detail))
@@ -74,28 +75,28 @@ class Dialog(tk.Toplevel):
         self.on_select(event)
         self.set_starting_set()
 
-    def on_select(self, event:Event):
+    def on_select(self, event: Event):
         if len(event.widget.selection()) > 0:
-            selection = event.widget.item(event.widget.selection()[0])["text"]
+            selection = event.widget.item(event.widget.selection()[0])['text']
             for starting_set in self.starting_set_list:
                 if starting_set.id == int(selection):
                     self.starting_set = starting_set
                     break
         else:
             self.starting_set = None
-    
+
     def rclick(self, event):
         iid = event.widget.identify_row(event.y)
         event.widget.selection_set(iid)
-        starting_set_id = int(event.widget.item(event.widget.selection()[0])["text"])
+        starting_set_id = int(event.widget.item(event.widget.selection()[0])['text'])
         popup = tk.Menu(self.parent, tearoff=0)
-        popup.add_command(label="Delete", command=lambda: self.delete_starting_set(starting_set_id))
+        popup.add_command(label='Delete', command=lambda: self.delete_starting_set(starting_set_id))
         try:
             popup.post(event.x_root, event.y_root)
         finally:
             popup.grab_release()
-    
-    def delete_starting_set(self, starting_set_id:int):
+
+    def delete_starting_set(self, starting_set_id: int):
         for starting_set in self.starting_set_list:
             if starting_set.id == starting_set_id:
                 sf = starting_set
@@ -106,7 +107,7 @@ class Dialog(tk.Toplevel):
             self.lift()
             self.focus_force()
 
-    def perform_deletion(self, starting_set:StartingPositionSet):
+    def perform_deletion(self, starting_set: StartingPositionSet):
         self.lift()
         pd = progress.ProgressDialog(self.parent, 'Deleting Starting Position Set')
         pd.set_completion_percent(15)
@@ -119,6 +120,6 @@ class Dialog(tk.Toplevel):
     def cancel(self):
         self.starting_set = None
         self.destroy()
-    
+
     def set_starting_set(self):
         self.destroy()

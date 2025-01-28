@@ -1,7 +1,7 @@
-import tkinter as tk     
+import tkinter as tk
 from tkinter import StringVar
 from tkinter import TOP, LEFT
-from tkinter import ttk 
+from tkinter import ttk
 import threading
 from typing import List
 
@@ -14,14 +14,14 @@ from ui.dialog import progress, optimize_keepers
 from ui.view import standings, surplus
 from util import date_util
 
+
 class League_Analysis(ToolboxView):
+    league: League
+    value_calculation: ValueCalculation
+    offseason: bool
+    inflation_method: InflationMethod
 
-    league:League
-    value_calculation:ValueCalculation
-    offseason:bool
-    inflation_method:InflationMethod
-
-    def __init__(self, parent:tk.Frame, controller:Controller):
+    def __init__(self, parent: tk.Frame, controller: Controller):
         tk.Frame.__init__(self, parent, height=600, width=1300)
         self.parent = parent
         self.controller = controller
@@ -33,7 +33,7 @@ class League_Analysis(ToolboxView):
         self.offseason = date_util.is_offseason()
 
         self.create_main()
-    
+
     def on_show(self):
         if self.controller.league is None or not league_services.league_exists(self.controller.league):
             self.controller.select_league()
@@ -49,10 +49,10 @@ class League_Analysis(ToolboxView):
             self.initialize_keepers()
         self.load_tables()
         return True
-    
+
     def leave_page(self):
         return True
-    
+
     def create_main(self):
         self.pack_propagate(False)
 
@@ -64,7 +64,7 @@ class League_Analysis(ToolboxView):
         header_frame.pack(side=TOP, fill='x', expand=False)
 
         if self.controller.league is None:
-            self.league_text_var.set("--")
+            self.league_text_var.set('--')
         else:
             self.league_text_var.set(self.controller.league.name)
         self.lg_lbl = ttk.Label(header_frame, textvariable=self.league_text_var, font='bold')
@@ -94,9 +94,9 @@ class League_Analysis(ToolboxView):
 
         self.surplus = surplus.Surplus(big_frame, view=self)
         self.surplus.pack(side=LEFT, fill='both', expand=True)
-    
+
     def toggle_offseason(self):
-        #TODO: Implement this
+        # TODO: Implement this
         ...
 
     def league_change(self):
@@ -106,11 +106,11 @@ class League_Analysis(ToolboxView):
         if not ScoringFormat.is_points_type(self.league.s_format):
             self.standings.standings_type.set(0)
         self.load_tables()
-    
+
     def value_change(self):
         self.value_calculation = self.controller.value_calculation
         self.load_tables()
-    
+
     def initialize_keepers(self):
         if self.league.projected_keepers is None:
             self.league.projected_keepers = []
@@ -120,20 +120,22 @@ class League_Analysis(ToolboxView):
                 if pv is not None and rs.salary is not None and pv.value > rs.salary:
                     self.league.projected_keepers.append(projected_keeper_services.add_keeper_and_return(self.league, rs.player))
 
-    def handle_inflation(self, roster_spot:Roster_Spot):
+    def handle_inflation(self, roster_spot: Roster_Spot):
         if roster_spot is None:
             self.inflation = league_services.calculate_league_inflation(self.league, self.value_calculation, inf_method=self.inflation_method, use_keepers=self.__is_use_keepers())
         else:
             add_player = self.__is_use_keepers() and self.league.is_keeper(roster_spot.player_id)
-            self.inflation = league_services.update_league_inflation(self.league, self.value_calculation.get_player_value(roster_spot.player_id, Position.OVERALL), roster_spot, inf_method=self.inflation_method, add_player=add_player)
+            self.inflation = league_services.update_league_inflation(
+                self.league, self.value_calculation.get_player_value(roster_spot.player_id, Position.OVERALL), roster_spot, inf_method=self.inflation_method, add_player=add_player
+            )
         self.inflation_sv.set(f'League Inflation: {"{:.1f}".format(self.inflation * 100)}%')
         self.surplus.update_inflation(self.inflation, self.inflation_method)
-    
+
     def initialize_inflation(self):
         if self.league.is_salary_cap():
             self.inflation = league_services.calculate_league_inflation(self.league, self.value_calculation, inf_method=self.inflation_method, use_keepers=self.__is_use_keepers())
             self.inflation_sv.set(f'League Inflation: {"{:.1f}".format(self.inflation * 100)}%')
-            
+
         else:
             self.inflation = 0
             self.inflation_sv.set('')
@@ -156,15 +158,15 @@ class League_Analysis(ToolboxView):
         for team in self.league.teams:
             for rs in team.roster_spots:
                 if rs.player_id in orig_keepers:
-                    self.league.projected_keepers.append(projected_keeper_services.add_keeper_and_return(self.league, rs.player)) 
+                    self.league.projected_keepers.append(projected_keeper_services.add_keeper_and_return(self.league, rs.player))
                     continue
                 pv = self.value_calculation.get_player_value(rs.player_id, Position.OVERALL)
                 if pv is None:
                     continue
-                if (pv.value-1) * (1 + dialog.target_inflation) + 1 > rs.salary:
-                    self.league.projected_keepers.append(projected_keeper_services.add_keeper_and_return(self.league, rs.player))    
-            prog.increment_completion_percent(inc) 
-        
+                if (pv.value - 1) * (1 + dialog.target_inflation) + 1 > rs.salary:
+                    self.league.projected_keepers.append(projected_keeper_services.add_keeper_and_return(self.league, rs.player))
+            prog.increment_completion_percent(inc)
+
         self.inflation = league_services.calculate_league_inflation(self.league, self.value_calculation, use_keepers=self.__is_use_keepers(), inf_method=self.inflation_method)
         prog.complete()
         self.load_tables()
@@ -174,22 +176,21 @@ class League_Analysis(ToolboxView):
             projected_keeper_services.remove_keeper(pk)
         self.league.projected_keepers.clear()
         self.load_tables()
-    
+
     def set_all_keepers(self):
         for team in self.league.teams:
             for rs in team.roster_spots:
                 if not self.league.is_keeper(rs.player_id):
                     self.league.projected_keepers.append(projected_keeper_services.add_keeper_by_player_id(self.league, rs.player_id))
         self.load_tables()
-    
-    def team_selected(self, team_site_id:int):
+
+    def team_selected(self, team_site_id: int):
         team = self.league.get_team_by_site_id(team_site_id)
         if team:
             self.surplus.team_sv.set(team.name)
             self.surplus.team_changed()
-    
-    def load_tables(self):
 
+    def load_tables(self):
         if not self.league.is_salary_cap():
             calculation_services.set_player_ranks(self.value_calculation)
 
@@ -204,11 +205,14 @@ class League_Analysis(ToolboxView):
         self.standings.update_league(self.league)
         pd.increment_completion_percent(10)
         if self.value_calculation.projection:
-            league_services.calculate_league_table(self.league, self.value_calculation, \
-                                                    fill_pt=(self.standings.standings_type.get() == 1 and ScoringFormat.is_points_type(self.league.s_format)), \
-                                                    inflation=self.inflation,\
-                                                    use_keepers=self.__is_use_keepers(),
-                                                    prog=pd)
+            league_services.calculate_league_table(
+                self.league,
+                self.value_calculation,
+                fill_pt=(self.standings.standings_type.get() == 1 and ScoringFormat.is_points_type(self.league.s_format)),
+                inflation=self.inflation,
+                use_keepers=self.__is_use_keepers(),
+                prog=pd,
+            )
         pd.set_completion_percent(90)
         pd.set_task_title('Updating display')
         self.standings.refresh()
@@ -216,27 +220,29 @@ class League_Analysis(ToolboxView):
         self.surplus.update_value_calc(self.value_calculation)
         self.surplus.player_table.table.refresh()
         pd.complete()
-    
+
     def __is_use_keepers(self) -> bool:
-        return (self.offseason and self.standings.standings_type.get() == 1)
-    
-    def update_league_table(self, team_list:List):
+        return self.offseason and self.standings.standings_type.get() == 1
+
+    def update_league_table(self, team_list: List):
         if self.value_calculation.projection:
-            league_services.calculate_league_table(self.league, self.value_calculation, self.standings.standings_type.get() == 1, self.inflation, updated_teams=team_list, use_keepers=self.__is_use_keepers())
-    
-    def check_if_league_table_ready(self, calc_thread:threading.Thread):
+            league_services.calculate_league_table(
+                self.league, self.value_calculation, self.standings.standings_type.get() == 1, self.inflation, updated_teams=team_list, use_keepers=self.__is_use_keepers()
+            )
+
+    def check_if_league_table_ready(self, calc_thread: threading.Thread):
         if calc_thread.is_alive():
             self.after(200, self.check_if_league_table_ready, calc_thread)
         else:
             self.standings.refresh()
 
-    def update(self, team:Team=None, roster_spot:Roster_Spot=None):
+    def update(self, team: Team = None, roster_spot: Roster_Spot = None):
         if team is None:
-            team_list=None
+            team_list = None
         else:
             team_list = [team]
         self.handle_inflation(roster_spot)
         thread = threading.Thread(target=self.update_league_table, args=(team_list,))
         thread.start()
         self.after(200, self.check_if_league_table_ready, thread)
-        #self.surplus.player_table.table.refresh()
+        # self.surplus.player_table.table.refresh()

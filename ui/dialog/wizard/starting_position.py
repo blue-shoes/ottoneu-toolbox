@@ -1,4 +1,4 @@
-import tkinter as tk     
+import tkinter as tk
 from tkinter import StringVar, BooleanVar
 from tkinter import W, LEFT
 
@@ -7,9 +7,9 @@ from domain.enum import Position
 from services import starting_positions_services
 from ui.dialog.wizard import wizard
 
-class Dialog(wizard.Dialog):
 
-    starting_set:StartingPositionSet
+class Dialog(wizard.Dialog):
+    starting_set: StartingPositionSet
 
     def __init__(self, parent):
         super().__init__(parent)
@@ -22,8 +22,9 @@ class Dialog(wizard.Dialog):
 
         return self.wizard
 
+
 class Wizard(wizard.Wizard):
-    def __init__(self, parent:Dialog):
+    def __init__(self, parent: Dialog):
         super().__init__(parent)
         self.parent = parent
         self.points_format = False
@@ -31,7 +32,7 @@ class Wizard(wizard.Wizard):
         self.steps.append(Positions(self))
 
         self.show_step(0)
-    
+
     def cancel(self):
         self.parent.starting_set = None
         super().cancel()
@@ -41,24 +42,25 @@ class Wizard(wizard.Wizard):
         self.parent.starting_set = starting_positions_services.save_starting_position_set(self.parent.starting_set)
         super().finish()
 
+
 class Step0(tk.Frame):
-    def __init__(self, parent:Wizard):
+    def __init__(self, parent: Wizard):
         super().__init__(parent)
         self.parent = parent
-        header = tk.Label(self, text="Initialize Starting Position Set")
+        header = tk.Label(self, text='Initialize Starting Position Set')
         header.grid(row=0, column=0, columnspan=2)
 
-        tk.Label(self, text="Name:").grid(row=1, column=0)
+        tk.Label(self, text='Name:').grid(row=1, column=0)
         self.name_tv = StringVar()
         tk.Entry(self, textvariable=self.name_tv).grid(row=1, column=1)
 
-        tk.Label(self, text="Description:").grid(row=2, column=0)
+        tk.Label(self, text='Description:').grid(row=2, column=0)
         self.desc_tv = StringVar()
         tk.Entry(self, textvariable=self.desc_tv).grid(row=2, column=1)
 
     def on_show(self):
         return True
-    
+
     def validate(self):
         self.parent.validate_msg = ''
         if self.name_tv.get() is None or self.name_tv.get() == '':
@@ -69,26 +71,29 @@ class Step0(tk.Frame):
         self.parent.parent.starting_set.detail = self.desc_tv.get()
         return True
 
+
 class Positions(tk.Frame):
-    def __init__(self, parent:Wizard):
+    def __init__(self, parent: Wizard):
         super().__init__(parent)
         self.parent = parent
-        tk.Label(self, text="Select Positions and Counts").grid(row=0, column=0, columnspan=2)
+        tk.Label(self, text='Select Positions and Counts').grid(row=0, column=0, columnspan=2)
         self.positions = {}
         self.count_entry = {}
         self.counts = {}
-        
+
         for idx, pos in enumerate(Position.get_offensive_pos() + Position.get_discrete_pitching_pos() + [Position.POS_P]):
-            if pos == Position.OFFENSE: 
+            if pos == Position.OFFENSE:
                 continue
             self.positions[pos] = BooleanVar()
-            tk.Checkbutton(self, text = pos.value, variable=self.positions[pos], command=lambda _pos=pos: self.toggle_pos(_pos), justify=LEFT, anchor=W).grid(sticky=W, row = (int)(idx/2)+1, column=2*(idx % 2))
+            tk.Checkbutton(self, text=pos.value, variable=self.positions[pos], command=lambda _pos=pos: self.toggle_pos(_pos), justify=LEFT, anchor=W).grid(
+                sticky=W, row=(int)(idx / 2) + 1, column=2 * (idx % 2)
+            )
             count = StringVar()
             self.counts[pos] = count
             self.count_entry[pos] = ce = tk.Entry(self, textvariable=count)
-            ce.grid(row = (int)(idx/2)+1, column=2*(idx % 2)+1)
+            ce.grid(row=(int)(idx / 2) + 1, column=2 * (idx % 2) + 1)
 
-    def toggle_pos(self, pos:Position):
+    def toggle_pos(self, pos: Position):
         if self.positions[pos].get():
             self.count_entry[pos].configure(state='normal')
         else:
@@ -103,7 +108,7 @@ class Positions(tk.Frame):
                 bv.set(False)
                 self.count_entry[pos].configure(state='disable')
         return True
-    
+
     def validate(self):
         self.parent.parent.starting_set.positions = []
         found_pos = False

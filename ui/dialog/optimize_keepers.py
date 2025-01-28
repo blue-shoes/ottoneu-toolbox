@@ -3,10 +3,11 @@ from tkinter import StringVar, IntVar, BooleanVar
 from tkinter import DISABLED, NORMAL
 from tkinter import messagebox as mb
 
+
 class Dialog(tk.Toplevel):
-    def __init__(self, parent, inflation:float):
+    def __init__(self, parent, inflation: float):
         super().__init__(parent)
-        self.title("Optimize keepers")
+        self.title('Optimize keepers')
         self.frm = frm = tk.Frame(self, borderwidth=4)
 
         self.current_inflation = inflation * 100
@@ -23,14 +24,14 @@ class Dialog(tk.Toplevel):
 
         tk.Radiobutton(frm, text='Surplus Only', variable=self.target_type, value=0, anchor='w', command=self.update_type).grid(row=1, column=0, columnspan=2)
         tk.Radiobutton(frm, text='Up to Target Inflation', variable=self.target_type, value=1, anchor='w', command=self.update_type).grid(row=2, column=0, columnspan=2)
-        
+
         self.ti_lbl = tk.Label(frm, text='Target Inflation (%)')
         self.ti_lbl.grid(row=3, column=0)
         self.ti_entry = tk.Entry(frm, textvariable=self.inflation_sv)
         self.ti_entry.grid(row=3, column=1)
 
         self.ti_lbl['state'] = DISABLED
-        self.ti_entry['state'] = DISABLED 
+        self.ti_entry['state'] = DISABLED
 
         self.keep_current_bv = BooleanVar()
         self.keep_current_bv.set(True)
@@ -40,19 +41,19 @@ class Dialog(tk.Toplevel):
         tk.Button(frm, command=self.ok, text='OK', width=7).grid(row=5, column=0, padx=5)
         tk.Button(frm, command=self.cancel, text='Cancel', width=7).grid(row=5, column=1, padx=5)
 
-        self.protocol("WM_DELETE_WINDOW", self.cancel)
+        self.protocol('WM_DELETE_WINDOW', self.cancel)
 
         self.wait_window()
-    
+
     def update_type(self):
         if self.target_type.get() == 0:
             self.ti_lbl['state'] = DISABLED
-            self.ti_entry['state'] = DISABLED  
+            self.ti_entry['state'] = DISABLED
             self.inflation_sv.set('0.0')
         else:
             self.ti_lbl['state'] = NORMAL
             self.ti_entry['state'] = NORMAL
-            self.inflation_sv.set("{:.1f}".format(self.current_inflation))
+            self.inflation_sv.set('{:.1f}'.format(self.current_inflation))
 
     def ok(self):
         try:

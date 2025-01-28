@@ -1,6 +1,6 @@
-import tkinter as tk     
+import tkinter as tk
 from tkinter import StringVar
-from tkinter import ttk 
+from tkinter import ttk
 from domain.domain import League
 from domain.enum import Platform
 from services import league_services, ottoneu_services, yahoo_services, position_set_services, starting_positions_services
@@ -14,6 +14,7 @@ import os
 import json
 import requests
 
+
 class Dialog(wizard.Dialog):
     def __init__(self, parent):
         super().__init__(parent)
@@ -25,9 +26,9 @@ class Dialog(wizard.Dialog):
         self.league = None
         return self.wizard
 
-class Wizard(wizard.Wizard):
 
-    league:League
+class Wizard(wizard.Wizard):
+    league: League
 
     def __init__(self, parent):
         super().__init__(parent)
@@ -39,11 +40,11 @@ class Wizard(wizard.Wizard):
         self.league = None
 
         self.show_step(0)
-    
+
     def cancel(self):
         self.league = None
         super().cancel()
-    
+
     def finish(self):
         self.parent.validate_msg = None
         if self.step2.users_team_name.get() == 'None Selected':
@@ -58,7 +59,6 @@ class Wizard(wizard.Wizard):
             self.league.roster_spots = int(self.step2.roster_spots.get())
             if self.league.is_salary_cap():
                 self.league.team_salary_cap = float(self.step2.yahoo_salary.get())
-            
 
         prog = progress.ProgressDialog(self, 'Saving League')
         prog.set_task_title('Saving league')
@@ -80,20 +80,21 @@ class Wizard(wizard.Wizard):
         prog.complete()
         super().finish()
 
+
 class Step1(tk.Frame):
     def __init__(self, parent):
         super().__init__(parent)
         self.parent = parent
-        ttk.Label(self, text = 'League Platform').grid(column=0,row=0, pady=5, sticky=tk.E)
+        ttk.Label(self, text='League Platform').grid(column=0, row=0, pady=5, sticky=tk.E)
         self.platform = StringVar()
         self.platform.set(Platform.OTTONEU)
         cb = ttk.Combobox(self, textvariable=self.platform)
         cb['values'] = (Platform.OTTONEU.value, Platform.YAHOO.value)
-        cb.grid(column=1,row=0, sticky=tk.W, padx=5)
-        ttk.Label(self, text = "Enter League #:").grid(column=0,row=1, pady=5, sticky=tk.E)
-        #width is in text units, not pixels
-        self.league_num_entry = ttk.Entry(self, width = 10)
-        self.league_num_entry.grid(column=1,row=1, sticky=tk.W, padx=5)
+        cb.grid(column=1, row=0, sticky=tk.W, padx=5)
+        ttk.Label(self, text='Enter League #:').grid(column=0, row=1, pady=5, sticky=tk.E)
+        # width is in text units, not pixels
+        self.league_num_entry = ttk.Entry(self, width=10)
+        self.league_num_entry.grid(column=1, row=1, sticky=tk.W, padx=5)
 
         CreateToolTip(self.league_num_entry, 'The league id (find it in the league URL)')
 
@@ -101,7 +102,7 @@ class Step1(tk.Frame):
 
     def on_show(self):
         return True
-    
+
     def validate(self):
         pd = progress.ProgressDialog(self.master, title='Getting League')
         try:
@@ -123,43 +124,44 @@ class Step1(tk.Frame):
                     return False
             else:
                 logging.exception(f'Error creating league for platform {self.platform.get()}')
-                self.parent.validate_msg = f"The platform {self.platform.get()} is not implemented."
+                self.parent.validate_msg = f'The platform {self.platform.get()} is not implemented.'
                 return False
 
         except Exception:
             logging.exception(f'Error creating league #{self.league_num_entry.get()}')
-            self.parent.validate_msg = f"There was an error downloading league number {self.league_num_entry.get()}. Please confirm this is the correct league."
+            self.parent.validate_msg = f'There was an error downloading league number {self.league_num_entry.get()}. Please confirm this is the correct league.'
             return False
         finally:
             pd.complete()
         return True
 
+
 class Step2(tk.Frame):
     def __init__(self, parent):
         super().__init__(parent)
         self.parent = parent
-        header = tk.Label(self, text="Confirm League")
+        header = tk.Label(self, text='Confirm League')
         header.grid(row=0, column=0, columnspan=3)
 
-        ttk.Label(self, text = "League Name", font='bold').grid(column=0,row=1, pady=5, sticky=tk.E)
+        ttk.Label(self, text='League Name', font='bold').grid(column=0, row=1, pady=5, sticky=tk.E)
         self.lg_name_sv = StringVar()
         self.lg_name_sv.set('--')
         ttk.Label(self, textvariable=self.lg_name_sv).grid(column=1, row=1, pady=5, sticky=tk.W)
 
-        ttk.Label(self, text="User's Team", font='bold').grid(column=0, row=2,sticky=tk.E, pady=5)
+        ttk.Label(self, text="User's Team", font='bold').grid(column=0, row=2, sticky=tk.E, pady=5)
         self.users_team_name = StringVar()
         self.users_team_name.set('None Selected')
         self.users_team_cb = utcb = ttk.Combobox(self, textvariable=self.users_team_name)
         CreateToolTip(self.users_team_cb, "Select the user's team in the league to enable additional functionality.")
-        utcb['values'] = ('None Available')
-        utcb.grid(column=1,row=2,pady=5)
+        utcb['values'] = 'None Available'
+        utcb.grid(column=1, row=2, pady=5)
 
-        ttk.Label(self, text = "Number of Teams", font='bold').grid(column=0,row=3, pady=5, sticky=tk.E)
+        ttk.Label(self, text='Number of Teams', font='bold').grid(column=0, row=3, pady=5, sticky=tk.E)
         self.num_teams_sv = StringVar()
         self.num_teams_sv.set('--')
         ttk.Label(self, textvariable=self.num_teams_sv).grid(column=1, row=3, pady=5, sticky=tk.W)
 
-        ttk.Label(self, text = "Scoring Format", font='bold').grid(column=0,row=4, pady=5, sticky=tk.E)
+        ttk.Label(self, text='Scoring Format', font='bold').grid(column=0, row=4, pady=5, sticky=tk.E)
         self.format_sv = StringVar()
         self.format_sv.set('--')
         ttk.Label(self, textvariable=self.format_sv).grid(column=1, row=4, pady=5, sticky=tk.W)
@@ -167,7 +169,7 @@ class Step2(tk.Frame):
         self.yahoo_frame = ttk.Frame(self)
         self.yahoo_frame.grid(row=5, column=0, columnspan=2)
 
-        ttk.Label(self.yahoo_frame, text = "Roster Spots", font='bold').grid(column=0,row=0, pady=5, sticky=tk.E)
+        ttk.Label(self.yahoo_frame, text='Roster Spots', font='bold').grid(column=0, row=0, pady=5, sticky=tk.E)
         self.roster_spots = StringVar()
         self.roster_spots.set('23')
         ttk.Label(self.yahoo_frame, textvariable=self.roster_spots).grid(column=1, row=0, pady=5, sticky=tk.W)
@@ -177,7 +179,7 @@ class Step2(tk.Frame):
         self.yahoo_salary = ys = StringVar()
         ys.set('260')
         self.salary_entry = ttk.Entry(self.yahoo_frame, textvariable=ys)
-        self.salary_entry.grid(row=1, column = 1)
+        self.salary_entry.grid(row=1, column=1)
 
     def on_show(self):
         lg = self.parent.league
@@ -188,7 +190,7 @@ class Step2(tk.Frame):
             self.yahoo_frame.grid(row=5, column=0, columnspan=2)
             if lg.is_salary_cap():
                 self.salary_lbl.grid(row=1, column=0)
-                self.salary_entry.grid(row=1, column = 1)
+                self.salary_entry.grid(row=1, column=1)
             else:
                 self.salary_lbl.grid_forget()
                 self.salary_entry.grid_forget()

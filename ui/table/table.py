@@ -1,12 +1,25 @@
 from tkinter import CENTER, NO
-from tkinter import ttk 
+from tkinter import ttk
 from PIL import ImageTk, Image
-import sys 
+import sys
 import os
 
-class Table(ttk.Treeview):
 
-    def __init__(self, parent, columns, column_alignments=None, column_widths=None, sortable_columns=None, reverse_col_sort=None, hscroll=True, init_sort_col=None, custom_sort={}, checkbox:bool=False, pack=True):
+class Table(ttk.Treeview):
+    def __init__(
+        self,
+        parent,
+        columns,
+        column_alignments=None,
+        column_widths=None,
+        sortable_columns=None,
+        reverse_col_sort=None,
+        hscroll=True,
+        init_sort_col=None,
+        custom_sort={},
+        checkbox: bool = False,
+        pack=True,
+    ):
         if checkbox:
             super().__init__(parent, columns=columns)
         else:
@@ -41,11 +54,11 @@ class Table(ttk.Treeview):
                 if col in column_widths:
                     width = column_widths[col]
             self.column_map[col] = col_num
-            self.column(f"#{col_num}",anchor=align, stretch=NO, width=width)
+            self.column(f'#{col_num}', anchor=align, stretch=NO, width=width)
             if sortable_columns is not None:
                 if col in sortable_columns and col_num != 0:
                     # From https://stackoverflow.com/a/30724912
-                    self.heading(f'#{col_num}', text=col, command=lambda _col=col: self.treeview_sort_column(_col) )
+                    self.heading(f'#{col_num}', text=col, command=lambda _col=col: self.treeview_sort_column(_col))
                     self.reverse_sort[col] = True
 
                 else:
@@ -75,65 +88,64 @@ class Table(ttk.Treeview):
         if isinstance(text, int):
             text = str(text)
         for child in self.get_children():
-            if self.item(child,"text") == text:
+            if self.item(child, 'text') == text:
                 return child
         return None
-    
+
     def set_tags_by_row_text(self, text, tags):
         row = self.get_row_by_text(text)
         if row is not None:
             self.item(row, tags=tags)
-    
+
     def set_right_click_method(self, rclick_method):
         self.bind('<Button-3>', rclick_method)
-    
+
     def set_double_click_method(self, dclick_method):
         self.bind('<Double-Button-1>', dclick_method)
-    
+
     def add_scrollbar(self):
         if self.is_pack:
             self.pack(side='left', fill='both', expand=True)
             if isinstance(self.parent, ScrollableTreeFrame):
-                self.vsb = ttk.Scrollbar(self.parent, orient="vertical", command=self.yview)
+                self.vsb = ttk.Scrollbar(self.parent, orient='vertical', command=self.yview)
                 self.configure(yscrollcommand=self.vsb.set)
                 self.vsb.pack(side='right', fill='y')
                 if self.hscroll:
-                    self.hsb = ttk.Scrollbar(self.parent.master, orient="horizontal", command=self.xview)
+                    self.hsb = ttk.Scrollbar(self.parent.master, orient='horizontal', command=self.xview)
                     self.configure(xscrollcommand=self.hsb.set)
                     self.hsb.pack(side='bottom', fill='x')
             else:
-                self.vsb = ttk.Scrollbar(self, orient="vertical", command=self.yview)
+                self.vsb = ttk.Scrollbar(self, orient='vertical', command=self.yview)
                 self.configure(yscrollcommand=self.vsb.set)
                 self.vsb.pack(side='right', fill='y')
                 if self.hscroll:
-                    self.hsb = ttk.Scrollbar(self, orient="horizontal", command=self.xview)
+                    self.hsb = ttk.Scrollbar(self, orient='horizontal', command=self.xview)
                     self.configure(xscrollcommand=self.hsb.set)
                     self.hsb.pack(side='bottom', fill='x')
         else:
-            self.grid(column=0,row=0, sticky='nsew')
+            self.grid(column=0, row=0, sticky='nsew')
             self.parent.grid_rowconfigure(0, weight=1)
             self.parent.grid_columnconfigure(0, weight=1)
 
-            self.vsb = ttk.Scrollbar(self.parent, orient="vertical", command=self.yview)
+            self.vsb = ttk.Scrollbar(self.parent, orient='vertical', command=self.yview)
             self.configure(yscrollcommand=self.vsb.set)
             self.vsb.grid(row=0, column=1, sticky='ns')
             self.parent.grid_columnconfigure(1, weight=0)
 
             if self.hscroll:
-                self.hsb = ttk.Scrollbar(self.parent, orient="horizontal", command=self.xview)
+                self.hsb = ttk.Scrollbar(self.parent, orient='horizontal', command=self.xview)
                 self.configure(xscrollcommand=self.hsb.set)
                 self.hsb.grid(row=1, column=0, sticky='ew')
                 self.parent.grid_rowconfigure(1, weight=0)
 
-    
     def set_refresh_method(self, refresh_method):
         self.refresh_method = refresh_method
-    
-    def set_row_select_method(self, select_method):            
+
+    def set_row_select_method(self, select_method):
         self.bind('<<TreeviewSelect>>', select_method, add=True)
-    
+
     def set_checkbox_toggle_method(self, checkbox_method):
-        '''The checkbox_method must accept the arguments (iid, selected)'''
+        """The checkbox_method must accept the arguments (iid, selected)"""
         self.__extra_checkbox_method = checkbox_method
 
     def __checkbox_method(self, event):
@@ -145,14 +157,14 @@ class Table(ttk.Treeview):
                 if self.tag_has('checked', item):
                     self.__tag_remove(item, 'checked')
                     self.__tag_add(item, ('unchecked',))
-                    selected=False
+                    selected = False
                 else:
                     self.__tag_remove(item, 'unchecked')
                     self.__tag_add(item, ('checked',))
-                    selected=True
+                    selected = True
                 if self.__extra_checkbox_method is not None:
                     self.__extra_checkbox_method(item, selected)
-    
+
     def __tag_add(self, item, tags):
         new_tags = tuple(self.item(item, 'tags')) + tuple(tags)
         self.item(item, tags=new_tags)
@@ -166,16 +178,16 @@ class Table(ttk.Treeview):
         self.sort_col = col
         if reverse is not None:
             self.reverse_sort[col] = reverse
-            
+
         if col in self.custom_sort:
             li = self.custom_sort.get(col)()
         else:
             # From https://stackoverflow.com/a/1967793
-            column_index = self["columns"].index(col)
+            column_index = self['columns'].index(col)
             if self.checkbox:
                 column_index -= 1
-            li = [(str(self.item(k)["values"][column_index]), k) for k in self.get_children()]
-            #l = [(self.set(k, col), k) for k in self.get_children('')]
+            li = [(str(self.item(k)['values'][column_index]), k) for k in self.get_children()]
+            # l = [(self.set(k, col), k) for k in self.get_children('')]
             li.sort(reverse=self.reverse_sort[col], key=lambda x, _col=col: sort_cmp(x, self.reverse_sort[_col]))
 
         # rearrange items in sorted positions
@@ -184,7 +196,7 @@ class Table(ttk.Treeview):
 
         # reverse sort next time
         self.reverse_sort[col] = not self.reverse_sort[col]
-    
+
     def refresh(self):
         self.delete(*self.get_children())
         self.refresh_method()
@@ -196,22 +208,22 @@ class Table(ttk.Treeview):
         if self.hsb is not None:
             if self.is_pack:
                 self.hsb.pack()
-    
+
     def resort(self):
         if self.sort_col is not None:
             self.treeview_sort_column(self.sort_col, not self.reverse_sort[self.sort_col])
-    
+
     def set_display_columns(self, columns):
         if self.checkbox:
             display_col = []
             for col in columns:
-                if self.column_map[col] == 0: 
+                if self.column_map[col] == 0:
                     continue
-                display_col.append(max(0, self.column_map[col]-1))
+                display_col.append(max(0, self.column_map[col] - 1))
             self['displaycolumns'] = tuple(display_col)
         else:
             self['displaycolumns'] = columns
-    
+
     def hide_columns(self, to_hide):
         new_dc = self['displaycolumns']
         if new_dc == ('#all',):
@@ -223,7 +235,7 @@ class Table(ttk.Treeview):
         self['displaycolumns'] = tuple(new_dc)
 
     def show_columns(self, to_show: dict):
-        '''Columns to add back to table. Dictionary is column name to desired index'''
+        """Columns to add back to table. Dictionary is column name to desired index"""
         new_dc = self['displaycolumns']
         if new_dc == ('#all',):
             return
@@ -232,15 +244,29 @@ class Table(ttk.Treeview):
             if col in new_dc:
                 new_dc.append(to_show[col], col)
         self['displaycolumns'] = tuple(new_dc)
-    
+
     def restore_all_columns(self):
         self['displaycolumns'] = ('#all',)
 
+
 class ScrollableTreeFrame(ttk.Frame):
+    table: Table
 
-    table:Table
-
-    def __init__(self, parent, columns, column_alignments=None, column_widths=None, sortable_columns=None, reverse_col_sort=None, hscroll=True, init_sort_col=None, custom_sort={}, checkbox:bool=False, pack=True, **kw):
+    def __init__(
+        self,
+        parent,
+        columns,
+        column_alignments=None,
+        column_widths=None,
+        sortable_columns=None,
+        reverse_col_sort=None,
+        hscroll=True,
+        init_sort_col=None,
+        custom_sort={},
+        checkbox: bool = False,
+        pack=True,
+        **kw,
+    ):
         super().__init__(parent, **kw)
         if pack:
             self.pack_propagate(False)
@@ -249,23 +275,25 @@ class ScrollableTreeFrame(ttk.Frame):
 
         if hscroll and pack:
             parent = ttk.Frame(self)
-            parent.pack_propagate=False
+            parent.pack_propagate = False
             parent.pack(side='top', fill='both', expand=True)
         else:
             parent = self
 
         self.table = Table(parent, columns, column_alignments, column_widths, sortable_columns, reverse_col_sort, hscroll, init_sort_col, custom_sort, checkbox, pack)
         self.table.add_scrollbar()
-    
+
     def refresh(self) -> None:
         self.table.refresh()
+
 
 def bool_to_table(val):
     if val:
         return 'X'
     else:
         return ''
-    
+
+
 def sort_cmp(t1, reverse=False):
     v1 = t1[0]
     if len(v1) == 0:
@@ -284,7 +312,8 @@ def sort_cmp(t1, reverse=False):
     except ValueError:
         return v1.upper()
 
+
 def resource_path(end_file) -> str:
-    """ Get absolute path to resource, works for dev and for PyInstaller """
+    """Get absolute path to resource, works for dev and for PyInstaller"""
     base_path = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
-    return os.path.join(base_path, 'resources', end_file) 
+    return os.path.join(base_path, 'resources', end_file)

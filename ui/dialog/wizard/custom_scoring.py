@@ -1,4 +1,4 @@
-import tkinter as tk     
+import tkinter as tk
 from tkinter import StringVar, IntVar, BooleanVar
 from tkinter import W, LEFT
 
@@ -7,9 +7,9 @@ from domain.enum import StatType
 from services import custom_scoring_services
 from ui.dialog.wizard import wizard
 
-class Dialog(wizard.Dialog):
 
-    scoring:CustomScoring
+class Dialog(wizard.Dialog):
+    scoring: CustomScoring
 
     def __init__(self, parent):
         super().__init__(parent)
@@ -22,8 +22,9 @@ class Dialog(wizard.Dialog):
 
         return self.wizard
 
+
 class Wizard(wizard.Wizard):
-    def __init__(self, parent:Dialog):
+    def __init__(self, parent: Dialog):
         super().__init__(parent)
         self.parent = parent
         self.points_format = False
@@ -32,22 +33,22 @@ class Wizard(wizard.Wizard):
         self.steps.append(Hitter_Points(self))
         self.steps.append(Pitcher_Cats(self))
         self.steps.append(Pitcher_Points(self))
-        #self.steps.append(Confirm(self))
+        # self.steps.append(Confirm(self))
 
         self.show_step(0)
-    
+
     def cancel(self):
         self.parent.scoring = None
         super().cancel()
-    
+
     def determine_next_step(self):
         if self.points_format:
-            if self.current_step == 0 or self.current_step == 2 :
+            if self.current_step == 0 or self.current_step == 2:
                 return self.current_step + 2
-        elif self.current_step == 1 or self.current_step == 3: 
+        elif self.current_step == 1 or self.current_step == 3:
             return self.current_step + 2
         return super().determine_next_step()
-    
+
     def determine_previous_step(self):
         if self.points_format:
             if self.current_step == 4 or self.current_step == 2:
@@ -55,29 +56,30 @@ class Wizard(wizard.Wizard):
         elif self.current_step == 5 or self.current_step == 3:
             return self.current_step - 2
         return super().determine_previous_step()
-    
+
     def is_last_page(self, step):
         if self.points_format:
-            return step == len(self.steps)-1
-        return step == len(self.steps)-2
+            return step == len(self.steps) - 1
+        return step == len(self.steps) - 2
 
     def finish(self):
         self.steps[self.current_step].validate()
         self.parent.scoring = custom_scoring_services.save_scoring_format(self.parent.scoring)
         super().finish()
 
+
 class Step0(tk.Frame):
-    def __init__(self, parent:Wizard):
+    def __init__(self, parent: Wizard):
         super().__init__(parent)
         self.parent = parent
-        header = tk.Label(self, text="Initialize Scoring Format")
+        header = tk.Label(self, text='Initialize Scoring Format')
         header.grid(row=0, column=0, columnspan=2)
 
-        tk.Label(self, text="Name:").grid(row=1, column=0)
+        tk.Label(self, text='Name:').grid(row=1, column=0)
         self.name_tv = StringVar()
         tk.Entry(self, textvariable=self.name_tv).grid(row=1, column=1)
 
-        tk.Label(self, text="Description:").grid(row=2, column=0)
+        tk.Label(self, text='Description:').grid(row=2, column=0)
         self.desc_tv = StringVar()
         tk.Entry(self, textvariable=self.desc_tv).grid(row=2, column=1)
 
@@ -92,7 +94,7 @@ class Step0(tk.Frame):
 
     def on_show(self):
         return True
-    
+
     def validate(self):
         self.parent.validate_msg = ''
         if self.name_tv.get() is None or self.name_tv.get() == '':
@@ -101,22 +103,23 @@ class Step0(tk.Frame):
         self.parent.parent.scoring = CustomScoring()
         self.parent.parent.scoring.name = self.name_tv.get()
         self.parent.parent.scoring.description = self.desc_tv.get()
-        self.parent.parent.scoring.points_format = (self.scoring_basis_iv.get() == 1)
+        self.parent.parent.scoring.points_format = self.scoring_basis_iv.get() == 1
         self.parent.parent.scoring.head_to_head = self.h2h_bv.get()
         self.parent.points_format = self.parent.parent.scoring.points_format
         return True
 
+
 class Hitter_Cats(tk.Frame):
-    def __init__(self, parent:Wizard):
+    def __init__(self, parent: Wizard):
         super().__init__(parent)
         self.parent = parent
-        tk.Label(self, text="Select Hitter Categories").grid(row=0, column=0, columnspan=2)
+        tk.Label(self, text='Select Hitter Categories').grid(row=0, column=0, columnspan=2)
         self.stat_vars = {}
-        
+
         for idx, stat in enumerate(StatType.get_all_hit_stattype()):
             self.stat_vars[stat] = BooleanVar()
-            tk.Checkbutton(self, text = stat.display, variable=self.stat_vars[stat], justify=LEFT, anchor=W).grid(sticky=W, row = (int)(idx/2)+1, column=idx % 2)
-    
+            tk.Checkbutton(self, text=stat.display, variable=self.stat_vars[stat], justify=LEFT, anchor=W).grid(sticky=W, row=(int)(idx / 2) + 1, column=idx % 2)
+
     def on_show(self):
         for stat, bv in self.stat_vars.items():
             if stat in [s.category for s in self.parent.parent.scoring.stats]:
@@ -124,7 +127,7 @@ class Hitter_Cats(tk.Frame):
             else:
                 bv.set(False)
         return True
-    
+
     def validate(self):
         if self.parent.parent.scoring.stats is None:
             self.parent.parent.scoring.stats = []
@@ -145,24 +148,27 @@ class Hitter_Cats(tk.Frame):
         self.parent.validate_msg = 'Please select at least one stat category'
         return False
 
+
 class Hitter_Points(tk.Frame):
-    def __init__(self, parent:Wizard):
+    def __init__(self, parent: Wizard):
         super().__init__(parent)
         self.parent = parent
-        tk.Label(self, text="Select Hitter Categories").grid(row=0, column=0, columnspan=2)
+        tk.Label(self, text='Select Hitter Categories').grid(row=0, column=0, columnspan=2)
         self.stat_vars = {}
         self.point_entries = {}
         self.stat_points = {}
-        
+
         for idx, stat in enumerate(StatType.get_all_hit_stattype()):
             self.stat_vars[stat] = BooleanVar()
-            tk.Checkbutton(self, text = stat.display, variable=self.stat_vars[stat], command=lambda _stat=stat: self.toggle_stat(_stat), justify=LEFT, anchor=W).grid(sticky=W, row = (int)(idx/2)+1, column=2*(idx % 2))
+            tk.Checkbutton(self, text=stat.display, variable=self.stat_vars[stat], command=lambda _stat=stat: self.toggle_stat(_stat), justify=LEFT, anchor=W).grid(
+                sticky=W, row=(int)(idx / 2) + 1, column=2 * (idx % 2)
+            )
             points = StringVar()
             self.stat_points[stat] = points
             self.point_entries[stat] = sp = tk.Entry(self, textvariable=points)
-            sp.grid(row = (int)(idx/2)+1, column=2*(idx % 2)+1)
+            sp.grid(row=(int)(idx / 2) + 1, column=2 * (idx % 2) + 1)
 
-    def toggle_stat(self, stat:StatType):
+    def toggle_stat(self, stat: StatType):
         if self.stat_vars[stat].get():
             self.point_entries[stat].configure(state='active')
         else:
@@ -177,7 +183,7 @@ class Hitter_Points(tk.Frame):
                 bv.set(False)
                 self.point_entries[stat].configure(state='disable')
         return True
-    
+
     def validate(self):
         if self.parent.parent.scoring.stats is None:
             self.parent.parent.scoring.stats = []
@@ -202,18 +208,19 @@ class Hitter_Points(tk.Frame):
             return True
         self.parent.validate_msg = 'Please select at least one stat category'
         return False
-        
+
+
 class Pitcher_Cats(tk.Frame):
-    def __init__(self, parent:Wizard):
+    def __init__(self, parent: Wizard):
         super().__init__(parent)
         self.parent = parent
-        tk.Label(self, text="Select Pitcher Categories").grid(row=0, column=0, columnspan=2)
+        tk.Label(self, text='Select Pitcher Categories').grid(row=0, column=0, columnspan=2)
         self.stat_vars = {}
-        
+
         for idx, stat in enumerate(StatType.get_all_pitch_stattype(no_rates=False)):
             self.stat_vars[stat] = BooleanVar()
-            tk.Checkbutton(self, text = stat.display, variable=self.stat_vars[stat], justify=LEFT, anchor=W).grid(sticky=W, row = (int)(idx/2)+1, column=idx % 2)
-    
+            tk.Checkbutton(self, text=stat.display, variable=self.stat_vars[stat], justify=LEFT, anchor=W).grid(sticky=W, row=(int)(idx / 2) + 1, column=idx % 2)
+
     def on_show(self):
         for stat, bv in self.stat_vars.items():
             if stat in [s.category for s in self.parent.parent.scoring.stats]:
@@ -221,7 +228,7 @@ class Pitcher_Cats(tk.Frame):
             else:
                 bv.set(False)
         return True
-    
+
     def validate(self):
         if self.parent.parent.scoring.stats is None:
             self.parent.parent.scoring.stats = []
@@ -240,26 +247,29 @@ class Pitcher_Cats(tk.Frame):
         if found_cat:
             return True
         self.parent.validate_msg = 'Please select at least one stat category'
-        return False      
+        return False
+
 
 class Pitcher_Points(tk.Frame):
-    def __init__(self, parent:Wizard):
+    def __init__(self, parent: Wizard):
         super().__init__(parent)
         self.parent = parent
-        tk.Label(self, text="Select Pitcher Categories").grid(row=0, column=0, columnspan=2)
+        tk.Label(self, text='Select Pitcher Categories').grid(row=0, column=0, columnspan=2)
         self.stat_vars = {}
         self.point_entries = {}
         self.stat_points = {}
-        
+
         for idx, stat in enumerate(StatType.get_all_pitch_stattype(no_rates=True)):
             self.stat_vars[stat] = BooleanVar()
-            tk.Checkbutton(self, text = stat.display, variable=self.stat_vars[stat], command=lambda _stat=stat: self.toggle_stat(_stat), justify=LEFT, anchor=W).grid(sticky=W, row = (int)(idx/2)+1, column=2*(idx % 2))
+            tk.Checkbutton(self, text=stat.display, variable=self.stat_vars[stat], command=lambda _stat=stat: self.toggle_stat(_stat), justify=LEFT, anchor=W).grid(
+                sticky=W, row=(int)(idx / 2) + 1, column=2 * (idx % 2)
+            )
             points = StringVar()
             self.stat_points[stat] = points
             self.point_entries[stat] = sp = tk.Entry(self)
-            sp.grid(row = (int)(idx/2)+1, column=2*(idx % 2)+1)
-    
-    def toggle_stat(self, stat:StatType):
+            sp.grid(row=(int)(idx / 2) + 1, column=2 * (idx % 2) + 1)
+
+    def toggle_stat(self, stat: StatType):
         if self.stat_vars[stat].get():
             self.point_entries[stat].configure(state='active')
         else:
@@ -274,7 +284,7 @@ class Pitcher_Points(tk.Frame):
                 bv.set(False)
                 self.point_entries[stat].configure(state='disable')
         return True
-    
+
     def validate(self):
         if self.parent.parent.scoring.stats is None:
             self.parent.parent.scoring.stats = []

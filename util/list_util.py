@@ -1,8 +1,9 @@
 from typing import List, Dict, Tuple
 from collections import OrderedDict
 
-def rank_list_with_ties(vals:List[object], reverse:bool=True, max_rank:int=12) -> Dict[object, float]:
-    '''Ranks the argument list. If ties occur, average the rank'''
+
+def rank_list_with_ties(vals: List[object], reverse: bool = True, max_rank: int = 12) -> Dict[object, float]:
+    """Ranks the argument list. If ties occur, average the rank"""
     count = {}
     none_vals = False
     for val in vals:
@@ -13,7 +14,7 @@ def rank_list_with_ties(vals:List[object], reverse:bool=True, max_rank:int=12) -
             else:
                 val = 9e9
         count[val] = count.get(val, 0) + 1
-    sorted_list = OrderedDict(sorted(count.items(), key=lambda t: t[0], reverse = reverse))
+    sorted_list = OrderedDict(sorted(count.items(), key=lambda t: t[0], reverse=reverse))
 
     rank_map = {}
     rank = max_rank
@@ -32,12 +33,13 @@ def rank_list_with_ties(vals:List[object], reverse:bool=True, max_rank:int=12) -
             rank_map[None] = rank_map[9e9]
     return rank_map
 
-def weighted_average(vals:List[Tuple[float, float]]) -> float:
-    '''Returns a weighted average of the input list. List is a set of Tuples with the weights as the first
-    value and the value to be weighted as the second value'''
+
+def weighted_average(vals: List[Tuple[float, float]]) -> float:
+    """Returns a weighted average of the input list. List is a set of Tuples with the weights as the first
+    value and the value to be weighted as the second value"""
     num = 0
     denom = 0
     for val in vals:
         num = num + val[0] * val[1]
         denom = denom + val[0]
-    return num/denom
+    return num / denom

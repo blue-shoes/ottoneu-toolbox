@@ -1,7 +1,7 @@
-import tkinter as tk 
-from tkinter import StringVar, Event    
+import tkinter as tk
+from tkinter import StringVar, Event
 from tkinter import W
-from tkinter import ttk 
+from tkinter import ttk
 from tkinter import messagebox as mb
 from tkinter import filedialog as fd
 from pathlib import Path
@@ -15,13 +15,14 @@ from domain.enum import IdType
 
 from services import position_set_services
 
+
 class Dialog(tk.Toplevel):
     def __init__(self, parent):
         super().__init__(parent)
         self.parent = parent
         self.pos_set = None
         self.deleted_position_set_ids = []
-        self.title("Select a Position Set")
+        self.title('Select a Position Set')
         frm = tk.Frame(self, borderwidth=4)
 
         top_frm = tk.Frame(frm)
@@ -49,18 +50,18 @@ class Dialog(tk.Toplevel):
         bot_frm = tk.Frame(frm)
         bot_frm.grid(row=1, sticky=tk.E)
 
-        ttk.Button(bot_frm, text="OK", command=self.set_position_set).grid(row=0, column=0)
-        ttk.Button(bot_frm, text="Cancel", command=self.cancel).grid(row=0, column=1)
-        ttk.Button(bot_frm, text="Import Set", command=self.import_set).grid(row=0, column=2)
+        ttk.Button(bot_frm, text='OK', command=self.set_position_set).grid(row=0, column=0)
+        ttk.Button(bot_frm, text='Cancel', command=self.cancel).grid(row=0, column=1)
+        ttk.Button(bot_frm, text='Import Set', command=self.import_set).grid(row=0, column=2)
 
         frm.pack()
 
-        self.protocol("WM_DELETE_WINDOW", self.cancel)
+        self.protocol('WM_DELETE_WINDOW', self.cancel)
 
         self.focus_force()
 
         self.wait_window()
-    
+
     def populate_table(self):
         for position_set in self.position_set_list:
             self.position_set_table.insert('', tk.END, text=str(position_set.id), values=(position_set.name, position_set.detail))
@@ -69,9 +70,9 @@ class Dialog(tk.Toplevel):
         self.on_select(event)
         self.set_position_set()
 
-    def on_select(self, event:Event):
+    def on_select(self, event: Event):
         if len(event.widget.selection()) > 0:
-            selection = event.widget.item(event.widget.selection()[0])["text"]
+            selection = event.widget.item(event.widget.selection()[0])['text']
             selection_id = int(selection)
             if selection_id == -1:
                 self.pos_set = None
@@ -82,33 +83,25 @@ class Dialog(tk.Toplevel):
                         break
         else:
             self.pos_set = None
-    
+
     def rclick(self, event):
         iid = event.widget.identify_row(event.y)
         event.widget.selection_set(iid)
-        position_set_id = int(event.widget.item(event.widget.selection()[0])["text"])
+        position_set_id = int(event.widget.item(event.widget.selection()[0])['text'])
         if position_set_id == -1:
             return
         popup = tk.Menu(self.parent, tearoff=0)
-        popup.add_command(label="Export to File", command=lambda: self.export_to_file(position_set_id))
-        popup.add_command(label="Delete", command=lambda: self.delete_position_set(position_set_id))
+        popup.add_command(label='Export to File', command=lambda: self.export_to_file(position_set_id))
+        popup.add_command(label='Delete', command=lambda: self.delete_position_set(position_set_id))
         try:
             popup.post(event.x_root, event.y_root)
         finally:
             popup.grab_release()
-    
-    def export_to_file(self, selection_id:int):
 
-        filetypes = (
-            ('csv files', '*.csv'),
-            ('All files', '*.*')
-        )
+    def export_to_file(self, selection_id: int):
+        filetypes = (('csv files', '*.csv'), ('All files', '*.*'))
 
-        file = fd.asksaveasfilename(
-            title='Save As...',
-            initialdir=Path.home(),
-            filetypes=filetypes
-            )
+        file = fd.asksaveasfilename(title='Save As...', initialdir=Path.home(), filetypes=filetypes)
 
         if file is None:
             return
@@ -117,10 +110,10 @@ class Dialog(tk.Toplevel):
             if position_set.id == selection_id:
                 export_set = position_set
                 break
-        
+
         position_set_services.write_position_set_to_csv(export_set, file)
 
-    def delete_position_set(self, position_set_id:int):
+    def delete_position_set(self, position_set_id: int):
         for position_set in self.position_set_list:
             if position_set.id == position_set_id:
                 sf = position_set
@@ -131,7 +124,7 @@ class Dialog(tk.Toplevel):
             self.lift()
             self.focus_force()
 
-    def perform_deletion(self, position_set:PositionSet):
+    def perform_deletion(self, position_set: PositionSet):
         self.lift()
         pd = progress.ProgressDialog(self.parent, 'Deleting Position Set')
         pd.set_completion_percent(15)
@@ -144,65 +137,62 @@ class Dialog(tk.Toplevel):
     def cancel(self):
         self.pos_set = None
         self.destroy()
-    
+
     def set_position_set(self):
         self.destroy()
-    
+
     def import_set(self):
         i_dialog = ImportPositionSetDialog(self)
         if i_dialog.pos_set:
             self.pos_set = i_dialog.pos_set
             self.destroy()
 
-class ImportPositionSetDialog(tk.Toplevel):
 
+class ImportPositionSetDialog(tk.Toplevel):
     def __init__(self, parent):
         super().__init__(parent)
         self.parent = parent
-        self.title("Import a Position Set")
+        self.title('Import a Position Set')
         frm = tk.Frame(self, borderwidth=4)
         frm.grid(columnspan=2)
 
-        tk.Label(frm, text="Name:").grid(row=1, column=0)
+        tk.Label(frm, text='Name:').grid(row=1, column=0)
         self.name_tv = StringVar()
         tk.Entry(frm, textvariable=self.name_tv).grid(row=1, column=1)
 
-        tk.Label(frm, text="Description:").grid(row=2, column=0)
+        tk.Label(frm, text='Description:').grid(row=2, column=0)
         self.desc_tv = StringVar()
         tk.Entry(frm, textvariable=self.desc_tv).grid(row=2, column=1)
 
-        file_label = ttk.Label(frm, text = "Player Value File (csv):")
-        file_label.grid(column=0,row=3, pady=5, stick=W)
+        file_label = ttk.Label(frm, text='Player Value File (csv):')
+        file_label.grid(column=0, row=3, pady=5, stick=W)
 
         self.position_set_file = tk.StringVar()
-        file_btn = ttk.Button(frm, textvariable = self.position_set_file, command=self.select_position_file)
-        file_btn.grid(column=1,row=3, padx=5, sticky='we', columnspan=2)
+        file_btn = ttk.Button(frm, textvariable=self.position_set_file, command=self.select_position_file)
+        file_btn.grid(column=1, row=3, padx=5, sticky='we', columnspan=2)
         self.position_set_file.set(Path.home())
 
         id_map = [IdType.OTTONEU.value, IdType.FANGRAPHS.value, IdType.MLB.value]
-        ttk.Label(frm, text="Player Id Type:").grid(column=0,row=4,pady=5, stick=W)
+        ttk.Label(frm, text='Player Id Type:').grid(column=0, row=4, pady=5, stick=W)
         self.id_type = StringVar()
         self.id_type.set(IdType.OTTONEU.value)
         id_combo = ttk.Combobox(frm, textvariable=self.id_type)
         id_combo['values'] = id_map
-        id_combo.grid(column=1,row=4,pady=5, columnspan=2)
+        id_combo.grid(column=1, row=4, pady=5, columnspan=2)
 
-        ttk.Button(self, text="OK", command=self.set_position_set).grid(row=1, column=0)
-        ttk.Button(self, text="Cancel", command=self.cancel).grid(row=1, column=1)
+        ttk.Button(self, text='OK', command=self.set_position_set).grid(row=1, column=0)
+        ttk.Button(self, text='Cancel', command=self.cancel).grid(row=1, column=1)
 
-        #frm.pack()
+        # frm.pack()
 
-        self.protocol("WM_DELETE_WINDOW", self.cancel)
+        self.protocol('WM_DELETE_WINDOW', self.cancel)
 
         self.focus_force()
 
         self.wait_window()
 
     def select_position_file(self):
-        filetypes = (
-            ('csv files', '*.csv'),
-            ('All files', '*.*')
-        )
+        filetypes = (('csv files', '*.csv'), ('All files', '*.*'))
 
         title = 'Choose a position set file'
         if os.path.isfile(self.position_set_file.get()):
@@ -210,31 +200,28 @@ class ImportPositionSetDialog(tk.Toplevel):
         else:
             init_dir = self.position_set_file.get()
 
-        while(True):
-            file = fd.askopenfilename(
-                title=title,
-                initialdir=init_dir,
-                filetypes=filetypes)
-            
+        while True:
+            file = fd.askopenfilename(title=title, initialdir=init_dir, filetypes=filetypes)
+
             if not file:
                 return
 
             test_df = pd.read_csv(file, encoding='utf-8')
             col_map = dict([(col, col.upper()) for col in test_df.columns])
             test_df.rename(col_map, inplace=True)
-            if set(['ID','NAME','TEAM','POS']).issubset(test_df.columns):
+            if set(['ID', 'NAME', 'TEAM', 'POS']).issubset(test_df.columns):
                 break
-            mb.showwarning('Insufficient data','The position file must have the following columns: ID, NAME, TEAM, POS')
+            mb.showwarning('Insufficient data', 'The position file must have the following columns: ID, NAME, TEAM, POS')
 
         self.position_set_file.set(file)
 
         self.parent.parent.lift()
         self.parent.parent.focus_force()
-    
+
     def cancel(self):
         self.pos_set = None
         self.destroy()
-    
+
     def set_position_set(self):
         df = pd.read_csv(self.position_set_file.get(), encoding='utf-8')
         col_map = dict([(col, col.upper()) for col in df.columns])

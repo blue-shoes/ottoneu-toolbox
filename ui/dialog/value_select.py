@@ -1,7 +1,7 @@
-import tkinter as tk     
+import tkinter as tk
 from tkinter import Event
 from tkinter import W
-from tkinter import ttk 
+from tkinter import ttk
 from tkinter import messagebox as mb
 
 from ui.dialog.wizard import value_import
@@ -11,16 +11,17 @@ from domain.enum import CalculationDataType, ScoringFormat
 
 from services import calculation_services, custom_scoring_services
 
+
 class Dialog(tk.Toplevel):
     def __init__(self, parent, page_controller, active=True, year=None, redirect=True):
         super().__init__(parent)
         self.parent = parent
         self.value = None
-        self.title("Select a Value Set")
+        self.title('Select a Value Set')
         self.page_controller = page_controller
         frm = tk.Frame(self, borderwidth=4)
 
-        tk.Label(frm, text="Select value set season: ").grid(row=0,column=0)
+        tk.Label(frm, text='Select value set season: ').grid(row=0, column=0)
         self.season = tk.StringVar()
         season_cb = ttk.Combobox(frm, textvariable=self.season)
         seasons = calculation_services.get_available_seasons()
@@ -28,9 +29,9 @@ class Dialog(tk.Toplevel):
         for season in seasons:
             str_seasons.append(str(season))
         season_cb['values'] = str_seasons
-        season_cb.grid(row=0,column=1)
+        season_cb.grid(row=0, column=1)
         self.season.set(str_seasons[0])
-        season_cb.bind("<<ComboboxSelected>>", self.update_season)
+        season_cb.bind('<<ComboboxSelected>>', self.update_season)
 
         self.value_list = calculation_services.get_values_for_year(year=seasons[0])
 
@@ -54,20 +55,20 @@ class Dialog(tk.Toplevel):
 
         self.populate_table()
 
-        ttk.Button(frm, text="OK", command=self.set_value).grid(row=2, column=0)
-        ttk.Button(frm, text="Cancel", command=self.cancel).grid(row=2, column=1)
-        ttk.Button(frm, text="Import From File...", command=self.import_values).grid(row=2,column=2)
+        ttk.Button(frm, text='OK', command=self.set_value).grid(row=2, column=0)
+        ttk.Button(frm, text='Cancel', command=self.cancel).grid(row=2, column=1)
+        ttk.Button(frm, text='Import From File...', command=self.import_values).grid(row=2, column=2)
         if redirect:
-            ttk.Button(frm, text="Create New Values...", command=self.open_create_values).grid(row=2,column=3)
+            ttk.Button(frm, text='Create New Values...', command=self.open_create_values).grid(row=2, column=3)
 
         frm.pack()
 
-        self.protocol("WM_DELETE_WINDOW", self.cancel)
+        self.protocol('WM_DELETE_WINDOW', self.cancel)
 
         self.focus_force()
 
         self.wait_window()
-    
+
     def import_values(self):
         dialog = value_import.Dialog(self.master)
         if dialog.value is not None:
@@ -76,15 +77,15 @@ class Dialog(tk.Toplevel):
         else:
             self.lift()
             self.focus_force()
-    
+
     def open_create_values(self):
         self.page_controller.show_player_values()
         self.destroy()
-     
+
     def update_season(self, event: Event):
         self.value_list = calculation_services.get_values_for_year(int(self.season.get()))
         self.value_table.refresh()
-    
+
     def populate_table(self):
         for value in self.value_list:
             if value.s_format == ScoringFormat.CUSTOM:
@@ -99,25 +100,25 @@ class Dialog(tk.Toplevel):
 
     def on_select(self, event):
         if len(event.widget.selection()) > 0:
-            selection = event.widget.item(event.widget.selection()[0])["text"]
+            selection = event.widget.item(event.widget.selection()[0])['text']
             for value in self.value_list:
                 if value.id == int(selection):
                     self.value = value
                     break
         else:
             self.value = None
-    
+
     def rclick(self, event):
         iid = event.widget.identify_row(event.y)
         event.widget.selection_set(iid)
-        value_id = int(event.widget.item(event.widget.selection()[0])["text"])
+        value_id = int(event.widget.item(event.widget.selection()[0])['text'])
         popup = tk.Menu(self.parent, tearoff=0)
-        popup.add_command(label="Delete", command=lambda: self.delete_values(value_id))
+        popup.add_command(label='Delete', command=lambda: self.delete_values(value_id))
         try:
             popup.post(event.x_root, event.y_root)
         finally:
             popup.grab_release()
-    
+
     def delete_values(self, values_id):
         for values in self.value_list:
             if values.id == values_id:
@@ -138,7 +139,7 @@ class Dialog(tk.Toplevel):
     def cancel(self):
         self.value = None
         self.destroy()
-    
+
     def set_value(self):
         pd = progress.ProgressDialog(self.master, title='Loading Values...')
         pd.set_completion_percent(15)

@@ -1,4 +1,4 @@
-import tkinter as tk  
+import tkinter as tk
 from tkinter import ttk, TclError
 import logging
 import os
@@ -23,22 +23,22 @@ from services import player_services, salary_services, property_service, ottoneu
 from domain.domain import Property
 from domain.enum import Preference as Pref, PropertyType, Platform
 from dao import db_update
-   
+
 __version__ = '1.3.0'
 
-class Main(tk.Tk, Controller):
 
+class Main(tk.Tk, Controller):
     def __init__(self, debug=False, demo_source=False, resource_path=None, *args, **kwargs):
         tk.Tk.__init__(self, *args, **kwargs)
         self.resource_path = resource_path
         if resource_path is None:
             try:
-                self.iconbitmap("otb_icon.ico")
+                self.iconbitmap('otb_icon.ico')
                 self.iconbitmap(bitmap='otb_icon.ico')
                 self.iconbitmap(default='otb_icon.ico')
             except TclError:
                 pass
-            
+
         else:
             iconbitmap = resource_path('otb_icon.ico')
             try:
@@ -48,8 +48,8 @@ class Main(tk.Tk, Controller):
             except TclError:
                 pass
 
-        self.title(f"Ottoneu Toolbox v{__version__}") 
-        #self.preferences = preferences
+        self.title(f'Ottoneu Toolbox v{__version__}')
+        # self.preferences = preferences
         self.debug = debug
         self.demo_source = demo_source
         self.setup_logging()
@@ -66,11 +66,11 @@ class Main(tk.Tk, Controller):
         # on top of each other, then the one we want visible
         # will be raised above the others
         self.container = tk.Frame(self)
-        self.container.pack(side="top", fill="both", expand=True)
+        self.container.pack(side='top', fill='both', expand=True)
         self.container.grid_rowconfigure(0, weight=1)
         self.container.grid_columnconfigure(0, weight=1)
 
-        self.frames:Dict[str, ToolboxView] = {}
+        self.frames: Dict[str, ToolboxView] = {}
         self.frame_type = {}
         self.current_page = None
         self.create_frame(Start)
@@ -89,16 +89,16 @@ class Main(tk.Tk, Controller):
         self.lift()
         self.focus_force()
 
-        self.protocol("WM_DELETE_WINDOW", self.exit)
-    
-    def create_frame(self, frame : ToolboxView):
+        self.protocol('WM_DELETE_WINDOW', self.exit)
+
+    def create_frame(self, frame: ToolboxView):
         page_name = frame.__name__
         self.frame_type[page_name] = frame
         frame = frame(parent=self.container, controller=self)
         self.frames[page_name] = frame
 
     def startup_tasks(self) -> bool:
-        progress_dialog = progress.ProgressDialog(self.container, "Startup Tasks")
+        progress_dialog = progress.ProgressDialog(self.container, 'Startup Tasks')
         db_vers = property_service.get_db_version()
         sql_dir = self.resource_path('scripts')
         if db_vers is None:
@@ -128,10 +128,10 @@ class Main(tk.Tk, Controller):
             property_service.save_property(db_vers)
         progress_dialog.increment_completion_percent(10)
         progress_dialog.set_task_title('Checking for updates')
-        #Check if we have the latest version
+        # Check if we have the latest version
         try:
-            response = requests.get("https://api.github.com/repos/blue-shoes/ottoneu-toolbox/releases/latest")
-            latest_version = response.json()["name"]
+            response = requests.get('https://api.github.com/repos/blue-shoes/ottoneu-toolbox/releases/latest')
+            latest_version = response.json()['name']
             if 'v' in latest_version:
                 latest_version = latest_version.split('v')[1]
             if parse_version(latest_version) > parse_version(v):
@@ -139,9 +139,9 @@ class Main(tk.Tk, Controller):
                 if dialog.status:
                     progress_dialog.complete()
                     return True
-            #Check that database has players in it, and populate if it doesn't
+            # Check that database has players in it, and populate if it doesn't
             if not player_services.is_populated():
-                progress_dialog.set_task_title("Populating Player Database")
+                progress_dialog.set_task_title('Populating Player Database')
                 salary_services.update_salary_info(pd=progress_dialog)
                 progress_dialog.increment_completion_percent(33)
                 # We also put values into required table
@@ -149,19 +149,19 @@ class Main(tk.Tk, Controller):
                 db_update.run_db_updates([os.path.join(sql_dir, file) for file in init_files])
             refresh = salary_services.get_last_refresh()
             if refresh is None or (datetime.datetime.now() - refresh.last_refresh).days > self.preferences.getint('General', Pref.SALARY_REFRESH_FREQUENCY, fallback=30):
-                progress_dialog.set_task_title("Updating Player Database")
+                progress_dialog.set_task_title('Updating Player Database')
                 salary_services.update_salary_info()
                 progress_dialog.increment_completion_percent(33)
         except requests.ConnectionError:
             mb.showinfo('No Internet Connection', 'There appears to be no internet connection. Connectivity functions will be unavailable.')
 
         progress_dialog.complete()
-        
+
         return False
-    
+
     def get_resource_path(self, resource):
         return self.resource_path(resource)
-    
+
     def load_preferences(self):
         self.preferences = configparser.ConfigParser()
         config_path = 'conf/otb.conf'
@@ -169,23 +169,23 @@ class Main(tk.Tk, Controller):
             os.mkdir('conf')
         if os.path.exists(config_path):
             self.preferences.read(config_path)
-    
+
     def create_menus(self):
         self.menubar = mb = tk.Menu(self)
         self.main_menu = mm = tk.Menu(mb, tearoff=0)
         self.view_menu = vm = tk.Menu(mm, tearoff=0)
-        vm.add_command(label="Value Calculator", command=self.show_player_values)
-        vm.add_command(label="League Analysis", command=self.show_league_analysis)
-        vm.add_command(label="Draft Tool", command=self.show_draft_tracker)
-        mm.add_cascade(label="Open Window...", menu=vm)
+        vm.add_command(label='Value Calculator', command=self.show_player_values)
+        vm.add_command(label='League Analysis', command=self.show_league_analysis)
+        vm.add_command(label='Draft Tool', command=self.show_draft_tracker)
+        mm.add_cascade(label='Open Window...', menu=vm)
         mm.add_separator()
-        mm.add_command(label="Select League", command=self.select_league)
-        mm.add_command(label="Load Player Values", command=self.select_value_set)
+        mm.add_command(label='Select League', command=self.select_league)
+        mm.add_command(label='Load Player Values', command=self.select_value_set)
         mm.add_separator()
-        mm.add_command(label="Preferences", command=self.open_preferences)
+        mm.add_command(label='Preferences', command=self.open_preferences)
         mm.add_separator()
-        mm.add_command(label="Exit", command=self.exit)
-        mb.add_cascade(label="Menu", menu=mm)
+        mm.add_command(label='Exit', command=self.exit)
+        mb.add_cascade(label='Menu', menu=mm)
         self.help_menu = hm = tk.Menu(mb, tearoff=0)
         hm.add_command(label='Project Wiki', command=self.open_project_wiki)
         hm.add_command(label='Visit Project Home', command=self.open_project_home)
@@ -195,24 +195,24 @@ class Main(tk.Tk, Controller):
         hm.add_command(label='Acknowledgements', command=self.show_acknowledgements)
         hm.add_separator()
         hm.add_command(label='Contact', command=self.show_contact)
-        mb.add_cascade(label="Help", menu=hm)
+        mb.add_cascade(label='Help', menu=hm)
         self.config(menu=mb)
-    
+
     def open_project_wiki(self):
         webbrowser.open_new_tab('https://github.com/blue-shoes/ottoneu-toolbox/wiki')
-    
+
     def open_project_home(self):
         webbrowser.open_new_tab('https://github.com/blue-shoes/ottoneu-toolbox')
-    
+
     def open_release_notes(self):
         webbrowser.open_new_tab('https://github.com/blue-shoes/ottoneu-toolbox/wiki/Release-Notes')
-    
+
     def show_license(self):
         help.Dialog(self, 'LICENSE')
-    
+
     def show_acknowledgements(self):
         help.Dialog(self, 'THIRDPARTYLICENSE')
-    
+
     def show_contact(self):
         help.Dialog(self, 'contact.txt')
 
@@ -221,7 +221,7 @@ class Main(tk.Tk, Controller):
 
     def open_preferences(self):
         preferences.Dialog(self)
-    
+
     def reload_ui(self):
         for name in self.frames:
             if name == Start.__name__:
@@ -231,7 +231,6 @@ class Main(tk.Tk, Controller):
             self.frames[name] = self.frame_type.get(name)(parent=self.container, controller=self)
         self.show_frame(self.current_page, ignore_forget=True)
 
-    
     def setup_logging(self, config=None):
         if config and 'log_level' in config:
             level = logging.getLevelName(config['log_level'].upper())
@@ -243,18 +242,18 @@ class Main(tk.Tk, Controller):
             os.mkdir('logs')
         file_path = os.path.join('logs', 'toolbox.log')
         logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s %(message)s', level=level, filename=file_path)
-    
+
     def show_frame(self, page_name, ignore_forget=False):
-        '''Show a frame for the given page name'''
+        """Show a frame for the given page name"""
         if self.current_page is None or self.frames[self.current_page].leave_page():
             frame = self.frames[page_name]
             if frame.on_show():
                 if self.current_page is not None and not ignore_forget:
                     self.frames[self.current_page].pack_forget()
-                frame.pack(fill="both", expand=True)
+                frame.pack(fill='both', expand=True)
                 frame.tkraise()
                 self.current_page = page_name
-    
+
     def show_start_page(self):
         self.show_frame(Start.__name__)
 
@@ -266,10 +265,10 @@ class Main(tk.Tk, Controller):
 
     def show_league_analysis(self):
         self.show_frame(League_Analysis.__name__)
-    
-    def select_league(self, yahoo_refresh:bool=True) -> None:
+
+    def select_league(self, yahoo_refresh: bool = True) -> None:
         dialog = league_select.Dialog(self)
-        if dialog.league is not None :
+        if dialog.league is not None:
             if dialog.league.is_linked():
                 pd = progress.ProgressDialog(self, title='Updating League')
                 if dialog.league.platform == Platform.OTTONEU:
@@ -286,19 +285,20 @@ class Main(tk.Tk, Controller):
             else:
                 self.league = dialog.league
             self.frames[self.current_page].league_change()
-    
+
     def select_value_set(self) -> None:
         dialog = value_select.Dialog(self.container, self)
         if dialog.value is not None:
             self.value_calculation = dialog.value
-            self.frames[self.current_page].value_change()  
+            self.frames[self.current_page].value_change()
 
     def initialize_treeview_style(self):
-        #Fix for Tkinter version issue found here: https://stackoverflow.com/a/67141755
+        # Fix for Tkinter version issue found here: https://stackoverflow.com/a/67141755
         s = ttk.Style()
 
-        #from os import name as OS_Name
-        if self.getvar('tk_patchLevel')=='8.6.9': #and OS_Name=='nt':
+        # from os import name as OS_Name
+        if self.getvar('tk_patchLevel') == '8.6.9':  # and OS_Name=='nt':
+
             def fixed_map(option):
                 # Fix for setting text colour for Tkinter 8.6.9
                 # From: https://core.tcl.tk/tk/info/509cafafae
@@ -309,4 +309,5 @@ class Main(tk.Tk, Controller):
                 # style.map() returns an empty list for missing options, so this
                 # should be future-safe.
                 return [elm for elm in s.map('Treeview', query_opt=option) if elm[:2] != ('!disabled', '!selected')]
+
             s.map('Treeview', foreground=fixed_map('foreground'), background=fixed_map('background'))

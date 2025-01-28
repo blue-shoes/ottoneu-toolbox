@@ -1,6 +1,6 @@
-import tkinter as tk     
+import tkinter as tk
 from tkinter import StringVar
-from tkinter import ttk 
+from tkinter import ttk
 from tkinter import messagebox as mb
 from typing import Dict
 
@@ -12,7 +12,7 @@ from ui.dialog.wizard import wizard
 
 
 class Dialog(wizard.Dialog):
-    def __init__(self, parent, draft:Draft):
+    def __init__(self, parent, draft: Draft):
         self.draft = draft
         super().__init__(parent)
 
@@ -22,9 +22,9 @@ class Dialog(wizard.Dialog):
         self.title('Import CouchManagers Draft')
         return self.wizard
 
-class Wizard(wizard.Wizard):
 
-    parent:Dialog
+class Wizard(wizard.Wizard):
+    parent: Dialog
     cm_draft: CouchManagers_Draft
 
     def __init__(self, parent):
@@ -38,11 +38,11 @@ class Wizard(wizard.Wizard):
         self.cm_draft = None
 
         self.show_step(0)
-    
+
     def cancel(self):
         self.parent.draft = None
         super().cancel()
-    
+
     def finish(self):
         self.validate_msg = None
         assigned_names = []
@@ -57,21 +57,21 @@ class Wizard(wizard.Wizard):
             self.parent.draft = draft_services.add_couchmanagers_draft(self.parent.draft, self.cm_draft)
         super().finish()
 
-class Step1(tk.Frame):
 
+class Step1(tk.Frame):
     parent: Wizard
 
     def __init__(self, parent):
         super().__init__(parent)
         self.parent = parent
-        ttk.Label(self, text = "Enter CouchManagers Draft #:").grid(column=0,row=0, pady=5, sticky=tk.E)
-        #width is in text units, not pixels
-        self.league_num_entry = ttk.Entry(self, width = 10)
-        self.league_num_entry.grid(column=1,row=0, sticky=tk.W, padx=5)
+        ttk.Label(self, text='Enter CouchManagers Draft #:').grid(column=0, row=0, pady=5, sticky=tk.E)
+        # width is in text units, not pixels
+        self.league_num_entry = ttk.Entry(self, width=10)
+        self.league_num_entry.grid(column=1, row=0, sticky=tk.W, padx=5)
 
     def on_show(self):
         return True
-    
+
     def validate(self):
         pd = progress.ProgressDialog(self.master, title='Getting Slow Draft...')
         pd.set_completion_percent(10)
@@ -95,19 +95,21 @@ class Step1(tk.Frame):
             return False
         finally:
             pd.complete()
-        
+
         return True
 
+
 class Step2(tk.Frame):
-    parent:Wizard
-    team_sv_dict:Dict[CouchManagers_Draft,str]
+    parent: Wizard
+    team_sv_dict: Dict[CouchManagers_Draft, str]
+
     def __init__(self, parent):
         super().__init__(parent)
         self.parent = parent
-        ttk.Label(self, text = "Link CouchManager Teams to Ottoneu", font='bold').grid(column=0,row=0, pady=5, sticky=tk.E)
-        
+        ttk.Label(self, text='Link CouchManager Teams to Ottoneu', font='bold').grid(column=0, row=0, pady=5, sticky=tk.E)
+
         self.team_frm = ttk.Frame(self)
-        self.team_frm.grid(row=1,column=0)
+        self.team_frm.grid(row=1, column=0)
 
     def on_show(self):
         for item in self.team_frm.winfo_children():
@@ -122,15 +124,15 @@ class Step2(tk.Frame):
         row = 0
         ttk.Label(self.team_frm, text='CM Team Name').grid(row=row, column=0)
         ttk.Label(self.team_frm, text='Ottoneu Team Name').grid(row=row, column=1)
-        row=row+1
+        row = row + 1
         for team in self.parent.cm_draft.teams:
             ttk.Label(self.team_frm, text=team.cm_team_name).grid(row=row, column=0)
             self.team_sv_dict[team] = sv = StringVar()
-            sv.set(o_team_names[row-1])
+            sv.set(o_team_names[row - 1])
             cb = ttk.Combobox(self.team_frm, textvariable=sv)
             cb['values'] = o_team_names
             cb.grid(row=row, column=1)
-            row = row+1
+            row = row + 1
 
         self.pack()
 

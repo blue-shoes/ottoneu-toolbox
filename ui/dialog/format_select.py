@@ -1,7 +1,7 @@
-import tkinter as tk     
+import tkinter as tk
 from tkinter import Event
 from tkinter import W
-from tkinter import ttk 
+from tkinter import ttk
 from tkinter import messagebox as mb
 
 from ui.dialog import progress
@@ -11,13 +11,14 @@ from domain.domain import CustomScoring
 
 from services import custom_scoring_services
 
+
 class Dialog(tk.Toplevel):
     def __init__(self, parent):
         super().__init__(parent)
         self.parent = parent
         self.scoring = None
         self.deleted_format_ids = []
-        self.title("Select a Scoring Format")
+        self.title('Select a Scoring Format')
         frm = tk.Frame(self, borderwidth=4)
 
         top_frm = tk.Frame(frm)
@@ -46,18 +47,18 @@ class Dialog(tk.Toplevel):
         bot_frm = tk.Frame(frm)
         bot_frm.grid(row=1, sticky=tk.E)
 
-        ttk.Button(bot_frm, text="OK", command=self.set_format).grid(row=0, column=0)
-        ttk.Button(bot_frm, text="Cancel", command=self.cancel).grid(row=0, column=1)
-        ttk.Button(bot_frm, text="Create New...", command=self.create_scoring_format).grid(row=0,column=2)
+        ttk.Button(bot_frm, text='OK', command=self.set_format).grid(row=0, column=0)
+        ttk.Button(bot_frm, text='Cancel', command=self.cancel).grid(row=0, column=1)
+        ttk.Button(bot_frm, text='Create New...', command=self.create_scoring_format).grid(row=0, column=2)
 
         frm.pack()
 
-        self.protocol("WM_DELETE_WINDOW", self.cancel)
+        self.protocol('WM_DELETE_WINDOW', self.cancel)
 
         self.focus_force()
 
         self.wait_window()
-    
+
     def create_scoring_format(self):
         dialog = custom_scoring.Dialog(self.master)
         if dialog.scoring is not None:
@@ -66,7 +67,7 @@ class Dialog(tk.Toplevel):
         else:
             self.lift()
             self.focus_force()
-    
+
     def populate_table(self):
         for scoring_format in self.format_list:
             self.format_table.insert('', tk.END, text=str(scoring_format.id), values=(scoring_format.name, scoring_format.description, bool_to_table(scoring_format.points_format)))
@@ -75,28 +76,28 @@ class Dialog(tk.Toplevel):
         self.on_select(event)
         self.set_format()
 
-    def on_select(self, event:Event):
+    def on_select(self, event: Event):
         if len(event.widget.selection()) > 0:
-            selection = event.widget.item(event.widget.selection()[0])["text"]
+            selection = event.widget.item(event.widget.selection()[0])['text']
             for scoring_format in self.format_list:
                 if scoring_format.id == int(selection):
                     self.scoring = scoring_format
                     break
         else:
             self.scoring = None
-    
+
     def rclick(self, event):
         iid = event.widget.identify_row(event.y)
         event.widget.selection_set(iid)
-        scoring_format_id = int(event.widget.item(event.widget.selection()[0])["text"])
+        scoring_format_id = int(event.widget.item(event.widget.selection()[0])['text'])
         popup = tk.Menu(self.parent, tearoff=0)
-        popup.add_command(label="Delete", command=lambda: self.delete_format(scoring_format_id))
+        popup.add_command(label='Delete', command=lambda: self.delete_format(scoring_format_id))
         try:
             popup.post(event.x_root, event.y_root)
         finally:
             popup.grab_release()
-    
-    def delete_format(self, format_id:int):
+
+    def delete_format(self, format_id: int):
         for scoring_format in self.format_list:
             if scoring_format.id == format_id:
                 sf = scoring_format
@@ -107,7 +108,7 @@ class Dialog(tk.Toplevel):
             self.lift()
             self.focus_force()
 
-    def perform_deletion(self, scoring_format:CustomScoring):
+    def perform_deletion(self, scoring_format: CustomScoring):
         self.lift()
         pd = progress.ProgressDialog(self.parent, 'Deleting Scoring Format')
         pd.set_completion_percent(15)
@@ -120,6 +121,6 @@ class Dialog(tk.Toplevel):
     def cancel(self):
         self.scoring = None
         self.destroy()
-    
+
     def set_format(self):
         self.destroy()

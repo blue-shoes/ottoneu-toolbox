@@ -18,13 +18,14 @@ from time import sleep
 import logging
 import os
 
-game_id:str = ''
+game_id: str = ''
 
-def create_league(league_yahoo_id:int, pd=None) -> League:
-    '''Creates a league in the Toolbox for a given Yahoo league number.'''
+
+def create_league(league_yahoo_id: int, pd=None) -> League:
+    """Creates a league in the Toolbox for a given Yahoo league number."""
 
     if pd is not None:
-        pd.set_task_title("Getting league info...")
+        pd.set_task_title('Getting league info...')
         pd.increment_completion_percent(10)
 
     yleague = get_league_metadata(league_yahoo_id)
@@ -35,7 +36,7 @@ def create_league(league_yahoo_id:int, pd=None) -> League:
 
     lg = League()
     lg.site_id = league_yahoo_id
-    lg.name = yleague.name.decode("utf-8")
+    lg.name = yleague.name.decode('utf-8')
     lg.num_teams = yleague.num_teams
     lg.s_format = ScoringFormat.CUSTOM
     lg.last_refresh = datetime.min
@@ -45,7 +46,7 @@ def create_league(league_yahoo_id:int, pd=None) -> League:
         lg.team_salary_cap = 0
     else:
         lg.team_salary_cap = -1
-    
+
     stat_cats = []
     for stat in settings.stat_categories.stats:
         if not stat.is_only_display_stat:
@@ -58,10 +59,10 @@ def create_league(league_yahoo_id:int, pd=None) -> League:
                 stat_cats = None
                 break
             stat_cats.append(CustomScoringCategory(category=stat_type))
-    
+
     if stat_cats:
         custom_scoring_services.get_or_make_custom_scoring(stat_cats, lg.name)
-    
+
     starting_pos = []
     roster_spots = 0
     for rp in settings.roster_positions:
@@ -72,7 +73,7 @@ def create_league(league_yahoo_id:int, pd=None) -> League:
             if pos is None:
                 starting_pos = None
                 break
-            starting_pos.append(StartingPosition(position=pos, count = rp.count))
+            starting_pos.append(StartingPosition(position=pos, count=rp.count))
     lg.roster_spots = roster_spots
 
     if starting_pos:
@@ -81,23 +82,24 @@ def create_league(league_yahoo_id:int, pd=None) -> League:
     for yteam in teams:
         team = Team()
         team.site_id = yteam.team_id
-        team.name = yteam.name.decode("utf-8")
+        team.name = yteam.name.decode('utf-8')
         lg.teams.append(team)
-    
+
     return lg
 
-def refresh_league(league_id:int, pd=None) -> League:
-    '''Refreshes the given league id in the database. Retrieves current team rosters from Yahoo API and rewrites team roster spots in DB.'''
+
+def refresh_league(league_id: int, pd=None) -> League:
+    """Refreshes the given league id in the database. Retrieves current team rosters from Yahoo API and rewrites team roster spots in DB."""
     lg = league_services.get_league(league_id, rosters=True)
 
-    if (datetime.now() - lg.last_refresh).total_seconds() < (60*60*24):
+    if (datetime.now() - lg.last_refresh).total_seconds() < (60 * 60 * 24):
         return lg
 
-    rosters:Dict[int, YRoster] = {}
+    rosters: Dict[int, YRoster] = {}
     q = __create_query(lg.site_id)
     try:
         if pd:
-            pd.set_task_title("Updating rosters...")
+            pd.set_task_title('Updating rosters...')
             pd.increment_completion_percent(5)
         pd_inc = int(75 / lg.num_teams)
         for team in lg.teams:
@@ -105,68 +107,67 @@ def refresh_league(league_id:int, pd=None) -> League:
             if pd:
                 pd.increment_completion_percent(pd_inc)
         with Session() as session:
-                lg = (session.query(League)
-                        .options(
-                            joinedload(League.teams)
-                            .joinedload(Team.roster_spots)
-                            .joinedload(Roster_Spot.player)
-                        )
-                        .filter_by(id = league_id).first())
-                team_map = {}
-                for team in lg.teams:
-                    #Clear roster
-                    if team.site_id in rosters:
-                        for rs in team.roster_spots:
-                            session.delete(rs)
-                        team_map[team.site_id] = team
-                for site_id, roster in rosters.items():
-                    if roster.players:
-                        for yplayer in roster.players:
-                            rs = Roster_Spot()
-                            player = get_or_set_player_by_yahoo_id(yplayer, session)
-                            if player is None:
-                                continue
-                            rs.player = player
-                            if lg.is_salary_cap():
-                                if hasattr(yplayer, 'is_keeper'):
-                                    rs.salary = yplayer.is_keeper['cost']
-                                else:
-                                    rs.salary = 0
+            lg = session.query(League).options(joinedload(League.teams).joinedload(Team.roster_spots).joinedload(Roster_Spot.player)).filter_by(id=league_id).first()
+            team_map = {}
+            for team in lg.teams:
+                # Clear roster
+                if team.site_id in rosters:
+                    for rs in team.roster_spots:
+                        session.delete(rs)
+                    team_map[team.site_id] = team
+            for site_id, roster in rosters.items():
+                if roster.players:
+                    for yplayer in roster.players:
+                        rs = Roster_Spot()
+                        player = get_or_set_player_by_yahoo_id(yplayer, session)
+                        if player is None:
+                            continue
+                        rs.player = player
+                        if lg.is_salary_cap():
+                            if hasattr(yplayer, 'is_keeper'):
+                                rs.salary = yplayer.is_keeper['cost']
                             else:
                                 rs.salary = 0
-                            team_map[site_id].roster_spots.append(rs)
-                
-                lg.last_refresh = datetime.now()
-                session.commit()
-                lg = league_services.get_league(league_id)
+                        else:
+                            rs.salary = 0
+                        team_map[site_id].roster_spots.append(rs)
+
+            lg.last_refresh = datetime.now()
+            session.commit()
+            lg = league_services.get_league(league_id)
     finally:
         if pd:
             pd.complete()
     return lg
 
-def get_league_metadata(league_id:int) -> YLeague:
-    '''Gets the league metadata as a yfpy.League object'''
+
+def get_league_metadata(league_id: int) -> YLeague:
+    """Gets the league metadata as a yfpy.League object"""
     q = __create_query(league_id)
     return q.get_league_metadata()
 
-def get_teams(league_id:int) -> List[YTeam]:
-    '''Gets the list of league teams as a list of yfpy.Team objects'''
+
+def get_teams(league_id: int) -> List[YTeam]:
+    """Gets the list of league teams as a list of yfpy.Team objects"""
     q = __create_query(league_id)
     return q.get_league_teams()
 
-def get_league_players(league_id:int, player_list:List=[]) -> List[YPlayer]:
-    '''Gets the list of players for the YLeague'''
+
+def get_league_players(league_id: int, player_list: List = []) -> List[YPlayer]:
+    """Gets the list of players for the YLeague"""
     q = __create_query(league_id)
     player_list.extend(q.get_league_players())
     return player_list
 
-def get_league_settings(league_id:int) -> YSettings:
-    '''Returns the Yahoo Settings object for the given league id'''
+
+def get_league_settings(league_id: int) -> YSettings:
+    """Returns the Yahoo Settings object for the given league id"""
     q = __create_query(league_id)
     return q.get_league_settings()
 
-def get_draft_results(league_id:int) -> List[YDR]:
-    '''Gets the draft results from the Yahoo league for the given id.'''
+
+def get_draft_results(league_id: int) -> List[YDR]:
+    """Gets the draft results from the Yahoo league for the given id."""
     q = __create_query(league_id)
     try:
         return q.get_league_draft_results()
@@ -174,16 +175,18 @@ def get_draft_results(league_id:int) -> List[YDR]:
         logging.info(f'No draft data available for league #{league_id} at {datetime.utcnow()}')
         return []
 
-def league_in_draft(league_id:int) -> bool:
-    '''Returns if the current league draft status is "draft".'''
+
+def league_in_draft(league_id: int) -> bool:
+    """Returns if the current league draft status is "draft"."""
     q = __create_query(league_id=league_id)
     metadata = q.get_league_metadata()
     return metadata.draft_status == 'draft'
 
-def resolve_draft_results_against_rosters(league:League, value_calc:ValueCalculation, inf_method:InflationMethod, demo_source:bool) -> Tuple[List[Player], List[Player]]:
-    '''Gets the latest draft information and updates rosters to reflect newly rostered or cut players.'''
+
+def resolve_draft_results_against_rosters(league: League, value_calc: ValueCalculation, inf_method: InflationMethod, demo_source: bool) -> Tuple[List[Player], List[Player]]:
+    """Gets the latest draft information and updates rosters to reflect newly rostered or cut players."""
     if demo_source:
-        logging.debug("demo_source")
+        logging.debug('demo_source')
         if not os.path.exists(draft_demo.yahoo_demo_trans):
             draft_demo.init_yahoo_keepers()
         trans = pd.read_csv(draft_demo.yahoo_demo_trans)
@@ -238,8 +241,9 @@ def resolve_draft_results_against_rosters(league:League, value_calc:ValueCalcula
                     break
     return (new_drafted, cut)
 
-def set_player_positions_for_league(league:League, pd = None) -> League:
-    '''Gets Yahoo league player position eligibilities and creates a new PositionSet, if necessary. Also populates player.yahoo_id if necessary.'''
+
+def set_player_positions_for_league(league: League, pd=None) -> League:
+    """Gets Yahoo league player position eligibilities and creates a new PositionSet, if necessary. Also populates player.yahoo_id if necessary."""
     if not league.position_set:
         timestamp = datetime.now()
         position_set = PositionSet(name=f'{timestamp.year}-{league.name}')
@@ -252,10 +256,10 @@ def set_player_positions_for_league(league:League, pd = None) -> League:
         pd.set_task_title('Creating player position set (This will take some time)...')
         pd.increment_completion_percent(10)
     yplayers = []
-    thread = threading.Thread(target = get_league_players, args=(league.site_id, yplayers))
+    thread = threading.Thread(target=get_league_players, args=(league.site_id, yplayers))
     thread.start()
 
-    while (thread.is_alive()):
+    while thread.is_alive():
         pd.increment_completion_percent(1)
         sleep(10)
     seen_ids = []
@@ -267,19 +271,20 @@ def set_player_positions_for_league(league:League, pd = None) -> League:
             if player.id in seen_ids:
                 for pp in position_set.positions:
                     if pp.player_id == player.id:
-                        pp.position += f'/{yplayer.display_position.replace(",","/")}'
+                        pp.position += f'/{yplayer.display_position.replace(",", "/")}'
                         break
             else:
                 player_position = PlayerPositions()
                 player_position.player_id = player.id
-                player_position.position = yplayer.display_position.replace(',','/')
+                player_position.position = yplayer.display_position.replace(',', '/')
                 position_set.positions.append(player_position)
                 seen_ids.append(player.id)
     return league_services.save_league(league)
 
-def get_or_set_player_by_yahoo_id(yplayer:YPlayer, session) -> Player:
-    '''Gets a player by Yahoo id. If no record of Yahoo id exists, looks up player by name and team and sets that player's Yahoo id before
-    returning.'''
+
+def get_or_set_player_by_yahoo_id(yplayer: YPlayer, session) -> Player:
+    """Gets a player by Yahoo id. If no record of Yahoo id exists, looks up player by name and team and sets that player's Yahoo id before
+    returning."""
     player = player_services.get_player_by_yahoo_id_with_session(yplayer.player_id, session)
     if player is None:
         player = player_services.get_player_by_name_and_team_with_no_yahoo_id(f'{yplayer.name.first} {yplayer.name.last}', yplayer.editorial_team_abbr, session)
@@ -288,9 +293,10 @@ def get_or_set_player_by_yahoo_id(yplayer:YPlayer, session) -> Player:
         player = player_services.set_player_yahoo_id_with_session(player.id, yplayer.player_id, session)
     return player
 
-def __create_query(league_id:int=1, year:int=None) -> yfs_query:
-    '''Creates a yfs_query object for the given league and year in mlb. If no year provided, the current
-    calendar year is found.'''
+
+def __create_query(league_id: int = 1, year: int = None) -> yfs_query:
+    """Creates a yfs_query object for the given league and year in mlb. If no year provided, the current
+    calendar year is found."""
     global game_id
     if year is not None:
         q = yfs_query(Path('conf'), league_id=league_id, game_code='mlb')
@@ -306,7 +312,7 @@ def __create_query(league_id:int=1, year:int=None) -> yfs_query:
             if gk.code == 'mlb' and int(gk.season) == datetime.now().year:
                 game_id = gk.game_id
         if game_id == '':
-             raise YahooFantasySportsException('Could not find game_key for current year')
+            raise YahooFantasySportsException('Could not find game_key for current year')
         try:
             yfs_query(Path('conf'), league_id=league_id, game_code='mlb', game_id=game_id).get_league_info()
         except YahooFantasySportsDataNotFound:

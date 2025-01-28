@@ -5,42 +5,48 @@ import datetime
 from dao.session import Session
 from domain.domain import CustomScoring, CustomScoringCategory
 
-def get_scoring_format(id:int) -> CustomScoring:
-    '''Gets the CustomScoring object by id'''
+
+def get_scoring_format(id: int) -> CustomScoring:
+    """Gets the CustomScoring object by id"""
     with Session() as session:
-        cs = session.query(CustomScoring).filter_by(id = id).first()
+        cs = session.query(CustomScoring).filter_by(id=id).first()
     return cs
 
-def save_scoring_format(custom_format:CustomScoring) -> CustomScoring:
-    '''Saves the CustomScoring object to the db'''
+
+def save_scoring_format(custom_format: CustomScoring) -> CustomScoring:
+    """Saves the CustomScoring object to the db"""
     with Session() as session:
         session.add(custom_format)
         session.commit()
         custom_format = get_scoring_format(custom_format.id)
     return custom_format
 
+
 def get_all_formats() -> List[CustomScoring]:
-    '''Returns all available CustomScoring formats saved in the DB'''
+    """Returns all available CustomScoring formats saved in the DB"""
     with Session() as session:
         formats = session.query(CustomScoring).all()
     return formats
 
-def delete_by_id(id:int) -> None:
-    '''Deletes a CustomScoring format from the database by id.'''
+
+def delete_by_id(id: int) -> None:
+    """Deletes a CustomScoring format from the database by id."""
     with Session() as session:
         cs = session.query(CustomScoring).filter(CustomScoring.id == id).first()
         session.delete(cs)
         session.commit()
 
+
 def get_format_count() -> int:
-    '''Returns number of CustomScoring formats in database.'''
+    """Returns number of CustomScoring formats in database."""
     with Session() as session:
         count = session.query(CustomScoring).count()
     return count
 
-def get_or_make_custom_scoring(custom_stats:List[CustomScoringCategory], name:str, description:str=None) -> CustomScoring:
-    '''Gets the custom scoring set if one matches the list of CustomScoringCategory and makes and returns one if it does not
-    already exist'''
+
+def get_or_make_custom_scoring(custom_stats: List[CustomScoringCategory], name: str, description: str = None) -> CustomScoring:
+    """Gets the custom scoring set if one matches the list of CustomScoringCategory and makes and returns one if it does not
+    already exist"""
     with Session() as session:
         css = session.query(CustomScoring).all()
         for cs_set in css:

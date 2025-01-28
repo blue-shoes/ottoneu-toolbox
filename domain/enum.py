@@ -4,16 +4,16 @@ from typing import List, Dict, Tuple
 import re
 from domain.exception import InputException
 
-class ProjectionType(int,Enum):
-    '''Enumeration of the available types of projections for the system, including name and url information.'''
-    id:int
-    type_name:str
+
+class ProjectionType(int, Enum):
+    """Enumeration of the available types of projections for the system, including name and url information."""
+
+    id: int
+    type_name: str
     url: str
 
-    def __new__(
-        cls, id: int, name: str = "", url: str = ""
-    ) -> ProjectionType:
-        obj = int.__new__(cls,id)
+    def __new__(cls, id: int, name: str = '', url: str = '') -> ProjectionType:
+        obj = int.__new__(cls, id)
         obj._value_ = id
 
         obj.type_name = name
@@ -33,24 +33,26 @@ class ProjectionType(int,Enum):
 
     @classmethod
     def get_fg_downloadable(self) -> List[ProjectionType]:
-        '''Returns list of ProjectionType that are downloadable from FanGraphs'''
+        """Returns list of ProjectionType that are downloadable from FanGraphs"""
         return [self.STEAMER, self.ZIPS, self.DEPTH_CHARTS, self.ATC, self.THE_BAT, self.THE_BATX, self.OOPSY]
-    
+
     @classmethod
     def get_downloadable(self) -> List[ProjectionType]:
-        '''Returns list of ProjectionType that are downloadable'''
+        """Returns list of ProjectionType that are downloadable"""
         return [self.DAVENPORT, self.STEAMER, self.ZIPS, self.DEPTH_CHARTS, self.ATC, self.THE_BAT, self.THE_BATX, self.OOPSY]
 
     @classmethod
-    def get_enum_by_name(self, name:str)->ProjectionType:
-        '''Gets the enum with the argument name. Returns None if no matches'''
+    def get_enum_by_name(self, name: str) -> ProjectionType:
+        """Gets the enum with the argument name. Returns None if no matches"""
         for pt in ProjectionType:
             if pt.type_name == name:
                 return pt
         return None
 
+
 class CalculationDataType(Enum):
-    '''Enumeration of the data types available for and created by ValueCalculations'''
+    """Enumeration of the data types available for and created by ValueCalculations"""
+
     DOLLARS_PER_FOM = 0
     REP_LEVEL_C = 1
     REP_LEVEL_1B = 2
@@ -119,87 +121,78 @@ class CalculationDataType(Enum):
 
     @classmethod
     def pos_to_num_rostered(self) -> Dict[Position, CalculationDataType]:
-        '''Returns a Dict that maps player positions to the CalculationDataType for number of rostered players at the position'''
+        """Returns a Dict that maps player positions to the CalculationDataType for number of rostered players at the position"""
         return {
-            Position.POS_C : self.ROSTERED_C,
-            Position.POS_1B : self.ROSTERED_1B,
-            Position.POS_2B : self.ROSTERED_2B,
-            Position.POS_3B : self.ROSTERED_3B,
-            Position.POS_SS : self.ROSTERED_SS,
-            Position.POS_CI : self.ROSTERED_CI,
-            Position.POS_MI : self.ROSTERED_MI,
+            Position.POS_C: self.ROSTERED_C,
+            Position.POS_1B: self.ROSTERED_1B,
+            Position.POS_2B: self.ROSTERED_2B,
+            Position.POS_3B: self.ROSTERED_3B,
+            Position.POS_SS: self.ROSTERED_SS,
+            Position.POS_CI: self.ROSTERED_CI,
+            Position.POS_MI: self.ROSTERED_MI,
             Position.POS_INF: self.ROSTERED_INF,
-            Position.POS_LF : self.ROSTERED_LF,
-            Position.POS_CF : self.ROSTERED_CF,
-            Position.POS_RF : self.ROSTERED_RF,
-            Position.POS_OF : self.ROSTERED_OF,
-            Position.POS_UTIL : self.ROSTERED_UTIL,
-            Position.POS_SP : self.ROSTERED_SP,
-            Position.POS_RP : self.ROSTERED_RP,
-            Position.POS_P  : self.ROSTERED_P
+            Position.POS_LF: self.ROSTERED_LF,
+            Position.POS_CF: self.ROSTERED_CF,
+            Position.POS_RF: self.ROSTERED_RF,
+            Position.POS_OF: self.ROSTERED_OF,
+            Position.POS_UTIL: self.ROSTERED_UTIL,
+            Position.POS_SP: self.ROSTERED_SP,
+            Position.POS_RP: self.ROSTERED_RP,
+            Position.POS_P: self.ROSTERED_P,
         }
-    
+
     @classmethod
     def pos_to_rep_level(self) -> Dict[Position, CalculationDataType]:
-        '''Returns a Dict that maps player positions to the CalculationDataType for replacement level at the position'''
+        """Returns a Dict that maps player positions to the CalculationDataType for replacement level at the position"""
         return {
-            Position.POS_C : self.REP_LEVEL_C,
-            Position.POS_1B : self.REP_LEVEL_1B,
-            Position.POS_2B : self.REP_LEVEL_2B,
-            Position.POS_3B : self.REP_LEVEL_3B,
-            Position.POS_SS : self.REP_LEVEL_SS,
-            Position.POS_CI : self.REP_LEVEL_CI,
-            Position.POS_MI : self.REP_LEVEL_MI,
+            Position.POS_C: self.REP_LEVEL_C,
+            Position.POS_1B: self.REP_LEVEL_1B,
+            Position.POS_2B: self.REP_LEVEL_2B,
+            Position.POS_3B: self.REP_LEVEL_3B,
+            Position.POS_SS: self.REP_LEVEL_SS,
+            Position.POS_CI: self.REP_LEVEL_CI,
+            Position.POS_MI: self.REP_LEVEL_MI,
             Position.POS_INF: self.REP_LEVEL_INF,
-            Position.POS_LF : self.REP_LEVEL_LF,
-            Position.POS_CF : self.REP_LEVEL_CF,
-            Position.POS_RF : self.REP_LEVEL_RF,
-            Position.POS_OF : self.REP_LEVEL_OF,
-            Position.POS_UTIL : self.REP_LEVEL_UTIL,
-            Position.POS_SP : self.REP_LEVEL_SP,
-            Position.POS_RP : self.REP_LEVEL_RP,
-            Position.POS_P  : self.REP_LEVEL_P
+            Position.POS_LF: self.REP_LEVEL_LF,
+            Position.POS_CF: self.REP_LEVEL_CF,
+            Position.POS_RF: self.REP_LEVEL_RF,
+            Position.POS_OF: self.REP_LEVEL_OF,
+            Position.POS_UTIL: self.REP_LEVEL_UTIL,
+            Position.POS_SP: self.REP_LEVEL_SP,
+            Position.POS_RP: self.REP_LEVEL_RP,
+            Position.POS_P: self.REP_LEVEL_P,
         }
-    
+
     @classmethod
     def get_adv_inputs(self) -> List[CalculationDataType]:
-        '''Returns the list of CalculationDataType that are available as advanced inputs'''
-        return [
-            self.BATTER_G_TARGET,
-            self.GS_LIMIT,
-            self.RP_G_TARGET,
-            self.RP_IP_TARGET,
-            self.IP_TARGET,
-            self.SP_MULTIPLIER,
-            self.RP_MULTIPLIER,
-            self.SP_WITH_ALL_IP,
-            self.RP_WITH_ALL_IP
-        ]
+        """Returns the list of CalculationDataType that are available as advanced inputs"""
+        return [self.BATTER_G_TARGET, self.GS_LIMIT, self.RP_G_TARGET, self.RP_IP_TARGET, self.IP_TARGET, self.SP_MULTIPLIER, self.RP_MULTIPLIER, self.SP_WITH_ALL_IP, self.RP_WITH_ALL_IP]
+
 
 class RepLevelScheme(Enum):
-    '''Enumeration of the available replacement level schemes for ValueCalculations'''
+    """Enumeration of the available replacement level schemes for ValueCalculations"""
+
     NUM_ROSTERED = 0
     STATIC_REP_LEVEL = 1
     FILL_GAMES = 2
     TOTAL_ROSTERED = 3
 
     @classmethod
-    def get_enum_by_num(self, id:int) -> RepLevelScheme:
-        '''Gets the enumeration matching the RepLevelScheme number. None if no match'''
+    def get_enum_by_num(self, id: int) -> RepLevelScheme:
+        """Gets the enumeration matching the RepLevelScheme number. None if no match"""
         for rls in RepLevelScheme:
             if rls._value_ == id:
                 return rls
         return None
 
+
 class RankingBasis(int, Enum):
-    '''Enumeration of bases for ranking players'''
+    """Enumeration of bases for ranking players"""
 
-    id:int
-    display:str
+    id: int
+    display: str
 
-    def __new__(
-        cls, id: int, display: str = ""
-    ) -> RankingBasis:
+    def __new__(cls, id: int, display: str = '') -> RankingBasis:
         obj = int.__new__(cls, id)
         obj._value_ = id
 
@@ -208,7 +201,7 @@ class RankingBasis(int, Enum):
 
     PPG = (0, 'P/G')
     PPPA = (1, 'P/PA')
-    PIP  = (2, 'P/IP')
+    PIP = (2, 'P/IP')
     ZSCORE = (3, 'zScore')
     SGP = (4, 'SGP')
     FG_AC = (5, 'FG AC')
@@ -216,46 +209,45 @@ class RankingBasis(int, Enum):
     ZSCORE_PER_IP = (7, 'zScore/IP')
 
     @classmethod
-    def get_enum_by_id(self, id:int) -> RankingBasis:
-        '''Returns the RankingBasis that matches the argument id. None if no match'''
+    def get_enum_by_id(self, id: int) -> RankingBasis:
+        """Returns the RankingBasis that matches the argument id. None if no match"""
         for rb in RankingBasis:
             if rb.id == id:
                 return rb
         return None
-    
+
     @classmethod
-    def get_enum_by_display(self, display:str) -> RankingBasis:
-        '''Returns the RankingBasis that matches the arguement display. None if no match'''
+    def get_enum_by_display(self, display: str) -> RankingBasis:
+        """Returns the RankingBasis that matches the arguement display. None if no match"""
         for rb in RankingBasis:
             if rb.display == display:
                 return rb
         return None
 
     @classmethod
-    def is_zscore(self, basis:RankingBasis) -> bool:
-        '''Returns if RankingBasis is a zScore type basis'''
+    def is_zscore(self, basis: RankingBasis) -> bool:
+        """Returns if RankingBasis is a zScore type basis"""
         return basis in [self.ZSCORE, self.ZSCORE_PER_G, self.ZSCORE_PER_IP]
-    
-    @classmethod
-    def is_roto_fractional(self, basis:RankingBasis) -> bool:
-        '''Returns if ranking basis is for a roto league and is a rate basis'''
-        return basis in [self.ZSCORE_PER_G, self.ZSCORE_PER_IP]
-    
-class StatType(IntEnum):
-    '''Enumeration of the available stat types for Projections'''
 
-    id:int
-    display:str
-    stat_list:List[str]
-    rank:int
-    ratio:bool
+    @classmethod
+    def is_roto_fractional(self, basis: RankingBasis) -> bool:
+        """Returns if ranking basis is for a roto league and is a rate basis"""
+        return basis in [self.ZSCORE_PER_G, self.ZSCORE_PER_IP]
+
+
+class StatType(IntEnum):
+    """Enumeration of the available stat types for Projections"""
+
+    id: int
+    display: str
+    stat_list: List[str]
+    rank: int
+    ratio: bool
     hitter: bool
     v_format: str
     higher_better: bool
 
-    def __new__(
-        cls, id: int, stat_list: List[str], rank:int, ratio:bool, hitter: bool, v_format:str = "{:.0f}", higher_better:bool = True
-    ) -> StatType:
+    def __new__(cls, id: int, stat_list: List[str], rank: int, ratio: bool, hitter: bool, v_format: str = '{:.0f}', higher_better: bool = True) -> StatType:
         obj = int.__new__(cls, id)
         obj._value_ = id
 
@@ -268,7 +260,7 @@ class StatType(IntEnum):
         obj.higher_better = higher_better
         return obj
 
-    G_HIT = (0, ['G', 'G_C', 'G_FB', 'G_SB', 'G_3B', 'G_SS', 'G_LF', 'G_CF', 'G_RF', 'G_DH'], 1, False,True)
+    G_HIT = (0, ['G', 'G_C', 'G_FB', 'G_SB', 'G_3B', 'G_SS', 'G_LF', 'G_CF', 'G_RF', 'G_DH'], 1, False, True)
     GS_HIT = (1, ['H GS', 'GS'], 2, False, True)
     PA = (2, ['PA'], 3, False, True)
     AB = (3, ['AB'], 4, False, True)
@@ -281,49 +273,49 @@ class StatType(IntEnum):
     HR = (7, ['HR'], 11, False, True)
     TB = (52, ['TB', 'Total Bases'], 12, False, True)
     XBH = (53, ['XBH', 'Extra Base Hits'], 13, False, True)
-    K = (32, ['SO'], 14, False, True, "{:.0f}", False)
+    K = (32, ['SO'], 14, False, True, '{:.0f}', False)
     BB = (10, ['BB'], 15, False, True)
     HBP = (12, ['HBP'], 16, False, True)
     SB = (13, ['SB'], 17, False, True)
-    CS = (14, ['CS'], 18, False, True, "{:.0f}", False)
+    CS = (14, ['CS'], 18, False, True, '{:.0f}', False)
     NET_SB = (46, ['Net SB', 'NSB'], 19, False, True)
-    AVG = (15, ['AVG', 'BA'], 20, True, True, "{:.3f}")
-    OBP = (16, ['OBP'], 21, True, True, "{:.3f}")
-    SLG = (17, ['SLG'], 22, True, True, "{:.3f}")
-    OPS = (18, ['OPS'], 23, True, True, "{:.3f}")
-    BABIP_H = (40, ['BABIP'], 24, True, True, "{:.3f}")
-    WOBA = (19, ['wOBA'], 25, True, True, "{:.3f}")
-    WRC_PLUS = (20, ['wRC+'], 26, True, True, "{:.0f}")
-    
+    AVG = (15, ['AVG', 'BA'], 20, True, True, '{:.3f}')
+    OBP = (16, ['OBP'], 21, True, True, '{:.3f}')
+    SLG = (17, ['SLG'], 22, True, True, '{:.3f}')
+    OPS = (18, ['OPS'], 23, True, True, '{:.3f}')
+    BABIP_H = (40, ['BABIP'], 24, True, True, '{:.3f}')
+    WOBA = (19, ['wOBA'], 25, True, True, '{:.3f}')
+    WRC_PLUS = (20, ['wRC+'], 26, True, True, '{:.0f}')
+
     G_PIT = (21, ['GP', 'G'], 1, False, False)
     GS_PIT = (22, ['GS'], 2, False, False)
-    IP = (23, ['IP'], 3, False, False, "{:.1f}")
+    IP = (23, ['IP'], 3, False, False, '{:.1f}')
     W = (24, ['W'], 4, False, False)
-    L = (25, ['L'], 5, False, False, "{:.0f}", False)
+    L = (25, ['L'], 5, False, False, '{:.0f}', False)
     QS = (26, ['QS'], 6, False, False)
     SO = (11, ['K', 'SO'], 7, False, False)
-    H_ALLOWED = (29, ['HA', 'H'], 8, False, False, "{:.0f}", False)
-    BB_ALLOWED = (33, ['BBA', 'BB'], 9, False, False, "{:.0f}", False)
-    HBP_ALLOWED = (34, ['HBPA', 'HBP'], 10, False, False, "{:.0f}", False)
-    HR_ALLOWED = (31, ['HRA', 'HR'], 11, False, False, "{:.0f}", False)
+    H_ALLOWED = (29, ['HA', 'H'], 8, False, False, '{:.0f}', False)
+    BB_ALLOWED = (33, ['BBA', 'BB'], 9, False, False, '{:.0f}', False)
+    HBP_ALLOWED = (34, ['HBPA', 'HBP'], 10, False, False, '{:.0f}', False)
+    HR_ALLOWED = (31, ['HRA', 'HR'], 11, False, False, '{:.0f}', False)
     SV = (27, ['SV'], 12, False, False)
     HLD = (28, ['HLD', 'Holds'], 13, False, False)
     BS = (49, ['BS'], 14, False, False)
     SVH = (50, ['SVH', 'SV+H'], 15, False, False)
     NET_SAVES = (47, ['Net SV', 'NSV'], 16, False, False)
     NET_SVH = (48, ['Net SVH', 'NSVH'], 17, False, False)
-    ER = (30, ['ER'], 18, False, False, "{:.0f}", False)
-    ERA = (38, ['ERA'], 19, True, False, "{:.2f}", False)
-    WHIP = (35, ['WHIP'], 20, True, False, "{:.2f}", False)
-    K_PER_9 = (36, ['K/9'], 21, True, False, "{:.2f}")
-    BB_PER_9 = (37, ['BB/9'], 22, True, False, "{:.2f}", False)
-    HR_PER_9 = (42, ['HR/9'], 23, True, False, "{:.2f}", False)
-    BABIP_P = (41, ['BABIP'], 24, True, False, "{:.3f}", False)
-    FIP = (39, ['FIP'], 25, True, False, "{:.2f}", False)
-    
-    POINTS = (43, ['Points'], -1, False, True, "{:.1f}")
-    PPG = (44, ['PPG'], -1, True, True, "{:.2f}", True)
-    PIP = (45, ['PIP'], -1, True, True, "{:.2f}", True)
+    ER = (30, ['ER'], 18, False, False, '{:.0f}', False)
+    ERA = (38, ['ERA'], 19, True, False, '{:.2f}', False)
+    WHIP = (35, ['WHIP'], 20, True, False, '{:.2f}', False)
+    K_PER_9 = (36, ['K/9'], 21, True, False, '{:.2f}')
+    BB_PER_9 = (37, ['BB/9'], 22, True, False, '{:.2f}', False)
+    HR_PER_9 = (42, ['HR/9'], 23, True, False, '{:.2f}', False)
+    BABIP_P = (41, ['BABIP'], 24, True, False, '{:.3f}', False)
+    FIP = (39, ['FIP'], 25, True, False, '{:.2f}', False)
+
+    POINTS = (43, ['Points'], -1, False, True, '{:.1f}')
+    PPG = (44, ['PPG'], -1, True, True, '{:.2f}', True)
+    PIP = (45, ['PIP'], -1, True, True, '{:.2f}', True)
 
     @property
     def rate_denom(self) -> StatType:
@@ -341,29 +333,29 @@ class StatType(IntEnum):
             StatType.FIP: StatType.IP,
             StatType.HR_PER_9: StatType.IP,
             StatType.BABIP_H: StatType.AB,
-            StatType.BABIP_P:StatType.IP
+            StatType.BABIP_P: StatType.IP,
         }
         return lookup.get(self, None)
 
     @classmethod
-    def get_hit_stattype(self, display:str) -> StatType:
-        '''Returns the hitter StatType for the given display. None if no match'''
+    def get_hit_stattype(self, display: str) -> StatType:
+        """Returns the hitter StatType for the given display. None if no match"""
         for st in StatType:
             if st.hitter and display in st.stat_list:
                 return st
         return None
 
     @classmethod
-    def get_pitch_stattype(self, display:str) -> StatType:
-        '''Returns the pitcher StatType for the given display. None if no match'''
+    def get_pitch_stattype(self, display: str) -> StatType:
+        """Returns the pitcher StatType for the given display. None if no match"""
         for st in StatType:
             if not st.hitter and display in st.stat_list:
                 return st
         return None
 
     @classmethod
-    def get_all_hit_stattype(self, no_rates:bool = False) -> List[StatType]:
-        '''Returns a list of all StatTypes for hitters. If no_rates is True, any rate stats are excluded'''
+    def get_all_hit_stattype(self, no_rates: bool = False) -> List[StatType]:
+        """Returns a list of all StatTypes for hitters. If no_rates is True, any rate stats are excluded"""
         sts = []
         for st in StatType:
             if st.hitter:
@@ -373,10 +365,10 @@ class StatType(IntEnum):
                     continue
                 sts.append(st)
         return sorted(sts, key=lambda st: st.rank)
-    
+
     @classmethod
-    def get_all_pitch_stattype(self, no_rates:bool = False) -> List[StatType]:
-        '''Returns a list of all StatTypes for pitchers. If no_rates is True, any rate stats are excluded'''
+    def get_all_pitch_stattype(self, no_rates: bool = False) -> List[StatType]:
+        """Returns a list of all StatTypes for pitchers. If no_rates is True, any rate stats are excluded"""
         sts = []
         for st in StatType:
             if not st.hitter:
@@ -387,19 +379,19 @@ class StatType(IntEnum):
                 sts.append(st)
         return sorted(sts, key=lambda st: st.rank)
 
+
 def as_enum(d):
-    return {StatType._value2member_map_[int(key)]:val for key, val in d.items()}
+    return {StatType._value2member_map_[int(key)]: val for key, val in d.items()}
+
 
 class ScoringFormat(int, Enum):
-    '''Enumeration of all Ottoneu Scoring Formats'''
+    """Enumeration of all Ottoneu Scoring Formats"""
 
-    id:int
-    full_name:str
-    short_name:str
+    id: int
+    full_name: str
+    short_name: str
 
-    def __new__(
-        cls, id: int, full_name: str, short_name:str
-    ) -> ScoringFormat:
+    def __new__(cls, id: int, full_name: str, short_name: str) -> ScoringFormat:
         obj = int.__new__(cls, id)
         obj._value_ = id
 
@@ -417,71 +409,61 @@ class ScoringFormat(int, Enum):
     CUSTOM = (7, 'Custom', 'Custom')
 
     @classmethod
-    def get_format_stat_categories(self, s_format:ScoringFormat) -> List[StatType]:
+    def get_format_stat_categories(self, s_format: ScoringFormat) -> List[StatType]:
         if s_format == ScoringFormat.OLD_SCHOOL_5X5:
-            cats = [StatType.R, StatType.HR, StatType.RBI, StatType.SB, StatType.AVG,
-                    StatType.W, StatType.SV, StatType.SO, StatType.ERA, StatType.WHIP]
+            cats = [StatType.R, StatType.HR, StatType.RBI, StatType.SB, StatType.AVG, StatType.W, StatType.SV, StatType.SO, StatType.ERA, StatType.WHIP]
         elif s_format == ScoringFormat.CLASSIC_4X4:
-            cats = [StatType.R, StatType.HR, StatType.OBP, StatType.SLG,
-                    StatType.SO, StatType.ERA, StatType.WHIP, StatType.HR_PER_9]
+            cats = [StatType.R, StatType.HR, StatType.OBP, StatType.SLG, StatType.SO, StatType.ERA, StatType.WHIP, StatType.HR_PER_9]
         else:
             cats = [StatType.POINTS]
         return cats
 
     @classmethod
-    def is_points_type(self, s_format:ScoringFormat) -> bool:
-        '''Returns if the argument format is a points format'''
+    def is_points_type(self, s_format: ScoringFormat) -> bool:
+        """Returns if the argument format is a points format"""
         return s_format in [self.FG_POINTS, self.H2H_FG_POINTS, self.SABR_POINTS, self.H2H_SABR_POINTS]
-    
+
     @classmethod
-    def is_sabr(self, s_format:ScoringFormat) -> bool:
-        '''Returns if the argument format is a SABR points format'''
+    def is_sabr(self, s_format: ScoringFormat) -> bool:
+        """Returns if the argument format is a SABR points format"""
         return s_format in [self.SABR_POINTS, self.H2H_SABR_POINTS]
-    
+
     @classmethod
-    def is_h2h(self, s_format:ScoringFormat) -> bool:
-        '''Returns if the argument format is a head-to-head format'''
+    def is_h2h(self, s_format: ScoringFormat) -> bool:
+        """Returns if the argument format is a head-to-head format"""
         return s_format in [self.H2H_FG_POINTS, self.H2H_SABR_POINTS]
 
     @classmethod
-    def get_format_by_full_name(self, full_name:str) -> ScoringFormat:
-        '''Returns the ScoringFormat matching the argument full name. None if no match'''
+    def get_format_by_full_name(self, full_name: str) -> ScoringFormat:
+        """Returns the ScoringFormat matching the argument full name. None if no match"""
         for sf in ScoringFormat:
             if sf.full_name == full_name:
                 return sf
         return None
-    
-    @classmethod 
+
+    @classmethod
     def get_discrete_types(self) -> List[ScoringFormat]:
-        '''Returns a list of discrete ScoringFormats'''
-        return [self.CLASSIC_4X4,
-                self.OLD_SCHOOL_5X5,
-                self.FG_POINTS,
-                self.SABR_POINTS,
-                self.H2H_FG_POINTS,
-                self.H2H_SABR_POINTS,
-                self.CUSTOM] 
+        """Returns a list of discrete ScoringFormats"""
+        return [self.CLASSIC_4X4, self.OLD_SCHOOL_5X5, self.FG_POINTS, self.SABR_POINTS, self.H2H_FG_POINTS, self.H2H_SABR_POINTS, self.CUSTOM]
+
 
 class Position(str, Enum):
+    order: int
+    offense: bool
+    component_pos: Tuple[Position]
+    __exclude: bool
 
-    order:int
-    offense:bool
-    component_pos:Tuple[Position]
-    __exclude:bool
-
-    def __new__(
-        cls, id: str, order: int, offense: bool = True, component_pos:Tuple[Position]=None, exclude:bool = False
-    ) -> Position:
+    def __new__(cls, id: str, order: int, offense: bool = True, component_pos: Tuple[Position] = None, exclude: bool = False) -> Position:
         obj = str.__new__(cls, id)
         obj._value_ = id
 
         obj.order = order
         obj.offense = offense
-        obj.__exclude = exclude 
+        obj.__exclude = exclude
         obj.component_pos = component_pos
         return obj
 
-    '''Enumeration of Ottoneu positions'''
+    """Enumeration of Ottoneu positions"""
     POS_C = ('C', 4)
     POS_1B = ('1B', 5)
     POS_2B = ('2B', 6)
@@ -496,57 +478,44 @@ class Position(str, Enum):
     POS_OF = ('OF', 15, True, (POS_LF, POS_CF, POS_RF))
     POS_UTIL = ('Util', 16)
     POS_SP = ('SP', 17, False)
-    POS_RP = ('RP', 18, False)   
+    POS_RP = ('RP', 18, False)
     POS_P = ('P', 19, False)
     POS_TWO_WAY = ('Two-Way', -1, True, (), True)
-    OFFENSE = ("Offense", 2)
-    PITCHER = ("Pitcher", 3, False)
+    OFFENSE = ('Offense', 2)
+    PITCHER = ('Pitcher', 3, False)
     OVERALL = ('Overall', 1, True, (), True)
 
     @classmethod
     def get_offensive_pos(self) -> List[Position]:
-        '''Returns list of all offensive positions, including general offense'''
+        """Returns list of all offensive positions, including general offense"""
         return self.get_ordered_list([p for p in self if p.offense and not p.__exclude])
-    
+
     @classmethod
     def get_pitching_pos(self) -> List[Position]:
-        '''Returns list of all pitching positions, including general pitching'''
+        """Returns list of all pitching positions, including general pitching"""
         return self.get_ordered_list([p for p in self if not p.offense and not p.__exclude])
-    
-    def get_ordered_list(positions:List[Position]) -> List[Position]:
-        '''Orders the given Position List'''
+
+    def get_ordered_list(positions: List[Position]) -> List[Position]:
+        """Orders the given Position List"""
         return sorted(positions, key=lambda pos: pos.order)
-    
+
     @classmethod
     def get_discrete_offensive_pos(self) -> List[Position]:
-        '''Returns list of offensive positions that does not include overall offense or MI'''
-        return [self.POS_C, 
-            self.POS_1B,
-            self.POS_2B,
-            self.POS_SS,
-            self.POS_3B,
-            self.POS_OF,
-            self.POS_UTIL]
+        """Returns list of offensive positions that does not include overall offense or MI"""
+        return [self.POS_C, self.POS_1B, self.POS_2B, self.POS_SS, self.POS_3B, self.POS_OF, self.POS_UTIL]
 
     @classmethod
     def get_ottoneu_offensive_pos(self) -> List[Position]:
-        '''Returns list of offensive positions that does not include overall offense (Ottoneu starting positions)'''
-        return [self.POS_C, 
-            self.POS_1B,
-            self.POS_2B,
-            self.POS_SS,
-            self.POS_MI,
-            self.POS_3B,
-            self.POS_OF,
-            self.POS_UTIL]
+        """Returns list of offensive positions that does not include overall offense (Ottoneu starting positions)"""
+        return [self.POS_C, self.POS_1B, self.POS_2B, self.POS_SS, self.POS_MI, self.POS_3B, self.POS_OF, self.POS_UTIL]
 
     @classmethod
     def get_discrete_pitching_pos(self) -> List[Position]:
-        '''Returns list of pitching positions, not including general pitchers'''
+        """Returns list of pitching positions, not including general pitchers"""
         return [self.POS_SP, self.POS_RP]
-    
-    def eligible(test_pos:str, pos:Position) -> bool:
-        '''Returns if the position string is eligible for the given position'''
+
+    def eligible(test_pos: str, pos: Position) -> bool:
+        """Returns if the position string is eligible for the given position"""
         if pos == Position.OVERALL:
             return True
         elif pos == Position.OFFENSE or pos == Position.POS_UTIL:
@@ -555,7 +524,7 @@ class Position(str, Enum):
                     return True
             return False
         elif pos == Position.POS_C:
-            #Need to change C eligibility search because of potential CI or CF positions
+            # Need to change C eligibility search because of potential CI or CF positions
             return 'C/' in test_pos or 'C' == test_pos
         elif pos == Position.POS_MI:
             return bool(re.search('2B|SS|MI', test_pos))
@@ -571,8 +540,8 @@ class Position(str, Enum):
                     return True
             return False
         return pos.value in test_pos
-    
-    def position_is_base(pos:Position, position_keys:List[Position]) -> bool:
+
+    def position_is_base(pos: Position, position_keys: List[Position]) -> bool:
         if not pos.offense:
             if pos == Position.POS_P:
                 return not set([Position.POS_SP, Position.POS_RP]).issubset(position_keys)
@@ -581,7 +550,7 @@ class Position(str, Enum):
             return len(position_keys) == 1
         if pos in [Position.POS_C, Position.POS_1B, Position.POS_2B, Position.POS_3B, Position.POS_SS, Position.POS_LF, Position.POS_CF, Position.POS_RF]:
             return True
-        if pos == Position.POS_OF: 
+        if pos == Position.POS_OF:
             if set([Position.POS_LF, Position.POS_CF, Position.POS_RF]).issubset(position_keys):
                 return False
             return True
@@ -598,44 +567,51 @@ class Position(str, Enum):
             if set([Position.POS_2B, Position.POS_SS, Position.POS_1B, Position.POS_3B]).issubset(position_keys):
                 return False
             return True
-        
+
         raise InputException(f'Unexpected position {pos} sent to position_is_base method')
 
+
 class IdType(Enum):
-    '''Enumeration of player id types'''
+    """Enumeration of player id types"""
+
     OTTONEU = 'Ottoneu'
     FANGRAPHS = 'FanGraphs'
     MLB = 'MLBID'
     OTB = 'OTB'
 
+
 class PropertyType(Enum):
-    '''Enumeration of Ottoneu Toolbox propery types'''
+    """Enumeration of Ottoneu Toolbox propery types"""
+
     DB_VERSION = 'db.version'
 
+
 class AvgSalaryFom(str, Enum):
-    '''Enumeration of average salary statistic types'''
-    MEAN = 'Mean',
+    """Enumeration of average salary statistic types"""
+
+    MEAN = ('Mean',)
     MEDIAN = 'Median'
 
+
 class Preference(str, Enum):
-    '''Enumeration of Ottoneu Toolbox preferences'''
-    SALARY_REFRESH_FREQUENCY = 'sal_refresh_freq',
-    AVG_SALARY_FOM = 'avg_sal_fom',
-    DOCK_DRAFT_TARGETS = 'dock_draft_targets',
-    DOCK_DRAFT_PLAYER_SEARCH = 'dock_draft_player_search',
+    """Enumeration of Ottoneu Toolbox preferences"""
+
+    SALARY_REFRESH_FREQUENCY = ('sal_refresh_freq',)
+    AVG_SALARY_FOM = ('avg_sal_fom',)
+    DOCK_DRAFT_TARGETS = ('dock_draft_targets',)
+    DOCK_DRAFT_PLAYER_SEARCH = ('dock_draft_player_search',)
     DOCK_DRAFT_STANDINGS = 'dock_draft_standings'
     DEFAULT_BROWSER = 'default_proj_browser'
     INFLATION_METHOD = 'inflation_methodology'
 
-class Browser(str, Enum):
-    '''Enumeration of available browser types for projection download'''
 
-    name:str
+class Browser(str, Enum):
+    """Enumeration of available browser types for projection download"""
+
+    name: str
     display: str
 
-    def __new__(
-        cls, name: str, display: str = ""
-    ) -> Browser:
+    def __new__(cls, name: str, display: str = '') -> Browser:
         obj = str.__new__(cls, name)
         obj._value_ = name
 
@@ -645,20 +621,22 @@ class Browser(str, Enum):
     CHROME = ('ChromeHTML', 'Chrome')
     FIREFOX = ('FirefoxURL', 'Firefox')
     EDGE = ('MSEdgeHTM', 'Microsoft Edge')
-    '''Enumeration of available browser types for projection download'''
+    """Enumeration of available browser types for projection download"""
 
     @classmethod
-    def get_enum_from_display(self, display:str) -> Browser:
-        '''Returns the Browser for the argument display name. None if no match'''
+    def get_enum_from_display(self, display: str) -> Browser:
+        """Returns the Browser for the argument display name. None if no match"""
         for b in Browser:
             if b.display == display:
                 return b
         return None
 
+
 class InflationMethod(str, Enum):
     CONVENTIONAL = 'Conventional'
     ROSTER_SPOTS_ONLY = 'Roster Spots Only'
     MARGINAL_VALUE = 'Marginal Value'
+
 
 class Platform(str, Enum):
     OTTONEU = 'Ottoneu'
