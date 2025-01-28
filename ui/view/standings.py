@@ -232,9 +232,9 @@ class Standings(tk.Frame):
                     if rs.salary:
                         surplus += val - rs.salary
                     num_players += 1
-            vals.append('$' + '{:.0f}'.format(salaries))
-            vals.append('$' + '{:.0f}'.format(tot_val))
-            vals.append('$' + '{:.0f}'.format(surplus))
+            vals.append(f'${salaries:.0f}')
+            vals.append(f'${tot_val:.0f}')
+            vals.append(f'${surplus:.0f}')
             vals.append(num_players)
             if hasattr(self.league, 'team_drafts') and self.league.team_drafts:
                 for td in self.league.team_drafts:
@@ -259,8 +259,8 @@ class Standings(tk.Frame):
                 tot_val += val
                 surplus += val - rs.salary
             vals.append(f'${salaries}')
-            vals.append('$' + '{:.0f}'.format(tot_val))
-            vals.append('$' + '{:.0f}'.format(surplus))
+            vals.append(f'${tot_val:.0f}')
+            vals.append(f'${surplus:.0f}')
             vals.append(num_players)
             if hasattr(self.league, 'team_drafts') and self.league.team_drafts:
                 for td in self.league.team_drafts:

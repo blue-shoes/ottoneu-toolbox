@@ -1099,15 +1099,13 @@ class ValuesCalculation(ToolboxView):
     def update_calc_output_frame(self):
         self.output_title.set('Value Calculation Results')
         if self.manual_split.get():
-            self.dollars_per_fom_val.set(
-                '$' + '{:.3f}'.format(self.value_calc.get_output(CDT.HITTER_DOLLAR_PER_FOM)) + '(Bat), $' + '{:.3f}'.format(self.value_calc.get_output(CDT.PITCHER_DOLLAR_PER_FOM)) + '(Arm)'
-            )
+            self.dollars_per_fom_val.set(f'${self.value_calc.get_output(CDT.HITTER_DOLLAR_PER_FOM):.3f} (Bat), ${self.value_calc.get_output(CDT.PITCHER_DOLLAR_PER_FOM):.3f} (Arm)')
         else:
             dol_per = self.value_calc.get_output(CDT.DOLLARS_PER_FOM)
             if dol_per is None:
                 self.dollars_per_fom_val.set('---')
             else:
-                self.dollars_per_fom_val.set('$' + '{:.3f}'.format(dol_per))
+                self.dollars_per_fom_val.set(f'${dol_per:.3f}')
 
         self.safe_set_output_value(CDT.TOTAL_FOM_ABOVE_REPLACEMENT, self.total_fom_sv, s_format='{:.0f}')
         self.safe_set_output_value(CDT.TOTAL_HITTERS_ROSTERED, self.total_bat_rostered_sv, integer=True)

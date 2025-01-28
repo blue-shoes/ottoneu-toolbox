@@ -194,12 +194,15 @@ class Surplus(tk.Frame):
             else:
                 inf_pv = (pv - 1) * (1 + self.inflation)
 
-            self.player_table.table.set(player_id, [8], '$' + '{:.1f}'.format(inf_pv))
+            self.player_table.table.set(player_id, [8], self.__get_dollar_str(inf_pv))
             sal = vals[6]
             if sal != '':
                 sal = float(sal.split('$')[1])
                 inf_surp = inf_pv - sal
-                self.player_table.table.set(player_id, [10], '$' + '{:.1f}'.format(inf_surp))
+                self.player_table.table.set(player_id, [10], self.__get_dollar_str(inf_surp))
+
+    def __get_dollar_str(self, val) -> str:
+        return f'${val:.1f}'
 
     def __get_fa_row(self, pv: PlayerValue) -> tuple[str]:
         vals = []
@@ -212,8 +215,8 @@ class Surplus(tk.Frame):
         vals.append('')  # Team
         if self.league.is_salary_cap():
             vals.extend(['', '', ''])
-            vals.append('$' + '{:.1f}'.format(pv.value))
-            vals.append('$' + '{:.1f}'.format(pv.value * (1 + self.inflation)))
+            vals.append(self.__get_dollar_str(pv.value))
+            vals.append(self.__get_dollar_str(pv.value * (1 + self.inflation)))
         else:
             vals.append(pv.rank)
             vals.append(int((pv.rank - 1) / self.league.num_teams) + 1)
@@ -240,7 +243,7 @@ class Surplus(tk.Frame):
             vals.append(f'${rs.salary}')
             if pv is not None:
                 val = pv.value
-                vals.append('$' + '{:.1f}'.format(val))
+                vals.append('{:.1f}'.format(val))
                 if val > 1:
                     vals.append('$' + '{:.1f}'.format(max(val - 1, 0) * (1 + self.inflation) + 1))
                 else:

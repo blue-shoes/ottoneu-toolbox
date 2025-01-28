@@ -16,7 +16,7 @@ from typing import List, Tuple, Dict
 def perform_point_calculation(value_calc: ValueCalculation, pd=None, debug: bool = False) -> None:
     """Creates a PointValues object from the ValueCalculation, calculates player values, and stores them in the ValueCalculation"""
     if pd is not None:
-        pd.set_task_title("Initializing Value Calculation...")
+        pd.set_task_title('Initializing Value Calculation...')
         pd.increment_completion_percent(5)
     value_calculation = PlayerValues(value_calc=value_calc, debug=debug)
     value_calculation.calculate_values(progress=pd)
@@ -154,7 +154,7 @@ def get_points(player_proj: PlayerProjection, pos: Position, sabr: bool = False,
                         + svh
                     )
             if not custom_format.points_format:
-                raise InputException("Input CustomScoring is not a points format")
+                raise InputException('Input CustomScoring is not a points format')
             points = 0
             for cat in custom_format.stats:
                 if not cat.category.hitter:
@@ -220,14 +220,14 @@ def get_dataframe_with_values(value_calc: ValueCalculation, pos: Position, text_
             else:
                 row.append(pv.player.position)
             if text_values:
-                row.append("${:.1f}".format(pv.value))
+                row.append('${:.1f}'.format(pv.value))
             else:
                 row.append(pv.value)
             rows.append(row)
         df = DataFrame(rows)
-        header = ["otto", "Name", "Team", "Pos", "$"]
+        header = ['otto', 'Name', 'Team', 'Pos', '$']
         df.columns = header
-        df.set_index("otto", inplace=True)
+        df.set_index('otto', inplace=True)
         return df
     else:
         proj_dfs = projection_services.convert_to_df(value_calc.projection)
@@ -243,18 +243,18 @@ def get_dataframe_with_values(value_calc: ValueCalculation, pos: Position, text_
             row.append(pv.value)
             df_row = proj.loc[pv.player_id]
             for col in proj.columns:
-                if col == "ID":
+                if col == 'ID':
                     continue
                 row.append(df_row[col])
             rows.append(row)
         df = DataFrame(rows)
-        header = ["Ottoneu Id", "Value"]
+        header = ['Ottoneu Id', 'Value']
         for col in proj.columns:
-            if col == "ID":
+            if col == 'ID':
                 continue
             header.append(col)
         df.columns = header
-        df.set_index("Ottoneu Id", inplace=True)
+        df.set_index('Ottoneu Id', inplace=True)
         return df
 
 
@@ -272,83 +272,83 @@ def normalize_value_upload(df: DataFrame, game_type: ScoringFormat, id_type: IdT
     col_map = {}
 
     for col in df.columns:
-        if "ID" in col.upper():
+        if 'ID' in col.upper():
             id_col = col
-        if "VAL" in col.upper() or "PRICE" in col.upper() or "$" in col:
+        if 'VAL' in col.upper() or 'PRICE' in col.upper() or '$' in col:
             value_col = col
-            col_map[value_col] = "Values"
-        if "NAME" in col.upper():
+            col_map[value_col] = 'Values'
+        if 'NAME' in col.upper():
             name_col = col
-            col_map[col] = "NAME"
-        if "POS" in col.upper():
-            col_map[col] = "POS"
-        if "TEAM" in col.upper() or "ORG" in col.upper():
+            col_map[col] = 'NAME'
+        if 'POS' in col.upper():
+            col_map[col] = 'POS'
+        if 'TEAM' in col.upper() or 'ORG' in col.upper():
             team_col = col
-            col_map[col] = "TEAM"
-        if "G" == col.upper() or "GAME" in col.upper() or "PA" == col.upper():
+            col_map[col] = 'TEAM'
+        if 'G' == col.upper() or 'GAME' in col.upper() or 'PA' == col.upper():
             hit_pt_col = col
-            col_map[hit_pt_col] = "H_PT"
-        if "IP" == col.upper() or "GS" == col.upper():
+            col_map[hit_pt_col] = 'H_PT'
+        if 'IP' == col.upper() or 'GS' == col.upper():
             pitch_pt_col = col
-            col_map[pitch_pt_col] = "P_PT"
+            col_map[pitch_pt_col] = 'P_PT'
 
         if ScoringFormat.is_points_type(game_type) or (custom_scoring and custom_scoring.points_format):
-            if "PTSPG" in col.upper() or "P/G" in col.upper() or "PTSPPA" in col.upper() or "P/PA" in col.upper():
+            if 'PTSPG' in col.upper() or 'P/G' in col.upper() or 'PTSPPA' in col.upper() or 'P/PA' in col.upper():
                 hit_rate_col = col
-                col_map[hit_rate_col] = "Hit_Rate"
-            elif "PTSPG" in col.upper() or "P/G" in col.upper() or "PTSPIP" in col.upper() or "P/IP" in col.upper():
+                col_map[hit_rate_col] = 'Hit_Rate'
+            elif 'PTSPG' in col.upper() or 'P/G' in col.upper() or 'PTSPIP' in col.upper() or 'P/IP' in col.upper():
                 pitch_rate_col = col
-                col_map[pitch_rate_col] = "Pitch_Rate"
-            elif "PTS" in col.upper() or "POINTS" in col.upper():
+                col_map[pitch_rate_col] = 'Pitch_Rate'
+            elif 'PTS' in col.upper() or 'POINTS' in col.upper():
                 points_col = col
-                col_map[points_col] = "Points"
+                col_map[points_col] = 'Points'
 
         elif game_type == ScoringFormat.OLD_SCHOOL_5X5:
-            if "R_Z" in col.upper() or "R_SGP" in col.upper():
-                col_map[col] = "R_FOM"
-            if "HR_Z" in col.upper() or "HR_SGP" in col.upper():
-                col_map[col] = "HR_FOM"
-            if "RBI_Z" in col.upper() or "RBI_SGP" in col.upper():
-                col_map[col] = "RBI_FOM"
-            if "AVG_Z" in col.upper() or "AVG_SGP" in col.upper():
-                col_map[col] = "AVG_FOM"
-            if "SB_Z" in col.upper() or "SB_SGP" in col.upper():
-                col_map[col] = "SB_FOM"
-            if "W_Z" in col.upper() or "W_SGP" in col.upper():
-                col_map[col] = "W_FOM"
-            if "SV_Z" in col.upper() or "SV_SGP" in col.upper():
-                col_map[col] = "SV_FOM"
-            if "WHIP_Z" in col.upper() or "WHIP_SGP" in col.upper():
-                col_map[col] = "WHIP_FOM"
-            if "ERA_Z" in col.upper() or "ERA_SGP" in col.upper():
-                col_map[col] = "ERA_FOM"
-            if "K_Z" in col.upper() or "K_SGP" in col.upper():
-                col_map[col] = "K_FOM"
+            if 'R_Z' in col.upper() or 'R_SGP' in col.upper():
+                col_map[col] = 'R_FOM'
+            if 'HR_Z' in col.upper() or 'HR_SGP' in col.upper():
+                col_map[col] = 'HR_FOM'
+            if 'RBI_Z' in col.upper() or 'RBI_SGP' in col.upper():
+                col_map[col] = 'RBI_FOM'
+            if 'AVG_Z' in col.upper() or 'AVG_SGP' in col.upper():
+                col_map[col] = 'AVG_FOM'
+            if 'SB_Z' in col.upper() or 'SB_SGP' in col.upper():
+                col_map[col] = 'SB_FOM'
+            if 'W_Z' in col.upper() or 'W_SGP' in col.upper():
+                col_map[col] = 'W_FOM'
+            if 'SV_Z' in col.upper() or 'SV_SGP' in col.upper():
+                col_map[col] = 'SV_FOM'
+            if 'WHIP_Z' in col.upper() or 'WHIP_SGP' in col.upper():
+                col_map[col] = 'WHIP_FOM'
+            if 'ERA_Z' in col.upper() or 'ERA_SGP' in col.upper():
+                col_map[col] = 'ERA_FOM'
+            if 'K_Z' in col.upper() or 'K_SGP' in col.upper():
+                col_map[col] = 'K_FOM'
 
         elif game_type == ScoringFormat.CLASSIC_4X4:
-            if "R_Z" in col.upper() or "R_SGP" in col.upper():
-                col_map[col] = "R_FOM"
-            if "HR_Z" in col.upper() or "HR_SGP" in col.upper():
-                col_map[col] = "HR_FOM"
-            if "OBP_Z" in col.upper() or "OBP_SGP" in col.upper():
-                col_map[col] = "OBP_FOM"
-            if "SLG_Z" in col.upper() or "SLG_SGP" in col.upper():
-                col_map[col] = "SLG_FOM"
-            if "HR9_Z" in col.upper() or "HR9_SGP" in col.upper():
-                col_map[col] = "HR9_FOM"
-            if "WHIP_Z" in col.upper() or "WHIP_SGP" in col.upper():
-                col_map[col] = "WHIP_FOM"
-            if "ERA_Z" in col.upper() or "ERA_SGP" in col.upper():
-                col_map[col] = "ERA_FOM"
-            if "K_Z" in col.upper() or "K_SGP" in col.upper():
-                col_map[col] = "K_FOM"
+            if 'R_Z' in col.upper() or 'R_SGP' in col.upper():
+                col_map[col] = 'R_FOM'
+            if 'HR_Z' in col.upper() or 'HR_SGP' in col.upper():
+                col_map[col] = 'HR_FOM'
+            if 'OBP_Z' in col.upper() or 'OBP_SGP' in col.upper():
+                col_map[col] = 'OBP_FOM'
+            if 'SLG_Z' in col.upper() or 'SLG_SGP' in col.upper():
+                col_map[col] = 'SLG_FOM'
+            if 'HR9_Z' in col.upper() or 'HR9_SGP' in col.upper():
+                col_map[col] = 'HR9_FOM'
+            if 'WHIP_Z' in col.upper() or 'WHIP_SGP' in col.upper():
+                col_map[col] = 'WHIP_FOM'
+            if 'ERA_Z' in col.upper() or 'ERA_SGP' in col.upper():
+                col_map[col] = 'ERA_FOM'
+            if 'K_Z' in col.upper() or 'K_SGP' in col.upper():
+                col_map[col] = 'K_FOM'
 
         elif custom_scoring:
             for cat in [c.category for c in custom_scoring.stats]:
-                if f"{cat.display.upper()}_Z" in col.upper() or f"{cat.display.upper()}_SGP" in col.upper():
-                    col_map[col] = f"{cat.display.upper()}_FOM"
+                if f'{cat.display.upper()}_Z' in col.upper() or f'{cat.display.upper()}_SGP' in col.upper():
+                    col_map[col] = f'{cat.display.upper()}_FOM'
 
-    validate_msg = ""
+    validate_msg = ''
     if id_col is None:
         validate_msg += 'No column with header containing "ID"\n'
     else:
@@ -379,13 +379,13 @@ def normalize_value_upload(df: DataFrame, game_type: ScoringFormat, id_type: IdT
 
     if ScoringFormat.is_points_type(game_type):
         if hit_rate_col is not None:
-            df["Hit_Rate"] = df["Hit_Rate"].apply(convert_vals)
+            df['Hit_Rate'] = df['Hit_Rate'].apply(convert_vals)
         if pitch_rate_col is not None:
-            df["Pitch_Rate"] = df["Pitch_Rate"].apply(convert_vals)
+            df['Pitch_Rate'] = df['Pitch_Rate'].apply(convert_vals)
         if hit_pt_col is not None:
-            df["H_PT"] = df["H_PT"].apply(convert_vals)
+            df['H_PT'] = df['H_PT'].apply(convert_vals)
         if pitch_pt_col is not None:
-            df["P_PT"] = df["P_PT"].apply(convert_vals)
+            df['P_PT'] = df['P_PT'].apply(convert_vals)
 
         if None not in [hit_rate_col, points_col] or None not in [points_col, hit_pt_col]:
             fill_df_hit_columns(df)
@@ -393,71 +393,71 @@ def normalize_value_upload(df: DataFrame, game_type: ScoringFormat, id_type: IdT
         if None not in [pitch_rate_col, points_col] or None not in [points_col, pitch_pt_col]:
             fill_df_pitch_columns(df)
 
-        if "Points" not in df and None not in [hit_rate_col, hit_pt_col] and None not in [pitch_rate_col, pitch_pt_col]:
-            df["Points"] = df.apply(calc_points, axis=0)
+        if 'Points' not in df and None not in [hit_rate_col, hit_pt_col] and None not in [pitch_rate_col, pitch_pt_col]:
+            df['Points'] = df.apply(calc_points, axis=0)
     else:
         if has_required_data_for_rl(df, game_type):
-            df["FOM"] = df.apply(calc_fom, axis=1, args=(game_type, custom_scoring))
+            df['FOM'] = df.apply(calc_fom, axis=1, args=(game_type, custom_scoring))
 
     return validate_msg
 
 
 def fill_df_hit_columns(df: DataFrame) -> None:
     """Calculates the Hit_Rate or H_PT columns of the dataset in-place based on other columns in the DataFrame"""
-    if "Hit_Rate" not in df.columns:
-        df["Hit_Rate"] = df.apply(calc_hit_rate, axis=1)
-    elif "H_PT" not in df.columns:
-        df["H_PT"] = df.apply(calc_hit_pt, axis=1)
+    if 'Hit_Rate' not in df.columns:
+        df['Hit_Rate'] = df.apply(calc_hit_rate, axis=1)
+    elif 'H_PT' not in df.columns:
+        df['H_PT'] = df.apply(calc_hit_pt, axis=1)
 
 
 def calc_points(row) -> float:
     """Calculates player points based off of rate and playing time columns"""
-    return row["H_PT"] * row["Hit_Rate"] + row["P_PT"] * row["Pitch_Rate"]
+    return row['H_PT'] * row['Hit_Rate'] + row['P_PT'] * row['Pitch_Rate']
 
 
 def calc_hit_rate(row) -> float:
     """Calculates the hitter point rate based on the H_PT and Points columns"""
-    pt = row["H_PT"]
+    pt = row['H_PT']
     if pt == 0:
         return 0
-    return row["Points"] / pt
+    return row['Points'] / pt
 
 
 def calc_hit_pt(row) -> float:
     """Calculates the hitter playing time based on the Hit_Rate and Points columns"""
-    rate = row["Hit_Rate"]
+    rate = row['Hit_Rate']
     if rate == 0:
         return 0
-    return row["Points"] / rate
+    return row['Points'] / rate
 
 
 def fill_df_pitch_columns(df: DataFrame) -> None:
     """Calculates the Pitch_Rate or P_PT columns of the dataset in-place based on other columns in the DataFrame"""
-    if "Pitch_Rate" not in df.columns:
-        df["Pitch_Rate"] = df.apply(calc_pitch_rate, axis=1)
-    elif "P_PT" not in df.columns:
-        df["P_PT"] = df.apply(calc_pitch_pt, axis=1)
+    if 'Pitch_Rate' not in df.columns:
+        df['Pitch_Rate'] = df.apply(calc_pitch_rate, axis=1)
+    elif 'P_PT' not in df.columns:
+        df['P_PT'] = df.apply(calc_pitch_pt, axis=1)
 
 
 def calc_pitch_rate(row) -> float:
     """Calculates the pitcher point rate based on the P_PT and Points columns"""
-    pt = row["P_PT"]
+    pt = row['P_PT']
     if pt == 0:
         return 0
-    return row["Points"] / pt
+    return row['Points'] / pt
 
 
 def calc_pitch_pt(row) -> float:
     """Calculates the pitcher playing time based on the Pitch_Rate and Points columns"""
-    rate = row["Pitch_Rate"]
+    rate = row['Pitch_Rate']
     if rate == 0:
         return 0
-    return row["Points"] / rate
+    return row['Points'] / rate
 
 
 def convert_vals(value) -> float:
     """Sanitizes NA, --, or NaN values to 0, and string values to a float"""
-    if value == "NA" or value == "--" or math.isnan(value):
+    if value == 'NA' or value == '--' or math.isnan(value):
         return float(0)
     elif type(value) is float:
         return value
@@ -473,44 +473,44 @@ def calc_fom(row, scoring_format: ScoringFormat, custom_format: CustomScoring = 
     if custom_format:
         fom = 0
         for cat in custom_format.stats:
-            fom += na_to_0(row[f"{cat.category.display}_FOM"])
+            fom += na_to_0(row[f'{cat.category.display}_FOM'])
         return fom
-    raise InputException("None CustomFormat passed to calc_fom method.")
+    raise InputException('None CustomFormat passed to calc_fom method.')
 
 
 def calc_old_school_fom(row) -> float:
     """Calculates the sum of the figure of merit columns for uploaded 5x5 value data sets for a given row"""
     return (
-        na_to_0(row["R_FOM"])
-        + na_to_0(row["HR_FOM"])
-        + na_to_0(row["RBI_FOM"])
-        + na_to_0(row["AVG_FOM"])
-        + na_to_0(row["SB_FOM"])
-        + na_to_0(row["W_FOM"])
-        + na_to_0(row["SV_FOM"])
-        + na_to_0(row["WHIP_FOM"])
-        + na_to_0(row["ERA_FOM"])
-        + na_to_0(row["K_FOM"])
+        na_to_0(row['R_FOM'])
+        + na_to_0(row['HR_FOM'])
+        + na_to_0(row['RBI_FOM'])
+        + na_to_0(row['AVG_FOM'])
+        + na_to_0(row['SB_FOM'])
+        + na_to_0(row['W_FOM'])
+        + na_to_0(row['SV_FOM'])
+        + na_to_0(row['WHIP_FOM'])
+        + na_to_0(row['ERA_FOM'])
+        + na_to_0(row['K_FOM'])
     )
 
 
 def calc_classic_fom(row) -> float:
     """Calculates the sum of the figure of merit columns for uploaded 5x5 value data sets for a given row"""
     return (
-        na_to_0(row["R_FOM"])
-        + na_to_0(row["HR_FOM"])
-        + na_to_0(row["OBP_FOM"])
-        + na_to_0(row["SLG_FOM"])
-        + na_to_0(row["HR9_FOM"])
-        + na_to_0(row["WHIP_FOM"])
-        + na_to_0(row["ERA_FOM"])
-        + na_to_0(row["K_FOM"])
+        na_to_0(row['R_FOM'])
+        + na_to_0(row['HR_FOM'])
+        + na_to_0(row['OBP_FOM'])
+        + na_to_0(row['SLG_FOM'])
+        + na_to_0(row['HR9_FOM'])
+        + na_to_0(row['WHIP_FOM'])
+        + na_to_0(row['ERA_FOM'])
+        + na_to_0(row['K_FOM'])
     )
 
 
 def na_to_0(value) -> float:
     """Sanitizes NA and NaN values to 0"""
-    if value == "NA" or math.isnan(value):
+    if value == 'NA' or math.isnan(value):
         return 0
     else:
         return value
@@ -519,25 +519,25 @@ def na_to_0(value) -> float:
 def has_required_data_for_rl(df: DataFrame, game_type: ScoringFormat) -> bool:
     """Checks if the input DataFrame has the required columns to perform the replacement level back-calculations based on the ScoringFormat. True if yes, False if no."""
     if ScoringFormat.is_points_type(game_type):
-        return set(["Points", "H_PT", "P_PT"]).issubset(df.columns)
+        return set(['Points', 'H_PT', 'P_PT']).issubset(df.columns)
     elif game_type == ScoringFormat.OLD_SCHOOL_5X5:
-        return set(["R_FOM", "HR_FOM", "RBI_FOM", "AVG_FOM", "SB_FOM", "W_FOM", "SV_FOM", "WHIP_FOM", "ERA_FOM", "K_FOM"]).issubset(df.columns)
+        return set(['R_FOM', 'HR_FOM', 'RBI_FOM', 'AVG_FOM', 'SB_FOM', 'W_FOM', 'SV_FOM', 'WHIP_FOM', 'ERA_FOM', 'K_FOM']).issubset(df.columns)
     elif game_type == ScoringFormat.CLASSIC_4X4:
-        return set(["R_FOM", "HR_FOM", "OBP_FOM", "SLG_FOM", "HR9_FOM", "WHIP_FOM", "ERA_FOM", "K_FOM"]).issubset(df.columns)
+        return set(['R_FOM', 'HR_FOM', 'OBP_FOM', 'SLG_FOM', 'HR9_FOM', 'WHIP_FOM', 'ERA_FOM', 'K_FOM']).issubset(df.columns)
     else:
-        raise InputException(f"ScoringFormat {game_type} not currently implemented")
+        raise InputException(f'ScoringFormat {game_type} not currently implemented')
 
 
 def get_values_from_fg_auction_files(vc: ValueCalculation, hit_df: DataFrame, pitch_df: DataFrame, rep_lvl_dol, pd=None) -> ValueCalculation:
     """Specialized method to parse FanGraphs AuctionCalculator outputs to perform replacement level calculations and save the resulting ValueCalculation"""
     if pd is not None:
-        pd.set_task_title("Determining replacement levels...")
+        pd.set_task_title('Determining replacement levels...')
         pd.increment_completion_percent(33)
-    hit_df.set_index("PlayerId", inplace=True)
+    hit_df.set_index('PlayerId', inplace=True)
     rep_lvl_tuples = []
     for idx, row in hit_df.iterrows():
-        if row["Dollars"] == float(rep_lvl_dol):
-            rep_lvl_tuples.append((row["POS"], row["aPOS"]))
+        if row['Dollars'] == float(rep_lvl_dol):
+            rep_lvl_tuples.append((row['POS'], row['aPOS']))
     rep_lvls = {}
     min = 9999
     mi = 9999
@@ -560,55 +560,55 @@ def get_values_from_fg_auction_files(vc: ValueCalculation, hit_df: DataFrame, pi
     for idx, row in hit_df.iterrows():
         player = player_services.get_player_by_fg_id(idx)
         if player is None:
-            print(f"player for idx {idx} is None")
+            print(f'player for idx {idx} is None')
             continue
-        if row["Dollars"] >= rep_lvl_dol:
+        if row['Dollars'] >= rep_lvl_dol:
             total_hitters = total_hitters + 1
-        vc.set_player_value(player.id, Position.OVERALL, row["Dollars"])
-        vc.set_player_value(player.id, Position.OFFENSE, row["Dollars"])
-        player.custom_positions = row["POS"]
+        vc.set_player_value(player.id, Position.OVERALL, row['Dollars'])
+        vc.set_player_value(player.id, Position.OFFENSE, row['Dollars'])
+        player.custom_positions = row['POS']
         for pos in Position.get_offensive_pos():
             if pos == Position.OFFENSE:
                 continue
             if player.pos_eligible(pos):
-                val = row["PTS"] + rep_lvls.get(pos) + float(rep_lvl_dol)
+                val = row['PTS'] + rep_lvls.get(pos) + float(rep_lvl_dol)
                 vc.set_player_value(player.id, pos, val)
-                if row["Dollars"] >= rep_lvl_dol:
+                if row['Dollars'] >= rep_lvl_dol:
                     rost[pos] = rost.get(pos, 0) + 1
 
-    pitch_df.set_index("PlayerId", inplace=True)
+    pitch_df.set_index('PlayerId', inplace=True)
     total_pitchers = 0
     for idx, row in pitch_df.iterrows():
         player = player_services.get_player_by_fg_id(idx)
         if player is None:
             continue
-        if row["POS"] == "SP":
-            rep_lvls[Position.POS_SP] = row["aPOS"]
+        if row['POS'] == 'SP':
+            rep_lvls[Position.POS_SP] = row['aPOS']
             break
     for idx, row in pitch_df.iterrows():
         player = player_services.get_player_by_fg_id(idx)
         if player is None:
             continue
-        if row["POS"] == "RP":
-            rep_lvls[Position.POS_RP] = row["aPOS"]
+        if row['POS'] == 'RP':
+            rep_lvls[Position.POS_RP] = row['aPOS']
             break
     for idx, row in pitch_df.iterrows():
         player = player_services.get_player_by_fg_id(idx)
         if player is None:
             continue
-        player.custom_positions = row["POS"]
+        player.custom_positions = row['POS']
         if player.id in vc.value_dict:
-            vc.set_player_value(player.id, Position.OVERALL, row["Dollars"] + vc.get_player_value(player.id, Position.OVERALL).value)
+            vc.set_player_value(player.id, Position.OVERALL, row['Dollars'] + vc.get_player_value(player.id, Position.OVERALL).value)
         else:
-            vc.set_player_value(player.id, Position.OVERALL, row["Dollars"])
-        vc.set_player_value(player.id, Position.PITCHER, row["Dollars"])
-        if row["Dollars"] > rep_lvl_dol:
+            vc.set_player_value(player.id, Position.OVERALL, row['Dollars'])
+        vc.set_player_value(player.id, Position.PITCHER, row['Dollars'])
+        if row['Dollars'] > rep_lvl_dol:
             total_pitchers = total_pitchers + 1
         for pos in Position.get_discrete_pitching_pos():
             if player.pos_eligible(pos):
                 # with info given by Auction Calculator, may not be possible to split swing roles, so leave as-is
-                vc.set_player_value(player.id, pos, row["Dollars"])
-                if row["Dollars"] >= float(rep_lvl_dol):
+                vc.set_player_value(player.id, pos, row['Dollars'])
+                if row['Dollars'] >= float(rep_lvl_dol):
                     rost[pos] = rost.get(pos, 0) + 1
     for pos in Position.get_discrete_offensive_pos() + Position.get_discrete_pitching_pos():
         vc.set_input(CDT.pos_to_num_rostered()[pos], rost[pos])
@@ -619,7 +619,7 @@ def get_values_from_fg_auction_files(vc: ValueCalculation, hit_df: DataFrame, pi
     vc.set_output(CDT.TOTAL_PITCHERS_ROSTERED, total_pitchers)
 
     if pd is not None:
-        pd.set_task_title("Saving Values")
+        pd.set_task_title('Saving Values')
         pd.increment_completion_percent(33)
     return save_calculation(vc)
 
@@ -628,9 +628,9 @@ def init_outputs_from_upload(vc: ValueCalculation, df: DataFrame, game_type: Sco
     """Accepts user inputs and performed preliminary calculations to find replacement levels and dollars per figure of merit if possible, which are populated into the input
     Value Calculation."""
     if pd is not None:
-        pd.set_task_title("Determining replacement levels...")
+        pd.set_task_title('Determining replacement levels...')
         pd.increment_completion_percent(33)
-    sorted = df.sort_values(by="Values", ascending=False)
+    sorted = df.sort_values(by='Values', ascending=False)
     sample_players = {}
     pos_count = {}
     total_value = 0
@@ -641,22 +641,22 @@ def init_outputs_from_upload(vc: ValueCalculation, df: DataFrame, game_type: Sco
 
     col_map = {}
     for col in df.columns:
-        if "POS" in col.upper():
-            col_map[col] = "POS"
+        if 'POS' in col.upper():
+            col_map[col] = 'POS'
             pos_set = PositionSet(name=vc.name)
             now = datetime.datetime.now()
-            pos_set.detail = f"Created with upload on {now.month}-{now.day}-{now.year}"
+            pos_set.detail = f'Created with upload on {now.month}-{now.day}-{now.year}'
             pos_set.positions = []
             vc.position_set = pos_set
-        if "NAME" in col.upper():
-            col_map[col] = "NAME"
-        if "TEAM" in col.upper() or "ORG" in col.upper():
-            col_map[col] = "TEAM"
+        if 'NAME' in col.upper():
+            col_map[col] = 'NAME'
+        if 'TEAM' in col.upper() or 'ORG' in col.upper():
+            col_map[col] = 'TEAM'
 
     df.rename(columns=col_map, inplace=True)
 
     for index, row in sorted.iterrows():
-        value = string_util.parse_dollar(row["Values"])
+        value = string_util.parse_dollar(row['Values'])
         above_rep = False
         if value >= rep_level_cost:
             total_value += value
@@ -671,22 +671,22 @@ def init_outputs_from_upload(vc: ValueCalculation, df: DataFrame, game_type: Sco
         elif id_type == IdType.MLB:
             player = player_services.get_player_by_mlb_id(index)
         else:
-            raise Exception("Invalid id type entered")
+            raise Exception('Invalid id type entered')
         if not player:
-            if "NAME" in df.columns and "TEAM" in df.columns:
-                player = player_services.get_player_by_name_and_team(row["NAME"], row["TEAM"])
+            if 'NAME' in df.columns and 'TEAM' in df.columns:
+                player = player_services.get_player_by_name_and_team(row['NAME'], row['TEAM'])
         if not player:
             # Player not in Ottoneu ToolBox Database, won't have a projection
-            df.at[index, "OTB_Idx"] = -1
+            df.at[index, 'OTB_Idx'] = -1
             continue
-        df.at[index, "OTB_Idx"] = int(player.id)
+        df.at[index, 'OTB_Idx'] = int(player.id)
         hit = False
         pitch = False
-        if "POS" in df.columns:
-            pos_string = row["POS"]
-            pos_list = re.split("[,\\s/\\]+", pos_string)
-            positions = [Position._value2member_map_.get(pos) if pos != "DH" else Position.POS_UTIL for pos in pos_list]
-            pos_string = "/".join(positions)
+        if 'POS' in df.columns:
+            pos_string = row['POS']
+            pos_list = re.split('[,\\s/\\]+', pos_string)
+            positions = [Position._value2member_map_.get(pos) if pos != 'DH' else Position.POS_UTIL for pos in pos_list]
+            pos_string = '/'.join(positions)
             pos_set.positions.append(PlayerPositions(player_id=player.id, position=pos_string))
             player.custom_positions = pos_string
         else:
@@ -714,10 +714,10 @@ def init_outputs_from_upload(vc: ValueCalculation, df: DataFrame, game_type: Sco
                     if proj_derive:
                         sample_list.append((value, player.id))
                     elif ScoringFormat.is_points_type(game_type):
-                        if (positions[0].offense and row["H_PT"]) or (not positions[0].offense and row["P_PT"]):
-                            sample_list.append((value, row["Points"], row["H_PT"], row["P_PT"]))
+                        if (positions[0].offense and row['H_PT']) or (not positions[0].offense and row['P_PT']):
+                            sample_list.append((value, row['Points'], row['H_PT'], row['P_PT']))
                     elif game_type == ScoringFormat.OLD_SCHOOL_5X5 or game_type == ScoringFormat.CLASSIC_4X4:
-                        sample_list.append((value, row["FOM"]))
+                        sample_list.append((value, row['FOM']))
                     else:
                         sample_list.append((value, player.id))
         elif not proj_derive:
@@ -727,10 +727,10 @@ def init_outputs_from_upload(vc: ValueCalculation, df: DataFrame, game_type: Sco
                     sample_list = []
                     sample_players[positions[0]] = sample_list
                 if ScoringFormat.is_points_type(game_type):
-                    if (positions[0].offense and row["H_PT"]) or (not positions[0].offense and row["P_PT"]):
-                        sample_list.append((value, row["Points"], row["H_PT"], row["P_PT"]))
+                    if (positions[0].offense and row['H_PT']) or (not positions[0].offense and row['P_PT']):
+                        sample_list.append((value, row['Points'], row['H_PT'], row['P_PT']))
                 elif game_type == ScoringFormat.OLD_SCHOOL_5X5 or game_type == ScoringFormat.CLASSIC_4X4:
-                    sample_list.append((value, row["FOM"]))
+                    sample_list.append((value, row['FOM']))
                 else:
                     sample_list.append((value, player.id))
 
@@ -788,14 +788,14 @@ def init_outputs_from_upload(vc: ValueCalculation, df: DataFrame, game_type: Sco
                         elif vc.hitter_basis == RankingBasis.PPPA:
                             pt.append(pp.get_stat(StatType.PA))
                         else:
-                            raise Exception(f"Hitter basis {vc.hitter_basis} not implemented")
+                            raise Exception(f'Hitter basis {vc.hitter_basis} not implemented')
                     else:
                         if vc.pitcher_basis == RankingBasis.PPG:
                             pt.append(pp.get_stat(StatType.G_PIT))
                         elif vc.pitcher_basis == RankingBasis.PIP:
                             pt.append(pp.get_stat(StatType.IP))
                         else:
-                            raise Exception(f"Pitcher basis {vc.pitcher_basis} not implemented")
+                            raise Exception(f'Pitcher basis {vc.pitcher_basis} not implemented')
             else:
                 hit_dol_per_fom = -999
                 pitch_dol_per_fom = -999
@@ -839,7 +839,7 @@ def calc_rep_levels_from_values(vals: List[float], game_type: ScoringFormat, fom
     """Based on the array of values and associated figures of merit and potentially playing time, algebraically determine the value per fom and replacement level
     that created those values."""
     if len(vals) < 4 or len(fom) < 4:
-        raise Exception("calc_rep_levels_from_values requires input lists of at least four entries")
+        raise Exception('calc_rep_levels_from_values requires input lists of at least four entries')
     if ScoringFormat.is_points_type(game_type) or ((game_type == ScoringFormat.OLD_SCHOOL_5X5 or game_type == ScoringFormat.CLASSIC_4X4) and len(pt) == 4):
         # Calcs done algebraicly from equation (Value1 - Value2) = Dol/FOM * [(Points1 - rl * Games1) - (Points2 - rl * Games2)]
         numer = (vals[0] - vals[1]) * (fom[2] - fom[3]) - (vals[2] - vals[3]) * (fom[0] - fom[1])
@@ -852,13 +852,13 @@ def calc_rep_levels_from_values(vals: List[float], game_type: ScoringFormat, fom
         rl = fom[0] - (vals[0] - rep_lvl_dol) / d_per_fom
         return rl, d_per_fom
     else:
-        raise Exception(f"Unsupported game type {game_type}")
+        raise Exception(f'Unsupported game type {game_type}')
 
 
 def save_calculation_from_file(vc: ValueCalculation, df: DataFrame, pd=None, rep_val: int = 1, new_pos_set: bool = False) -> ValueCalculation:
     """Saves and returns the ValueCalculation per user input. Creates position-specific values if replacement-level information was previously provided to the ValueCalculation."""
-    df.set_index("OTB_Idx", inplace=True)
-    pd.set_task_title("Creating position values...")
+    df.set_index('OTB_Idx', inplace=True)
+    pd.set_task_title('Creating position values...')
     remaining = 80 - pd.progress
     tick = int(len(df) / remaining - 1)
     count = 0
@@ -885,14 +885,14 @@ def save_calculation_from_file(vc: ValueCalculation, df: DataFrame, pd=None, rep
     if not new_pos_set:
         vc.position_set = position_set_services.get_ottoneu_position_set()
     for idx, row in df.iterrows():
-        val = string_util.parse_dollar(row["Values"])
+        val = string_util.parse_dollar(row['Values'])
         count += 1
         if count == tick:
             pd.increment_completion_percent(1)
             count = 0
         player = player_services.get_player(idx)
         if player is None:
-            logging.debug(f"player with idx {idx} is not available")
+            logging.debug(f'player with idx {idx} is not available')
             continue
         if new_pos_set:
             player.custom_positions = vc.position_set.get_player_positions(player.id)
@@ -911,7 +911,7 @@ def save_calculation_from_file(vc: ValueCalculation, df: DataFrame, pd=None, rep
             elif not ScoringFormat.is_points_type(vc.s_format):
                 h_pt = pp.get_stat(StatType.G_HIT)
             else:
-                raise Exception(f"Unhandled hitting basis {vc.hitter_basis}")
+                raise Exception(f'Unhandled hitting basis {vc.hitter_basis}')
             _ = get_points(pp, Position.PITCHER, sabr)
             if vc.pitcher_basis == RankingBasis.PIP:
                 p_pt = pp.get_stat(StatType.IP)
@@ -920,20 +920,20 @@ def save_calculation_from_file(vc: ValueCalculation, df: DataFrame, pd=None, rep
             elif not ScoringFormat.is_points_type(vc.s_format):
                 p_pt = pp.get_stat(StatType.IP)
             else:
-                raise Exception(f"Unhandled pitching basis {vc.pitcher_basis}")
+                raise Exception(f'Unhandled pitching basis {vc.pitcher_basis}')
         elif not proj_derive and ScoringFormat.is_points_type(vc.s_format):
-            h_points = row["Points"]
-            h_pt = row["H_PT"]
+            h_points = row['Points']
+            h_pt = row['H_PT']
             if pop_proj:
-                p_pt = row["P_PT"]
+                p_pt = row['P_PT']
                 pp = PlayerProjection()
                 pp.player = player
                 pp.projection_data = {}
-                pp.projection_data[StatType.POINTS] = row["Points"]
-                pp.projection_data[StatType.PPG] = row["Hit_Rate"]
-                pp.projection_data[StatType.PIP] = row["Pitch_Rate"]
+                pp.projection_data[StatType.POINTS] = row['Points']
+                pp.projection_data[StatType.PPG] = row['Hit_Rate']
+                pp.projection_data[StatType.PIP] = row['Pitch_Rate']
                 pp.pitcher = p_pt > 0 and h_pt == 0
-                pp.two_way = (p_pt > 0 and h_pt > 0) or (row["Hit_Rate"] == "NA" and row["Pitch_Rate"] == "NA")
+                pp.two_way = (p_pt > 0 and h_pt > 0) or (row['Hit_Rate'] == 'NA' and row['Pitch_Rate'] == 'NA')
                 vc.projection.player_projections.append(pp)
         hit = False
         pitch = False
@@ -993,20 +993,20 @@ def save_calculation_from_file(vc: ValueCalculation, df: DataFrame, pd=None, rep
                 for pos in player_services.get_player_positions(player, discrete=False):
                     vc.set_player_value(idx, pos, val)
             else:
-                h_points = row["FOM"]
+                h_points = row['FOM']
                 mi_rl = min(vc.get_output(CDT.REP_LEVEL_2B), vc.get_output(CDT.REP_LEVEL_SS))
                 for pos in player_services.get_player_positions(player, discrete=True):
                     if pos.offense:
                         if not hit:
                             vc.set_player_value(idx, Position.OFFENSE, val)
                             if vc.hitter_basis == RankingBasis.ZSCORE_PER_G:
-                                u_val = (h_points - vc.get_output(CDT.REP_LEVEL_UTIL)) * (row["H_PT"] / 150) * vc.get_output(CDT.HITTER_DOLLAR_PER_FOM) + rep_val
+                                u_val = (h_points - vc.get_output(CDT.REP_LEVEL_UTIL)) * (row['H_PT'] / 150) * vc.get_output(CDT.HITTER_DOLLAR_PER_FOM) + rep_val
                             else:
                                 u_val = (h_points - vc.get_output(CDT.REP_LEVEL_UTIL)) * vc.get_output(CDT.HITTER_DOLLAR_PER_FOM) + rep_val
                             vc.set_player_value(idx, Position.POS_UTIL, u_val)
                             if player.pos_eligible(Position.POS_MI):
                                 if vc.hitter_basis == RankingBasis.ZSCORE_PER_G:
-                                    mi_val = (h_points - mi_rl) * (row["H_PT"] / 150) * vc.get_output(CDT.HITTER_DOLLAR_PER_FOM) + rep_val
+                                    mi_val = (h_points - mi_rl) * (row['H_PT'] / 150) * vc.get_output(CDT.HITTER_DOLLAR_PER_FOM) + rep_val
                                 else:
                                     mi_val = (h_points - mi_rl) * vc.get_output(CDT.HITTER_DOLLAR_PER_FOM) + rep_val
                                 vc.set_player_value(idx, Position.POS_MI, mi_val)
@@ -1015,7 +1015,7 @@ def save_calculation_from_file(vc: ValueCalculation, df: DataFrame, pd=None, rep
                             continue
                         rl = vc.get_output(CDT.pos_to_rep_level().get(pos))
                         if vc.hitter_basis == RankingBasis.ZSCORE_PER_G:
-                            val = (h_points - rl) * (row["H_PT"] / 150) * vc.get_output(CDT.HITTER_DOLLAR_PER_FOM) + rep_val
+                            val = (h_points - rl) * (row['H_PT'] / 150) * vc.get_output(CDT.HITTER_DOLLAR_PER_FOM) + rep_val
                         else:
                             val = (h_points - rl) * vc.get_output(CDT.HITTER_DOLLAR_PER_FOM) + rep_val
                         vc.set_player_value(idx, pos, val)

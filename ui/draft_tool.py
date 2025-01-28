@@ -939,23 +939,26 @@ class DraftTool(ToolboxView):
                 view.table.set(child, 2, self.__get_inflated_cost(pv))
             view.table.resort()
 
+    def __get_dollar_string(self, val: int) -> str:
+        return f'${val:.0f}'
+
     def __get_inflated_cost(self, pv: PlayerValue) -> str:
         if pv is None:
             val = 0
         else:
             val = pv.value
         if val < 1:
-            inf_cost = f'${"{:.0f}".format(val)}'
+            inf_cost = self.__get_dollar_string(val)
         elif self.inflation_method == InflationMethod.CONVENTIONAL:
-            inf_cost = '$' + '{:.0f}'.format(val * (self.inflation + 1))
+            inf_cost = self.__get_dollar_string(val * (self.inflation + 1))
         else:
-            inf_cost = '$' + '{:.0f}'.format((val - 1) * (self.inflation + 1) + 1)
+            inf_cost = self.__get_dollar_string((val - 1) * (self.inflation + 1) + 1)
         return inf_cost
 
     def __get_stock_player_row(self, pv: PlayerValue) -> tuple:
         name = pv.player.name
         if self.league.is_salary_cap():
-            value = '$' + '{:.0f}'.format(pv.value)
+            value = self.__get_dollar_string(pv.value)
             inf_cost = self.__get_inflated_cost(pv)
             rank = 0
             round = 0
@@ -997,7 +1000,7 @@ class DraftTool(ToolboxView):
             pv = self.value_calculation.get_player_value(player.id, Position.OVERALL)
             name = player.name
             if self.league.is_salary_cap() and pv:
-                value = '$' + '{:.0f}'.format(pv.value)
+                value = self.__get_dollar_string(pv.value)
                 inf_cost = self.__get_inflated_cost(pv)
             else:
                 value = 'NR'
@@ -1135,11 +1138,11 @@ class DraftTool(ToolboxView):
                 roster = '0.0%'
             else:
                 if self.controller.preferences.get('General', Pref.AVG_SALARY_FOM, fallback=AvgSalaryFom.MEAN.value) == AvgSalaryFom.MEAN.value:
-                    avg = '$' + '{:.1f}'.format(si.avg_salary)
+                    avg = f'${si.avg_salary:.1f}'
                 else:
-                    avg = '$' + '{:.1f}'.format(si.med_salary)
-                l10 = '$' + '{:.1f}'.format(si.last_10)
-                roster = '{:.1f}'.format(si.roster_percentage) + '%'
+                    avg = f'${si.med_salary:.1f}'
+                l10 = f'${si.last_10:.1f}'
+                roster = f'{si.roster_percentage:.1f} %'
             return (avg, l10, roster)
         return ('$0', '$0', '0%')
 
@@ -1202,7 +1205,7 @@ class DraftTool(ToolboxView):
                 round = 'NR'
             else:
                 if self.league.is_salary_cap():
-                    value = '$' + '{:.0f}'.format(pv.value)
+                    value = self.__get_dollar_string(pv.value)
                     inf_cost = self.__get_inflated_cost(pv)
                     rank = 0
                     round = 0
@@ -1212,7 +1215,7 @@ class DraftTool(ToolboxView):
                     rank = pv.rank
                     round = self.player_to_round_map.get(pv.player.id, 'NR')
 
-            salary = '$' + '{:.0f}'.format(self.league.get_player_salary(player.id))
+            salary = self.__get_dollar_string(self.league.get_player_salary(player.id))
 
             if self.value_calculation.projection is not None:
                 pp = self.value_calculation.projection.get_player_projection(id)
@@ -1298,7 +1301,7 @@ class DraftTool(ToolboxView):
             if pv is None:
                 value = '$0'
             else:
-                value = '$' + '{:.0f}'.format(pv.value)
+                value = self.__get_dollar_string(pv.value)
             if target.player.custom_positions:
                 pos = target.player.custom_positions
             else:
