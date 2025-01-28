@@ -810,7 +810,7 @@ def get_projections_for_year(year:int, inc_hidden:bool=False) -> List[Projection
         if inc_hidden:
             projs = session.query(Projection).filter(Projection.season == year).all()
         else:
-            projs = session.query(Projection).filter(Projection.season == year, not Projection.hide).all()
+            projs = session.query(Projection).filter(Projection.season == year, Projection.hide == 0).all()
     return projs
 
 def get_available_seasons() -> List[int]:
