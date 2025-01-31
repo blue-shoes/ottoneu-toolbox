@@ -308,7 +308,7 @@ class Standings(tk.Frame):
                 vals.append(st.v_format.format(sum([rs.ip for rs in team.roster_spots])))
             elif st in team.cat_ranks:
                 try:
-                    vals.append(st.format.format(team.cat_stats[st]))
+                    vals.append(st.v_format.format(team.cat_stats[st]))
                 except KeyError:
                     if st.higher_better:
                         vals.append(st.v_format.format(0))
