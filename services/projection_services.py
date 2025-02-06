@@ -74,7 +74,7 @@ def convertToDcPlayingTime(proj: DataFrame, ros: bool, position: bool, fg_scrape
 
     # String and rate columns that are unaffected
     static_columns = [
-        'playerid',
+        'PlayerId',
         'Name',
         'Team',
         '-1',
@@ -108,9 +108,10 @@ def convertToDcPlayingTime(proj: DataFrame, ros: bool, position: bool, fg_scrape
     # Columns directly taken from DC
     dc_columns = ['G', 'PA', 'GS', 'IP']
     # Filter projection to only players present in the DC projection and then drop the temp DC column
-    proj = proj.assign(DC=proj.id.isin(dc_proj.id).astype(bool))
+    proj = proj.assign(DC=proj.index.isin(dc_proj.index).astype(bool))
     proj = proj[proj['DC']]
     proj.drop('DC', axis=1, inplace=True)
+    proj = proj.fillna(0)
     if position:
         denom = 'G'
         for column in proj.columns:
@@ -119,12 +120,14 @@ def convertToDcPlayingTime(proj: DataFrame, ros: bool, position: bool, fg_scrape
             elif column in dc_columns:
                 # take care of this later so we can do the rate work first
                 continue
-            else:
+            elif StatType.get_hit_stattype(column):
                 # Ration the counting stat
+                proj[column].astype(int)
                 proj[column] = proj[column] / proj[denom] * dc_proj[denom]
         # We're done with the original projection denominator columns, so now set them to the DC values
         for column in dc_columns:
             if column in proj.columns:
+                proj[column].astype(int)
                 proj[column] = dc_proj[column]
     else:
         if 'FIP' not in proj.columns:
@@ -139,12 +142,14 @@ def convertToDcPlayingTime(proj: DataFrame, ros: bool, position: bool, fg_scrape
                     elif column in dc_columns:
                         # take care of this later so we can do the rate work first
                         continue
-                    else:
+                    elif StatType.get_pitch_stattype(column):
                         # Ration the counting stat
+                        proj[column].astype(int)
                         proj[column] = proj[column] / proj[denom] * dc_proj[denom]
                 # We're done with the original projection denominator columns, so now set them to the DC values
                 for column in dc_columns:
                     if column in proj.columns:
+                        proj[column].astype(int)
                         proj[column] = dc_proj[column]
                 return proj
 
@@ -173,7 +178,7 @@ def convertToDcPlayingTime(proj: DataFrame, ros: bool, position: bool, fg_scrape
         # counting stats (SO unaltered).
 
         for column in proj.columns:
-            if column in static_columns or column in dc_columns:
+            if column in static_columns or column in dc_columns or not StatType.get_pitch_stattype(column):
                 continue
             if column == 'SO':
                 proj[column] = (proj[column] * (dc_proj['IP'] / proj['IP'])).apply(na_to_0)
