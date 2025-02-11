@@ -17,8 +17,10 @@ import threading
 from time import sleep
 import logging
 import os
+import json
 
 game_id: str = ''
+_auth_dict: dict[str, str] = {}
 
 
 def create_league(league_yahoo_id: int, pd=None) -> League:
@@ -297,16 +299,21 @@ def get_or_set_player_by_yahoo_id(yplayer: YPlayer, session) -> Player:
 def __create_query(league_id: int = 1, year: int = None) -> yfs_query:
     """Creates a yfs_query object for the given league and year in mlb. If no year provided, the current
     calendar year is found."""
-    global game_id
+    global game_id, _auth_dict
+    if len(_auth_dict) == 0:
+        conf_path = os.path.join('conf', 'token.json')
+        with open(conf_path, 'r') as f:
+            _auth_dict = json.loads(f.read())
+    conf_path = Path('conf')
     if year is not None:
-        q = yfs_query(Path('conf'), league_id=league_id, game_code='mlb')
+        q = yfs_query(league_id=league_id, game_code='mlb', yahoo_access_token_json=_auth_dict)
         game_keys = q.get_all_yahoo_fantasy_game_keys()
         for gk in game_keys:
             if gk.code == 'mlb' and int(gk.season) == year:
-                return yfs_query(Path('conf'), league_id=league_id, game_code='mlb', game_id=gk.game_id)
+                return yfs_query(league_id=league_id, game_code='mlb', game_id=gk.game_id, yahoo_access_token_json=_auth_dict)
         raise YahooFantasySportsException(f'Could not find game_key for year {year}')
     elif game_id == '':
-        q = yfs_query(Path('conf'), league_id=league_id, game_code='mlb')
+        q = yfs_query(league_id=league_id, game_code='mlb', yahoo_access_token_json=_auth_dict)
         game_keys = q.get_all_yahoo_fantasy_game_keys()
         for gk in game_keys:
             if gk.code == 'mlb' and int(gk.season) == datetime.now().year:
@@ -314,9 +321,9 @@ def __create_query(league_id: int = 1, year: int = None) -> yfs_query:
         if game_id == '':
             raise YahooFantasySportsException('Could not find game_key for current year')
         try:
-            yfs_query(Path('conf'), league_id=league_id, game_code='mlb', game_id=game_id).get_league_info()
+            yfs_query(league_id=league_id, game_code='mlb', game_id=game_id, yahoo_access_token_json=_auth_dict).get_league_info()
         except YahooFantasySportsDataNotFound:
             for gk in game_keys:
                 if gk.code == 'mlb' and int(gk.season) == (datetime.now().year - 1):
                     game_id = gk.game_id
-    return yfs_query(Path('conf'), league_id=league_id, game_code='mlb', game_id=game_id)
+    return yfs_query(league_id=league_id, game_code='mlb', game_id=game_id, yahoo_access_token_json=_auth_dict)

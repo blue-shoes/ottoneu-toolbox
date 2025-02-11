@@ -7,7 +7,7 @@ import json
 
 
 class Custom_OAuth2(OAuth2):
-    """Custom implementation of the yahoo_oauth.OAuth2 library that doesn't require command-line input of verificaiton token."""
+    """Custom implementation of the yahoo_oauth.OAuth2 library that doesn't require command-line input of verification token."""
 
     def __init__(self, consumer_key, consumer_secret, **kwargs):
         super().__init__(consumer_key, consumer_secret, **kwargs)
