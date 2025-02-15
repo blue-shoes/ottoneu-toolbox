@@ -71,10 +71,21 @@ def refresh_league(league_idx: int, pd=None) -> League:
             pd.increment_completion_percent(5)
         upd_rost = scraper.scrape_roster_export(lg.site_id)
         finances = scraper.scrape_finances_page(lg.site_id)
+        
         if pd is not None:
             pd.increment_completion_percent(30)
         with Session() as session:
             lg = session.query(League).options(joinedload(League.teams).joinedload(Team.roster_spots).joinedload(Roster_Spot.player)).filter_by(id=league_idx).first()
+            # Possible for start up league that hasn't drafted and either wasn't full or had a team drop and be recreated
+            if len([t.id for t in lg.teams if t.site_id not in finances.index]) != 0:
+                for t in lg.teams:
+                    session.delete(t)
+                for idx, row in finances.iterrows():
+                    team = Team()
+                    team.site_id = idx
+                    team.name = row['Name']
+                    lg.teams.append(team)
+            
             team_map = {}
             for team in lg.teams:
                 # Clear roster
@@ -83,8 +94,8 @@ def refresh_league(league_idx: int, pd=None) -> League:
                 team_map[team.site_id] = team
             for idx, row in upd_rost.iterrows():
                 team = row['TeamID']
-                if team not in team_map:
-                    # team not present, possibly on the restricted list
+                if team == 0:
+                    # Restricted list
                     continue
                 rs = Roster_Spot()
                 player = session.query(Player).filter_by(ottoneu_id=idx).first()
