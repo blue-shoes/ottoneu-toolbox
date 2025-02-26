@@ -89,27 +89,35 @@ def create_player(player_row: list, ottoneu_id: int = None, fg_id=None) -> Playe
     return player
 
 
-def get_player_by_fg_id(player_id, force_major: bool = False) -> Player:
+def get_player_by_fg_id(player_id, force_major: bool = False, sess:Session = None) -> Player:
     """Returns player from database based on input FanGraphs player id. Will resolve either major or minor league id by default. If force_major is true, will only look for major league id"""
-    with Session() as session:
-        if force_major:
-            player = session.query(Player).filter(Player.fg_major_id == player_id).first()
-        elif isinstance(player_id, int) or isinstance(player_id, numpy.int64) or isinstance(player_id, numpy.int32) or player_id.isdigit():
-            player = session.query(Player).filter(Player.fg_major_id == int(player_id)).first()
-        else:
-            player = session.query(Player).filter(Player.fg_minor_id == player_id).first()
+    if sess:
+        return __get_player_by_fg_id(player_id, force_major, sess)
+    with(Session() as session):
+        return __get_player_by_fg_id(player_id, force_major, session)
+
+def __get_player_by_fg_id(player_id, force_major: bool, session:Session) -> Player:
+    if force_major:
+        player = session.query(Player).filter(Player.fg_major_id == player_id).first()
+    elif isinstance(player_id, int) or isinstance(player_id, numpy.int64) or isinstance(player_id, numpy.int32) or player_id.isdigit():
+        player = session.query(Player).filter(Player.fg_major_id == int(player_id)).first()
+    else:
+        player = session.query(Player).filter(Player.fg_minor_id == player_id).first()
     return player
 
-
-def get_player_by_ottoneu_id(ottoneu_id: int, pd=None) -> Player:
+def get_player_by_ottoneu_id(ottoneu_id: int, pd=None, sess:Session=None) -> Player:
     """Returns player from database based on input Ottoneu player id."""
+    if sess:
+        return __get_player_by_ottoneu_id(ottoneu_id, pd, sess)
     with Session() as session:
-        player = session.query(Player).filter(Player.ottoneu_id == ottoneu_id).first()
+        return __get_player_by_ottoneu_id(ottoneu_id, pd, session)
+
+def __get_player_by_ottoneu_id(ottoneu_id:int, pd, session:Session) -> Player:
+    player = session.query(Player).filter(Player.ottoneu_id == ottoneu_id).first()
     if player is None:
         player = get_player_from_ottoneu_player_page(ottoneu_id, 1, pd=pd)
         player = session.query(Player).filter(Player.ottoneu_id == ottoneu_id).first()
     return player
-
 
 def is_populated() -> bool:
     """Checks if the player universe has been initially populated."""
@@ -162,16 +170,20 @@ def get_player_positions(player: Player, discrete=False) -> List[Position]:
     return positions
 
 
-def search_by_name(search_str: str, salary_info: bool = True) -> List[Player]:
+def search_by_name(search_str: str, salary_info: bool = True, sess: Session = None) -> List[Player]:
     """Returns list of Players whose names match the input string. Search is case-insensitive and matches with diacritics. Includes player salary_info when requested."""
+    if sess:
+        return __search_by_name_with_session(search_str, salary_info, sess)
     with Session() as session:
-        if salary_info:
-            return session.query(Player).options(joinedload(Player.salary_info)).filter(Player.search_name.contains(search_str)).all()
-        else:
-            return session.query(Player).filter(Player.search_name.contains(search_str)).all()
+        return __search_by_name_with_session(search_str, salary_info, session)
 
+def __search_by_name_with_session(search_str: str, salary_info: bool, session: Session) -> List[Player]:
+    if salary_info:
+        return session.query(Player).options(joinedload(Player.salary_info)).filter(Player.search_name.contains(search_str)).all()
+    else:
+        return session.query(Player).filter(Player.search_name.contains(search_str)).all()
 
-def get_player_from_ottoneu_player_page(player_id: int, league_id: int, session: sessionmaker = None, pd=None) -> Player:
+def get_player_from_ottoneu_player_page(player_id: int, league_id: int, session: sessionmaker = None, pd=None) -> List[Player]:
     """Scrapes the Ottoneu player page based on Ottoneu player id and League id to retrieve necessary information to populate a player in the Toolbox database."""
     logging.info(f'Importing player {player_id} from player page')
     if pd is not None:
@@ -232,14 +244,14 @@ def get_player_by_name(name: str) -> Player:
     return get_player_by_name_and_team(name, None)
 
 
-def get_player_by_name_and_team(name: str, team: str) -> Player:
+def get_player_by_name_and_team(name: str, team: str, sess: Session = None) -> Player:
     """Returns player by matching name and team. Full name match is attempted. If no matches found with full name, partial
     matches beginning with just last name are attempted, followed by adding one letter at a time from the start of the first
     name. If the final search by name returns multiple players, they are ordered by roster percentage highest to lowest, and the
     first player with a matching team is returned. If no players match the input team when multiple match the name criteria, None
     is returned."""
     name = string_util.normalize(name)
-    players = search_by_name(name)
+    players = search_by_name(name, sess=sess)
     if len(players) == 0:
         name_array = name.split()
         i = 0
@@ -251,7 +263,7 @@ def get_player_by_name_and_team(name: str, team: str) -> Player:
                 name = name_array[-1]
             else:
                 name = f'{name_array[0][:i]}% {name_array[-1]}'
-            tmp_players = search_by_name(name)
+            tmp_players = search_by_name(name, sess=sess)
             if len(tmp_players) < 1:
                 break
             players = tmp_players
@@ -261,7 +273,7 @@ def get_player_by_name_and_team(name: str, team: str) -> Player:
 
     players.sort(reverse=True, key=lambda p: p.get_salary_info_for_format().roster_percentage)
     if players is not None and len(players) > 0:
-        player = players[0]
+        player = None
         if team:
             for possible_player in players:
                 if match_team(possible_player, team):
@@ -325,16 +337,16 @@ def update_from_player_page(player_tuple: Tuple[int, str, str, str, str], sessio
     return player
 
 
-def get_player_by_mlb_id(player_id: int, name: str = '', team: str = '') -> Player:
+def get_player_by_mlb_id(player_id: int, name: str = '', team: str = '', sess:Session=None) -> Player:
     """Retrieves a player by MLB Id using the pybaseball playerid_reverse_lookup function to find FanGraphs id"""
     id = get_fg_id_by_mlb_id(player_id)
     if id is None or id <= 0:
         if name and team:
-            player = get_player_by_name_and_team(name, team)
+            player = get_player_by_name_and_team(name, team, sess=sess)
         else:
             player = None
     else:
-        player = get_player_by_fg_id(str(id), force_major=True)
+        player = get_player_by_fg_id(str(id), force_major=True, sess=sess)
     return player
 
 

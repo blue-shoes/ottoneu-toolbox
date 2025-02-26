@@ -229,7 +229,7 @@ def na_to_0(value) -> float:
 
 
 def save_projection(projection: Projection, projs: List[DataFrame], id_type: IdType, progress=None) -> Projection:
-    """Saves the input projection and projeciton DataFrames to the database and retursn the populated Projection."""
+    """Saves the input projection and projeciton DataFrames to the database and returns the populated Projection."""
     with Session() as session:
         seen_players = {}
         for proj in projs:
@@ -249,22 +249,24 @@ def save_projection(projection: Projection, projs: List[DataFrame], id_type: IdT
                     player_proj.two_way = True
                 else:
                     if id_type == IdType.FANGRAPHS:
-                        player = player_services.get_player_by_fg_id(idx)
+                        player = player_services.get_player_by_fg_id(idx, sess=session)
                         id = idx
                     elif id_type == IdType.OTTONEU:
-                        player = player_services.get_player_by_ottoneu_id(idx)
+                        player = player_services.get_player_by_ottoneu_id(idx, sess=session)
                         id = idx
                     elif id_type == IdType.MLB:
-                        player = player_services.get_player_by_mlb_id(idx)
+                        player = player_services.get_player_by_mlb_id(idx, sess=session)
                         if player:
                             id = player.id
                         else:
-                            # TODO: Maybe reimplement this if it's currently the problem
-                            # player = player_services.get_player_by_name_and_team(row['Name'], row['Team'])
-                            if player:
+                            player = player_services.get_player_by_name_and_team(row['Name'], row['Team'], sess=session)
+                            if player and player not in seen_players.values():
                                 id = player.id
+                                player.mlb_id = idx
+                            else:
+                                player = None
                     elif id_type == IdType.OTB:
-                        player = player_services.get_player(idx)
+                        player = player_services.get_player_with_session(idx, session=session)
                         id = idx
                     else:
                         raise Exception(f'Unsupported IdType {id_type}')
@@ -276,6 +278,8 @@ def save_projection(projection: Projection, projs: List[DataFrame], id_type: IdT
                         else:
                             # Creating a player needs to happen prior to this for non-Ottoneu/FG id_types. At this point it's probably too late, so we ignore
                             continue
+                    if 'mlb_id' in stat_cols and not player.mlb_id:
+                        player.mlb_id = row['mlb_id']
                     seen_players[idx] = player
                     player_proj = PlayerProjection()
                     projection.player_projections.append(player_proj)
