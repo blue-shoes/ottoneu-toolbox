@@ -339,6 +339,9 @@ def update_from_player_page(player_tuple: Tuple[int, str, str, str, str], sessio
 
 def get_player_by_mlb_id(player_id: int, name: str = '', team: str = '', sess:Session=None) -> Player:
     """Retrieves a player by MLB Id using the pybaseball playerid_reverse_lookup function to find FanGraphs id"""
+    player = __get_player_by_mlb_id(player_id, sess)
+    if player:
+        return player
     id = get_fg_id_by_mlb_id(player_id)
     if id is None or id <= 0:
         if name and team:
@@ -349,6 +352,14 @@ def get_player_by_mlb_id(player_id: int, name: str = '', team: str = '', sess:Se
         player = get_player_by_fg_id(str(id), force_major=True, sess=sess)
     return player
 
+def __get_player_by_mlb_id(player_id: int, sess:Session) -> Player:
+    if sess:
+        return __get_player_by_mlb_id_with_session(player_id, sess)
+    with (Session() as session):
+        return __get_player_by_mlb_id_with_session(player_id, session)
+
+def __get_player_by_mlb_id_with_session(player_id: int, session:Session) -> Player:
+    return session.query(Player).filter(Player.mlb_id == player_id).first()
 
 def get_fg_id_by_mlb_id(player_id: int) -> str:
     """Retrieves a player's FanGraphs Id by MLB Id using the pybaseball playerid_reverse_lookup function"""

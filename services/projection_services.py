@@ -278,8 +278,8 @@ def save_projection(projection: Projection, projs: List[DataFrame], id_type: IdT
                         else:
                             # Creating a player needs to happen prior to this for non-Ottoneu/FG id_types. At this point it's probably too late, so we ignore
                             continue
-                    if 'mlb_id' in stat_cols and not player.mlb_id:
-                        player.mlb_id = row['mlb_id']
+                    if 'MLBAMID' in stat_cols and not player.mlb_id:
+                        player.mlb_id = row['MLBAMID']
                     seen_players[idx] = player
                     player_proj = PlayerProjection()
                     projection.player_projections.append(player_proj)
