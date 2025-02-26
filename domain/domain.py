@@ -29,6 +29,7 @@ class Player:
     team: Mapped[str] = mapped_column('Org', default=None, nullable=True)
     position: Mapped[str] = mapped_column('Position(s)', default=None)
     yahoo_id: Mapped[int] = mapped_column(default=None, repr=False, nullable=True)
+    mlb_id: Mapped[int] = mapped_column(default=None, repr=False, nullable=True)
 
     salary_info: Mapped[List['Salary_Info']] = relationship(default_factory=list, back_populates='player', cascade='all, delete', lazy='joined', repr=False)
 
