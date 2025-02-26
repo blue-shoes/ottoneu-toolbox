@@ -31,23 +31,23 @@ class Scrape_Davenport(scrape_base.Scrape_Base):
         pos_lookup = pd.read_csv(StringIO(response.text), sep='\\s+', on_bad_lines='skip')[lookup_col]
         pos_lookup.set_index(lookup_col[0], inplace=True)
 
-        s = requests.Session()
-        try:
-            response = s.get(csv_url)
-            if response.content is None or len(response.content) == 0:
-                raise DavenportException('Projections do not exist')
-            tmp_filepath = 'tmp/davenport.csv'
-            with open(tmp_filepath, 'wb') as f:
-                f.write(response.content)
-                f.close()
-            df = pd.read_csv(tmp_filepath)
-            df = df.loc[df['HOWEID'] != '0']  # Remove team rows
-            df['MLBID'] = df.apply(self.__get_mlbid, args=(pos_lookup, lookup_col), axis=1)
-            df = df.loc[df['MLBID'] != -1]  # Remove blank rows
-            os.remove(tmp_filepath)
-        except Exception:
-            logging.exception('Davenport Exception')
-            raise DavenportException('Error retrieving player projections.')
+        with (requests.Session() as s):
+            try:
+                response = s.get(csv_url)
+                if response.content is None or len(response.content) == 0:
+                    raise DavenportException('Projections do not exist')
+                tmp_filepath = 'tmp/davenport.csv'
+                with open(tmp_filepath, 'wb') as f:
+                    f.write(response.content)
+                    f.close()
+                df = pd.read_csv(tmp_filepath)
+                df = df.loc[df['HOWEID'] != '0']  # Remove team rows
+                df['MLBID'] = df.apply(self.__get_mlbid, args=(pos_lookup, lookup_col), axis=1)
+                df = df.loc[df['MLBID'] != -1]  # Remove blank rows
+                os.remove(tmp_filepath)
+            except Exception:
+                logging.exception('Davenport Exception')
+                raise DavenportException('Error retrieving player projections.')
         return df
 
     def __get_mlbid(self, row, lookup, col):

@@ -139,6 +139,7 @@ class Main(tk.Tk, Controller):
                 if dialog.status:
                     progress_dialog.complete()
                     return True
+            response.close()
             # Check that database has players in it, and populate if it doesn't
             if not player_services.is_populated():
                 progress_dialog.set_task_title('Populating Player Database')

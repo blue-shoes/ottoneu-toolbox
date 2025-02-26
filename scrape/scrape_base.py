@@ -38,11 +38,12 @@ class Scrape_Base(object):
 
     def _get_soup(self, url: str, xml: bool = False) -> Soup:
         """Convenience method to return Soup object from url."""
-        response = requests.get(url)
-        if xml:
-            return Soup(response.text, 'xml')
-        else:
-            return Soup(response.text, 'html.parser')
+        with (requests.get(url) as response):
+        #response = requests.get(url)
+            if xml:
+                return Soup(response.text, 'xml')
+            else:
+                return Soup(response.text, 'html.parser')
 
     def close(self) -> None:
         """Quits the internal driver once it is no longer needed"""
