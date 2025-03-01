@@ -3,6 +3,7 @@ from dao.session import Session
 from domain.domain import ValueCalculation, Projection, PlayerProjection, CustomScoring, PositionSet, PlayerPositions
 from domain.enum import Position, CalculationDataType as CDT, StatType, ScoringFormat, RankingBasis, IdType, RepLevelScheme, ProjectionType
 from domain.exception import InputException
+from domain.interface import ProgressUpdater
 from value.player_values import PlayerValues
 from services import player_services, projection_services, position_set_services
 from util import string_util, date_util
@@ -13,13 +14,13 @@ import re
 from typing import List, Tuple, Dict
 
 
-def perform_point_calculation(value_calc: ValueCalculation, pd=None, debug: bool = False) -> None:
+def perform_point_calculation(value_calc: ValueCalculation, prog:ProgressUpdater=None, debug: bool = False) -> None:
     """Creates a PointValues object from the ValueCalculation, calculates player values, and stores them in the ValueCalculation"""
-    if pd is not None:
-        pd.set_task_title('Initializing Value Calculation...')
-        pd.increment_completion_percent(5)
+    if prog is not None:
+        prog.set_task_title('Initializing Value Calculation...')
+        prog.increment_completion_percent(5)
     value_calculation = PlayerValues(value_calc=value_calc, debug=debug)
-    value_calculation.calculate_values(progress=pd)
+    value_calculation.calculate_values(progress=prog)
 
 
 def get_num_rostered_rep_levels(value_calc: ValueCalculation) -> Dict[str, float]:
@@ -528,11 +529,11 @@ def has_required_data_for_rl(df: DataFrame, game_type: ScoringFormat) -> bool:
         raise InputException(f'ScoringFormat {game_type} not currently implemented')
 
 
-def get_values_from_fg_auction_files(vc: ValueCalculation, hit_df: DataFrame, pitch_df: DataFrame, rep_lvl_dol, pd=None) -> ValueCalculation:
+def get_values_from_fg_auction_files(vc: ValueCalculation, hit_df: DataFrame, pitch_df: DataFrame, rep_lvl_dol, prog:ProgressUpdater=None) -> ValueCalculation:
     """Specialized method to parse FanGraphs AuctionCalculator outputs to perform replacement level calculations and save the resulting ValueCalculation"""
-    if pd is not None:
-        pd.set_task_title('Determining replacement levels...')
-        pd.increment_completion_percent(33)
+    if prog is not None:
+        prog.set_task_title('Determining replacement levels...')
+        prog.increment_completion_percent(33)
     hit_df.set_index('PlayerId', inplace=True)
     rep_lvl_tuples = []
     for idx, row in hit_df.iterrows():
@@ -618,18 +619,18 @@ def get_values_from_fg_auction_files(vc: ValueCalculation, hit_df: DataFrame, pi
     vc.set_output(CDT.TOTAL_HITTERS_ROSTERED, total_hitters)
     vc.set_output(CDT.TOTAL_PITCHERS_ROSTERED, total_pitchers)
 
-    if pd is not None:
-        pd.set_task_title('Saving Values')
-        pd.increment_completion_percent(33)
+    if prog is not None:
+        prog.set_task_title('Saving Values')
+        prog.increment_completion_percent(33)
     return save_calculation(vc)
 
 
-def init_outputs_from_upload(vc: ValueCalculation, df: DataFrame, game_type: ScoringFormat, rep_level_cost: int = 1, id_type: IdType = IdType.OTTONEU, pd=None) -> None:
+def init_outputs_from_upload(vc: ValueCalculation, df: DataFrame, game_type: ScoringFormat, rep_level_cost: int = 1, id_type: IdType = IdType.OTTONEU, prog:ProgressUpdater=None) -> None:
     """Accepts user inputs and performed preliminary calculations to find replacement levels and dollars per figure of merit if possible, which are populated into the input
     Value Calculation."""
-    if pd is not None:
-        pd.set_task_title('Determining replacement levels...')
-        pd.increment_completion_percent(33)
+    if prog is not None:
+        prog.set_task_title('Determining replacement levels...')
+        prog.increment_completion_percent(33)
     sorted = df.sort_values(by='Values', ascending=False)
     sample_players = {}
     pos_count = {}
@@ -665,7 +666,7 @@ def init_outputs_from_upload(vc: ValueCalculation, df: DataFrame, game_type: Sco
         if math.isnan(index):
             player = None
         elif id_type == IdType.OTTONEU:
-            player = player_services.get_player_by_ottoneu_id(int(index), pd=pd)
+            player = player_services.get_player_by_ottoneu_id(int(index), prog=prog)
         elif id_type == IdType.FANGRAPHS:
             player = player_services.get_player_by_fg_id(index)
         elif id_type == IdType.MLB:
@@ -855,11 +856,11 @@ def calc_rep_levels_from_values(vals: List[float], game_type: ScoringFormat, fom
         raise Exception(f'Unsupported game type {game_type}')
 
 
-def save_calculation_from_file(vc: ValueCalculation, df: DataFrame, pd=None, rep_val: int = 1, new_pos_set: bool = False) -> ValueCalculation:
+def save_calculation_from_file(vc: ValueCalculation, df: DataFrame, prog:ProgressUpdater=None, rep_val: int = 1, new_pos_set: bool = False) -> ValueCalculation:
     """Saves and returns the ValueCalculation per user input. Creates position-specific values if replacement-level information was previously provided to the ValueCalculation."""
     df.set_index('OTB_Idx', inplace=True)
-    pd.set_task_title('Creating position values...')
-    remaining = 80 - pd.progress
+    prog.set_task_title('Creating position values...')
+    remaining = 80 - prog.progress
     tick = int(len(df) / remaining - 1)
     count = 0
     vc.values = []
@@ -888,7 +889,7 @@ def save_calculation_from_file(vc: ValueCalculation, df: DataFrame, pd=None, rep
         val = string_util.parse_dollar(row['Values'])
         count += 1
         if count == tick:
-            pd.increment_completion_percent(1)
+            prog.increment_completion_percent(1)
             count = 0
         player = player_services.get_player(idx)
         if player is None:

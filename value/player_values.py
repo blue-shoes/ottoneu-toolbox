@@ -8,6 +8,7 @@ import value.arm_values
 from services import projection_services, calculation_services
 from domain.domain import ValueCalculation
 from domain.enum import CalculationDataType, Position, RepLevelScheme, ScoringFormat, RankingBasis
+from domain.interface import ProgressUpdater
 
 pd.options.mode.chained_assignment = None  # from https://stackoverflow.com/a/20627316
 
@@ -30,7 +31,7 @@ class PlayerValues:
         if not path.exists(self.intermed_subdirpath):
             os.mkdir(self.intermed_subdirpath)
 
-    def calculate_values(self, progress=None) -> None:
+    def calculate_values(self, progress:ProgressUpdater=None) -> None:
         """Sets up and performs the player value calculations inplace for the passed ValueCalculation"""
         projs = projection_services.convert_to_df(self.value_calc.projection)
         self.pos_proj = projs[0]
@@ -64,7 +65,7 @@ class PlayerValues:
         progress.set_task_title('Calculating pitchers')
         progress.set_completion_percent(70)
 
-        pitch_values = value.arm_values.ArmValues(self.value_calc, intermediate_calc=self.intermediate_calculations)
+        pitch_values = value.arm_values.ArmValues(self.value_calc, intermediate_calc=self.intermediate_calculations, prog=progress)
         if rep_nums is not None:
             pitch_values.replacement_positions = rep_nums
         if rep_levels is not None:

@@ -67,11 +67,11 @@ class Wizard(wizard.Wizard):
             self.league.position_set = position_set_services.get_ottoneu_position_set()
             self.league.starting_set = starting_positions_services.get_ottoneu_position_set()
             lg = league_services.save_league(self.league)
-            self.parent.league = ottoneu_services.refresh_league(lg.id, pd=prog)
+            self.parent.league = ottoneu_services.refresh_league(lg.id, prog=prog)
         elif self.league.platform == Platform.YAHOO:
             try:
-                lg = yahoo_services.set_player_positions_for_league(self.league, pd=prog)
-                self.parent.league = yahoo_services.refresh_league(lg.id, pd=prog)
+                lg = yahoo_services.set_player_positions_for_league(self.league, prog=prog)
+                self.parent.league = yahoo_services.refresh_league(lg.id, prog=prog)
             except requests.exceptions.HTTPError:
                 mb.showerror('Rate limited', 'Yahoo data retrieval hit rate limits. Try again later.')
                 return False

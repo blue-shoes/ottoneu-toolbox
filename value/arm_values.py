@@ -8,6 +8,7 @@ import logging
 
 from domain.domain import ValueCalculation, CustomScoring
 from domain.enum import RepLevelScheme, RankingBasis, CalculationDataType as CDT, ScoringFormat, Position, StatType
+from domain.interface import ProgressUpdater
 from services import custom_scoring_services
 from util import dataframe_util
 
@@ -22,7 +23,7 @@ class ArmValues:
     max_rost_num = {}
     scoring: CustomScoring = None
 
-    def __init__(self, value_calc: ValueCalculation, intermediate_calc=False, target_arm=196, rp_limit=999):
+    def __init__(self, value_calc: ValueCalculation, intermediate_calc=False, target_arm=196, rp_limit=999, prog:ProgressUpdater=None):
         self.intermediate_calculations = intermediate_calc
         self.replacement_positions = deepcopy(self.default_replacement_positions)
         self.replacement_levels = deepcopy(self.default_replacement_levels)
@@ -57,6 +58,8 @@ class ArmValues:
             self.intermed_subdirpath = os.path.join(self.dirname, 'data_dirs', 'intermediate')
             if not path.exists(self.intermed_subdirpath):
                 os.mkdir(self.intermed_subdirpath)
+        
+        self.progress_updater = prog
 
     def _hbp_calc(self, bba) -> float:
         # This HBP approximation is from a linear regression I did when I first did values

@@ -8,6 +8,7 @@ from pandas import Series
 
 from domain.domain import Player, Salary_Refresh, Salary_Info
 from domain.enum import ScoringFormat, Position
+from domain.interface import ProgressUpdater
 from scrape.scrape_ottoneu import Scrape_Ottoneu
 from dao.session import Session, sessionmaker
 from services import salary_services
@@ -105,17 +106,17 @@ def __get_player_by_fg_id(player_id, force_major: bool, session:Session) -> Play
         player = session.query(Player).filter(Player.fg_minor_id == player_id).first()
     return player
 
-def get_player_by_ottoneu_id(ottoneu_id: int, pd=None, sess:Session=None) -> Player:
+def get_player_by_ottoneu_id(ottoneu_id: int, prog:ProgressUpdater=None, sess:Session=None) -> Player:
     """Returns player from database based on input Ottoneu player id."""
     if sess:
-        return __get_player_by_ottoneu_id(ottoneu_id, pd, sess)
+        return __get_player_by_ottoneu_id(ottoneu_id, prog, sess)
     with Session() as session:
-        return __get_player_by_ottoneu_id(ottoneu_id, pd, session)
+        return __get_player_by_ottoneu_id(ottoneu_id, prog, session)
 
-def __get_player_by_ottoneu_id(ottoneu_id:int, pd, session:Session) -> Player:
+def __get_player_by_ottoneu_id(ottoneu_id:int, prog:ProgressUpdater, session:Session) -> Player:
     player = session.query(Player).filter(Player.ottoneu_id == ottoneu_id).first()
     if player is None:
-        player = get_player_from_ottoneu_player_page(ottoneu_id, 1, pd=pd)
+        player = get_player_from_ottoneu_player_page(ottoneu_id, 1, prog=prog)
         player = session.query(Player).filter(Player.ottoneu_id == ottoneu_id).first()
     return player
 
@@ -183,11 +184,11 @@ def __search_by_name_with_session(search_str: str, salary_info: bool, session: S
     else:
         return session.query(Player).filter(Player.search_name.contains(search_str)).all()
 
-def get_player_from_ottoneu_player_page(player_id: int, league_id: int, session: sessionmaker = None, pd=None) -> List[Player]:
+def get_player_from_ottoneu_player_page(player_id: int, league_id: int, session: sessionmaker = None, prog:ProgressUpdater=None) -> List[Player]:
     """Scrapes the Ottoneu player page based on Ottoneu player id and League id to retrieve necessary information to populate a player in the Toolbox database."""
     logging.info(f'Importing player {player_id} from player page')
-    if pd is not None:
-        pd.set_task_title(f'Populating Ottoneu Id {player_id}')
+    if prog is not None:
+        prog.set_task_title(f'Populating Ottoneu Id {player_id}')
     try:
         player_tuple = Scrape_Ottoneu().get_player_from_player_page(player_id, league_id)
     except IndexError:

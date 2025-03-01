@@ -6,6 +6,7 @@ from collections import defaultdict
 from domain.domain import League, Team, Roster_Spot, Player, Draft, ValueCalculation, Projected_Keeper, PlayerValue, CustomScoring
 from domain.enum import ScoringFormat, Position, CalculationDataType as CDT, StatType, RankingBasis, InflationMethod, Platform
 from domain.exception import InputException
+from domain.interface import ProgressUpdater
 from dao.session import Session
 from scrape.scrape_ottoneu import Scrape_Ottoneu
 from services import roster_services, calculation_services, custom_scoring_services
@@ -89,7 +90,7 @@ def get_league_by_draft(draft: Draft, fill_rosters: bool = False) -> League:
 
 
 def calculate_league_table(
-    league: League, value_calc: ValueCalculation, fill_pt: bool = False, inflation: float = None, in_season: bool = False, updated_teams: List[Team] = None, use_keepers: bool = False, prog=None
+    league: League, value_calc: ValueCalculation, fill_pt: bool = False, inflation: float = None, in_season: bool = False, updated_teams: List[Team] = None, use_keepers: bool = False, prog:ProgressUpdater=None
 ) -> None:
     """Calculates the projected standings table for the League with the given ValueCalculation"""
     if fill_pt and not ScoringFormat.is_points_type(league.s_format):

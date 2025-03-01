@@ -217,7 +217,7 @@ class ValuesCalculation(ToolboxView):
                     adv_calc_services.set_advanced_option(adv_inp, inp)
             self.update_calc_output_frame()
         pd.set_completion_percent(33)
-        self.redraw_tables(overall=True, pd=pd)
+        self.redraw_tables(overall=True, prog=pd)
         self.set_display_columns()
         pd.set_completion_percent(100)
         pd.destroy()
@@ -557,7 +557,7 @@ class ValuesCalculation(ToolboxView):
                 widget.destroy()
             self.set_offensive_par_outputs()
 
-    def redraw_tables(self, overall: bool = False, pd: progress.ProgressDialog = None) -> None:
+    def redraw_tables(self, overall: bool = False, prog: progress.ProgressDialog = None) -> None:
         for pos, table in self.tables.items():
             if pos == Position.OVERALL or pos == Position.OFFENSE or pos == Position.PITCHER:
                 continue
@@ -569,17 +569,17 @@ class ValuesCalculation(ToolboxView):
                     self.tab_control.hide(tab_id)
                 self.tables[pos] = None
         self.create_position_tables()
-        if not pd:
-            pd = progress.ProgressDialog(self, title='Reloading Player Tables')
-        pd.increment_completion_percent(15)
+        if not prog:
+            prog = progress.ProgressDialog(self, title='Reloading Player Tables')
+        prog.increment_completion_percent(15)
         for pos, table in self.tables.items():
             if not overall and (pos == Position.OVERALL or pos == Position.OFFENSE or pos == Position.PITCHER):
                 continue
             if table:
                 table.refresh()
-                pd.increment_completion_percent(5)
+                prog.increment_completion_percent(5)
         self.set_display_columns()
-        pd.complete()
+        prog.complete()
 
     def set_position_set(self) -> None:
         count = position_set_services.get_position_set_count()
@@ -681,7 +681,7 @@ class ValuesCalculation(ToolboxView):
                 self.sel_proj.set('No Projection Selected')
                 self.populate_projections()
 
-    def populate_projections(self, pd=None):
+    def populate_projections(self, pd:progress.ProgressDialog=None):
         if self.position_set and self.projection:
             for pp in self.projection.player_projections:
                 pp.player.custom_positions = self.position_set.get_player_positions(pp.player_id)

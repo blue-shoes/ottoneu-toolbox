@@ -2,8 +2,10 @@ import tkinter as tk
 from tkinter import Toplevel
 from tkinter import ttk
 
+from domain.interface import ProgressUpdater
 
-class ProgressDialog(tk.Toplevel):
+
+class ProgressDialog(tk.Toplevel, ProgressUpdater):
     def __init__(self, parent: Toplevel, title):
         super().__init__(parent)
         self.overrideredirect(1)

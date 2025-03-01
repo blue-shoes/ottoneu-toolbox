@@ -2,19 +2,20 @@ from dao.session import Session
 from scrape.scrape_ottoneu import Scrape_Ottoneu
 from domain.domain import Player, Salary_Info, Salary_Refresh
 from domain.enum import ScoringFormat
+from domain.interface import ProgressUpdater
 from decimal import Decimal
 from re import sub
 from services import player_services
 from datetime import datetime
 
 
-def update_salary_info(s_format=ScoringFormat.ALL, pd=None) -> None:
+def update_salary_info(s_format=ScoringFormat.ALL, prog:ProgressUpdater=None) -> None:
     """Updates the database with the salary information for the input scoring format."""
     scraper = Scrape_Ottoneu()
     salary_df = scraper.get_avg_salary_ds(game_type=s_format.value)
-    if pd is not None:
-        pd.set_task_title('Refreshing DB...')
-        pd.increment_completion_percent(40)
+    if prog is not None:
+        prog.set_task_title('Refreshing DB...')
+        prog.increment_completion_percent(40)
     with Session() as session:
         refresh = session.query(Salary_Refresh).filter(Salary_Refresh.s_format == s_format).first()
         if refresh is None:

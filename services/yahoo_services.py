@@ -9,6 +9,7 @@ from dao.session import Session
 from demo import draft_demo
 from domain.domain import League, Roster_Spot, Player, ValueCalculation, Team, PositionSet, PlayerPositions, CustomScoringCategory, StartingPosition
 from domain.enum import InflationMethod, Position, ScoringFormat, Platform, StatType
+from domain.interface import ProgressUpdater
 from services import player_services, league_services, custom_scoring_services, starting_positions_services
 
 from typing import List, Tuple, Dict
@@ -23,17 +24,17 @@ game_id: str = ''
 _auth_dict: dict[str, str] = {}
 
 
-def create_league(league_yahoo_id: int, pd=None) -> League:
+def create_league(league_yahoo_id: int, prog:ProgressUpdater=None) -> League:
     """Creates a league in the Toolbox for a given Yahoo league number."""
 
-    if pd is not None:
-        pd.set_task_title('Getting league info...')
-        pd.increment_completion_percent(10)
+    if prog is not None:
+        prog.set_task_title('Getting league info...')
+        prog.increment_completion_percent(10)
 
     yleague = get_league_metadata(league_yahoo_id)
-    pd.increment_completion_percent(30)
+    prog.increment_completion_percent(30)
     teams = get_teams(league_yahoo_id)
-    pd.increment_completion_percent(30)
+    prog.increment_completion_percent(30)
     settings = get_league_settings(league_yahoo_id)
 
     lg = League()
@@ -90,7 +91,7 @@ def create_league(league_yahoo_id: int, pd=None) -> League:
     return lg
 
 
-def refresh_league(league_id: int, pd=None) -> League:
+def refresh_league(league_id: int, prog:ProgressUpdater=None) -> League:
     """Refreshes the given league id in the database. Retrieves current team rosters from Yahoo API and rewrites team roster spots in DB."""
     lg = league_services.get_league(league_id, rosters=True)
 
@@ -100,14 +101,14 @@ def refresh_league(league_id: int, pd=None) -> League:
     rosters: Dict[int, YRoster] = {}
     q = __create_query(lg.site_id)
     try:
-        if pd:
-            pd.set_task_title('Updating rosters...')
-            pd.increment_completion_percent(5)
+        if prog:
+            prog.set_task_title('Updating rosters...')
+            prog.increment_completion_percent(5)
         pd_inc = int(75 / lg.num_teams)
         for team in lg.teams:
             rosters[team.site_id] = q.get_team_roster_by_week(team.site_id)
-            if pd:
-                pd.increment_completion_percent(pd_inc)
+            if prog:
+                prog.increment_completion_percent(pd_inc)
         with Session() as session:
             lg = session.query(League).options(joinedload(League.teams).joinedload(Team.roster_spots).joinedload(Roster_Spot.player)).filter_by(id=league_id).first()
             team_map = {}
@@ -138,8 +139,8 @@ def refresh_league(league_id: int, pd=None) -> League:
             session.commit()
             lg = league_services.get_league(league_id)
     finally:
-        if pd:
-            pd.complete()
+        if prog:
+            prog.complete()
     return lg
 
 
@@ -244,7 +245,7 @@ def resolve_draft_results_against_rosters(league: League, value_calc: ValueCalcu
     return (new_drafted, cut)
 
 
-def set_player_positions_for_league(league: League, pd=None) -> League:
+def set_player_positions_for_league(league: League, prog:ProgressUpdater=None) -> League:
     """Gets Yahoo league player position eligibilities and creates a new PositionSet, if necessary. Also populates player.yahoo_id if necessary."""
     if not league.position_set:
         timestamp = datetime.now()
@@ -254,15 +255,15 @@ def set_player_positions_for_league(league: League, pd=None) -> League:
         league.position_set = position_set
     else:
         position_set = league.position_set
-    if pd:
-        pd.set_task_title('Creating player position set (This will take some time)...')
-        pd.increment_completion_percent(10)
+    if prog:
+        prog.set_task_title('Creating player position set (This will take some time)...')
+        prog.increment_completion_percent(10)
     yplayers = []
     thread = threading.Thread(target=get_league_players, args=(league.site_id, yplayers))
     thread.start()
 
     while thread.is_alive():
-        pd.increment_completion_percent(1)
+        prog.increment_completion_percent(1)
         sleep(10)
     seen_ids = []
     with Session() as session:

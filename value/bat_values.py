@@ -9,6 +9,7 @@ from typing import List, Dict
 from domain.domain import ValueCalculation, CustomScoring, StartingPositionSet
 from domain.enum import RankingBasis, RepLevelScheme, CalculationDataType as CDT, Position as P, ScoringFormat, StatType
 from domain.exception import InputException
+from domain.interface import ProgressUpdater
 from services import custom_scoring_services
 from util import dataframe_util
 
@@ -26,7 +27,7 @@ class BatValues:
     position_keys: List[P]
     start_count: Dict[P, int]
 
-    def __init__(self, value_calc: ValueCalculation, intermediate_calc=False, target_bat=244, max_pos_value=True, prog=None):
+    def __init__(self, value_calc: ValueCalculation, intermediate_calc=False, target_bat=244, max_pos_value=True, prog:ProgressUpdater=None):
         self.s_format = value_calc.s_format
         if self.s_format == ScoringFormat.CUSTOM:
             self.scoring = custom_scoring_services.get_scoring_format(value_calc.get_input(CDT.CUSTOM_SCORING_FORMAT))
@@ -56,7 +57,7 @@ class BatValues:
             self.intermed_subdirpath = os.path.join(self.dirname, 'data_dirs', 'intermediate')
             if not path.exists(self.intermed_subdirpath):
                 os.mkdir(self.intermed_subdirpath)
-        self.prog_dialog = prog
+        self.progress_updater = prog
 
     def calc_bat_points(self, row) -> float:
         """Returns the points for the hitter for the given statline"""
@@ -286,8 +287,8 @@ class BatValues:
                 last_inc = 0
                 while not self.are_games_filled(df):
                     last_inc += 1
-                    if last_inc % int(self.num_teams / 3) == 0 and self.prog_dialog.progress < 70:
-                        self.prog_dialog.increment_completion_percent(1)
+                    if last_inc % int(self.num_teams / 3) == 0 and self.progress_updater.progress < 70:
+                        self.progress_updater.increment_completion_percent(1)
                         last_inc = 1
                     max_rep_lvl = -999
                     for pos in self.position_keys:

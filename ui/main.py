@@ -143,7 +143,7 @@ class Main(tk.Tk, Controller):
             # Check that database has players in it, and populate if it doesn't
             if not player_services.is_populated():
                 progress_dialog.set_task_title('Populating Player Database')
-                salary_services.update_salary_info(pd=progress_dialog)
+                salary_services.update_salary_info(prog=progress_dialog)
                 progress_dialog.increment_completion_percent(33)
                 # We also put values into required table
                 init_files = ['adv_calc_setup.sql', 'position_set_setup.sql']
@@ -273,10 +273,10 @@ class Main(tk.Tk, Controller):
             if dialog.league.is_linked():
                 pd = progress.ProgressDialog(self, title='Updating League')
                 if dialog.league.platform == Platform.OTTONEU:
-                    self.league = ottoneu_services.refresh_league(dialog.league.id, pd=pd)
+                    self.league = ottoneu_services.refresh_league(dialog.league.id, prog=pd)
                 elif dialog.league.platform == Platform.YAHOO and yahoo_refresh:
                     try:
-                        self.league = yahoo_services.refresh_league(dialog.league.id, pd=pd)
+                        self.league = yahoo_services.refresh_league(dialog.league.id, prog=pd)
                     except requests.exceptions.HTTPError:
                         mb.showerror('Rate Limited', 'Yahoo data retrieval has hit a rate limit. League will not be refreshed. Try again later')
                 else:
