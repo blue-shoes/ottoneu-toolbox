@@ -22,7 +22,7 @@ from ui.league import League_Analysis
 from services import player_services, salary_services, property_service, ottoneu_services, yahoo_services
 from domain.domain import Property
 from domain.enum import Preference as Pref, PropertyType, Platform
-from dao import db_update
+from dao import db_update, session
 
 __version__ = '1.3.0'
 
@@ -47,6 +47,8 @@ class Main(tk.Tk, Controller):
                 self.iconbitmap(default=iconbitmap)
             except TclError:
                 pass
+
+        self.init_db()
 
         self.title(f'Ottoneu Toolbox v{__version__}')
         # self.preferences = preferences
@@ -90,6 +92,13 @@ class Main(tk.Tk, Controller):
         self.focus_force()
 
         self.protocol('WM_DELETE_WINDOW', self.exit)
+
+    def init_db(self):
+        db_dir = 'db'
+        if not os.path.exists(db_dir):
+            os.mkdir(db_dir)
+        db_loc = os.path.join('db', 'otto_toolbox.db')
+        session.init_sessionmaker(f'sqlite:///{db_loc}')
 
     def create_frame(self, frame: ToolboxView):
         page_name = frame.__name__

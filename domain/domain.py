@@ -2,13 +2,27 @@ from __future__ import annotations
 from datetime import datetime
 from dataclasses import field
 from sqlalchemy import ForeignKey, Index
-from sqlalchemy.dialects.sqlite import JSON
+from sqlalchemy.dialects import sqlite, postgresql, mysql, oracle
 from sqlalchemy.orm import relationship, registry, Mapped, mapped_column, reconstructor
+from sqlalchemy.types import JSON
 from domain.enum import CalculationDataType, ProjectionType, RankingBasis, ScoringFormat, StatType, Position, IdType, Platform
 from typing import List, Dict, Tuple
 
 reg = registry()
+json_type = JSON()
 
+json_type = json_type.with_variant(
+    sqlite.JSON, "sqlite"
+)
+json_type = json_type.with_variant(
+    postgresql.JSON, "postgresql"
+)
+json_type = json_type.with_variant(
+    mysql.JSON, "mysql"
+)
+json_type = json_type.with_variant(
+    oracle.JSON, "oracle"
+)
 
 @reg.mapped_as_dataclass
 class Property:
@@ -595,7 +609,7 @@ class PlayerProjection:
     projection_id: Mapped[int] = mapped_column(ForeignKey('projection.id'), default=None)
     projection: Mapped['Projection'] = relationship(default=None, back_populates='player_projections', repr=False)
 
-    projection_data: Mapped[dict[StatType, float]] = mapped_column(JSON(), default_factory=dict, repr=False)
+    projection_data: Mapped[dict[StatType, float]] = mapped_column(json_type, default_factory=dict, repr=False)
 
     pitcher: Mapped[bool] = mapped_column(default=False)
     two_way: Mapped[bool] = mapped_column(default=False)
