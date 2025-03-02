@@ -53,10 +53,10 @@ def pitch_opt(current_pt: dict[Position, dict[int, int]], p_opt_pg: list, pt, te
         sp_left = value_calc.get_input(CDT.GS_LIMIT) * 26
     else:
         rp_left = value_calc.get_input(CDT.RP_IP_TARGET)
-        sp_left = value_calc.get_input(CDT.IP_TARGET) - value_calc.get_input(CDT.RP_IP_TARGET)
+        sp_left = value_calc.get_input(CDT.IP_TARGET)
 
     rp_left = rp_left - sum(current_pt.get(Position.POS_RP, {0: 0}).values())
-    sp_left = sp_left - sum(current_pt.get(Position.POS_SP, {0: 0}).values())
+    sp_left = sp_left - sum(current_pt.get(Position.POS_SP, {0: 0}).values()) - sum(current_pt.get(Position.POS_RP, {0: 0}).values())
 
     for val in p_sorted:
         player = val[1][0]
@@ -66,15 +66,19 @@ def pitch_opt(current_pt: dict[Position, dict[int, int]], p_opt_pg: list, pt, te
         sp_ip = val[1][1][0]
 
         playing_time = 0
-        if rp_left > 0 and rp_ip > 0 and (rep_lvl is None or rep_lvl.get(Position.POS_RP) < val[1][2]):
+        if rp_left > 0 and rp_ip > 0 and sp_left > 0 and (rep_lvl is None or rep_lvl.get(Position.POS_RP) < val[1][2] or not ScoringFormat.is_points_type(value_calc.s_format)):
             if rp_ip > rp_left:
                 playing_time = rp_left
+            elif value_calc.pitcher_basis != RankingBasis.PPG and rp_ip > sp_left:
+                playing_time = sp_left 
             else:
                 playing_time = rp_ip
-            rp_left = rp_left - playing_time
+            rp_left -= playing_time
+            if value_calc.pitcher_basis != RankingBasis.PPG:
+                sp_left -= playing_time
             team.get_rs_by_player(player).ip = playing_time
             pt.get(Position.POS_RP, {})[player.id] = playing_time
-        if sp_left > 0 and sp_ip > 0 and (rep_lvl is None or rep_lvl.get(Position.POS_SP) < val[1][2]):
+        if sp_left > 0 and sp_ip > 0 and (rep_lvl is None or rep_lvl.get(Position.POS_SP) < val[1][2] or not ScoringFormat.is_points_type(value_calc.s_format)):
             if sp_ip > sp_left:
                 playing_time = sp_left
             else:
@@ -174,7 +178,7 @@ def __add_pt(
     results = []
     g_h = 0
     playing_time = 0
-    if sum(pt[index].get(target_pos, {0: 0}).values()) < cap and (rep_lvl is None or rep_lvl.get(target_pos) < val[1][2]):
+    if sum(pt[index].get(target_pos, {0: 0}).values()) < cap and (rep_lvl is None or rep_lvl.get(target_pos) < val[1][2] or not ScoringFormat.is_points_type(league.s_format)):
         if target_pos != Position.POS_UTIL and not last:
             possibilities.append(copy.copy(possibilities[index]))
             opt_sum.append(copy.copy(opt_sum[index]))
