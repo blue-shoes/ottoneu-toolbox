@@ -180,6 +180,8 @@ def resolve_draft_results_against_rosters(
                                     val = pv.value
                                 league_services.update_league_inflation_last_trans(league, value=val, salary=salary, inf_method=inf_method, add_player=False)
                                 team.roster_spots.remove(rs)
+                                league.rostered_ids.remove(player.id)
+                                league.ottoneu_rostered_ids.remore(player.ottoneu_id)
                             break
             index -= 1
         last_time = most_recent

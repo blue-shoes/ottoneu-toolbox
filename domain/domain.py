@@ -2,11 +2,12 @@ from __future__ import annotations
 from datetime import datetime
 from dataclasses import field
 from sqlalchemy import ForeignKey, Index
-from sqlalchemy.dialects import sqlite, postgresql, mysql, oracle
+from sqlalchemy.dialects import sqlite, postgresql, mysql
 from sqlalchemy.orm import relationship, registry, Mapped, mapped_column, reconstructor
 from sqlalchemy.types import JSON
 from domain.enum import CalculationDataType, ProjectionType, RankingBasis, ScoringFormat, StatType, Position, IdType, Platform
 from typing import List, Dict, Tuple
+from functools import cache
 
 reg = registry()
 json_type = JSON()
@@ -19,9 +20,6 @@ json_type = json_type.with_variant(
 )
 json_type = json_type.with_variant(
     mysql.JSON, "mysql"
-)
-json_type = json_type.with_variant(
-    oracle.JSON, "oracle"
 )
 
 @reg.mapped_as_dataclass
@@ -47,6 +45,8 @@ class Player:
 
     salary_info: Mapped[List['Salary_Info']] = relationship(default_factory=list, back_populates='player', cascade='all, delete', lazy='joined', repr=False)
 
+    salary_dict: Dict[int, Salary_Info] = field(default_factory=dict, repr=False)
+
     # Transient fields
     custom_positions: str = field(
         default=None,
@@ -60,6 +60,7 @@ class Player:
     @reconstructor
     def init_on_load(self):
         self.__is_eligible = {}
+        self.salary_dict = {}
 
     def get_fg_id(self) -> object:
         """Returns the FanGraphs Major League id, if available, otherwise returns the FanGraphs Minor League id."""
@@ -156,6 +157,8 @@ class League:
         self.draft_results = {}
         self.__starting_positions = []
         self.__starting_slots = {}
+        self.rostered_ids = []
+        self.ottoneu_rostered_ids = []
 
     def is_salary_cap(self) -> bool:
         return self.team_salary_cap != -1
@@ -190,11 +193,9 @@ class League:
         return False
 
     def is_rostered(self, player_id: int) -> bool:
-        for team in self.teams:
-            for rs in team.roster_spots:
-                if rs.player_id == player_id:
-                    return True
-        return False
+        if not self.rostered_ids:
+            self.rostered_ids = [rs.player_id for team in self.teams for rs in team.roster_spots]
+        return player_id in self.rostered_ids
 
     def get_player_salary(self, player_id: int) -> int:
         for team in self.teams:
@@ -205,11 +206,9 @@ class League:
 
     def is_rostered_by_ottoneu_id(self, ottoneu_id: int) -> bool:
         """Determines if player is rostered based on ottoneu id"""
-        for team in self.teams:
-            for rs in team.roster_spots:
-                if rs.player.ottoneu_id == ottoneu_id:
-                    return True
-        return False
+        if not self.ottoneu_rostered_ids:
+            self.ottoneu_rostered_ids = [rs.player.ottoneu_id for team in self.teams for rs in team.roster_spots]
+        return ottoneu_id in self.rostered_ids
 
     def init_inflation_calc(self):
         """Initialized the required fields to begin an inflation calculation for the league"""
@@ -391,10 +390,12 @@ class ValueCalculation:
     starting_set: Mapped['StartingPositionSet'] = relationship(default=None)
 
     value_dict: Dict[int, Dict[Position, PlayerValue]] = field(default_factory=dict, repr=False)
+    pos_value_dict: Dict[Position, PlayerValue] = field(default_factory=dict, repr=False)
 
     @reconstructor
     def init_on_load(self):
         self.value_dict = {}
+        self.pos_value_dict = {}
 
     def init_value_dict(self) -> None:
         """Initializes a dictionary that is keyed off of player_id, then off of Position with a value of the PlayerValue"""
@@ -484,11 +485,16 @@ class ValueCalculation:
 
     def get_position_values(self, pos: Position) -> list[PlayerValue]:
         """Gets all player values at the given position."""
-        values = []
-        for pv in self.values:
-            if pv.position == pos:
-                values.append(pv)
-        return values
+        if not self.pos_value_dict:
+            self.pos_value_dict[Position.OVERALL] = []
+            self.pos_value_dict[Position.OFFENSE] = []
+            self.pos_value_dict[Position.PITCHER] = []
+            for sp in self.starting_set.positions:
+                self.pos_value_dict[sp.position] = []
+            for pv in self.values:
+                v_list = self.pos_value_dict[pv.position]
+                v_list.append(pv)
+        return self.pos_value_dict[pos]
 
     def get_rep_level_map(self) -> List[Dict[Position, float]]:
         """Returns the output replacement level values for the ValueCalclution with position as the key"""
@@ -573,6 +579,12 @@ class Projection:
     player_projections: Mapped[List['PlayerProjection']] = relationship(default_factory=list, back_populates='projection', cascade='all, delete', repr=False)
     calculations: Mapped[List['ValueCalculation']] = relationship(default_factory=list, back_populates='projection', cascade='all, delete', repr=False)
 
+    pp_dict: Dict[int, PlayerProjection] = field(default_factory=dict, repr=False)
+
+    @reconstructor
+    def init_on_load(self):
+        self.pp_dict = {}
+
     def get_player_projection(self, player_id: int, idx: str = None, id_type: IdType = IdType.FANGRAPHS) -> PlayerProjection:
         """Gets the PlayerProjection for the given player_id"""
         if player_id is None:
@@ -592,9 +604,10 @@ class Projection:
                         if pp.player.ottoneu_id == idx:
                             return pp
         else:
-            for pp in self.player_projections:
-                if pp.player_id == player_id or pp.player.id == player_id:
-                    return pp
+            if not self.pp_dict:
+                for pp in self.player_projections:
+                    self.pp_dict[pp.player_id] = pp
+            return self.pp_dict.get(player_id, None)
         return None
 
 

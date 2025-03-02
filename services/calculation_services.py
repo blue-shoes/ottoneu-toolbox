@@ -12,7 +12,7 @@ import logging
 import datetime
 import re
 from typing import List, Tuple, Dict
-
+from util.annotation import points_cache
 
 def perform_point_calculation(value_calc: ValueCalculation, prog:ProgressUpdater=None, debug: bool = False) -> None:
     """Creates a PointValues object from the ValueCalculation, calculates player values, and stores them in the ValueCalculation"""
@@ -104,7 +104,7 @@ def get_values_for_year(year: int = None) -> List[ValueCalculation]:
     with Session() as session:
         return session.query(ValueCalculation).filter(ValueCalculation.timestamp > start, ValueCalculation.timestamp < end).all()
 
-
+@points_cache
 def get_points(player_proj: PlayerProjection, pos: Position, sabr: bool = False, no_svh: bool = False, custom_format: CustomScoring = None) -> float:
     """Returns the point value for a player projection. Pitcher point values FanGraphs Points by default, but can be changed with sabr flag."""
     try:
@@ -164,7 +164,7 @@ def get_points(player_proj: PlayerProjection, pos: Position, sabr: bool = False,
     except TypeError:
         return 0.0
 
-
+@points_cache
 def get_batting_point_rate_from_player_projection(player_proj: PlayerProjection, basis: RankingBasis = RankingBasis.PPG, custom_format: CustomScoring = None) -> float:
     """Returns the point rate for the input batter PlayerProjection based on the requested rate basis"""
     if basis == RankingBasis.PPG and player_proj.get_stat(StatType.PPG) is not None:
@@ -182,7 +182,7 @@ def get_batting_point_rate_from_player_projection(player_proj: PlayerProjection,
         return points / pa
     return 0
 
-
+@points_cache
 def get_pitching_point_rate_from_player_projection(player_proj: PlayerProjection, s_format: ScoringFormat, basis: RankingBasis = RankingBasis.PIP, custom_format: CustomScoring = None) -> float:
     """Returns the point rate for the input pitcher PlayerProjection based on the requested rate basis and scoring format"""
     if basis == RankingBasis.PIP and player_proj.get_stat(StatType.PIP) is not None:
@@ -1071,3 +1071,4 @@ def set_player_ranks(vc: ValueCalculation) -> None:
         pos_vals.sort(key=lambda p: p.id)
         for rank, pv in enumerate(pos_vals, start=0):
             pv.rank = rank + 1
+

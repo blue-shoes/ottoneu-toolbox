@@ -342,6 +342,8 @@ def calculate_league_inflation(league: League, value_calc: ValueCalculation, inf
 
 
 def add_player_to_draft_rosters(league: League, team_id: int, player: Player, pv: PlayerValue, salary: int, inf_method: InflationMethod):
+    league.rostered_ids.append(player.id)
+    league.ottoneu_rostered_ids.append(player.id)
     for team in league.teams:
         if team.site_id == team_id:
             rs = Roster_Spot()

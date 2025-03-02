@@ -2,6 +2,7 @@ from __future__ import annotations
 from enum import Enum, IntEnum
 from typing import List, Dict, Tuple
 import re
+from functools import cache
 from domain.exception import InputException
 
 
@@ -338,6 +339,7 @@ class StatType(IntEnum):
         return lookup.get(self, None)
 
     @classmethod
+    @cache
     def get_hit_stattype(self, display: str) -> StatType:
         """Returns the hitter StatType for the given display. None if no match"""
         for st in StatType:
@@ -346,6 +348,7 @@ class StatType(IntEnum):
         return None
 
     @classmethod
+    @cache
     def get_pitch_stattype(self, display: str) -> StatType:
         """Returns the pitcher StatType for the given display. None if no match"""
         for st in StatType:
@@ -354,6 +357,7 @@ class StatType(IntEnum):
         return None
 
     @classmethod
+    @cache
     def get_all_hit_stattype(self, no_rates: bool = False) -> List[StatType]:
         """Returns a list of all StatTypes for hitters. If no_rates is True, any rate stats are excluded"""
         sts = []
@@ -367,6 +371,7 @@ class StatType(IntEnum):
         return sorted(sts, key=lambda st: st.rank)
 
     @classmethod
+    @cache
     def get_all_pitch_stattype(self, no_rates: bool = False) -> List[StatType]:
         """Returns a list of all StatTypes for pitchers. If no_rates is True, any rate stats are excluded"""
         sts = []

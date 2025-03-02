@@ -107,6 +107,8 @@ class DraftTool(ToolboxView):
         self.draft = draft_services.get_draft_by_league(self.controller.league.id)
         self.league.team_drafts = self.draft.team_drafts
 
+        self.average_salary_fom = self.controller.preferences.get('General', Pref.AVG_SALARY_FOM, fallback=AvgSalaryFom.MEAN.value)
+
         self.__initialize_draft()
 
         # Clean up previous demo run
@@ -961,18 +963,18 @@ class DraftTool(ToolboxView):
             value = self.__get_dollar_string(pv.value)
             inf_cost = self.__get_inflated_cost(pv)
             rank = 0
-            round = 0
+            d_round = 0
         else:
             value = 0
             inf_cost = 0
             rank = pv.rank
-            round = self.player_to_round_map.get(pv.player.id, 'NR')
+            d_round = self.player_to_round_map.get(pv.player.id, 'NR')
         if pv.player.custom_positions:
             position = pv.player.custom_positions
         else:
             position = pv.player.position
         team = pv.player.team
-        return (name, value, inf_cost, rank, round, position, team)
+        return (name, value, inf_cost, rank, d_round, position, team)
 
     def __refresh_overall_view(self):
         self.rostered_detached_id_map[self.overall_view] = []
@@ -981,7 +983,8 @@ class DraftTool(ToolboxView):
             custom_scoring = custom_scoring_services.get_scoring_format(int(self.value_calculation.get_input(CalculationDataType.CUSTOM_SCORING_FORMAT)))
         else:
             custom_scoring = None
-        for pv in self.value_calculation.get_position_values(Position.OVERALL):
+        pvs = self.value_calculation.get_position_values(Position.OVERALL)
+        for pv in pvs:
             stock_player = self.__get_stock_player_row(pv)
             proj_cols = self.__get_overall_projected_col(pv, custom_scoring)
             sal_tup = self.__get_salary_tuple(pv.player)
@@ -1137,7 +1140,7 @@ class DraftTool(ToolboxView):
                 l10 = '$0.0'
                 roster = '0.0%'
             else:
-                if self.controller.preferences.get('General', Pref.AVG_SALARY_FOM, fallback=AvgSalaryFom.MEAN.value) == AvgSalaryFom.MEAN.value:
+                if self.average_salary_fom == AvgSalaryFom.MEAN.value:
                     avg = f'${si.avg_salary:.1f}'
                 else:
                     avg = f'${si.med_salary:.1f}'
