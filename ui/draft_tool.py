@@ -641,18 +641,21 @@ class DraftTool(ToolboxView):
             self.draft.cm_draft = None
             if setup:
                 self.__initialize_draft(same_values=True, same_league=True)
-            self.monitor_status.set('Not started')
-            self.monitor_status_lbl.config(fg='red')
-            self.start_draft_sv.set('Start Draft Monitor')
-            CreateToolTip(self.start_monitor, 'Begin watching league for new draft results')
-            self.stop_draft_sv.set('Stop Draft Monitor')
-            self.stop_monitor['state'] = DISABLED
-            CreateToolTip(self.stop_monitor, 'Stop watching league for new draft results')
-            self.__remove_cm_current_auctions_tab()
-            self.current_cm_auction_ids = []
-            self.current_cm_auctions = []
+            self.__set_monitor_links()
             return True
         return False
+
+    def __set_monitor_links(self):
+        self.monitor_status.set('Not started')
+        self.monitor_status_lbl.config(fg='red')
+        self.start_draft_sv.set('Start Draft Monitor')
+        CreateToolTip(self.start_monitor, 'Begin watching league for new draft results')
+        self.stop_draft_sv.set('Stop Draft Monitor')
+        self.stop_monitor['state'] = DISABLED
+        CreateToolTip(self.stop_monitor, 'Stop watching league for new draft results')
+        self.__remove_cm_current_auctions_tab()
+        self.current_cm_auction_ids = []
+        self.current_cm_auctions = []
 
     def __remove_cm_current_auctions_tab(self):
         for tab_id in self.tab_control.tabs():
@@ -1353,9 +1356,7 @@ class DraftTool(ToolboxView):
             else:
                 self.__check_new_cm_teams()
         else:
-            self.__remove_cm_current_auctions_tab()
-            self.current_cm_auctions = []
-            self.current_cm_auction_ids = []
+            self.__set_monitor_links()
 
         if self.league.is_linked() and self.league.is_salary_cap():
             self.custom_budget_btn['state'] = ACTIVE
