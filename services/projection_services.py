@@ -287,6 +287,10 @@ def save_projection(projection: Projection, projs: List[DataFrame], id_type: IdT
                     player_proj.pitcher = pitch
                     player_proj.two_way = False
                 player_proj.player = player
+                if player.id:
+                    projection.pp_dict[player.id] = player_proj
+                else:
+                    projection.pp_dict[idx] = player_proj
 
                 generic_games = False
                 for col in stat_cols:
