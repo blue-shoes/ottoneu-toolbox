@@ -178,7 +178,7 @@ def __add_pt(
     results = []
     g_h = 0
     playing_time = 0
-    if sum(pt[index].get(target_pos, {0: 0}).values()) < cap and (rep_lvl is None or rep_lvl.get(target_pos) < val[1][2] or not ScoringFormat.is_points_type(league.s_format)):
+    if sum(pt[index].get(target_pos, {0: 0}).values()) < cap and (rep_lvl is None or rep_lvl.get(target_pos, -100) < val[1][2] or not ScoringFormat.is_points_type(league.s_format)):
         if target_pos != Position.POS_UTIL and not last:
             possibilities.append(copy.copy(possibilities[index]))
             opt_sum.append(copy.copy(opt_sum[index]))
