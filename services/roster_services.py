@@ -25,8 +25,7 @@ def optimize_team_pt(
     level from accruing stats/playing time. Providing a current_pt dictionary will inform how much playing time has alraedy been accrued by the team and will solve
     for the remaining playing time."""
 
-    pitch_basis = value_calc.get_input(CDT.PITCHER_RANKING_BASIS, RankingBasis.PIP)
-
+    pitch_basis = value_calc.pitcher_basis
     if current_pt is None:
         current_pt = {pos: {} for pos in league.get_starting_positions()}
     team.index_rs()
