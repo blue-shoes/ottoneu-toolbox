@@ -36,13 +36,16 @@ class Scrape_Base(object):
         for f in os.listdir(dir):
             os.remove(os.path.join(dir, f))
 
-    def _get_soup(self, url: str, xml: bool = False) -> Soup:
+    def _get_soup(self, url: str, xml: bool = False, escape_arrow_brackets:bool=False) -> Soup:
         """Convenience method to return Soup object from url."""
         with (requests.get(url) as response):
         #response = requests.get(url)
             if xml:
                 return Soup(response.text, 'xml')
             else:
+                if escape_arrow_brackets:
+                    _html = response.text.replace('<', '').replace('>', '')
+                    return Soup(_html, 'html.parser')
                 return Soup(response.text, 'html.parser')
 
     def close(self) -> None:

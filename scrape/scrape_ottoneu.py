@@ -109,7 +109,7 @@ class Scrape_Ottoneu(scrape_base.Scrape_Base):
         roster_export_url = f'https://ottoneu.fangraphs.com/{lg_id}/rosterexport'
         # response = requests.get(roster_export_url)
         # rost_soup = Soup(response.text, 'html.parser')
-        rost_soup = self._get_soup(roster_export_url)
+        rost_soup = self._get_soup(roster_export_url, escape_arrow_brackets=True)
         df = pd.read_csv(StringIO(rost_soup.contents[0]))
         df.set_index('ottoneu ID', inplace=True)
         df.index = df.index.astype(str, copy=False)
