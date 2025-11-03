@@ -1,8 +1,22 @@
 import copy
 from typing import Tuple, List, Dict
 
-from domain.domain import Team, Projection, Player, Projected_Keeper, CustomScoring, League, ValueCalculation
-from domain.enum import StatType, ScoringFormat, Position, RankingBasis, CalculationDataType as CDT
+from domain.domain import (
+    Team,
+    Projection,
+    Player,
+    Projected_Keeper,
+    CustomScoring,
+    League,
+    ValueCalculation,
+)
+from domain.enum import (
+    StatType,
+    ScoringFormat,
+    Position,
+    RankingBasis,
+    CalculationDataType as CDT,
+)
 from domain.exception import InputException
 from services import calculation_services, player_services, projection_services
 
@@ -30,14 +44,38 @@ def optimize_team_pt(
         current_pt = {pos: {} for pos in league.get_starting_positions()}
     team.index_rs()
     keeper_index = [k.player_id for k in keepers]
-    o_opt_pg, p_opt_pg = get_player_rates(team, use_keepers, keeper_index, value_calc.projection, s_format, off_opt_stat, pit_opt_stat, pitch_basis, custom_scoring)
+    o_opt_pg, p_opt_pg = get_player_rates(
+        team,
+        use_keepers,
+        keeper_index,
+        value_calc.projection,
+        s_format,
+        off_opt_stat,
+        pit_opt_stat,
+        pitch_basis,
+        custom_scoring,
+    )
     o_sorted = sorted(o_opt_pg.items(), key=lambda x: x[1][2], reverse=True)
-    pt = bat_opt(o_sorted, current_pt, league, team, value_calc.get_rep_level_map(), value_calc.get_input(CDT.BATTER_G_TARGET, 162))
+    pt = bat_opt(
+        o_sorted,
+        current_pt,
+        league,
+        team,
+        value_calc.get_rep_level_map(),
+        value_calc.get_input(CDT.BATTER_G_TARGET, 162),
+    )
 
     return pitch_opt(current_pt, p_opt_pg, pt, team, pit_opt_stat, value_calc)
 
 
-def pitch_opt(current_pt: dict[Position, dict[int, int]], p_opt_pg: list, pt, team: Team, pit_opt_stat: StatType, value_calc: ValueCalculation) -> dict[Position, dict[int, int]]:
+def pitch_opt(
+    current_pt: dict[Position, dict[int, int]],
+    p_opt_pg: list,
+    pt,
+    team: Team,
+    pit_opt_stat: StatType,
+    value_calc: ValueCalculation,
+) -> dict[Position, dict[int, int]]:
     if ScoringFormat.is_points_type(value_calc.s_format):
         p_sorted = sorted(p_opt_pg.items(), key=lambda x: x[1][2], reverse=True)
     elif pit_opt_stat in [StatType.WHIP, StatType.ERA, StatType.HR_PER_9]:
@@ -55,7 +93,11 @@ def pitch_opt(current_pt: dict[Position, dict[int, int]], p_opt_pg: list, pt, te
         sp_left = value_calc.get_input(CDT.IP_TARGET)
 
     rp_left = rp_left - sum(current_pt.get(Position.POS_RP, {0: 0}).values())
-    sp_left = sp_left - sum(current_pt.get(Position.POS_SP, {0: 0}).values()) - sum(current_pt.get(Position.POS_RP, {0: 0}).values())
+    sp_left = (
+        sp_left
+        - sum(current_pt.get(Position.POS_SP, {0: 0}).values())
+        - sum(current_pt.get(Position.POS_RP, {0: 0}).values())
+    )
 
     for val in p_sorted:
         player = val[1][0]
@@ -65,11 +107,20 @@ def pitch_opt(current_pt: dict[Position, dict[int, int]], p_opt_pg: list, pt, te
         sp_ip = val[1][1][0]
 
         playing_time = 0
-        if rp_left > 0 and rp_ip > 0 and sp_left > 0 and (rep_lvl is None or rep_lvl.get(Position.POS_RP) < val[1][2] or not ScoringFormat.is_points_type(value_calc.s_format)):
+        if (
+            rp_left > 0
+            and rp_ip > 0
+            and sp_left > 0
+            and (
+                rep_lvl is None
+                or rep_lvl.get(Position.POS_RP) < val[1][2]
+                or not ScoringFormat.is_points_type(value_calc.s_format)
+            )
+        ):
             if rp_ip > rp_left:
                 playing_time = rp_left
             elif value_calc.pitcher_basis != RankingBasis.PPG and rp_ip > sp_left:
-                playing_time = sp_left 
+                playing_time = sp_left
             else:
                 playing_time = rp_ip
             rp_left -= playing_time
@@ -77,13 +128,23 @@ def pitch_opt(current_pt: dict[Position, dict[int, int]], p_opt_pg: list, pt, te
                 sp_left -= playing_time
             team.get_rs_by_player(player).ip = playing_time
             pt.get(Position.POS_RP, {})[player.id] = playing_time
-        if sp_left > 0 and sp_ip > 0 and (rep_lvl is None or rep_lvl.get(Position.POS_SP) < val[1][2] or not ScoringFormat.is_points_type(value_calc.s_format)):
+        if (
+            sp_left > 0
+            and sp_ip > 0
+            and (
+                rep_lvl is None
+                or rep_lvl.get(Position.POS_SP) < val[1][2]
+                or not ScoringFormat.is_points_type(value_calc.s_format)
+            )
+        ):
             if sp_ip > sp_left:
                 playing_time = sp_left
             else:
                 playing_time = sp_ip
             sp_left = sp_left - playing_time
-            team.get_rs_by_player(player).ip = playing_time + team.get_rs_by_player(player).ip
+            team.get_rs_by_player(player).ip = (
+                playing_time + team.get_rs_by_player(player).ip
+            )
             pt.get(Position.POS_SP, {})[player.id] = playing_time
     return pt
 
@@ -116,12 +177,22 @@ def get_player_rates(
                     if g is None or g == 0:
                         o_opt_pg[rs.player.id] = (rs.player, 0, 0)
                     else:
-                        o_opt_pg[rs.player.id] = (rs.player, g, pp.get_stat(off_opt_stat) / g)
+                        o_opt_pg[rs.player.id] = (
+                            rs.player,
+                            g,
+                            pp.get_stat(off_opt_stat) / g,
+                        )
                 else:
                     if g is None or g == 0:
                         o_opt_pg[rs.player.id] = (rs.player, 0, 0)
                     else:
-                        o_opt_pg[rs.player.id] = (rs.player, g, calculation_services.get_batting_point_rate_from_player_projection(pp, RankingBasis.PPG, custom_format=custom_scoring))
+                        o_opt_pg[rs.player.id] = (
+                            rs.player,
+                            g,
+                            calculation_services.get_batting_point_rate_from_player_projection(
+                                pp, RankingBasis.PPG, custom_format=custom_scoring
+                            ),
+                        )
             if rs.player.pos_eligible(Position.PITCHER):
                 # Pitcher
                 pp = proj.get_player_projection(rs.player.id)
@@ -134,12 +205,29 @@ def get_player_rates(
                     if g is None or g == 0 or ip is None or ip == 0:
                         p_opt_pg[rs.player.id] = (rs.player, (0, 0), 0)
                     else:
-                        if pitch_basis == RankingBasis.PIP:
-                            p_opt_pg[rs.player.id] = (rs.player, projection_services.get_pitcher_role_ips(pp), pp.get_stat(pit_opt_stat) / ip)
-                        elif pitch_basis == RankingBasis.PPG:
-                            p_opt_pg[rs.player.id] = (rs.player, (gs, g - gs), pp.get_stat(pit_opt_stat) / g)
+                        if (
+                            pitch_basis == RankingBasis.PIP
+                            or pitch_basis == RankingBasis.ZSCORE_PER_IP
+                            or pitch_basis == RankingBasis.ZSCORE
+                        ):
+                            p_opt_pg[rs.player.id] = (
+                                rs.player,
+                                projection_services.get_pitcher_role_ips(pp),
+                                pp.get_stat(pit_opt_stat) / ip,
+                            )
+                        elif (
+                            pitch_basis == RankingBasis.PPG
+                            or pitch_basis == RankingBasis.ZSCORE_PER_G
+                        ):
+                            p_opt_pg[rs.player.id] = (
+                                rs.player,
+                                (gs, g - gs),
+                                pp.get_stat(pit_opt_stat) / g,
+                            )
                         else:
-                            raise InputException(f'Unexpected pitch_basis value {pitch_basis}')
+                            raise InputException(
+                                f"Unexpected pitch_basis value {pitch_basis}"
+                            )
                 else:
                     if g is None or g == 0 or ip is None or ip == 0:
                         p_opt_pg[rs.player.id] = (rs.player, (0, 0), 0)
@@ -149,12 +237,22 @@ def get_player_rates(
                             p_opt_pg[rs.player.id] = (
                                 rs.player,
                                 projection_services.get_pitcher_role_ips(pp),
-                                calculation_services.get_pitching_point_rate_from_player_projection(pp, s_format=s_format, basis=RankingBasis.PIP),
+                                calculation_services.get_pitching_point_rate_from_player_projection(
+                                    pp, s_format=s_format, basis=RankingBasis.PIP
+                                ),
                             )
                         elif pitch_basis == RankingBasis.PPG:
-                            p_opt_pg[rs.player.id] = (rs.player, (gs, g - gs), calculation_services.get_pitching_point_rate_from_player_projection(pp, s_format=s_format, basis=RankingBasis.PPG))
+                            p_opt_pg[rs.player.id] = (
+                                rs.player,
+                                (gs, g - gs),
+                                calculation_services.get_pitching_point_rate_from_player_projection(
+                                    pp, s_format=s_format, basis=RankingBasis.PPG
+                                ),
+                            )
                         else:
-                            raise InputException(f'Unexpected pitch_basis value {pitch_basis}')
+                            raise InputException(
+                                f"Unexpected pitch_basis value {pitch_basis}"
+                            )
     return o_opt_pg, p_opt_pg
 
 
@@ -177,14 +275,20 @@ def __add_pt(
     results = []
     g_h = 0
     playing_time = 0
-    if sum(pt[index].get(target_pos, {0: 0}).values()) < cap and (rep_lvl is None or rep_lvl.get(target_pos, -100) < val[1][2] or not ScoringFormat.is_points_type(league.s_format)):
+    if sum(pt[index].get(target_pos, {0: 0}).values()) < cap and (
+        rep_lvl is None
+        or rep_lvl.get(target_pos, -100) < val[1][2]
+        or not ScoringFormat.is_points_type(league.s_format)
+    ):
         if target_pos != Position.POS_UTIL and not last:
             possibilities.append(copy.copy(possibilities[index]))
             opt_sum.append(copy.copy(opt_sum[index]))
             pt.append(copy.deepcopy(pt[index]))
             index = -1
         g_h = possibilities[index].get(val[0], 0)
-        playing_time = min(val[1][1] - g_h, cap - sum(pt[index].get(target_pos, {0: 0}).values()))
+        playing_time = min(
+            val[1][1] - g_h, cap - sum(pt[index].get(target_pos, {0: 0}).values())
+        )
         if playing_time == 0:
             return results
         pt[index].get(target_pos, {})[val[0]] = playing_time
@@ -199,7 +303,20 @@ def __add_pt(
                 if pos in used_pos:
                     continue
                 if pos.offense:
-                    sub_list = __add_pt(team, league, possibilities, pt, opt_sum, val, pos, index=-1, rep_lvl=rep_lvl, used_pos=used_pos, used_pt=used_pt, g_limit=g_limit)
+                    sub_list = __add_pt(
+                        team,
+                        league,
+                        possibilities,
+                        pt,
+                        opt_sum,
+                        val,
+                        pos,
+                        index=-1,
+                        rep_lvl=rep_lvl,
+                        used_pos=used_pos,
+                        used_pt=used_pt,
+                        g_limit=g_limit,
+                    )
                     for pos_dict in sub_list:
                         pos_dict[target_pos] = playing_time
                     results.extend(sub_list)
@@ -210,9 +327,26 @@ def __add_pt(
 
     if possibilities[index].get(val[0], 0) < val[1][1]:
         used_pos.append(target_pos)
-        start_pos = [p for p in league.get_starting_positions() if p.offense and p not in used_pos and val[1][0].pos_eligible(p)]
+        start_pos = [
+            p
+            for p in league.get_starting_positions()
+            if p.offense and p not in used_pos and val[1][0].pos_eligible(p)
+        ]
         if start_pos:
-            sub_list = __add_pt(team, league, possibilities, pt, opt_sum, val, start_pos[0], rep_lvl=rep_lvl, index=index, used_pos=used_pos, used_pt=used_pt, g_limit=g_limit)
+            sub_list = __add_pt(
+                team,
+                league,
+                possibilities,
+                pt,
+                opt_sum,
+                val,
+                start_pos[0],
+                rep_lvl=rep_lvl,
+                index=index,
+                used_pos=used_pos,
+                used_pt=used_pt,
+                g_limit=g_limit,
+            )
             for pos_dict in sub_list:
                 pos_dict[target_pos] = playing_time
             results.extend(sub_list)
@@ -230,7 +364,9 @@ def __add_pt(
     return results
 
 
-def bat_opt(o_sorted: list, current_pt: list, league: League, team: Team, rep_lvl, off_g_limit) -> dict:
+def bat_opt(
+    o_sorted: list, current_pt: list, league: League, team: Team, rep_lvl, off_g_limit
+) -> dict:
     possibilities = []
     possibilities.append({})
     pt = []
@@ -271,13 +407,28 @@ def bat_opt(o_sorted: list, current_pt: list, league: League, team: Team, rep_lv
                             pt[target_index].get(key, {})[val[0]] = games
                             total_pt += games
                         possibilities[target_index][val[0]] = total_pt
-                        opt_sum[target_index] = opt_sum[target_index] + total_pt * val[1][2]
+                        opt_sum[target_index] = (
+                            opt_sum[target_index] + total_pt * val[1][2]
+                        )
             else:
                 answer_list = []
                 for pos in elig_pos:
                     if pos.offense:
                         last = pos == last_pos
-                        answer = __add_pt(team, league, possibilities, pt, opt_sum, val, pos, i, last=last, rep_lvl=rep_lvl, g_limit=off_g_limit, used_pos=[])
+                        answer = __add_pt(
+                            team,
+                            league,
+                            possibilities,
+                            pt,
+                            opt_sum,
+                            val,
+                            pos,
+                            i,
+                            last=last,
+                            rep_lvl=rep_lvl,
+                            g_limit=off_g_limit,
+                            used_pos=[],
+                        )
                         for possibility in answer:
                             to_delete = []
                             for pos, g in possibility.items():
