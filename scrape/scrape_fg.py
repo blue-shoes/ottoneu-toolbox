@@ -6,6 +6,20 @@ from scrape import scrape_base
 from scrape.exceptions import FangraphsException
 from selenium.webdriver.common.by import By
 import keyring
+import pandas as pd
+import requests
+
+
+def getProjectionDataset(url: str) -> DataFrame:
+    response = requests.get(url)
+
+    proj_json = response.json()
+    df = pd.DataFrame(proj_json)
+    df.drop_duplicates('playerid', inplace=True)
+    df.set_index('playerid', inplace=True)
+    df.index = df.index.astype(str, copy=False)
+
+    return df
 
 
 class Scrape_Fg(scrape_base.Scrape_Base):
@@ -36,7 +50,7 @@ class Scrape_Fg(scrape_base.Scrape_Base):
             dataframe.index = dataframe.index.astype(str, copy=False)
         return dataframe
 
-    def getProjectionDataset(self, url, csv_name, player=True) -> DataFrame:
+    def getProjectionDataset_old(self, url, csv_name, player=True) -> DataFrame:
         """Retrieves projection at url from FanGraphs using Selenium and returns as DataFrame."""
         # Create filepath info
         subdir = 'tmp'
