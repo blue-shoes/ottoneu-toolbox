@@ -57,6 +57,8 @@ def download_projections(
     pos_proj = scrape_fg.getProjectionDataset(pos_url)
     if progress is not None:
         progress.increment_completion_percent(20)
+    if projection == 'thebatx':
+        projection = 'thebat'
     pitch_url = f'https://www.fangraphs.com/api/projections?type={projection}&stats=pit&pos=all&team=0&players=0&lg=all'
     pitch_proj = scrape_fg.getProjectionDataset(pitch_url)
 
