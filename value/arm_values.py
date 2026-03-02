@@ -7,7 +7,14 @@ from typing import List
 import logging
 
 from domain.domain import ValueCalculation, CustomScoring
-from domain.enum import RepLevelScheme, RankingBasis, CalculationDataType as CDT, ScoringFormat, Position, StatType
+from domain.enum import (
+    RepLevelScheme,
+    RankingBasis,
+    CalculationDataType as CDT,
+    ScoringFormat,
+    Position,
+    StatType,
+)
 from domain.interface import ProgressUpdater
 from services import custom_scoring_services
 from util import dataframe_util
@@ -23,14 +30,23 @@ class ArmValues:
     max_rost_num = {}
     scoring: CustomScoring = None
 
-    def __init__(self, value_calc: ValueCalculation, intermediate_calc=False, target_arm=196, rp_limit=999, prog:ProgressUpdater=None):
+    def __init__(
+        self,
+        value_calc: ValueCalculation,
+        intermediate_calc=False,
+        target_arm=196,
+        rp_limit=999,
+        prog: ProgressUpdater = None,
+    ):
         self.intermediate_calculations = intermediate_calc
         self.replacement_positions = deepcopy(self.default_replacement_positions)
         self.replacement_levels = deepcopy(self.default_replacement_levels)
         self.target_pitch = target_arm
         self.SABR = ScoringFormat.is_sabr(value_calc.s_format)
         self.rp_limit = rp_limit
-        self.rep_level_scheme = RepLevelScheme._value2member_map_[int(value_calc.get_input(CDT.REP_LEVEL_SCHEME))]
+        self.rep_level_scheme = RepLevelScheme._value2member_map_[
+            int(value_calc.get_input(CDT.REP_LEVEL_SCHEME))
+        ]
         self.num_teams = value_calc.get_input(CDT.NUM_TEAMS)
         self.surplus_pos = deepcopy(self.default_surplus_pos)
         self.min_sp_ip = value_calc.get_input(CDT.SP_IP_TO_RANK)
@@ -38,7 +54,9 @@ class ArmValues:
         self.rank_basis = value_calc.pitcher_basis
         self.s_format = value_calc.s_format
         if self.s_format == ScoringFormat.CUSTOM:
-            self.scoring = custom_scoring_services.get_scoring_format(value_calc.get_input(CDT.CUSTOM_SCORING_FORMAT))
+            self.scoring = custom_scoring_services.get_scoring_format(
+                value_calc.get_input(CDT.CUSTOM_SCORING_FORMAT)
+            )
         self.stat_avg = {}
         self.stat_std = {}
 
@@ -49,16 +67,22 @@ class ArmValues:
                 self.gs_per_week = value_calc.get_input(CDT.GS_LIMIT)
                 self.est_rp_g_per_week = value_calc.get_input(CDT.RP_G_TARGET)
             else:
-                self.target_innings = value_calc.get_input(CDT.IP_TARGET) * self.num_teams
+                self.target_innings = (
+                    value_calc.get_input(CDT.IP_TARGET) * self.num_teams
+                )
                 self.target_ip_per_team = value_calc.get_input(CDT.IP_TARGET)
                 self.rp_ip_per_team = value_calc.get_input(CDT.RP_IP_TARGET)
 
         if intermediate_calc:
-            self.dirname = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-            self.intermed_subdirpath = os.path.join(self.dirname, 'data_dirs', 'intermediate')
+            self.dirname = os.path.abspath(
+                os.path.join(os.path.dirname(__file__), '..')
+            )
+            self.intermed_subdirpath = os.path.join(
+                self.dirname, 'data_dirs', 'intermediate'
+            )
             if not path.exists(self.intermed_subdirpath):
                 os.mkdir(self.intermed_subdirpath)
-        
+
         self.progress_updater = prog
 
     def _hbp_calc(self, bba) -> float:
@@ -80,10 +104,27 @@ class ArmValues:
                 return points
         elif self.SABR:
             # Otto pitching points (SABR) from https://ottoneu.fangraphs.com/support
-            return 5.0 * row['IP'] + 2.0 * row['K'] - 3.0 * row['BBA'] - 3.0 * hbp - 13.0 * row['HRA'] + 5.0 * save + 4.0 * hold
+            return (
+                5.0 * row['IP']
+                + 2.0 * row['K']
+                - 3.0 * row['BBA']
+                - 3.0 * hbp
+                - 13.0 * row['HRA']
+                + 5.0 * save
+                + 4.0 * hold
+            )
         else:
             # Otto pitching points (FGP) from https://ottoneu.fangraphs.com/support
-            return 7.4 * row['IP'] + 2.0 * row['K'] - 2.6 * row['HA'] - 3.0 * row['BBA'] - 3.0 * hbp - 12.3 * row['HRA'] + 5.0 * save + 4.0 * hold
+            return (
+                7.4 * row['IP']
+                + 2.0 * row['K']
+                - 2.6 * row['HA']
+                - 3.0 * row['BBA']
+                - 3.0 * hbp
+                - 12.3 * row['HRA']
+                + 5.0 * save
+                + 4.0 * hold
+            )
 
     def calc_pitch_points(self, row) -> float:
         """Returns player pitching points for projection row using row columns."""
@@ -147,140 +188,295 @@ class ArmValues:
 
             if self.rep_level_scheme == RepLevelScheme.FILL_GAMES:
                 if not ScoringFormat.is_h2h(self.s_format):
-                    while sp_ip < self.num_teams * (self.target_ip_per_team - self.rp_ip_per_team) and self.replacement_positions['SP'] < self.max_rost_num['SP']:
-                        self.replacement_positions['SP'] = self.replacement_positions['SP'] + 1
+                    while (
+                        sp_ip
+                        < self.num_teams
+                        * (self.target_ip_per_team - self.rp_ip_per_team)
+                        and self.replacement_positions['SP'] < self.max_rost_num['SP']
+                    ):
+                        diff = (
+                            self.num_teams
+                            * (self.target_ip_per_team - self.rp_ip_per_team)
+                            - sp_ip
+                        )
+                        add_sp = int(max(diff // self.min_sp_ip // 4, 1))
+                        self.replacement_positions['SP'] = (
+                            self.replacement_positions['SP'] + add_sp
+                        )
                         if not ScoringFormat.is_points_type(self.s_format):
                             self.calculate_roto_bases(df)
                         self.get_pitcher_fom_calc(df, split=split)
                         rosterable = df.loc[df['FOM SP'] >= 0]
-                        sp_ip = rosterable.apply(self.usable_ip_calc, args=('SP',), axis=1).sum()
-                        if not ScoringFormat.is_points_type(self.s_format) and sp_ip >= self.num_teams * (self.target_ip_per_team - self.rp_ip_per_team):
+                        sp_ip = rosterable.apply(
+                            self.usable_ip_calc, args=('SP',), axis=1
+                        ).sum()
+                        if not ScoringFormat.is_points_type(
+                            self.s_format
+                        ) and sp_ip >= self.num_teams * (
+                            self.target_ip_per_team - self.rp_ip_per_team
+                        ):
                             _ = self.iterate_roto(df)
-                            sp_ip = rosterable.apply(self.usable_ip_calc, args=('SP',), axis=1).sum()
-                    while rp_ip < self.num_teams * self.rp_ip_per_team and self.replacement_positions['RP'] < self.max_rost_num['RP']:
-                        self.replacement_positions['RP'] = self.replacement_positions['RP'] + 1
+                            sp_ip = rosterable.apply(
+                                self.usable_ip_calc, args=('SP',), axis=1
+                            ).sum()
+                    while (
+                        rp_ip < self.num_teams * self.rp_ip_per_team
+                        and self.replacement_positions['RP'] < self.max_rost_num['RP']
+                    ):
+                        diff = self.num_teams * self.rp_ip_per_team - rp_ip
+                        add_rp = int(max(diff // self.min_rp_ip // 4, 1))
+                        self.replacement_positions['RP'] = (
+                            self.replacement_positions['RP'] + add_rp
+                        )
                         if not ScoringFormat.is_points_type(self.s_format):
                             self.calculate_roto_bases(df)
                         self.get_pitcher_fom_calc(df, split=split)
                         rosterable = df.loc[df['FOM RP'] >= 0]
-                        rp_ip = rosterable.apply(self.usable_ip_calc, args=('RP',), axis=1).sum()
-                        if not ScoringFormat.is_points_type(self.s_format) and rp_ip >= self.num_teams * self.rp_ip_per_team:
+                        rp_ip = rosterable.apply(
+                            self.usable_ip_calc, args=('RP',), axis=1
+                        ).sum()
+                        if (
+                            not ScoringFormat.is_points_type(self.s_format)
+                            and rp_ip >= self.num_teams * self.rp_ip_per_team
+                        ):
                             _ = self.iterate_roto(df)
-                            rp_ip = rosterable.apply(self.usable_ip_calc, args=('RP',), axis=1).sum()
+                            rp_ip = rosterable.apply(
+                                self.usable_ip_calc, args=('RP',), axis=1
+                            ).sum()
                 else:
-                    while sp_g < self.num_teams * self.gs_per_week * self.weeks and self.replacement_positions['SP'] < self.max_rost_num['SP']:
-                        self.replacement_positions['SP'] = self.replacement_positions['SP'] + 1
+                    while (
+                        sp_g < self.num_teams * self.gs_per_week * self.weeks
+                        and self.replacement_positions['SP'] < self.max_rost_num['SP']
+                    ):
+                        self.replacement_positions['SP'] = (
+                            self.replacement_positions['SP'] + 1
+                        )
                         self.get_pitcher_fom_calc(df)
                         rosterable = df.loc[df['FOM SP'] >= 0]
                         sp_g = rosterable.apply(self.usable_gs_calc, axis=1).sum()
-                    while rp_g < self.num_teams * self.est_rp_g_per_week * self.weeks and self.replacement_positions['RP'] < self.max_rost_num['RP']:
-                        self.replacement_positions['RP'] = self.replacement_positions['RP'] + 1
+                    while (
+                        rp_g < self.num_teams * self.est_rp_g_per_week * self.weeks
+                        and self.replacement_positions['RP'] < self.max_rost_num['RP']
+                    ):
+                        self.replacement_positions['RP'] = (
+                            self.replacement_positions['RP'] + 1
+                        )
                         self.get_pitcher_fom_calc(df)
                         rosterable = df.loc[df['FOM RP'] >= 0]
                         rp_g = rosterable.apply(self.usable_rp_g_calc, axis=1).sum()
-                self.replacement_positions['SP'] = min(self.replacement_positions['SP'] + self.surplus_pos['SP'], self.max_rost_num['SP'])
-                self.replacement_positions['RP'] = min(self.replacement_positions['RP'] + self.surplus_pos['RP'], self.max_rost_num['RP'])
-                if not ScoringFormat.is_points_type(self.s_format) and rp_ip < self.num_teams * self.rp_ip_per_team:
+                self.replacement_positions['SP'] = min(
+                    self.replacement_positions['SP'] + self.surplus_pos['SP'],
+                    self.max_rost_num['SP'],
+                )
+                self.replacement_positions['RP'] = min(
+                    self.replacement_positions['RP'] + self.surplus_pos['RP'],
+                    self.max_rost_num['RP'],
+                )
+                if (
+                    not ScoringFormat.is_points_type(self.s_format)
+                    and rp_ip < self.num_teams * self.rp_ip_per_team
+                ):
                     _ = self.iterate_roto(df)
                 else:
                     self.get_pitcher_fom_calc(df, split=split)
 
             elif self.rep_level_scheme == RepLevelScheme.TOTAL_ROSTERED:
                 if self.rank_basis == RankingBasis.PIP:
-                    while (num_arms != self.target_pitch or (abs(total_ip - self.target_innings) > 100 and self.replacement_positions['RP'] != self.rp_limit)) and (
-                        self.replacement_positions['SP'] < self.max_rost_num['SP'] and self.replacement_positions['RP'] < self.max_rost_num['RP']
+                    while (
+                        num_arms != self.target_pitch
+                        or (
+                            abs(total_ip - self.target_innings) > 100
+                            and self.replacement_positions['RP'] != self.rp_limit
+                        )
+                    ) and (
+                        self.replacement_positions['SP'] < self.max_rost_num['SP']
+                        and self.replacement_positions['RP'] < self.max_rost_num['RP']
                     ):
                         # Going to do optional capping of relievers. It can get a bit out of control otherwise
-                        if num_arms < self.target_pitch and (self.replacement_positions['RP'] == self.rp_limit or self.replacement_positions['RP'] < self.max_rost_num['RP']):
-                            self.replacement_positions['SP'] = self.replacement_positions['SP'] + 1
+                        if num_arms < self.target_pitch and (
+                            self.replacement_positions['RP'] == self.rp_limit
+                            or self.replacement_positions['RP']
+                            < self.max_rost_num['RP']
+                        ):
+                            self.replacement_positions['SP'] = (
+                                self.replacement_positions['SP'] + 1
+                            )
                         elif num_arms == self.target_pitch:
                             # We have the right number of arms, but not in the inning threshold
                             if total_ip < self.target_innings:
                                 # Too many relievers
-                                if self.replacement_positions['SP'] == self.max_rost_num['SP']:
+                                if (
+                                    self.replacement_positions['SP']
+                                    == self.max_rost_num['SP']
+                                ):
                                     # Don't have any more starters, this is optimal
                                     break
-                                self.replacement_positions['SP'] = self.replacement_positions['SP'] + 1
-                                self.replacement_positions['RP'] = self.replacement_positions['RP'] - 1
+                                self.replacement_positions['SP'] = (
+                                    self.replacement_positions['SP'] + 1
+                                )
+                                self.replacement_positions['RP'] = (
+                                    self.replacement_positions['RP'] - 1
+                                )
                             else:
                                 # Too many starters
-                                if self.replacement_positions['RP'] == self.max_rost_num['RP']:
+                                if (
+                                    self.replacement_positions['RP']
+                                    == self.max_rost_num['RP']
+                                ):
                                     # Don't have any more relievers, this is optimal
                                     break
-                                self.replacement_positions['SP'] = self.replacement_positions['SP'] - 1
-                                self.replacement_positions['RP'] = self.replacement_positions['RP'] + 1
+                                self.replacement_positions['SP'] = (
+                                    self.replacement_positions['SP'] - 1
+                                )
+                                self.replacement_positions['RP'] = (
+                                    self.replacement_positions['RP'] + 1
+                                )
                         elif num_arms < self.target_pitch:
-                            if self.target_pitch - num_arms == 1 and self.target_innings - total_ip > 200 and self.replacement_positions['SP'] < self.max_rost_num['SP']:
+                            if (
+                                self.target_pitch - num_arms == 1
+                                and self.target_innings - total_ip > 200
+                                and self.replacement_positions['SP']
+                                < self.max_rost_num['SP']
+                            ):
                                 # Add starter, a reliever isn't going to get it done, so don't bother
                                 # I got caught in a loop without this
-                                self.replacement_positions['SP'] = self.replacement_positions['SP'] + 1
+                                self.replacement_positions['SP'] = (
+                                    self.replacement_positions['SP'] + 1
+                                )
                             # Not enough pitchers. Preferentially add highest replacement level
-                            elif (self.replacement_levels['SP'] > self.replacement_levels['RP'] and self.replacement_positions['SP'] < self.max_rost_num['SP']) or self.replacement_positions[
+                            elif (
+                                self.replacement_levels['SP']
+                                > self.replacement_levels['RP']
+                                and self.replacement_positions['SP']
+                                < self.max_rost_num['SP']
+                            ) or self.replacement_positions['RP'] == self.max_rost_num[
                                 'RP'
-                            ] == self.max_rost_num['RP']:
+                            ]:
                                 # Probably not, but just in case
-                                self.replacement_positions['SP'] = self.replacement_positions['SP'] + 1
+                                self.replacement_positions['SP'] = (
+                                    self.replacement_positions['SP'] + 1
+                                )
                             else:
-                                self.replacement_positions['RP'] = self.replacement_positions['RP'] + 1
+                                self.replacement_positions['RP'] = (
+                                    self.replacement_positions['RP'] + 1
+                                )
                         else:
-                            if self.target_pitch - num_arms == -1 and self.target_innings - total_ip > 50:
+                            if (
+                                self.target_pitch - num_arms == -1
+                                and self.target_innings - total_ip > 50
+                            ):
                                 # Remove a reliever. We're already short on innings, so removing a starter isn't going to get it done, so don't bother
                                 # I got caught in a loop without this
-                                self.replacement_positions['RP'] = self.replacement_positions['RP'] - 1
+                                self.replacement_positions['RP'] = (
+                                    self.replacement_positions['RP'] - 1
+                                )
                             # Too many pitchers. Preferentially remove lowest replacement level
-                            elif self.replacement_levels['SP'] < self.replacement_levels['RP']:
-                                self.replacement_positions['SP'] = self.replacement_positions['SP'] - 1
+                            elif (
+                                self.replacement_levels['SP']
+                                < self.replacement_levels['RP']
+                            ):
+                                self.replacement_positions['SP'] = (
+                                    self.replacement_positions['SP'] - 1
+                                )
                             else:
                                 # Probably not, but just in case
-                                self.replacement_positions['RP'] = self.replacement_positions['RP'] - 1
+                                self.replacement_positions['RP'] = (
+                                    self.replacement_positions['RP'] - 1
+                                )
                         self.get_pitcher_fom_calc(df)
                         # FOM is how many arms with a non-negative FOM...
                         rosterable = df.loc[df['FOM'] >= 0]
                         num_arms = len(rosterable)
                         # ...and how many total innings are pitched
-                        total_ip = rosterable.apply(self.usable_ip_calc, args=('SP',), axis=1).sum()
-                        total_ip += rosterable.apply(self.usable_ip_calc, args=('RP',), axis=1).sum()
+                        total_ip = rosterable.apply(
+                            self.usable_ip_calc, args=('SP',), axis=1
+                        ).sum()
+                        total_ip += rosterable.apply(
+                            self.usable_ip_calc, args=('RP',), axis=1
+                        ).sum()
                 elif self.rank_basis == RankingBasis.PPG:
                     target_starts = self.num_teams * self.gs_per_week * self.weeks
                     while (
                         num_arms != self.target_pitch
                         or abs(sp_g - target_starts) > 10
-                        and (self.replacement_positions['SP'] < self.max_rost_num['SP'] and self.replacement_positions['RP'] < self.max_rost_num['RP'])
+                        and (
+                            self.replacement_positions['SP'] < self.max_rost_num['SP']
+                            and self.replacement_positions['RP']
+                            < self.max_rost_num['RP']
+                        )
                     ):
                         # Going to do optional capping of relievers. It can get a bit out of control otherwise
-                        if num_arms < self.target_pitch and self.replacement_positions['RP'] == self.rp_limit and self.replacement_positions['SP'] < self.max_rost_num['SP']:
-                            self.replacement_positions['SP'] = self.replacement_positions['SP'] + 1
+                        if (
+                            num_arms < self.target_pitch
+                            and self.replacement_positions['RP'] == self.rp_limit
+                            and self.replacement_positions['SP']
+                            < self.max_rost_num['SP']
+                        ):
+                            self.replacement_positions['SP'] = (
+                                self.replacement_positions['SP'] + 1
+                            )
                         elif num_arms == self.target_pitch:
                             # We have the right number of arms, but not in the inning threshold
                             if sp_g < target_starts:
                                 # Too many relievers
-                                if self.replacement_positions['SP'] == self.max_rost_num['SP']:
+                                if (
+                                    self.replacement_positions['SP']
+                                    == self.max_rost_num['SP']
+                                ):
                                     # Don't have any more SP, this is optimal
                                     break
-                                self.replacement_positions['SP'] = self.replacement_positions['SP'] + 1
-                                self.replacement_positions['RP'] = self.replacement_positions['RP'] - 1
+                                self.replacement_positions['SP'] = (
+                                    self.replacement_positions['SP'] + 1
+                                )
+                                self.replacement_positions['RP'] = (
+                                    self.replacement_positions['RP'] - 1
+                                )
                             else:
                                 # Too many starters
-                                if self.replacement_positions['RP'] == self.max_rost_num['RP']:
+                                if (
+                                    self.replacement_positions['RP']
+                                    == self.max_rost_num['RP']
+                                ):
                                     # Don't have any more RP, this is optimal
                                     break
-                                self.replacement_positions['SP'] = self.replacement_positions['SP'] - 1
-                                self.replacement_positions['RP'] = self.replacement_positions['RP'] + 1
+                                self.replacement_positions['SP'] = (
+                                    self.replacement_positions['SP'] - 1
+                                )
+                                self.replacement_positions['RP'] = (
+                                    self.replacement_positions['RP'] + 1
+                                )
                         elif num_arms < self.target_pitch:
-                            if (target_starts - sp_g > 10 and self.replacement_positions['SP'] < self.max_rost_num['SP']) or self.replacement_positions['RP'] == self.max_rost_num['RP']:
+                            if (
+                                target_starts - sp_g > 10
+                                and self.replacement_positions['SP']
+                                < self.max_rost_num['SP']
+                            ) or self.replacement_positions['RP'] == self.max_rost_num[
+                                'RP'
+                            ]:
                                 # Add starter
-                                self.replacement_positions['SP'] = self.replacement_positions['SP'] + 1
+                                self.replacement_positions['SP'] = (
+                                    self.replacement_positions['SP'] + 1
+                                )
                             else:
                                 # Have enough starts, add reliever
-                                self.replacement_positions['RP'] = self.replacement_positions['RP'] + 1
+                                self.replacement_positions['RP'] = (
+                                    self.replacement_positions['RP'] + 1
+                                )
                         else:
-                            if self.target_pitch - num_arms == -1 and target_starts - sp_g < -20:
+                            if (
+                                self.target_pitch - num_arms == -1
+                                and target_starts - sp_g < -20
+                            ):
                                 # Remove a starter. We probably have enough GS
                                 # I got caught in a loop without this
-                                self.replacement_positions['SP'] = self.replacement_positions['SP'] - 1
+                                self.replacement_positions['SP'] = (
+                                    self.replacement_positions['SP'] - 1
+                                )
                             # Too many pitchers and we don't have enough starts
                             else:
-                                self.replacement_positions['RP'] = self.replacement_positions['RP'] - 1
+                                self.replacement_positions['RP'] = (
+                                    self.replacement_positions['RP'] - 1
+                                )
                         self.get_pitcher_fom_calc(df)
                         # FOM is how many arms with a non-negative FOM...
                         rosterable = df.loc[df['FOM'] >= 0]
@@ -331,12 +527,28 @@ class ArmValues:
     def get_fom(self, df: DataFrame, split: bool = True) -> None:
         """Calculates role FOMs and overall FOM for each pitcher in-place"""
         if split:
-            df['FOM SP'] = df.apply(self.calc_pitch_fom_role, args=('SP', self.replacement_levels['SP']), axis=1)
-            df['FOM RP'] = df.apply(self.calc_pitch_fom_role, args=('RP', self.replacement_levels['RP']), axis=1)
+            df['FOM SP'] = df.apply(
+                self.calc_pitch_fom_role,
+                args=('SP', self.replacement_levels['SP']),
+                axis=1,
+            )
+            df['FOM RP'] = df.apply(
+                self.calc_pitch_fom_role,
+                args=('RP', self.replacement_levels['RP']),
+                axis=1,
+            )
             df['FOM'] = df.apply(self.sum_role_fom, axis=1)
         else:
-            df['FOM SP'] = df.apply(self.calc_roto_fom_role, args=('SP', self.replacement_levels['SP']), axis=1)
-            df['FOM RP'] = df.apply(self.calc_roto_fom_role, args=('RP', self.replacement_levels['RP']), axis=1)
+            df['FOM SP'] = df.apply(
+                self.calc_roto_fom_role,
+                args=('SP', self.replacement_levels['SP']),
+                axis=1,
+            )
+            df['FOM RP'] = df.apply(
+                self.calc_roto_fom_role,
+                args=('RP', self.replacement_levels['RP']),
+                axis=1,
+            )
             df['FOM'] = df.apply(self.calc_max_fom, axis=1)
 
     def calc_roto_fom_role(self, row, pos: str, rep_level: float) -> float:
@@ -440,7 +652,10 @@ class ArmValues:
             return False
         # Got to here, this is a SP/RP with > 0 G. Ration their innings threshold based on their projected GS/G ratio
         start_ip_to_ip = 1 - self.calc_rp_ip_split_ratio(row)
-        return row['IP'] > (self.min_sp_ip - self.min_rp_ip) * start_ip_to_ip + self.min_rp_ip
+        return (
+            row['IP']
+            > (self.min_sp_ip - self.min_rp_ip) * start_ip_to_ip + self.min_rp_ip
+        )
 
     def rp_ip_func(self, row) -> float:
         """Calculates the number of innings pitched in relief based on a linear regression using games relieved per total
@@ -635,7 +850,9 @@ class ArmValues:
             logging.debug(f'new arm sigma = {sigma}')
         return sigma
 
-    def rank_roto_pitchers(self, df: DataFrame, rank_col: str = None, ascending=False) -> None:
+    def rank_roto_pitchers(
+        self, df: DataFrame, rank_col: str = None, ascending=False
+    ) -> None:
         """Ranks all players eligible at each discrete pitching position according to the RankingBasis per the DataFrame columns"""
         if rank_col is None:
             rank_col = self.rank_basis.display
@@ -643,7 +860,9 @@ class ArmValues:
             col = f'Rank {pos.value} Rate'
             g_col = f'{pos.value} Games'
             df[g_col] = 0
-            df[col] = df.loc[df[f'{pos.value} Rankable']][rank_col].rank(ascending=ascending)
+            df[col] = df.loc[df[f'{pos.value} Rankable']][rank_col].rank(
+                ascending=ascending
+            )
             df[col] = df[col].fillna(-999)
             self.max_rost_num[pos.value] = len(df.loc[df[f'{pos.value} Rankable']])
 
@@ -653,7 +872,9 @@ class ArmValues:
             arl = False
             for pos in Position.get_discrete_pitching_pos():
                 col = f'Rank {pos.value} Rate'
-                if row[col] > 0 and row[col] <= self.replacement_positions.get(pos.value):
+                if row[col] > 0 and row[col] <= self.replacement_positions.get(
+                    pos.value
+                ):
                     arl = True
                     break
             above_rl.append(arl)
@@ -664,7 +885,9 @@ class ArmValues:
         denom = self.ip_per_team
         p_denom = row['IP']
 
-        val = (self.stat_avg[stat] * (denom - p_denom) + row[stat.display] * p_denom) / denom - self.stat_avg[stat]
+        val = (
+            self.stat_avg[stat] * (denom - p_denom) + row[stat.display] * p_denom
+        ) / denom - self.stat_avg[stat]
         if stat.higher_better:
             return val
         else:
@@ -680,11 +903,22 @@ class ArmValues:
 
     def pos_rankable(self, row: Series, pos: Position) -> bool:
         if pos == Position.POS_SP:
-            return row['IP SP'] > max(1 - self.calc_rp_ip_split_ratio(row), 0.5) * self.min_sp_ip
+            return (
+                row['IP SP']
+                > max(1 - self.calc_rp_ip_split_ratio(row), 0.5) * self.min_sp_ip
+            )
         if pos == Position.POS_RP:
-            return row['IP RP'] > max(self.calc_rp_ip_split_ratio(row), 0.5) * self.min_rp_ip
+            return (
+                row['IP RP']
+                > max(self.calc_rp_ip_split_ratio(row), 0.5) * self.min_rp_ip
+            )
         if pos == Position.POS_P:
-            return row['IP'] > self.calc_rp_ip_split_ratio(row) * self.min_rp_ip + 1 - self.calc_rp_ip_split_ratio(row) * self.min_sp_ip
+            return (
+                row['IP']
+                > self.calc_rp_ip_split_ratio(row) * self.min_rp_ip
+                + 1
+                - self.calc_rp_ip_split_ratio(row) * self.min_sp_ip
+            )
 
     def calculate_roto_bases(self, proj: DataFrame, init=False) -> None:
         """Calculates zScore information (average and stdev of the 4x4 or 5x5 stats). If init is true, will rank off of WHIP, otherwise ranks off of previous zScores"""
@@ -704,35 +938,85 @@ class ArmValues:
                     continue
                 if cat.category.rate_denom is None:
                     if RankingBasis.is_roto_fractional(self.rank_basis):
-                        proj[f'{cat.category.display}/IP'] = proj.apply(self.per_ip_rate, axis=1, args=(cat.category,))
+                        proj[f'{cat.category.display}/IP'] = proj.apply(
+                            self.per_ip_rate, axis=1, args=(cat.category,)
+                        )
                     cat_to_col[cat.category] = cat.category.display
                 else:
-                    self.stat_avg[cat.category] = dataframe_util.weighted_avg(above_rep_lvl, cat.category.display, cat.category.rate_denom.display)
-                    proj[f'{cat.category.display}_Delta'] = proj.apply(self.calc_rate_delta, axis=1, args=(cat.category,))
+                    self.stat_avg[cat.category] = dataframe_util.weighted_avg(
+                        above_rep_lvl,
+                        cat.category.display,
+                        cat.category.rate_denom.display,
+                    )
+                    proj[f'{cat.category.display}_Delta'] = proj.apply(
+                        self.calc_rate_delta, axis=1, args=(cat.category,)
+                    )
                     cat_to_col[cat.category] = f'{cat.category.display}_Delta'
         else:
-            self.stat_avg[StatType.ERA] = dataframe_util.weighted_avg(above_rep_lvl, 'ERA', 'IP')
-            proj['ERA_Delta'] = proj.apply(self.calc_rate_delta, axis=1, args=(StatType.ERA,))
-            self.stat_avg[StatType.WHIP] = dataframe_util.weighted_avg(above_rep_lvl, 'WHIP', 'IP')
-            proj['WHIP_Delta'] = proj.apply(self.calc_rate_delta, axis=1, args=(StatType.WHIP,))
+            self.stat_avg[StatType.ERA] = dataframe_util.weighted_avg(
+                above_rep_lvl, 'ERA', 'IP'
+            )
+            proj['ERA_Delta'] = proj.apply(
+                self.calc_rate_delta, axis=1, args=(StatType.ERA,)
+            )
+            self.stat_avg[StatType.WHIP] = dataframe_util.weighted_avg(
+                above_rep_lvl, 'WHIP', 'IP'
+            )
+            proj['WHIP_Delta'] = proj.apply(
+                self.calc_rate_delta, axis=1, args=(StatType.WHIP,)
+            )
 
             if RankingBasis.is_roto_fractional(self.rank_basis):
                 proj['K/IP'] = proj.apply(self.per_ip_rate, axis=1, args=(StatType.SO,))
                 if self.s_format == ScoringFormat.OLD_SCHOOL_5X5:
-                    proj['SV/G'] = proj.apply(self.per_game_rate, axis=1, args=(StatType.SV,))
-                    proj['W/G'] = proj.apply(self.per_game_rate, axis=1, args=(StatType.W,))
-                    cat_to_col = {StatType.SO: 'K/IP', StatType.W: 'W/G', StatType.SV: 'SV/G', StatType.WHIP: 'WHIP_Delta', StatType.ERA: 'ERA_Delta'}
+                    proj['SV/G'] = proj.apply(
+                        self.per_game_rate, axis=1, args=(StatType.SV,)
+                    )
+                    proj['W/G'] = proj.apply(
+                        self.per_game_rate, axis=1, args=(StatType.W,)
+                    )
+                    cat_to_col = {
+                        StatType.SO: 'K/IP',
+                        StatType.W: 'W/G',
+                        StatType.SV: 'SV/G',
+                        StatType.WHIP: 'WHIP_Delta',
+                        StatType.ERA: 'ERA_Delta',
+                    }
                 else:
-                    self.stat_avg[StatType.HR_PER_9] = dataframe_util.weighted_avg(above_rep_lvl, 'HR/9', 'IP')
-                    proj['HR/9_Delta'] = proj.apply(self.calc_rate_delta, axis=1, args=(StatType.HR_PER_9,))
-                    cat_to_col = {StatType.SO: 'K/IP', StatType.ERA: 'ERA_Delta', StatType.WHIP: 'WHIP_Delta', StatType.HR_PER_9: 'HR/9_Delta'}
+                    self.stat_avg[StatType.HR_PER_9] = dataframe_util.weighted_avg(
+                        above_rep_lvl, 'HR/9', 'IP'
+                    )
+                    proj['HR/9_Delta'] = proj.apply(
+                        self.calc_rate_delta, axis=1, args=(StatType.HR_PER_9,)
+                    )
+                    cat_to_col = {
+                        StatType.SO: 'K/IP',
+                        StatType.ERA: 'ERA_Delta',
+                        StatType.WHIP: 'WHIP_Delta',
+                        StatType.HR_PER_9: 'HR/9_Delta',
+                    }
             else:
                 if self.s_format == ScoringFormat.OLD_SCHOOL_5X5:
-                    cat_to_col = {StatType.SO: 'K', StatType.W: 'W', StatType.SV: 'SV', StatType.WHIP: 'WHIP_Delta', StatType.ERA: 'ERA_Delta'}
+                    cat_to_col = {
+                        StatType.SO: 'K',
+                        StatType.W: 'W',
+                        StatType.SV: 'SV',
+                        StatType.WHIP: 'WHIP_Delta',
+                        StatType.ERA: 'ERA_Delta',
+                    }
                 else:
-                    self.stat_avg[StatType.HR_PER_9] = dataframe_util.weighted_avg(above_rep_lvl, 'HR/9', 'IP')
-                    proj['HR/9_Delta'] = proj.apply(self.calc_rate_delta, axis=1, args=(StatType.HR_PER_9,))
-                    cat_to_col = {StatType.SO: 'K', StatType.ERA: 'ERA_Delta', StatType.WHIP: 'WHIP_Delta', StatType.HR_PER_9: 'HR/9_Delta'}
+                    self.stat_avg[StatType.HR_PER_9] = dataframe_util.weighted_avg(
+                        above_rep_lvl, 'HR/9', 'IP'
+                    )
+                    proj['HR/9_Delta'] = proj.apply(
+                        self.calc_rate_delta, axis=1, args=(StatType.HR_PER_9,)
+                    )
+                    cat_to_col = {
+                        StatType.SO: 'K',
+                        StatType.ERA: 'ERA_Delta',
+                        StatType.WHIP: 'WHIP_Delta',
+                        StatType.HR_PER_9: 'HR/9_Delta',
+                    }
         above_rep_lvl = proj.loc[alr]
         means = above_rep_lvl[list(cat_to_col.values())].mean()
         stds = above_rep_lvl[list(cat_to_col.values())].std()
@@ -764,16 +1048,38 @@ class ArmValues:
                         mult = 1
                     else:
                         mult = -1
-                    zScore += mult * (row[f'{cat.category.display}{ip_suffix}'] - self.stat_avg.get(cat.category)) / self.stat_std.get(cat.category) * ip_rat
+                    zScore += (
+                        mult
+                        * (
+                            row[f'{cat.category.display}{ip_suffix}']
+                            - self.stat_avg.get(cat.category)
+                        )
+                        / self.stat_std.get(cat.category)
+                        * ip_rat
+                    )
                 else:
-                    zScore += row[f'{cat.category.display}_Delta'] / self.stat_std.get(cat.category)
+                    zScore += row[f'{cat.category.display}_Delta'] / self.stat_std.get(
+                        cat.category
+                    )
         else:
-            zScore += (row[f'K{ip_suffix}'] - self.stat_avg.get(StatType.SO)) / self.stat_std.get(StatType.SO) * ip_rat
+            zScore += (
+                (row[f'K{ip_suffix}'] - self.stat_avg.get(StatType.SO))
+                / self.stat_std.get(StatType.SO)
+                * ip_rat
+            )
             zScore += row['ERA_Delta'] / self.stat_std.get(StatType.ERA)
             zScore += row['WHIP_Delta'] / self.stat_std.get(StatType.WHIP)
             if self.s_format == ScoringFormat.OLD_SCHOOL_5X5:
-                zScore += (row[f'W{g_suffix}'] - self.stat_avg.get(StatType.W)) / self.stat_std.get(StatType.W) * g_rat
-                zScore += (row[f'SV{g_suffix}'] - self.stat_avg.get(StatType.SV)) / self.stat_std.get(StatType.SV) * g_rat
+                zScore += (
+                    (row[f'W{g_suffix}'] - self.stat_avg.get(StatType.W))
+                    / self.stat_std.get(StatType.W)
+                    * g_rat
+                )
+                zScore += (
+                    (row[f'SV{g_suffix}'] - self.stat_avg.get(StatType.SV))
+                    / self.stat_std.get(StatType.SV)
+                    * g_rat
+                )
             else:
                 zScore += row['HR/9_Delta'] / self.stat_std.get(StatType.HR_PER_9)
         return zScore
@@ -802,9 +1108,15 @@ class ArmValues:
                 real_pitchers = df.loc[df.apply(self.not_a_belly_itcher_filter, axis=1)]
                 real_pitchers['IP RP'] = real_pitchers.apply(self.rp_ip_func, axis=1)
                 real_pitchers['IP SP'] = real_pitchers.apply(self.sp_ip_func, axis=1)
-                real_pitchers['SP Rankable'] = real_pitchers.apply(self.pos_rankable, axis=1, args=(Position.POS_SP,))
-                real_pitchers['RP Rankable'] = real_pitchers.apply(self.pos_rankable, axis=1, args=(Position.POS_RP,))
-                real_pitchers['P Rankable'] = real_pitchers.apply(self.pos_rankable, axis=1, args=(Position.POS_P,))
+                real_pitchers['SP Rankable'] = real_pitchers.apply(
+                    self.pos_rankable, axis=1, args=(Position.POS_SP,)
+                )
+                real_pitchers['RP Rankable'] = real_pitchers.apply(
+                    self.pos_rankable, axis=1, args=(Position.POS_RP,)
+                )
+                real_pitchers['P Rankable'] = real_pitchers.apply(
+                    self.pos_rankable, axis=1, args=(Position.POS_P,)
+                )
                 real_pitchers['SP Multiplier'] = 1
                 real_pitchers['RP Multiplier'] = 1
                 self.calculate_roto_bases(real_pitchers, init=True)
@@ -812,8 +1124,12 @@ class ArmValues:
         real_pitchers = self.get_pitcher_fom(real_pitchers)
 
         if self.intermediate_calculations:
-            self.dirname = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-            self.intermed_subdirpath = os.path.join(self.dirname, 'data_dirs', 'intermediate')
+            self.dirname = os.path.abspath(
+                os.path.join(os.path.dirname(__file__), '..')
+            )
+            self.intermed_subdirpath = os.path.join(
+                self.dirname, 'data_dirs', 'intermediate'
+            )
             if not path.exists(self.intermed_subdirpath):
                 os.mkdir(self.intermed_subdirpath)
             filepath = os.path.join(self.intermed_subdirpath, 'pitch_ranks.csv')
