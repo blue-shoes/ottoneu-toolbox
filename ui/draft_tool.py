@@ -1027,6 +1027,18 @@ class DraftTool(ToolboxView):
         prog = progress.ProgressDialog(self.parent, 'Updating Slow Draft Results...')
         prog.set_task_title('Getting CouchManagers Results...')
         prog.increment_completion_percent(15)
+        if get_current_auctions:
+            prog.set_task_title('Getting current auctions...')
+            prog.increment_completion_percent(20)
+            self.current_cm_auctions = (
+                draft_services.get_couchmanagers_current_auctions(
+                    self.draft.cm_draft.cm_draft_id
+                )
+            )
+
+            self.current_cm_auction_ids = [
+                auction[0].id for auction in self.current_cm_auctions
+            ]
         try:
             cm_rosters_df = draft_services.get_couchmanagers_draft_dataframe(
                 self.draft.cm_draft.cm_draft_id

@@ -196,7 +196,7 @@ def get_player_rates(
             if rs.player.pos_eligible(Position.PITCHER):
                 # Pitcher
                 pp = proj.get_player_projection(rs.player.id)
-                if pp is None:
+                if pp is None or pp.get_stat(StatType.G_PIT) is None:
                     continue
                 g = int(pp.get_stat(StatType.G_PIT))
                 gs = int(pp.get_stat(StatType.GS_PIT))
@@ -226,7 +226,7 @@ def get_player_rates(
                             )
                         else:
                             raise InputException(
-                                f"Unexpected pitch_basis value {pitch_basis}"
+                                f'Unexpected pitch_basis value {pitch_basis}'
                             )
                 else:
                     if g is None or g == 0 or ip is None or ip == 0:
@@ -251,7 +251,7 @@ def get_player_rates(
                             )
                         else:
                             raise InputException(
-                                f"Unexpected pitch_basis value {pitch_basis}"
+                                f'Unexpected pitch_basis value {pitch_basis}'
                             )
     return o_opt_pg, p_opt_pg
 
